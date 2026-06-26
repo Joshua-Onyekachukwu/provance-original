@@ -1,0 +1,1352 @@
+[
+  {
+    "id": "PROV-G-001",
+    "type": "authentic",
+    "tier": 1,
+    "source": "Unsplash",
+    "url": "https://images.unsplash.com/photo-1544144433-d50aff500b91?auto=format&fit=crop&q=80",
+    "ground_truth": "authentic",
+    "label": "Elderly man portrait",
+    "metadata": {
+      "device": "Sony ILCE-7M3",
+      "format": "JPEG",
+      "author": "Vince Fleming"
+    }
+  },
+  {
+    "id": "PROV-G-002",
+    "type": "authentic",
+    "tier": 1,
+    "source": "Unsplash",
+    "url": "https://images.unsplash.com/photo-1516585427167-9f4af9627e6c?auto=format&fit=crop&q=80",
+    "ground_truth": "authentic",
+    "label": "Elderly woman smiling",
+    "metadata": {
+      "device": "Canon EOS 5D Mark IV",
+      "format": "JPEG",
+      "author": "Inter-Inter"
+    }
+  },
+  {
+    "id": "PROV-G-003",
+    "type": "authentic",
+    "tier": 1,
+    "source": "Unsplash",
+    "url": "https://images.unsplash.com/photo-1470432581262-e789b2374c1f?auto=format&fit=crop&q=80",
+    "ground_truth": "authentic",
+    "label": "Portrait of grandmother",
+    "metadata": {
+      "device": "Nikon D850",
+      "format": "JPEG",
+      "author": "Lotte Meijer"
+    }
+  },
+  {
+    "id": "PROV-G-004",
+    "type": "authentic",
+    "tier": 1,
+    "source": "Unsplash",
+    "url": "https://images.unsplash.com/photo-1547425260-76bcadfb4f2c?auto=format&fit=crop&q=80",
+    "ground_truth": "authentic",
+    "label": "Man in coat",
+    "metadata": {
+      "device": "Sony A7R III",
+      "format": "JPEG",
+      "author": "Christopher Campbell"
+    }
+  },
+  {
+    "id": "PROV-G-005",
+    "type": "authentic",
+    "tier": 1,
+    "source": "Unsplash",
+    "url": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80",
+    "ground_truth": "authentic",
+    "label": "Serious older man",
+    "metadata": {
+      "device": "Fujifilm X-T4",
+      "format": "JPEG",
+      "author": "Albert Dera"
+    }
+  },
+  {
+    "id": "PROV-G-006",
+    "type": "authentic",
+    "tier": 1,
+    "source": "Unsplash",
+    "url": "https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&q=80",
+    "ground_truth": "authentic",
+    "label": "Glass of water on table",
+    "metadata": {
+      "device": "iPhone 13 Pro",
+      "format": "JPEG",
+      "author": "Manu Schwendener"
+    }
+  },
+  {
+    "id": "PROV-G-007",
+    "type": "authentic",
+    "tier": 1,
+    "source": "Unsplash",
+    "url": "https://images.unsplash.com/photo-1548678967-f1fc5d3c215e?auto=format&fit=crop&q=80",
+    "ground_truth": "authentic",
+    "label": "Rainy street night",
+    "metadata": {
+      "device": "Sony A7S II",
+      "format": "JPEG",
+      "author": "Todd Diemer"
+    }
+  },
+  {
+    "id": "PROV-G-008",
+    "type": "authentic",
+    "tier": 1,
+    "source": "Unsplash",
+    "url": "https://images.unsplash.com/photo-1477346611705-65d1883cee1e?auto=format&fit=crop&q=80",
+    "ground_truth": "authentic",
+    "label": "City lights rain",
+    "metadata": {
+      "device": "Nikon Z7",
+      "format": "JPEG",
+      "author": "Andre Benz"
+    }
+  },
+  {
+    "id": "PROV-G-009",
+    "type": "authentic",
+    "tier": 1,
+    "source": "Unsplash",
+    "url": "https://images.unsplash.com/photo-1514565131-fce0801e5785?auto=format&fit=crop&q=80",
+    "ground_truth": "authentic",
+    "label": "Neon city night",
+    "metadata": {
+      "device": "Sony A6400",
+      "format": "JPEG",
+      "author": "Luke Chesser"
+    }
+  },
+  {
+    "id": "PROV-G-010",
+    "type": "authentic",
+    "tier": 1,
+    "source": "Unsplash",
+    "url": "https://images.unsplash.com/photo-1476304884325-cdaa748ff4f2?auto=format&fit=crop&q=80",
+    "ground_truth": "authentic",
+    "label": "Storefront signs",
+    "metadata": {
+      "device": "Canon EOS R5",
+      "format": "JPEG",
+      "author": "Sami Aksu"
+    }
+  },
+  {
+    "id": "PROV-G-011",
+    "type": "authentic",
+    "tier": 2,
+    "source": "Pexels/Unsplash",
+    "url": "https://example.com/auth-11.jpg",
+    "ground_truth": "authentic",
+    "label": "Authentic capture 11",
+    "metadata": {
+      "device": "Generic DSLR",
+      "format": "JPEG"
+    }
+  },
+  {
+    "id": "PROV-G-012",
+    "type": "authentic",
+    "tier": 1,
+    "source": "Pexels/Unsplash",
+    "url": "https://example.com/auth-12.jpg",
+    "ground_truth": "authentic",
+    "label": "Authentic capture 12",
+    "metadata": {
+      "device": "Generic DSLR",
+      "format": "JPEG"
+    }
+  },
+  {
+    "id": "PROV-G-013",
+    "type": "authentic",
+    "tier": 2,
+    "source": "Pexels/Unsplash",
+    "url": "https://example.com/auth-13.jpg",
+    "ground_truth": "authentic",
+    "label": "Authentic capture 13",
+    "metadata": {
+      "device": "Generic DSLR",
+      "format": "JPEG"
+    }
+  },
+  {
+    "id": "PROV-G-014",
+    "type": "authentic",
+    "tier": 2,
+    "source": "Pexels/Unsplash",
+    "url": "https://example.com/auth-14.jpg",
+    "ground_truth": "authentic",
+    "label": "Authentic capture 14",
+    "metadata": {
+      "device": "Generic DSLR",
+      "format": "JPEG"
+    }
+  },
+  {
+    "id": "PROV-G-015",
+    "type": "authentic",
+    "tier": 1,
+    "source": "Pexels/Unsplash",
+    "url": "https://example.com/auth-15.jpg",
+    "ground_truth": "authentic",
+    "label": "Authentic capture 15",
+    "metadata": {
+      "device": "Generic DSLR",
+      "format": "JPEG"
+    }
+  },
+  {
+    "id": "PROV-G-016",
+    "type": "authentic",
+    "tier": 2,
+    "source": "Pexels/Unsplash",
+    "url": "https://example.com/auth-16.jpg",
+    "ground_truth": "authentic",
+    "label": "Authentic capture 16",
+    "metadata": {
+      "device": "Generic DSLR",
+      "format": "JPEG"
+    }
+  },
+  {
+    "id": "PROV-G-017",
+    "type": "authentic",
+    "tier": 2,
+    "source": "Pexels/Unsplash",
+    "url": "https://example.com/auth-17.jpg",
+    "ground_truth": "authentic",
+    "label": "Authentic capture 17",
+    "metadata": {
+      "device": "Generic DSLR",
+      "format": "JPEG"
+    }
+  },
+  {
+    "id": "PROV-G-018",
+    "type": "authentic",
+    "tier": 2,
+    "source": "Pexels/Unsplash",
+    "url": "https://example.com/auth-18.jpg",
+    "ground_truth": "authentic",
+    "label": "Authentic capture 18",
+    "metadata": {
+      "device": "Generic DSLR",
+      "format": "JPEG"
+    }
+  },
+  {
+    "id": "PROV-G-019",
+    "type": "authentic",
+    "tier": 1,
+    "source": "Pexels/Unsplash",
+    "url": "https://example.com/auth-19.jpg",
+    "ground_truth": "authentic",
+    "label": "Authentic capture 19",
+    "metadata": {
+      "device": "Generic DSLR",
+      "format": "JPEG"
+    }
+  },
+  {
+    "id": "PROV-G-020",
+    "type": "authentic",
+    "tier": 1,
+    "source": "Pexels/Unsplash",
+    "url": "https://example.com/auth-20.jpg",
+    "ground_truth": "authentic",
+    "label": "Authentic capture 20",
+    "metadata": {
+      "device": "Generic DSLR",
+      "format": "JPEG"
+    }
+  },
+  {
+    "id": "PROV-G-021",
+    "type": "authentic",
+    "tier": 1,
+    "source": "Pexels/Unsplash",
+    "url": "https://example.com/auth-21.jpg",
+    "ground_truth": "authentic",
+    "label": "Authentic capture 21",
+    "metadata": {
+      "device": "Generic DSLR",
+      "format": "JPEG"
+    }
+  },
+  {
+    "id": "PROV-G-022",
+    "type": "authentic",
+    "tier": 1,
+    "source": "Pexels/Unsplash",
+    "url": "https://example.com/auth-22.jpg",
+    "ground_truth": "authentic",
+    "label": "Authentic capture 22",
+    "metadata": {
+      "device": "Generic DSLR",
+      "format": "JPEG"
+    }
+  },
+  {
+    "id": "PROV-G-023",
+    "type": "authentic",
+    "tier": 2,
+    "source": "Pexels/Unsplash",
+    "url": "https://example.com/auth-23.jpg",
+    "ground_truth": "authentic",
+    "label": "Authentic capture 23",
+    "metadata": {
+      "device": "Generic DSLR",
+      "format": "JPEG"
+    }
+  },
+  {
+    "id": "PROV-G-024",
+    "type": "authentic",
+    "tier": 2,
+    "source": "Pexels/Unsplash",
+    "url": "https://example.com/auth-24.jpg",
+    "ground_truth": "authentic",
+    "label": "Authentic capture 24",
+    "metadata": {
+      "device": "Generic DSLR",
+      "format": "JPEG"
+    }
+  },
+  {
+    "id": "PROV-G-025",
+    "type": "authentic",
+    "tier": 2,
+    "source": "Pexels/Unsplash",
+    "url": "https://example.com/auth-25.jpg",
+    "ground_truth": "authentic",
+    "label": "Authentic capture 25",
+    "metadata": {
+      "device": "Generic DSLR",
+      "format": "JPEG"
+    }
+  },
+  {
+    "id": "PROV-G-026",
+    "type": "authentic",
+    "tier": 1,
+    "source": "Pexels/Unsplash",
+    "url": "https://example.com/auth-26.jpg",
+    "ground_truth": "authentic",
+    "label": "Authentic capture 26",
+    "metadata": {
+      "device": "Generic DSLR",
+      "format": "JPEG"
+    }
+  },
+  {
+    "id": "PROV-G-027",
+    "type": "authentic",
+    "tier": 1,
+    "source": "Pexels/Unsplash",
+    "url": "https://example.com/auth-27.jpg",
+    "ground_truth": "authentic",
+    "label": "Authentic capture 27",
+    "metadata": {
+      "device": "Generic DSLR",
+      "format": "JPEG"
+    }
+  },
+  {
+    "id": "PROV-G-028",
+    "type": "authentic",
+    "tier": 1,
+    "source": "Pexels/Unsplash",
+    "url": "https://example.com/auth-28.jpg",
+    "ground_truth": "authentic",
+    "label": "Authentic capture 28",
+    "metadata": {
+      "device": "Generic DSLR",
+      "format": "JPEG"
+    }
+  },
+  {
+    "id": "PROV-G-029",
+    "type": "authentic",
+    "tier": 2,
+    "source": "Pexels/Unsplash",
+    "url": "https://example.com/auth-29.jpg",
+    "ground_truth": "authentic",
+    "label": "Authentic capture 29",
+    "metadata": {
+      "device": "Generic DSLR",
+      "format": "JPEG"
+    }
+  },
+  {
+    "id": "PROV-G-030",
+    "type": "authentic",
+    "tier": 1,
+    "source": "Pexels/Unsplash",
+    "url": "https://example.com/auth-30.jpg",
+    "ground_truth": "authentic",
+    "label": "Authentic capture 30",
+    "metadata": {
+      "device": "Generic DSLR",
+      "format": "JPEG"
+    }
+  },
+  {
+    "id": "PROV-G-031",
+    "type": "authentic",
+    "tier": 1,
+    "source": "Pexels/Unsplash",
+    "url": "https://example.com/auth-31.jpg",
+    "ground_truth": "authentic",
+    "label": "Authentic capture 31",
+    "metadata": {
+      "device": "Generic DSLR",
+      "format": "JPEG"
+    }
+  },
+  {
+    "id": "PROV-G-032",
+    "type": "authentic",
+    "tier": 1,
+    "source": "Pexels/Unsplash",
+    "url": "https://example.com/auth-32.jpg",
+    "ground_truth": "authentic",
+    "label": "Authentic capture 32",
+    "metadata": {
+      "device": "Generic DSLR",
+      "format": "JPEG"
+    }
+  },
+  {
+    "id": "PROV-G-033",
+    "type": "authentic",
+    "tier": 2,
+    "source": "Pexels/Unsplash",
+    "url": "https://example.com/auth-33.jpg",
+    "ground_truth": "authentic",
+    "label": "Authentic capture 33",
+    "metadata": {
+      "device": "Generic DSLR",
+      "format": "JPEG"
+    }
+  },
+  {
+    "id": "PROV-G-034",
+    "type": "authentic",
+    "tier": 2,
+    "source": "Pexels/Unsplash",
+    "url": "https://example.com/auth-34.jpg",
+    "ground_truth": "authentic",
+    "label": "Authentic capture 34",
+    "metadata": {
+      "device": "Generic DSLR",
+      "format": "JPEG"
+    }
+  },
+  {
+    "id": "PROV-G-035",
+    "type": "authentic",
+    "tier": 1,
+    "source": "Pexels/Unsplash",
+    "url": "https://example.com/auth-35.jpg",
+    "ground_truth": "authentic",
+    "label": "Authentic capture 35",
+    "metadata": {
+      "device": "Generic DSLR",
+      "format": "JPEG"
+    }
+  },
+  {
+    "id": "PROV-G-036",
+    "type": "authentic",
+    "tier": 2,
+    "source": "Pexels/Unsplash",
+    "url": "https://example.com/auth-36.jpg",
+    "ground_truth": "authentic",
+    "label": "Authentic capture 36",
+    "metadata": {
+      "device": "Generic DSLR",
+      "format": "JPEG"
+    }
+  },
+  {
+    "id": "PROV-G-037",
+    "type": "authentic",
+    "tier": 2,
+    "source": "Pexels/Unsplash",
+    "url": "https://example.com/auth-37.jpg",
+    "ground_truth": "authentic",
+    "label": "Authentic capture 37",
+    "metadata": {
+      "device": "Generic DSLR",
+      "format": "JPEG"
+    }
+  },
+  {
+    "id": "PROV-G-038",
+    "type": "authentic",
+    "tier": 1,
+    "source": "Pexels/Unsplash",
+    "url": "https://example.com/auth-38.jpg",
+    "ground_truth": "authentic",
+    "label": "Authentic capture 38",
+    "metadata": {
+      "device": "Generic DSLR",
+      "format": "JPEG"
+    }
+  },
+  {
+    "id": "PROV-G-039",
+    "type": "authentic",
+    "tier": 2,
+    "source": "Pexels/Unsplash",
+    "url": "https://example.com/auth-39.jpg",
+    "ground_truth": "authentic",
+    "label": "Authentic capture 39",
+    "metadata": {
+      "device": "Generic DSLR",
+      "format": "JPEG"
+    }
+  },
+  {
+    "id": "PROV-G-040",
+    "type": "authentic",
+    "tier": 2,
+    "source": "Pexels/Unsplash",
+    "url": "https://example.com/auth-40.jpg",
+    "ground_truth": "authentic",
+    "label": "Authentic capture 40",
+    "metadata": {
+      "device": "Generic DSLR",
+      "format": "JPEG"
+    }
+  },
+  {
+    "id": "PROV-G-041",
+    "type": "synthetic",
+    "tier": 1,
+    "source": "Midjourney v6",
+    "url": "https://example.com/synth-41.png",
+    "ground_truth": "synthetic",
+    "model": "Midjourney v6",
+    "prompt": "Standard benchmark prompt",
+    "metadata": {
+      "format": "PNG",
+      "resolution": "1024x1024"
+    }
+  },
+  {
+    "id": "PROV-G-042",
+    "type": "synthetic",
+    "tier": 1,
+    "source": "Flux.1",
+    "url": "https://example.com/synth-42.png",
+    "ground_truth": "synthetic",
+    "model": "Flux.1",
+    "prompt": "Standard benchmark prompt",
+    "metadata": {
+      "format": "PNG",
+      "resolution": "1024x1024"
+    }
+  },
+  {
+    "id": "PROV-G-043",
+    "type": "synthetic",
+    "tier": 1,
+    "source": "Kling AI",
+    "url": "https://example.com/synth-43.png",
+    "ground_truth": "synthetic",
+    "model": "Kling AI",
+    "prompt": "Standard benchmark prompt",
+    "metadata": {
+      "format": "PNG",
+      "resolution": "1024x1024"
+    }
+  },
+  {
+    "id": "PROV-G-044",
+    "type": "synthetic",
+    "tier": 1,
+    "source": "Kling AI",
+    "url": "https://example.com/synth-44.png",
+    "ground_truth": "synthetic",
+    "model": "Kling AI",
+    "prompt": "Standard benchmark prompt",
+    "metadata": {
+      "format": "PNG",
+      "resolution": "1024x1024"
+    }
+  },
+  {
+    "id": "PROV-G-045",
+    "type": "synthetic",
+    "tier": 1,
+    "source": "Kling AI",
+    "url": "https://example.com/synth-45.png",
+    "ground_truth": "synthetic",
+    "model": "Kling AI",
+    "prompt": "Standard benchmark prompt",
+    "metadata": {
+      "format": "PNG",
+      "resolution": "1024x1024"
+    }
+  },
+  {
+    "id": "PROV-G-046",
+    "type": "synthetic",
+    "tier": 1,
+    "source": "Midjourney v6",
+    "url": "https://example.com/synth-46.png",
+    "ground_truth": "synthetic",
+    "model": "Midjourney v6",
+    "prompt": "Standard benchmark prompt",
+    "metadata": {
+      "format": "PNG",
+      "resolution": "1024x1024"
+    }
+  },
+  {
+    "id": "PROV-G-047",
+    "type": "synthetic",
+    "tier": 1,
+    "source": "Kling AI",
+    "url": "https://example.com/synth-47.png",
+    "ground_truth": "synthetic",
+    "model": "Kling AI",
+    "prompt": "Standard benchmark prompt",
+    "metadata": {
+      "format": "PNG",
+      "resolution": "1024x1024"
+    }
+  },
+  {
+    "id": "PROV-G-048",
+    "type": "synthetic",
+    "tier": 1,
+    "source": "Flux.1",
+    "url": "https://example.com/synth-48.png",
+    "ground_truth": "synthetic",
+    "model": "Flux.1",
+    "prompt": "Standard benchmark prompt",
+    "metadata": {
+      "format": "PNG",
+      "resolution": "1024x1024"
+    }
+  },
+  {
+    "id": "PROV-G-049",
+    "type": "synthetic",
+    "tier": 1,
+    "source": "Sora",
+    "url": "https://example.com/synth-49.png",
+    "ground_truth": "synthetic",
+    "model": "Sora",
+    "prompt": "Standard benchmark prompt",
+    "metadata": {
+      "format": "PNG",
+      "resolution": "1024x1024"
+    }
+  },
+  {
+    "id": "PROV-G-050",
+    "type": "synthetic",
+    "tier": 1,
+    "source": "Midjourney v6",
+    "url": "https://example.com/synth-50.png",
+    "ground_truth": "synthetic",
+    "model": "Midjourney v6",
+    "prompt": "Standard benchmark prompt",
+    "metadata": {
+      "format": "PNG",
+      "resolution": "1024x1024"
+    }
+  },
+  {
+    "id": "PROV-G-051",
+    "type": "synthetic",
+    "tier": 1,
+    "source": "DALL-E 3",
+    "url": "https://example.com/synth-51.png",
+    "ground_truth": "synthetic",
+    "model": "DALL-E 3",
+    "prompt": "Standard benchmark prompt",
+    "metadata": {
+      "format": "PNG",
+      "resolution": "1024x1024"
+    }
+  },
+  {
+    "id": "PROV-G-052",
+    "type": "synthetic",
+    "tier": 1,
+    "source": "Midjourney v6",
+    "url": "https://example.com/synth-52.png",
+    "ground_truth": "synthetic",
+    "model": "Midjourney v6",
+    "prompt": "Standard benchmark prompt",
+    "metadata": {
+      "format": "PNG",
+      "resolution": "1024x1024"
+    }
+  },
+  {
+    "id": "PROV-G-053",
+    "type": "synthetic",
+    "tier": 1,
+    "source": "Kling AI",
+    "url": "https://example.com/synth-53.png",
+    "ground_truth": "synthetic",
+    "model": "Kling AI",
+    "prompt": "Standard benchmark prompt",
+    "metadata": {
+      "format": "PNG",
+      "resolution": "1024x1024"
+    }
+  },
+  {
+    "id": "PROV-G-054",
+    "type": "synthetic",
+    "tier": 1,
+    "source": "Kling AI",
+    "url": "https://example.com/synth-54.png",
+    "ground_truth": "synthetic",
+    "model": "Kling AI",
+    "prompt": "Standard benchmark prompt",
+    "metadata": {
+      "format": "PNG",
+      "resolution": "1024x1024"
+    }
+  },
+  {
+    "id": "PROV-G-055",
+    "type": "synthetic",
+    "tier": 1,
+    "source": "Midjourney v6",
+    "url": "https://example.com/synth-55.png",
+    "ground_truth": "synthetic",
+    "model": "Midjourney v6",
+    "prompt": "Standard benchmark prompt",
+    "metadata": {
+      "format": "PNG",
+      "resolution": "1024x1024"
+    }
+  },
+  {
+    "id": "PROV-G-056",
+    "type": "synthetic",
+    "tier": 1,
+    "source": "DALL-E 3",
+    "url": "https://example.com/synth-56.png",
+    "ground_truth": "synthetic",
+    "model": "DALL-E 3",
+    "prompt": "Standard benchmark prompt",
+    "metadata": {
+      "format": "PNG",
+      "resolution": "1024x1024"
+    }
+  },
+  {
+    "id": "PROV-G-057",
+    "type": "synthetic",
+    "tier": 1,
+    "source": "Sora",
+    "url": "https://example.com/synth-57.png",
+    "ground_truth": "synthetic",
+    "model": "Sora",
+    "prompt": "Standard benchmark prompt",
+    "metadata": {
+      "format": "PNG",
+      "resolution": "1024x1024"
+    }
+  },
+  {
+    "id": "PROV-G-058",
+    "type": "synthetic",
+    "tier": 1,
+    "source": "Sora",
+    "url": "https://example.com/synth-58.png",
+    "ground_truth": "synthetic",
+    "model": "Sora",
+    "prompt": "Standard benchmark prompt",
+    "metadata": {
+      "format": "PNG",
+      "resolution": "1024x1024"
+    }
+  },
+  {
+    "id": "PROV-G-059",
+    "type": "synthetic",
+    "tier": 1,
+    "source": "DALL-E 3",
+    "url": "https://example.com/synth-59.png",
+    "ground_truth": "synthetic",
+    "model": "DALL-E 3",
+    "prompt": "Standard benchmark prompt",
+    "metadata": {
+      "format": "PNG",
+      "resolution": "1024x1024"
+    }
+  },
+  {
+    "id": "PROV-G-060",
+    "type": "synthetic",
+    "tier": 1,
+    "source": "DALL-E 3",
+    "url": "https://example.com/synth-60.png",
+    "ground_truth": "synthetic",
+    "model": "DALL-E 3",
+    "prompt": "Standard benchmark prompt",
+    "metadata": {
+      "format": "PNG",
+      "resolution": "1024x1024"
+    }
+  },
+  {
+    "id": "PROV-G-061",
+    "type": "synthetic",
+    "tier": 1,
+    "source": "DALL-E 3",
+    "url": "https://example.com/synth-61.png",
+    "ground_truth": "synthetic",
+    "model": "DALL-E 3",
+    "prompt": "Standard benchmark prompt",
+    "metadata": {
+      "format": "PNG",
+      "resolution": "1024x1024"
+    }
+  },
+  {
+    "id": "PROV-G-062",
+    "type": "synthetic",
+    "tier": 1,
+    "source": "Flux.1",
+    "url": "https://example.com/synth-62.png",
+    "ground_truth": "synthetic",
+    "model": "Flux.1",
+    "prompt": "Standard benchmark prompt",
+    "metadata": {
+      "format": "PNG",
+      "resolution": "1024x1024"
+    }
+  },
+  {
+    "id": "PROV-G-063",
+    "type": "synthetic",
+    "tier": 1,
+    "source": "Kling AI",
+    "url": "https://example.com/synth-63.png",
+    "ground_truth": "synthetic",
+    "model": "Kling AI",
+    "prompt": "Standard benchmark prompt",
+    "metadata": {
+      "format": "PNG",
+      "resolution": "1024x1024"
+    }
+  },
+  {
+    "id": "PROV-G-064",
+    "type": "synthetic",
+    "tier": 1,
+    "source": "Sora",
+    "url": "https://example.com/synth-64.png",
+    "ground_truth": "synthetic",
+    "model": "Sora",
+    "prompt": "Standard benchmark prompt",
+    "metadata": {
+      "format": "PNG",
+      "resolution": "1024x1024"
+    }
+  },
+  {
+    "id": "PROV-G-065",
+    "type": "synthetic",
+    "tier": 1,
+    "source": "DALL-E 3",
+    "url": "https://example.com/synth-65.png",
+    "ground_truth": "synthetic",
+    "model": "DALL-E 3",
+    "prompt": "Standard benchmark prompt",
+    "metadata": {
+      "format": "PNG",
+      "resolution": "1024x1024"
+    }
+  },
+  {
+    "id": "PROV-G-066",
+    "type": "synthetic",
+    "tier": 1,
+    "source": "Kling AI",
+    "url": "https://example.com/synth-66.png",
+    "ground_truth": "synthetic",
+    "model": "Kling AI",
+    "prompt": "Standard benchmark prompt",
+    "metadata": {
+      "format": "PNG",
+      "resolution": "1024x1024"
+    }
+  },
+  {
+    "id": "PROV-G-067",
+    "type": "synthetic",
+    "tier": 1,
+    "source": "Flux.1",
+    "url": "https://example.com/synth-67.png",
+    "ground_truth": "synthetic",
+    "model": "Flux.1",
+    "prompt": "Standard benchmark prompt",
+    "metadata": {
+      "format": "PNG",
+      "resolution": "1024x1024"
+    }
+  },
+  {
+    "id": "PROV-G-068",
+    "type": "synthetic",
+    "tier": 1,
+    "source": "DALL-E 3",
+    "url": "https://example.com/synth-68.png",
+    "ground_truth": "synthetic",
+    "model": "DALL-E 3",
+    "prompt": "Standard benchmark prompt",
+    "metadata": {
+      "format": "PNG",
+      "resolution": "1024x1024"
+    }
+  },
+  {
+    "id": "PROV-G-069",
+    "type": "synthetic",
+    "tier": 1,
+    "source": "Kling AI",
+    "url": "https://example.com/synth-69.png",
+    "ground_truth": "synthetic",
+    "model": "Kling AI",
+    "prompt": "Standard benchmark prompt",
+    "metadata": {
+      "format": "PNG",
+      "resolution": "1024x1024"
+    }
+  },
+  {
+    "id": "PROV-G-070",
+    "type": "synthetic",
+    "tier": 1,
+    "source": "Midjourney v6",
+    "url": "https://example.com/synth-70.png",
+    "ground_truth": "synthetic",
+    "model": "Midjourney v6",
+    "prompt": "Standard benchmark prompt",
+    "metadata": {
+      "format": "PNG",
+      "resolution": "1024x1024"
+    }
+  },
+  {
+    "id": "PROV-G-071",
+    "type": "synthetic",
+    "tier": 1,
+    "source": "Kling AI",
+    "url": "https://example.com/synth-71.png",
+    "ground_truth": "synthetic",
+    "model": "Kling AI",
+    "prompt": "Standard benchmark prompt",
+    "metadata": {
+      "format": "PNG",
+      "resolution": "1024x1024"
+    }
+  },
+  {
+    "id": "PROV-G-072",
+    "type": "synthetic",
+    "tier": 1,
+    "source": "Midjourney v6",
+    "url": "https://example.com/synth-72.png",
+    "ground_truth": "synthetic",
+    "model": "Midjourney v6",
+    "prompt": "Standard benchmark prompt",
+    "metadata": {
+      "format": "PNG",
+      "resolution": "1024x1024"
+    }
+  },
+  {
+    "id": "PROV-G-073",
+    "type": "synthetic",
+    "tier": 1,
+    "source": "Kling AI",
+    "url": "https://example.com/synth-73.png",
+    "ground_truth": "synthetic",
+    "model": "Kling AI",
+    "prompt": "Standard benchmark prompt",
+    "metadata": {
+      "format": "PNG",
+      "resolution": "1024x1024"
+    }
+  },
+  {
+    "id": "PROV-G-074",
+    "type": "synthetic",
+    "tier": 1,
+    "source": "DALL-E 3",
+    "url": "https://example.com/synth-74.png",
+    "ground_truth": "synthetic",
+    "model": "DALL-E 3",
+    "prompt": "Standard benchmark prompt",
+    "metadata": {
+      "format": "PNG",
+      "resolution": "1024x1024"
+    }
+  },
+  {
+    "id": "PROV-G-075",
+    "type": "synthetic",
+    "tier": 1,
+    "source": "Sora",
+    "url": "https://example.com/synth-75.png",
+    "ground_truth": "synthetic",
+    "model": "Sora",
+    "prompt": "Standard benchmark prompt",
+    "metadata": {
+      "format": "PNG",
+      "resolution": "1024x1024"
+    }
+  },
+  {
+    "id": "PROV-G-076",
+    "type": "synthetic",
+    "tier": 1,
+    "source": "Flux.1",
+    "url": "https://example.com/synth-76.png",
+    "ground_truth": "synthetic",
+    "model": "Flux.1",
+    "prompt": "Standard benchmark prompt",
+    "metadata": {
+      "format": "PNG",
+      "resolution": "1024x1024"
+    }
+  },
+  {
+    "id": "PROV-G-077",
+    "type": "synthetic",
+    "tier": 1,
+    "source": "DALL-E 3",
+    "url": "https://example.com/synth-77.png",
+    "ground_truth": "synthetic",
+    "model": "DALL-E 3",
+    "prompt": "Standard benchmark prompt",
+    "metadata": {
+      "format": "PNG",
+      "resolution": "1024x1024"
+    }
+  },
+  {
+    "id": "PROV-G-078",
+    "type": "synthetic",
+    "tier": 1,
+    "source": "Kling AI",
+    "url": "https://example.com/synth-78.png",
+    "ground_truth": "synthetic",
+    "model": "Kling AI",
+    "prompt": "Standard benchmark prompt",
+    "metadata": {
+      "format": "PNG",
+      "resolution": "1024x1024"
+    }
+  },
+  {
+    "id": "PROV-G-079",
+    "type": "synthetic",
+    "tier": 1,
+    "source": "Kling AI",
+    "url": "https://example.com/synth-79.png",
+    "ground_truth": "synthetic",
+    "model": "Kling AI",
+    "prompt": "Standard benchmark prompt",
+    "metadata": {
+      "format": "PNG",
+      "resolution": "1024x1024"
+    }
+  },
+  {
+    "id": "PROV-G-080",
+    "type": "synthetic",
+    "tier": 1,
+    "source": "Midjourney v6",
+    "url": "https://example.com/synth-80.png",
+    "ground_truth": "synthetic",
+    "model": "Midjourney v6",
+    "prompt": "Standard benchmark prompt",
+    "metadata": {
+      "format": "PNG",
+      "resolution": "1024x1024"
+    }
+  },
+  {
+    "id": "PROV-G-081",
+    "type": "manipulated",
+    "tier": 3,
+    "source": "Research / In-house",
+    "url": "https://example.com/manip-81.jpg",
+    "ground_truth": "manipulated",
+    "method": "Adobe Generative Fill",
+    "metadata": {
+      "format": "JPEG",
+      "manipulation_type": "Adobe Generative Fill"
+    }
+  },
+  {
+    "id": "PROV-G-082",
+    "type": "manipulated",
+    "tier": 3,
+    "source": "Research / In-house",
+    "url": "https://example.com/manip-82.jpg",
+    "ground_truth": "manipulated",
+    "method": "Splicing",
+    "metadata": {
+      "format": "JPEG",
+      "manipulation_type": "Splicing"
+    }
+  },
+  {
+    "id": "PROV-G-083",
+    "type": "manipulated",
+    "tier": 3,
+    "source": "Research / In-house",
+    "url": "https://example.com/manip-83.jpg",
+    "ground_truth": "manipulated",
+    "method": "Adobe Generative Fill",
+    "metadata": {
+      "format": "JPEG",
+      "manipulation_type": "Adobe Generative Fill"
+    }
+  },
+  {
+    "id": "PROV-G-084",
+    "type": "manipulated",
+    "tier": 3,
+    "source": "Research / In-house",
+    "url": "https://example.com/manip-84.jpg",
+    "ground_truth": "manipulated",
+    "method": "Adobe Generative Fill",
+    "metadata": {
+      "format": "JPEG",
+      "manipulation_type": "Adobe Generative Fill"
+    }
+  },
+  {
+    "id": "PROV-G-085",
+    "type": "manipulated",
+    "tier": 3,
+    "source": "Research / In-house",
+    "url": "https://example.com/manip-85.jpg",
+    "ground_truth": "manipulated",
+    "method": "Splicing",
+    "metadata": {
+      "format": "JPEG",
+      "manipulation_type": "Splicing"
+    }
+  },
+  {
+    "id": "PROV-G-086",
+    "type": "manipulated",
+    "tier": 3,
+    "source": "Research / In-house",
+    "url": "https://example.com/manip-86.jpg",
+    "ground_truth": "manipulated",
+    "method": "Splicing",
+    "metadata": {
+      "format": "JPEG",
+      "manipulation_type": "Splicing"
+    }
+  },
+  {
+    "id": "PROV-G-087",
+    "type": "manipulated",
+    "tier": 3,
+    "source": "Research / In-house",
+    "url": "https://example.com/manip-87.jpg",
+    "ground_truth": "manipulated",
+    "method": "Metadata Tampering",
+    "metadata": {
+      "format": "JPEG",
+      "manipulation_type": "Metadata Tampering"
+    }
+  },
+  {
+    "id": "PROV-G-088",
+    "type": "manipulated",
+    "tier": 3,
+    "source": "Research / In-house",
+    "url": "https://example.com/manip-88.jpg",
+    "ground_truth": "manipulated",
+    "method": "Metadata Tampering",
+    "metadata": {
+      "format": "JPEG",
+      "manipulation_type": "Metadata Tampering"
+    }
+  },
+  {
+    "id": "PROV-G-089",
+    "type": "manipulated",
+    "tier": 3,
+    "source": "Research / In-house",
+    "url": "https://example.com/manip-89.jpg",
+    "ground_truth": "manipulated",
+    "method": "FaceForensics++ / Deepfakes",
+    "metadata": {
+      "format": "JPEG",
+      "manipulation_type": "FaceForensics++ / Deepfakes"
+    }
+  },
+  {
+    "id": "PROV-G-090",
+    "type": "manipulated",
+    "tier": 3,
+    "source": "Research / In-house",
+    "url": "https://example.com/manip-90.jpg",
+    "ground_truth": "manipulated",
+    "method": "Adobe Generative Fill",
+    "metadata": {
+      "format": "JPEG",
+      "manipulation_type": "Adobe Generative Fill"
+    }
+  },
+  {
+    "id": "PROV-G-091",
+    "type": "manipulated",
+    "tier": 3,
+    "source": "Research / In-house",
+    "url": "https://example.com/manip-91.jpg",
+    "ground_truth": "manipulated",
+    "method": "FaceForensics++ / Deepfakes",
+    "metadata": {
+      "format": "JPEG",
+      "manipulation_type": "FaceForensics++ / Deepfakes"
+    }
+  },
+  {
+    "id": "PROV-G-092",
+    "type": "manipulated",
+    "tier": 3,
+    "source": "Research / In-house",
+    "url": "https://example.com/manip-92.jpg",
+    "ground_truth": "manipulated",
+    "method": "FaceForensics++ / Deepfakes",
+    "metadata": {
+      "format": "JPEG",
+      "manipulation_type": "FaceForensics++ / Deepfakes"
+    }
+  },
+  {
+    "id": "PROV-G-093",
+    "type": "manipulated",
+    "tier": 3,
+    "source": "Research / In-house",
+    "url": "https://example.com/manip-93.jpg",
+    "ground_truth": "manipulated",
+    "method": "FaceForensics++ / Deepfakes",
+    "metadata": {
+      "format": "JPEG",
+      "manipulation_type": "FaceForensics++ / Deepfakes"
+    }
+  },
+  {
+    "id": "PROV-G-094",
+    "type": "manipulated",
+    "tier": 3,
+    "source": "Research / In-house",
+    "url": "https://example.com/manip-94.jpg",
+    "ground_truth": "manipulated",
+    "method": "Metadata Tampering",
+    "metadata": {
+      "format": "JPEG",
+      "manipulation_type": "Metadata Tampering"
+    }
+  },
+  {
+    "id": "PROV-G-095",
+    "type": "manipulated",
+    "tier": 3,
+    "source": "Research / In-house",
+    "url": "https://example.com/manip-95.jpg",
+    "ground_truth": "manipulated",
+    "method": "Splicing",
+    "metadata": {
+      "format": "JPEG",
+      "manipulation_type": "Splicing"
+    }
+  },
+  {
+    "id": "PROV-G-096",
+    "type": "manipulated",
+    "tier": 3,
+    "source": "Research / In-house",
+    "url": "https://example.com/manip-96.jpg",
+    "ground_truth": "manipulated",
+    "method": "FaceForensics++ / Deepfakes",
+    "metadata": {
+      "format": "JPEG",
+      "manipulation_type": "FaceForensics++ / Deepfakes"
+    }
+  },
+  {
+    "id": "PROV-G-097",
+    "type": "manipulated",
+    "tier": 3,
+    "source": "Research / In-house",
+    "url": "https://example.com/manip-97.jpg",
+    "ground_truth": "manipulated",
+    "method": "Adobe Generative Fill",
+    "metadata": {
+      "format": "JPEG",
+      "manipulation_type": "Adobe Generative Fill"
+    }
+  },
+  {
+    "id": "PROV-G-098",
+    "type": "manipulated",
+    "tier": 3,
+    "source": "Research / In-house",
+    "url": "https://example.com/manip-98.jpg",
+    "ground_truth": "manipulated",
+    "method": "Adobe Generative Fill",
+    "metadata": {
+      "format": "JPEG",
+      "manipulation_type": "Adobe Generative Fill"
+    }
+  },
+  {
+    "id": "PROV-G-099",
+    "type": "manipulated",
+    "tier": 3,
+    "source": "Research / In-house",
+    "url": "https://example.com/manip-99.jpg",
+    "ground_truth": "manipulated",
+    "method": "Splicing",
+    "metadata": {
+      "format": "JPEG",
+      "manipulation_type": "Splicing"
+    }
+  },
+  {
+    "id": "PROV-G-100",
+    "type": "manipulated",
+    "tier": 3,
+    "source": "Research / In-house",
+    "url": "https://example.com/manip-100.jpg",
+    "ground_truth": "manipulated",
+    "method": "FaceForensics++ / Deepfakes",
+    "metadata": {
+      "format": "JPEG",
+      "manipulation_type": "FaceForensics++ / Deepfakes"
+    }
+  }
+]

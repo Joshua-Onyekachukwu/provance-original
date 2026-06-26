@@ -1,13 +1,42 @@
-/** @type {import('tailwindcss').Config} */
-
+/** @type {import("tailwindcss").Config} */
 export default {
   darkMode: "class",
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
-    container: {
-      center: true,
+    container: { center: true },
+    extend: {
+      colors: {
+        charcoal: "#1a1a1a",
+        "charcoal-soft": "#2a2a2a",
+        "charcoal-mid": "#6b6b6b",
+        "charcoal-light": "#8a8a8a",
+        parchment: "#f7f4ef",
+        "parchment-light": "#faf8f5",
+        "parchment-dark": "#e8e3da",
+        "white-warm": "#fbfaf8",
+        amber: "#d97706",
+        "amber-light": "#f59e0b",
+        "amber-glow": "#fbbf24",
+        "amber-subtle": "#fef3c7",
+        "spectral-rose": "#be123c",
+        veridian: "#2d6a4f",
+        "ink-blue": "#1e3a5f",
+        stone: "#d6d3d1",
+        "stone-light": "#e7e5e4",
+        accent: "#9bb45c",
+        "accent-soft": "#e2ebce",
+        ink: "#f3eee4",
+        sand: "#eee8de",
+        surface: "#16181b",
+        "surface-soft": "#1e2024",
+        muted: "#737579",
+      },
+      fontFamily: {
+        serif: ["Instrument Serif", "Georgia", "serif"],
+        sans: ["Inter", "system-ui", "sans-serif"],
+        mono: ["DM Mono", "JetBrains Mono", "Fira Code", "monospace"],
+      },
     },
-    extend: {},
   },
   plugins: [],
 };

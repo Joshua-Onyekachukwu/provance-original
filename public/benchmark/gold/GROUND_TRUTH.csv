@@ -1,0 +1,101 @@
+id,type,ground_truth,source_model
+PROV-G-001,authentic,authentic,Unsplash
+PROV-G-002,authentic,authentic,Unsplash
+PROV-G-003,authentic,authentic,Unsplash
+PROV-G-004,authentic,authentic,Unsplash
+PROV-G-005,authentic,authentic,Unsplash
+PROV-G-006,authentic,authentic,Unsplash
+PROV-G-007,authentic,authentic,Unsplash
+PROV-G-008,authentic,authentic,Unsplash
+PROV-G-009,authentic,authentic,Unsplash
+PROV-G-010,authentic,authentic,Unsplash
+PROV-G-011,authentic,authentic,Pexels/Unsplash
+PROV-G-012,authentic,authentic,Pexels/Unsplash
+PROV-G-013,authentic,authentic,Pexels/Unsplash
+PROV-G-014,authentic,authentic,Pexels/Unsplash
+PROV-G-015,authentic,authentic,Pexels/Unsplash
+PROV-G-016,authentic,authentic,Pexels/Unsplash
+PROV-G-017,authentic,authentic,Pexels/Unsplash
+PROV-G-018,authentic,authentic,Pexels/Unsplash
+PROV-G-019,authentic,authentic,Pexels/Unsplash
+PROV-G-020,authentic,authentic,Pexels/Unsplash
+PROV-G-021,authentic,authentic,Pexels/Unsplash
+PROV-G-022,authentic,authentic,Pexels/Unsplash
+PROV-G-023,authentic,authentic,Pexels/Unsplash
+PROV-G-024,authentic,authentic,Pexels/Unsplash
+PROV-G-025,authentic,authentic,Pexels/Unsplash
+PROV-G-026,authentic,authentic,Pexels/Unsplash
+PROV-G-027,authentic,authentic,Pexels/Unsplash
+PROV-G-028,authentic,authentic,Pexels/Unsplash
+PROV-G-029,authentic,authentic,Pexels/Unsplash
+PROV-G-030,authentic,authentic,Pexels/Unsplash
+PROV-G-031,authentic,authentic,Pexels/Unsplash
+PROV-G-032,authentic,authentic,Pexels/Unsplash
+PROV-G-033,authentic,authentic,Pexels/Unsplash
+PROV-G-034,authentic,authentic,Pexels/Unsplash
+PROV-G-035,authentic,authentic,Pexels/Unsplash
+PROV-G-036,authentic,authentic,Pexels/Unsplash
+PROV-G-037,authentic,authentic,Pexels/Unsplash
+PROV-G-038,authentic,authentic,Pexels/Unsplash
+PROV-G-039,authentic,authentic,Pexels/Unsplash
+PROV-G-040,authentic,authentic,Pexels/Unsplash
+PROV-G-041,synthetic,synthetic,Midjourney v6
+PROV-G-042,synthetic,synthetic,Flux.1
+PROV-G-043,synthetic,synthetic,Kling AI
+PROV-G-044,synthetic,synthetic,Kling AI
+PROV-G-045,synthetic,synthetic,Kling AI
+PROV-G-046,synthetic,synthetic,Midjourney v6
+PROV-G-047,synthetic,synthetic,Kling AI
+PROV-G-048,synthetic,synthetic,Flux.1
+PROV-G-049,synthetic,synthetic,Sora
+PROV-G-050,synthetic,synthetic,Midjourney v6
+PROV-G-051,synthetic,synthetic,DALL-E 3
+PROV-G-052,synthetic,synthetic,Midjourney v6
+PROV-G-053,synthetic,synthetic,Kling AI
+PROV-G-054,synthetic,synthetic,Kling AI
+PROV-G-055,synthetic,synthetic,Midjourney v6
+PROV-G-056,synthetic,synthetic,DALL-E 3
+PROV-G-057,synthetic,synthetic,Sora
+PROV-G-058,synthetic,synthetic,Sora
+PROV-G-059,synthetic,synthetic,DALL-E 3
+PROV-G-060,synthetic,synthetic,DALL-E 3
+PROV-G-061,synthetic,synthetic,DALL-E 3
+PROV-G-062,synthetic,synthetic,Flux.1
+PROV-G-063,synthetic,synthetic,Kling AI
+PROV-G-064,synthetic,synthetic,Sora
+PROV-G-065,synthetic,synthetic,DALL-E 3
+PROV-G-066,synthetic,synthetic,Kling AI
+PROV-G-067,synthetic,synthetic,Flux.1
+PROV-G-068,synthetic,synthetic,DALL-E 3
+PROV-G-069,synthetic,synthetic,Kling AI
+PROV-G-070,synthetic,synthetic,Midjourney v6
+PROV-G-071,synthetic,synthetic,Kling AI
+PROV-G-072,synthetic,synthetic,Midjourney v6
+PROV-G-073,synthetic,synthetic,Kling AI
+PROV-G-074,synthetic,synthetic,DALL-E 3
+PROV-G-075,synthetic,synthetic,Sora
+PROV-G-076,synthetic,synthetic,Flux.1
+PROV-G-077,synthetic,synthetic,DALL-E 3
+PROV-G-078,synthetic,synthetic,Kling AI
+PROV-G-079,synthetic,synthetic,Kling AI
+PROV-G-080,synthetic,synthetic,Midjourney v6
+PROV-G-081,manipulated,manipulated,Research / In-house
+PROV-G-082,manipulated,manipulated,Research / In-house
+PROV-G-083,manipulated,manipulated,Research / In-house
+PROV-G-084,manipulated,manipulated,Research / In-house
+PROV-G-085,manipulated,manipulated,Research / In-house
+PROV-G-086,manipulated,manipulated,Research / In-house
+PROV-G-087,manipulated,manipulated,Research / In-house
+PROV-G-088,manipulated,manipulated,Research / In-house
+PROV-G-089,manipulated,manipulated,Research / In-house
+PROV-G-090,manipulated,manipulated,Research / In-house
+PROV-G-091,manipulated,manipulated,Research / In-house
+PROV-G-092,manipulated,manipulated,Research / In-house
+PROV-G-093,manipulated,manipulated,Research / In-house
+PROV-G-094,manipulated,manipulated,Research / In-house
+PROV-G-095,manipulated,manipulated,Research / In-house
+PROV-G-096,manipulated,manipulated,Research / In-house
+PROV-G-097,manipulated,manipulated,Research / In-house
+PROV-G-098,manipulated,manipulated,Research / In-house
+PROV-G-099,manipulated,manipulated,Research / In-house
+PROV-G-100,manipulated,manipulated,Research / In-house
