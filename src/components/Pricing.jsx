@@ -1,0 +1,101 @@
+import { motion } from 'framer-motion'
+
+const tiers = [
+  {
+    name: 'Pro',
+    price: '49',
+    desc: 'For individual professionals and small teams.',
+    features: ['100 verifications/month', 'Web dashboard & API access', 'PDF forensic reports', 'Email support'],
+    cta: 'Start Free Trial',
+    featured: false,
+  },
+  {
+    name: 'Team',
+    price: 'Custom',
+    desc: 'For growing teams with higher verification needs.',
+    features: ['Unlimited verifications', 'Priority processing', 'SSO & role-based access', 'Slack & email support', 'Custom integrations'],
+    cta: 'Contact Sales',
+    featured: true,
+  },
+  {
+    name: 'Enterprise',
+    price: 'Custom',
+    desc: 'For organizations requiring dedicated infrastructure.',
+    features: ['SLA-backed uptime', 'On-premise deployment option', 'Dedicated support engineer', 'Custom model fine-tuning', 'Audit log exports', 'SOC 2 Type II reports'],
+    cta: 'Contact Sales',
+    featured: false,
+  },
+]
+
+export default function Pricing() {
+  return (
+    <section id="pricing" className="section-padding bg-parchment-light relative overflow-hidden">
+      <div className="content-container">
+        <motion.div
+          initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}
+          className="text-center max-w-2xl mx-auto mb-16"
+        >
+          <motion.span variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5 } } }} className="text-amber font-mono text-xs uppercase tracking-[0.2em]">
+            Pricing
+          </motion.span>
+          <motion.h2 variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, delay: 0.1 } } }} className="font-serif text-3xl sm:text-4xl lg:text-5xl mt-4 text-balance text-charcoal">
+            Simple, transparent <span className="italic text-amber">pricing</span>.
+          </motion.h2>
+        </motion.div>
+
+        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          {tiers.map((tier, i) => (
+            <motion.div
+              key={tier.name}
+              initial={{ opacity: 0, y: 32 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-60px' }}
+              transition={{ duration: 0.5, delay: i * 0.1, ease: [0.25, 0.1, 0.25, 1] }}
+              className={`relative p-6 md:p-8 rounded-2xl border transition-all duration-500 ${
+                tier.featured
+                  ? 'bg-charcoal text-parchment border-amber/30 shadow-xl scale-[1.02] md:scale-105'
+                  : 'bg-white-warm text-charcoal border-stone-light hover:border-stone'
+              }`}
+            >
+              {tier.featured && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-amber text-charcoal text-xs font-medium rounded-full font-mono uppercase tracking-wider">
+                  Most Popular
+                </div>
+              )}
+              <h3 className={`font-serif text-2xl mb-1 ${tier.featured ? 'text-parchment' : 'text-charcoal'}`}>{tier.name}</h3>
+              <div className="flex items-baseline gap-1 mb-1">
+                {tier.price === 'Custom' ? (
+                  <span className={`text-3xl font-medium ${tier.featured ? 'text-parchment' : 'text-charcoal'}`}>Custom</span>
+                ) : (
+                  <>
+                    <span className={`text-4xl font-medium ${tier.featured ? 'text-parchment' : 'text-charcoal'}`}>${tier.price}</span>
+                    <span className={`text-sm ${tier.featured ? 'text-stone' : 'text-charcoal-mid'}`}>/mo</span>
+                  </>
+                )}
+              </div>
+              <p className={`text-sm mb-6 ${tier.featured ? 'text-stone' : 'text-charcoal-mid'}`}>{tier.desc}</p>
+              <ul className="space-y-3 mb-8">
+                {tier.features.map((f) => (
+                  <li key={f} className={`flex items-center gap-2 text-sm ${tier.featured ? 'text-stone' : 'text-charcoal-mid'}`}>
+                    <svg className="w-4 h-4 shrink-0 text-amber" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <a
+                href="#demo"
+                className={`block text-center py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                  tier.featured
+                    ? 'bg-amber text-charcoal hover:bg-amber-light'
+                    : 'bg-charcoal text-parchment hover:bg-charcoal-soft'
+                }`}
+              >
+                {tier.cta}
+              </a>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
