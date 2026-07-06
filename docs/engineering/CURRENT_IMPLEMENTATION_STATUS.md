@@ -72,6 +72,16 @@ The working product direction is:
 - `POST /v1/auth/password-reset/confirm`
 - `POST /v1/auth/invites/accept`
 
+### Security Foundation
+
+- `helmet` headers enabled in the backend bootstrap
+- global request throttling enabled with tighter limits on auth and waitlist endpoints
+- startup environment validation added for critical backend settings
+- request ID tracing added for API debugging
+- global exception filter added to avoid leaking internal errors
+- public health endpoint reduced to minimal safe status output
+- security and launch checklist added at `docs/engineering/SECURITY_AND_LAUNCH_CHECKLIST.md`
+
 ### Supabase Preparation
 
 - Supabase client service scaffold added
@@ -113,6 +123,7 @@ Validated in this phase:
 - frontend production build
 - backend NestJS build
 - backend e2e test for health endpoint
+- combined release check through `npm run check:launch`
 
 Environment note:
 
@@ -135,6 +146,9 @@ Environment note:
 
 - `backend/src/main.ts`
 - `backend/src/app.module.ts`
+- `backend/src/common/filters/global-exception.filter.ts`
+- `backend/src/common/guards/api-throttler.guard.ts`
+- `backend/src/config/env.validation.ts`
 - `backend/src/health/health.controller.ts`
 - `backend/src/waitlist/waitlist.controller.ts`
 - `backend/src/waitlist/waitlist.service.ts`
@@ -157,5 +171,6 @@ Environment note:
 - Update this file after every major engineering phase
 - Update `README.md` when the repo architecture, setup flow, or project direction changes materially
 - Update `docs/engineering/PHASE_TASK_LIST.md` when the working build sequence changes
+- Update `docs/engineering/SECURITY_AND_LAUNCH_CHECKLIST.md` when release gates or security baselines change
 - Update `docs/changelogs/CHANGELOG.md` with each significant repo change
 - Push tested, reviewable work to `main` after each major phase so collaborators can pull the latest stable state

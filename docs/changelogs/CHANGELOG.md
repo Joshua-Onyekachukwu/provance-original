@@ -1,5 +1,33 @@
 # Provance — Changelog
 
+## [2026-07-06] - Backend Security Foundation And Launch Checks
+
+### Added
+- `backend/src/common/filters/global-exception.filter.ts` - Sanitized API error responses with request IDs and timestamps
+- `backend/src/common/guards/api-throttler.guard.ts` - Proxy-aware throttling tracker for backend request limits
+- `backend/src/config/env.validation.ts` - Startup validation and normalization for critical backend environment settings
+- `docs/engineering/SECURITY_AND_LAUNCH_CHECKLIST.md` - Repeatable security and launch gate for backend and auth phases
+
+### Updated
+- `backend/src/main.ts` - Added request ID tracing, `helmet`, stricter CORS handling, global exception filtering, and safer startup configuration
+- `backend/src/app.module.ts` - Added validated config bootstrapping and global throttling
+- `backend/src/auth/auth.controller.ts` - Added tighter rate limiting for auth routes
+- `backend/src/waitlist/waitlist.controller.ts` - Added tighter rate limiting for waitlist routes
+- `backend/src/health/health.controller.ts` - Reduced health response exposure and skipped throttling for health checks
+- `backend/src/auth/auth.service.ts` - Adjusted scaffold responses to reduce configuration leakage
+- `backend/src/waitlist/waitlist.service.ts` - Reduced internal detail exposure in public write responses
+- auth and waitlist DTO files - Added normalization, trimming, and stricter token and password constraints
+- `backend/.env.example` - Added security-related backend environment settings
+- `backend/README.md` - Documented the backend security baseline
+- `README.md` - Added launch-check commands and linked the security checklist
+- `package.json` - Added `backend:test:e2e` and `check:launch` scripts
+- `docs/engineering/CURRENT_IMPLEMENTATION_STATUS.md` - Updated current-state tracking for the new security baseline
+
+### Validated
+- `npm run backend:build`
+- `npm run backend:test:e2e`
+- `npm run check:launch`
+
 ## [2026-07-06] - Root Readme And Phase Task Planning Update
 
 ### Added

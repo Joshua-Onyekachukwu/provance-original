@@ -11,7 +11,9 @@
     "backend:install": "npx pnpm@9 install --dir backend",
     "backend:dev": "npm --prefix backend run start:dev",
     "backend:build": "npm --prefix backend run build",
-    "backend:start": "npm --prefix backend run start:prod"
+    "backend:start": "npm --prefix backend run start:prod",
+    "backend:test:e2e": "npm --prefix backend run test:e2e -- --runInBand",
+    "check:launch": "npm run build && npm run backend:build && npm run backend:test:e2e"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.1",
