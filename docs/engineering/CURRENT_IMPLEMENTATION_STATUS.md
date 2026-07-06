@@ -8,6 +8,11 @@ This document tracks what Provance is building, what is already implemented in t
 
 Update this file after major engineering changes, especially when backend structure, auth flows, public-site messaging, data models, or deployment paths change.
 
+Related direction documents:
+
+- root overview: `README.md`
+- phase map: `docs/engineering/PHASE_TASK_LIST.md`
+
 ## What We Are Building
 
 Provance is a trust infrastructure platform for synthetic media verification.
@@ -150,5 +155,7 @@ Environment note:
 ## Collaboration Notes
 
 - Update this file after every major engineering phase
+- Update `README.md` when the repo architecture, setup flow, or project direction changes materially
+- Update `docs/engineering/PHASE_TASK_LIST.md` when the working build sequence changes
 - Update `docs/changelogs/CHANGELOG.md` with each significant repo change
 - Push tested, reviewable work to `main` after each major phase so collaborators can pull the latest stable state

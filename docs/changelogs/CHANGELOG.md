@@ -1,5 +1,17 @@
 # Provance — Changelog
 
+## [2026-07-06] - Root Readme And Phase Task Planning Update
+
+### Added
+- `docs/engineering/PHASE_TASK_LIST.md` - Phase-by-phase execution list covering public site work, auth, backend, app shell, workflows, reporting, team features, security, API foundations, and MVP launch readiness
+
+### Updated
+- `README.md` - Replaced the default Vite template with a real project overview, architecture summary, setup instructions, workflow rules, and current priorities
+- `docs/engineering/CURRENT_IMPLEMENTATION_STATUS.md` - Linked the new root overview and phase task list into the current implementation status flow
+
+### Notes
+- This update establishes the repo-level direction documents that should be maintained after every major engineering phase
+
 ## [2026-07-06] - Waitlist Auth Backend Scaffold And Legal Page Expansion
 
 ### Added
