@@ -16,10 +16,11 @@ export default function DocsPage() {
           <motion.div initial="hidden" animate="visible" className="max-w-3xl mx-auto text-center">
             <motion.span variants={fadeUp} custom={0} className="text-amber font-mono text-xs uppercase tracking-[0.2em]">Documentation</motion.span>
             <motion.h1 variants={fadeUp} custom={1} className="font-serif text-4xl sm:text-5xl lg:text-6xl mt-4 text-balance text-charcoal">
-              Developer <span className="italic text-amber">documentation</span>.
+              Developer <span className="italic text-amber">access</span>.
             </motion.h1>
             <motion.p variants={fadeUp} custom={2} className="mt-6 text-lg text-charcoal-mid leading-relaxed max-w-xl mx-auto">
-              Integrate Provance into your workflow in minutes. RESTful APIs, webhooks, and SDKs for Python, Node.js, and Go.
+              Use this page to understand the API shape, expected verification flow, and
+              the integration path for teams requesting developer access.
             </motion.p>
           </motion.div>
         </div>
@@ -38,9 +39,9 @@ export default function DocsPage() {
 
             <div className="grid md:grid-cols-3 gap-4">
               {[
-                { title: 'Get API Key', desc: 'Sign up for a free trial and receive your API key. All plans include API access with rate limits based on your tier.', icon: '🔑' },
-                { title: 'Submit Media', desc: 'Send a POST request to /v1/verify with your media file URL or base64-encoded data. Receive a verification ID immediately.', icon: '📤' },
-                { title: 'Receive Results', desc: 'Poll or receive a webhook callback with the complete forensic report. Download results as PDF or access via the API.', icon: '📋' },
+                { title: 'Register Interest', desc: 'Share your API use case, expected volume, and integration environment through the waitlist or contact flow.', icon: '01' },
+                { title: 'Map The Workflow', desc: 'Plan around authenticated submission, status tracking, and structured result retrieval.', icon: '02' },
+                { title: 'Expand Over Time', desc: 'Start with core verification and add reporting, callbacks, and operational integration as access expands.', icon: '03' },
               ].map((item, i) => (
                 <motion.div
                   key={item.title}
@@ -50,7 +51,7 @@ export default function DocsPage() {
                   transition={{ duration: 0.5, delay: i * 0.1 }}
                   className="p-6 rounded-xl bg-white-warm border border-stone-light text-center"
                 >
-                  <span className="text-2xl mb-3 block">{item.icon}</span>
+                  <span className="text-amber font-mono text-xs uppercase tracking-[0.2em] mb-3 block">{item.icon}</span>
                   <h3 className="font-serif text-lg text-charcoal mb-2">{item.title}</h3>
                   <p className="text-charcoal-mid text-sm leading-relaxed">{item.desc}</p>
                 </motion.div>
@@ -171,7 +172,8 @@ export default function DocsPage() {
                 Async verification via <span className="italic text-amber">webhooks</span>.
               </motion.h2>
               <motion.p variants={fadeUp} className="mt-4 text-charcoal-mid text-sm max-w-lg mx-auto">
-                For video analysis or high-volume workflows, use our webhook system. Submit media asynchronously and receive results when processing completes.
+                Webhooks support asynchronous verification so teams can submit media,
+                track state changes, and receive completed results without polling.
               </motion.p>
             </motion.div>
 
@@ -179,23 +181,23 @@ export default function DocsPage() {
               {[
                 {
                   title: 'Configurable Callbacks',
-                  desc: 'Set a callback_url in your verification request. Provance sends a POST request with the complete result payload when processing finishes.',
-                  items: ['Retry with exponential backoff', 'HMAC signature verification', 'Configurable timeout window'],
+                  desc: 'Callback support helps teams plug long-running verification workflows into downstream systems.',
+                  items: ['Status lifecycle design', 'Secure delivery direction', 'Operational integration planning'],
                 },
                 {
                   title: 'Event Types',
-                  desc: 'Subscribe to specific event types to receive only the notifications you need.',
-                  items: ['verification.completed', 'verification.failed', 'report.generated', 'batch.processing_done'],
+                  desc: 'State changes stay explicit so API consumers can track work reliably.',
+                  items: ['verification.queued', 'verification.processing', 'verification.completed', 'verification.failed'],
                 },
                 {
                   title: 'Rate Limits & Quotas',
-                  desc: 'API rate limits are enforced per API key. Enterprise plans include dedicated throughput allocations.',
-                  items: ['Pro: 100 req/min', 'Team: 500 req/min', 'Enterprise: Custom SLA'],
+                  desc: 'Rate limits, quota models, and API access tiers keep integrations predictable as usage grows.',
+                  items: ['Access by cohort', 'Review by use case', 'Long-term tiering'],
                 },
                 {
                   title: 'SDKs & Libraries',
-                  desc: 'Official client libraries for popular languages to simplify integration.',
-                  items: ['Python: pip install provance', 'Node.js: npm install provance-sdk', 'Go: go get github.com/provance/sdk'],
+                  desc: 'Language-specific tooling follows the core API so integrations stay stable and well documented.',
+                  items: ['TypeScript first', 'Python later', 'Broader SDKs after contract stability'],
                 },
               ].map((item, i) => (
                 <motion.div
@@ -230,8 +232,8 @@ export default function DocsPage() {
               <Link to="/sample-report" className="inline-flex px-6 py-3 bg-charcoal text-parchment font-medium text-sm rounded-xl hover:bg-charcoal-soft transition-all duration-200">
                 View Sample Report
               </Link>
-              <Link to="/#demo" className="inline-flex px-6 py-3 border border-stone text-charcoal font-medium text-sm rounded-xl hover:border-charcoal/30 transition-all duration-200">
-                Get API Key
+              <Link to="/waitlist" className="inline-flex px-6 py-3 border border-stone text-charcoal font-medium text-sm rounded-xl hover:border-charcoal/30 transition-all duration-200">
+                Register API interest
               </Link>
             </motion.div>
           </div>

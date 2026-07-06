@@ -6,6 +6,7 @@ const NAV_ITEMS = [
   { label: 'Product', href: '/product' },
   { label: 'Methodology', href: '/methodology' },
   { label: 'Pricing', href: '/pricing' },
+  { label: 'Sample Report', href: '/sample-report' },
   { label: 'Docs', href: '/docs' },
   { label: 'Security', href: '/security' },
 ]
@@ -20,6 +21,10 @@ export default function Navbar() {
     window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
+
+  useEffect(() => {
+    setMobileOpen(false)
+  }, [location.pathname])
 
   const isActive = (href) => {
     if (href.startsWith('/#')) return false
@@ -55,10 +60,16 @@ export default function Navbar() {
             </Link>
           ))}
           <Link
-            to="/#demo"
-            className="ml-2 px-5 py-2.5 bg-charcoal text-parchment text-sm font-medium rounded-lg hover:bg-charcoal-soft transition-all duration-200 tracking-wide"
+            to="/signin"
+            className="text-sm tracking-wide text-charcoal-mid hover:text-charcoal transition-colors duration-200"
           >
-            Request Demo
+            Sign In
+          </Link>
+          <Link
+            to="/waitlist"
+            className="ml-1 px-5 py-2.5 bg-charcoal text-parchment text-sm font-medium rounded-lg hover:bg-charcoal-soft transition-all duration-200 tracking-wide"
+          >
+            Join Waitlist
           </Link>
         </nav>
 
@@ -66,6 +77,8 @@ export default function Navbar() {
           className="md:hidden flex flex-col gap-1.5 p-2"
           onClick={() => setMobileOpen(!mobileOpen)}
           aria-label="Toggle menu"
+          aria-expanded={mobileOpen}
+          aria-controls="mobile-navigation"
         >
           <motion.span animate={mobileOpen ? { rotate: 45, y: 6 } : { rotate: 0, y: 0 }} className="block w-5 h-[1.5px] bg-charcoal rounded" />
           <motion.span animate={mobileOpen ? { opacity: 0 } : { opacity: 1 }} className="block w-5 h-[1.5px] bg-charcoal rounded" />
@@ -76,6 +89,7 @@ export default function Navbar() {
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
+            id="mobile-navigation"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
@@ -94,8 +108,11 @@ export default function Navbar() {
                   {item.label}
                 </Link>
               ))}
-              <Link to="/#demo" onClick={() => setMobileOpen(false)} className="mt-2 px-5 py-3 bg-charcoal text-parchment text-sm font-medium rounded-lg text-center">
-                Request Demo
+              <Link to="/signin" className="text-base text-charcoal-mid hover:text-charcoal transition-colors">
+                Sign In
+              </Link>
+              <Link to="/waitlist" className="mt-2 px-5 py-3 bg-charcoal text-parchment text-sm font-medium rounded-lg text-center">
+                Join Waitlist
               </Link>
             </div>
           </motion.div>

@@ -123,8 +123,8 @@ export default function MethodologyPage() {
                 { title: 'Evolving Models', desc: 'Detection capabilities are continuously updated as new generative models emerge. We maintain a model registry with known fingerprints and update detection algorithms accordingly.' },
                 { title: 'Adversarial Attacks', desc: 'Sophisticated adversarial techniques can reduce detection confidence. Our multi-dimensional approach mitigates this, but no detection system is foolproof against all attacks.' },
                 { title: 'Compression Degradation', desc: 'Heavy compression, resizing, or format conversion can degrade forensic signals. Results on heavily compressed media carry appropriate confidence reductions.' },
-                { title: 'False Positives', desc: 'Certain natural images — particularly those with heavy filters, HDR processing, or unusual lighting — may trigger detection flags. We surface these signals transparently for human review.' },
-                { title: 'Video Limitations', desc: 'Video analysis samples keyframes. Frame-level analysis is available for extended analysis but increases processing time proportionally to duration.' },
+                { title: 'False Positives', desc: 'Certain natural images, especially those with heavy filters, HDR processing, or unusual lighting, may trigger detection flags. We surface these signals transparently for human review.' },
+                { title: 'Current Scope', desc: 'The current public and early-access direction is image-first. Video remains part of the longer-term product roadmap rather than the first release requirement.' },
               ].map((limit, i) => (
                 <motion.div
                   key={limit.title}
@@ -182,8 +182,8 @@ export default function MethodologyPage() {
               transition={{ delay: 0.4 }}
               className="mt-10 text-center"
             >
-              <Link to="/" className="inline-flex px-6 py-3 bg-charcoal text-parchment font-medium text-sm rounded-xl hover:bg-charcoal-soft transition-all duration-200">
-                Back to Home
+              <Link to="/sample-report" className="inline-flex px-6 py-3 bg-charcoal text-parchment font-medium text-sm rounded-xl hover:bg-charcoal-soft transition-all duration-200">
+                View Sample Report
               </Link>
             </motion.div>
           </div>

@@ -8,33 +8,35 @@ const fadeUp = {
 
 const tiers = [
   {
-    name: 'Trial',
-    price: '0',
-    period: '14 days',
-    desc: 'Evaluate Provance with full-featured access.',
+    name: 'Early Access',
+    price: 'Waitlist',
+    period: '',
+    desc: 'Join the first controlled image-review cohorts.',
     features: [
-      '10 verifications',
-      'Image & video support',
-      'Web dashboard access',
-      'PDF forensic reports',
+      'Waitlist review',
+      'Guided onboarding',
+      'Feedback-led rollout',
+      'Priority updates',
       'Email support',
     ],
-    cta: 'Start Free Trial',
+    cta: 'Join Waitlist',
+    href: '/waitlist',
     featured: false,
   },
   {
     name: 'Pro',
-    price: '49',
-    period: '/mo',
-    desc: 'For individual professionals and small teams.',
+    price: 'Custom',
+    period: '',
+    desc: 'For individual professionals with repeat review needs.',
     features: [
-      '100 verifications / month',
-      'Priority processing',
-      'API access (1,000 req/mo)',
-      'PDF & JSON reports',
-      'Slack community support',
+      'Image-review workflow',
+      'Result history direction',
+      'Report-ready output path',
+      'Priority product feedback loop',
+      'Email support',
     ],
-    cta: 'Start Free Trial',
+    cta: 'Talk to us',
+    href: '/contact',
     featured: false,
   },
   {
@@ -43,14 +45,15 @@ const tiers = [
     period: '',
     desc: 'For growing teams with higher verification needs.',
     features: [
-      'Unlimited verifications',
-      'Priority processing queue',
-      'Full API access',
-      'SSO & role-based access',
-      'Slack & email support',
-      'Custom integrations',
+      'Pilot planning',
+      'Workflow mapping',
+      'Shared onboarding',
+      'Priority product support',
+      'Roadmap alignment',
+      'Custom rollout planning',
     ],
     cta: 'Contact Sales',
+    href: '/contact',
     featured: true,
   },
   {
@@ -59,15 +62,15 @@ const tiers = [
     period: '',
     desc: 'For organizations requiring dedicated infrastructure.',
     features: [
-      'SLA-backed uptime (99.9%)',
-      'On-premise deployment option',
-      'Dedicated support engineer',
-      'Custom model fine-tuning',
-      'Audit log exports',
-      'SOC 2 Type II reports',
-      'Volume discounts available',
+      'Security and review discussions',
+      'Deployment-path evaluation',
+      'Long-term workflow design',
+      'Custom implementation planning',
+      'Enterprise roadmap support',
+      'Dedicated commercial conversation',
     ],
     cta: 'Contact Sales',
+    href: '/contact',
     featured: false,
   },
 ]
@@ -85,7 +88,8 @@ export default function PricingPage() {
               Simple, transparent <span className="italic text-amber">pricing</span>.
             </motion.h1>
             <motion.p variants={fadeUp} custom={2} className="mt-6 text-lg text-charcoal-mid leading-relaxed max-w-xl mx-auto">
-              Start with a free trial. Scale as your verification needs grow. No hidden fees, no surprises.
+              Choose the access path that fits your workflow today, then expand into team
+              support, security review, and deeper integration as your volume grows.
             </motion.p>
           </motion.div>
         </div>
@@ -119,10 +123,7 @@ export default function PricingPage() {
                   {tier.price === 'Custom' ? (
                     <span className={`text-3xl font-medium ${tier.featured ? 'text-parchment' : 'text-charcoal'}`}>Custom</span>
                   ) : (
-                    <>
-                      <span className={`text-4xl font-medium ${tier.featured ? 'text-parchment' : 'text-charcoal'}`}>${tier.price}</span>
-                      <span className={`text-sm ${tier.featured ? 'text-stone' : 'text-charcoal-mid'}`}>{tier.period}</span>
-                    </>
+                    <span className={`text-3xl font-medium ${tier.featured ? 'text-parchment' : 'text-charcoal'}`}>{tier.price}</span>
                   )}
                 </div>
                 <p className={`text-xs mb-5 ${tier.featured ? 'text-stone' : 'text-charcoal-mid'}`}>{tier.desc}</p>
@@ -139,7 +140,7 @@ export default function PricingPage() {
                 </ul>
 
                 <Link
-                  to="/#demo"
+                  to={tier.href}
                   className={`block text-center py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
                     tier.featured
                       ? 'bg-amber text-charcoal hover:bg-amber-light'
@@ -176,7 +177,7 @@ export default function PricingPage() {
                 <thead>
                   <tr className="border-b border-white/10">
                     <th className="text-left py-4 pr-6 text-stone font-medium">Feature</th>
-                    <th className="text-center py-4 px-4 text-amber font-mono text-xs">Trial</th>
+                    <th className="text-center py-4 px-4 text-amber font-mono text-xs">Early Access</th>
                     <th className="text-center py-4 px-4 text-amber font-mono text-xs">Pro</th>
                     <th className="text-center py-4 px-4 text-amber font-mono text-xs bg-amber/10">Team</th>
                     <th className="text-center py-4 px-4 text-amber font-mono text-xs">Enterprise</th>
@@ -184,19 +185,14 @@ export default function PricingPage() {
                 </thead>
                 <tbody>
                   {[
-                    { name: 'Monthly verifications', trial: '10', pro: '100', team: 'Unlimited', ent: 'Unlimited' },
-                    { name: 'Image verification', trial: '✓', pro: '✓', team: '✓', ent: '✓' },
-                    { name: 'Video verification', trial: '✓', pro: '✓', team: '✓', ent: '✓' },
-                    { name: 'PDF forensic report', trial: '✓', pro: '✓', team: '✓', ent: '✓' },
-                    { name: 'Web dashboard', trial: '✓', pro: '✓', team: '✓', ent: '✓' },
-                    { name: 'API access', trial: '—', pro: '1,000 req/mo', team: 'Unlimited', ent: 'Unlimited' },
-                    { name: 'Priority processing', trial: '—', pro: 'Standard', team: 'High', ent: 'Highest' },
-                    { name: 'SSO / SAML', trial: '—', pro: '—', team: '✓', ent: '✓' },
-                    { name: 'Role-based access', trial: '—', pro: '—', team: '✓', ent: '✓' },
-                    { name: 'Audit log exports', trial: '—', pro: '—', team: '—', ent: '✓' },
-                    { name: 'On-premise deployment', trial: '—', pro: '—', team: '—', ent: 'Optional' },
-                    { name: 'Dedicated support', trial: '—', pro: '—', team: 'Slack', ent: 'Engineer' },
-                    { name: 'SLA guarantee', trial: '—', pro: '—', team: '—', ent: '99.9%' },
+                    { name: 'Access path', trial: 'Waitlist', pro: 'Direct review', team: 'Pilot', ent: 'Custom' },
+                    { name: 'Image-first onboarding', trial: '✓', pro: '✓', team: '✓', ent: '✓' },
+                    { name: 'Report-ready direction', trial: '✓', pro: '✓', team: '✓', ent: '✓' },
+                    { name: 'Dedicated rollout support', trial: 'Not yet', pro: 'Not yet', team: 'Included', ent: 'Included' },
+                    { name: 'Security review discussion', trial: 'Not yet', pro: 'Not yet', team: 'Not yet', ent: 'Included' },
+                    { name: 'API roadmap alignment', trial: 'Not yet', pro: 'Planned', team: 'Planned', ent: 'Planned' },
+                    { name: 'Team workflow planning', trial: 'Not yet', pro: 'Not yet', team: 'Included', ent: 'Included' },
+                    { name: 'Custom implementation path', trial: 'Not yet', pro: 'Not yet', team: 'Optional', ent: 'Included' },
                   ].map((row, i) => (
                     <tr key={row.name} className={`border-b border-white/5 ${i % 2 === 0 ? 'bg-white/[0.02]' : ''}`}>
                       <td className="py-3.5 pr-6 text-parchment text-sm">{row.name}</td>
@@ -217,7 +213,7 @@ export default function PricingPage() {
               transition={{ delay: 0.3 }}
               className="mt-8 text-center text-stone text-sm"
             >
-              Need a custom plan? <Link to="/#demo" className="text-amber hover:text-amber-light underline transition-colors">Contact our sales team</Link>.
+              Need a custom plan? <Link to="/contact" className="text-amber hover:text-amber-light underline transition-colors">Talk to the Provance team</Link>.
             </motion.p>
           </div>
         </div>
@@ -235,10 +231,10 @@ export default function PricingPage() {
 
           <div className="space-y-3">
             {[
-              { q: 'Can I switch plans at any time?', a: 'Yes. You can upgrade, downgrade, or cancel at any time. Changes take effect at the start of your next billing cycle.' },
-              { q: 'What counts as a verification?', a: 'Each submitted image or video file counts as one verification. Re-analysis of the same file within 30 days does not count toward your quota.' },
-              { q: 'Do you offer annual pricing?', a: 'Yes. Annual plans receive a 20% discount compared to monthly billing. Contact sales for annual pricing.' },
-              { q: 'Is there a free trial?', a: 'Yes. The Trial tier gives you full access to all features for 14 days with 10 verifications. No credit card required.' },
+              { q: 'How do I choose the right access path?', a: 'Start with the waitlist if you are exploring the product on your own. Contact us if you need repeat workflows, team review, or security conversations.' },
+              { q: 'Is pricing self-serve yet?', a: 'Not yet. Access is handled through early cohorts and direct conversations so rollout, support, and security needs can be matched correctly.' },
+              { q: 'Do you support teams and enterprise buyers?', a: 'Yes. Team and enterprise paths are available for organizations that need workflow planning, rollout support, or custom security discussions.' },
+              { q: 'Can I talk to someone before joining?', a: 'Yes. Use the contact page if you want a demo, design-partner conversation, or help choosing between waitlist and team access.' },
             ].map((item) => (
               <details key={item.q} className="group bg-white-warm rounded-xl border border-stone-light overflow-hidden open:border-amber/20 transition-all duration-300">
                 <summary className="flex items-center justify-between px-5 py-4 cursor-pointer list-none">

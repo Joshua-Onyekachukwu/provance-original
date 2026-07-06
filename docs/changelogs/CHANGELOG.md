@@ -1,5 +1,39 @@
 # Provance — Changelog
 
+## [2026-07-06] - Waitlist Auth Backend Scaffold And Legal Page Expansion
+
+### Added
+- `backend/` - New NestJS backend scaffold for the long-term Provance API
+- `backend/src/health/*` - Health module and endpoint
+- `backend/src/waitlist/*` - Waitlist module, DTO, controller, and service
+- `backend/src/auth/*` - Auth module, DTOs, controller, and service scaffold
+- `backend/src/supabase/*` - Supabase-ready service layer
+- `backend/supabase/migrations/0001_waitlist_auth.sql` - Starter waitlist and auth-adjacent schema
+- `backend/.env.example` - Backend environment template
+- `.env.example` - Frontend API base URL template
+- `src/lib/api.js` - Shared frontend API helper for waitlist and sign-in calls
+- `docs/engineering/CURRENT_IMPLEMENTATION_STATUS.md` - Current system status, completed work, and handoff notes
+
+### Updated
+- `src/pages/WaitlistPage.jsx` - Waitlist form now targets the new API shape and supports loading, success, and error states
+- `src/pages/SignInPage.jsx` - Sign-in form now targets the new API shape and supports loading, success, and error states
+- `src/pages/PrivacyPage.jsx` - Expanded into fuller privacy-policy style content
+- `src/pages/TermsPage.jsx` - Expanded into fuller terms-of-service style content
+- `src/pages/CookiesPage.jsx` - Expanded into fuller cookies-policy style content
+- `src/pages/ContactPage.jsx` - Support and pilot copy refined for production tone
+- `src/pages/SecurityPage.jsx` - Security copy refined to remove roadmap phrasing
+- `src/components/WhyProvance.jsx` - Redesigned to use a four-card two-by-two layout aligned with the Use Cases section
+- `package.json` - Added root scripts for backend dev, build, and start
+
+### Validated
+- Frontend production build completed successfully
+- Backend NestJS build completed successfully
+- Backend e2e health test passed
+
+### Notes
+- Backend dependency installation hit an npm resolver issue in this environment
+- Validation completed successfully using `pnpm` installation followed by backend build and e2e checks
+
 ## [2026-06-26] — Investor Data Room & Seed Round Outreach Strategy
 
 ### Added

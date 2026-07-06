@@ -19,7 +19,8 @@ export default function SecurityPage() {
               Trust is our <span className="italic text-amber">infrastructure</span>.
             </motion.h1>
             <motion.p variants={fadeUp} custom={2} className="mt-6 text-lg text-charcoal-mid leading-relaxed max-w-xl mx-auto">
-              Every aspect of Provance is built with security and compliance at its core. From data retention to audit trails, we provide the controls your organization needs.
+              Provance is built around private handling, controlled access, and traceable
+              review workflows so teams can verify sensitive media with confidence.
             </motion.p>
           </motion.div>
         </div>
@@ -42,19 +43,19 @@ export default function SecurityPage() {
                 {
                   title: 'Retention Policies',
                   items: [
-                    'Uploaded media retained for the duration of your active subscription',
-                    'Configurable auto-deletion timelines (7, 30, 90, 365 days)',
-                    'Immediate deletion on account termination',
-                    'Reports archived indefinitely for audit compliance (Enterprise)',
+                    'Set retention windows around account, workflow, and review needs',
+                    'Apply deletion rules with clear access and approval boundaries',
+                    'Keep uploads and artifacts behind private storage controls',
+                    'Use explicit retention rules for higher-trust workflows',
                   ],
                 },
                 {
                   title: 'Data Handling',
                   items: [
-                    'All uploads encrypted at rest (AES-256) and in transit (TLS 1.3)',
-                    'Media processed in ephemeral, isolated environments',
-                    'No training on customer data without explicit written consent',
-                    'SOC 2 Type II certified data centers',
+                    'Encrypt media in transit and at rest',
+                    'Keep customer media out of training use by default',
+                    'Treat access controls and auditability as first-class requirements',
+                    'Favor private storage and clear operational visibility',
                   ],
                 },
               ].map((col, i) => (
@@ -99,15 +100,15 @@ export default function SecurityPage() {
               {[
                 {
                   title: 'Complete Traceability',
-                  desc: 'Every verification, API call, user action, and configuration change is logged with timestamps, actor identity, and before/after state. Logs are immutable and cryptographically signed.',
+                  desc: 'Record meaningful workflow events with timestamps, actor identity, and enough context to support investigation and review.',
                 },
                 {
                   title: 'Export & Integration',
-                  desc: 'Export audit logs in JSON, CSV, or syslog format. Integrate with your SIEM of choice including Splunk, Datadog, and Amazon Security Lake. Log retention configurable up to 7 years.',
+                  desc: 'Export, integration, and retention controls keep review workflows easier to manage across teams and clients.',
                 },
                 {
                   title: 'Compliance Ready',
-                  desc: 'Audit logs meet the requirements of SOC 2, ISO 27001, FedRAMP, and GDPR. Each log entry includes a cryptographic hash for tamper detection, ensuring chain-of-custody integrity.',
+                  desc: 'Compliance and evidence posture start with a clean audit foundation, documented controls, and review-ready records.',
                 },
               ].map((item, i) => (
                 <motion.div
@@ -138,7 +139,7 @@ export default function SecurityPage() {
                   <div className="w-2.5 h-2.5 rounded-full bg-white/20" />
                   <div className="w-2.5 h-2.5 rounded-full bg-white/20" />
                 </div>
-                <span className="ml-3 text-xs text-stone font-mono">audit-log — tail -f</span>
+                <span className="ml-3 text-xs text-stone font-mono">audit-log | tail -f</span>
               </div>
               <div className="p-5 md:p-6 font-mono text-xs leading-relaxed space-y-2 overflow-x-auto">
                 <div className="text-stone">2026-06-25T10:23:14Z  VERIFY  user:jdoe@newsroom.io  status:completed  verdict:ai_generated  confidence:0.947</div>
@@ -166,12 +167,12 @@ export default function SecurityPage() {
 
             <div className="grid sm:grid-cols-2 gap-4">
               {[
-                { title: 'SSO & SCIM', desc: 'SAML 2.0, OAuth 2.0, and SCIM provisioning. Support for Okta, Azure AD, Google Workspace, and OneLogin.' },
-                { title: 'Role-Based Access', desc: 'Granular permissions for owners, admins, editors, reviewers, and auditors. Custom roles available.' },
-                { title: 'Private Cloud', desc: 'Deploy Provance in your VPC or on-premises. Dedicated instances with isolated networking and customer-managed keys.' },
-                { title: 'Compliance Certifications', desc: 'SOC 2 Type II (annually), ISO 27001 (in progress), GDPR compliant. Penetration testing reports available under NDA.' },
-                { title: 'SLA Guarantee', desc: '99.9% uptime SLA for Enterprise plans. Financial remediation for verified downtime incidents.' },
-                { title: 'Dedicated Support', desc: 'Named support engineer with 15-minute response time for critical issues. 24/7 coverage available.' },
+                { title: 'Access Controls', desc: 'Waitlist review, invite-based access, and role-aware product controls define how approved users enter the platform.' },
+                { title: 'Private Storage Direction', desc: 'The production architecture will favor private-by-default file handling and clearer separation between metadata, uploads, and generated artifacts.' },
+                { title: 'Operational Auditability', desc: 'Meaningful system events, user actions, and workflow state changes should be traceable as the product moves from beta toward production readiness.' },
+                { title: 'Enterprise Review Support', desc: 'Security and deployment conversations will be handled directly rather than hidden behind vague trust language or unsupported certification claims.' },
+                { title: 'Deployment Planning', desc: 'The backend recommendation assumes real hosted environments beyond local development, with local setup used only for testing and iteration.' },
+                { title: 'Operational Hardening', desc: 'Monitoring, rate limiting, session security, and stronger environment separation support a safer authenticated rollout.' },
               ].map((item, i) => (
                 <motion.div
                   key={item.title}
@@ -194,8 +195,8 @@ export default function SecurityPage() {
               transition={{ delay: 0.4 }}
               className="mt-10 text-center"
             >
-              <Link to="/#demo" className="inline-flex px-6 py-3 bg-amber text-charcoal font-medium text-sm rounded-xl hover:bg-amber-light transition-all duration-200">
-                Request Enterprise Demo
+              <Link to="/contact" className="inline-flex px-6 py-3 bg-amber text-charcoal font-medium text-sm rounded-xl hover:bg-amber-light transition-all duration-200">
+                Talk to us about security and access
               </Link>
             </motion.div>
           </div>

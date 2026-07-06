@@ -7,10 +7,10 @@ const fadeUp = {
 }
 
 const verdictSteps = [
-  { label: 'Submission', desc: 'Media uploaded via API or dashboard. Automatically routed to the optimal analysis pipeline based on file type and size.' },
-  { label: 'Multi-Modal Analysis', desc: 'Our engine examines pixel consistency, metadata integrity, compression artifacts, generative fingerprints, and provenance signals across 47 forensic dimensions.' },
-  { label: 'Evidence Extraction', desc: 'Anomalies are isolated and classified. Each detection generates a heatmap, a natural-language explanation, and a confidence score.' },
-  { label: 'Report Generation', desc: 'All findings are compiled into a comprehensive PDF report with chain-of-custody documentation, expert-ready methodology notes, and court-admissible formatting.' },
+  { label: 'Submission', desc: 'Start with an uploaded image or video file and keep the case tied to the original asset.' },
+  { label: 'Signal Review', desc: 'Inspect metadata, artifact patterns, confidence signals, and supporting forensic detail in one view.' },
+  { label: 'Evidence Extraction', desc: 'See what shaped the result instead of relying on a single score.' },
+  { label: 'Report Output', desc: 'Export a clear record that another reviewer can inspect and share.' },
 ]
 
 export default function ProductPage() {
@@ -26,7 +26,8 @@ export default function ProductPage() {
               Every verdict comes with <span className="italic text-amber">evidence</span>.
             </motion.h1>
             <motion.p variants={fadeUp} custom={2} className="mt-6 text-lg text-charcoal-mid leading-relaxed max-w-xl mx-auto">
-              Provance doesn't just tell you if media is AI-generated — it shows you why, with forensic-grade reports designed for high-stakes decisions.
+              Provance helps individuals and teams review suspicious image and video
+              media with clearer reasoning, stronger context, and outputs they can share.
             </motion.p>
           </motion.div>
         </div>
@@ -82,14 +83,14 @@ export default function ProductPage() {
           </motion.div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            {[
-              { title: 'API-First Architecture', desc: 'RESTful API with SDKs for Python, Node.js, and Go. Integrate verification into any content pipeline in minutes.', icon: '🔌' },
-              { title: 'Role-Based Access', desc: 'Granular permissions for reviewers, editors, and administrators. SSO/SAML integration for enterprise directories.', icon: '🔐' },
-              { title: 'Automated Queues', desc: 'Set up automated verification workflows. Media submitted to a webhook or S3 bucket is analyzed and reported on automatically.', icon: '⚙️' },
-              { title: 'Audit Logging', desc: 'Every verification is logged with full provenance. Export audit trails for compliance reviews and legal discovery.', icon: '📋' },
-              { title: 'Custom Integrations', desc: 'Connect Provance with your CMS, DAM, or moderation platform. Enterprise plans include dedicated integration engineering.', icon: '🔄' },
-              { title: 'Real-Time Alerts', desc: 'Configure webhook notifications for verdicts. Slack, email, and custom webhook destinations supported.', icon: '🔔' },
-            ].map((item, i) => (
+              {[
+                { title: 'Review-first UX', desc: 'Keep evidence, confidence language, and key findings together from first pass to final decision.', icon: '01' },
+                { title: 'Structured Access', desc: 'Use controlled onboarding, invite-based access, and protected workflows as access expands.', icon: '02' },
+                { title: 'Report-ready Outputs', desc: 'Share a structured result that gives teams and clients the same decision context.', icon: '03' },
+                { title: 'Auditability', desc: 'Track what was reviewed, when it changed, and how the final result was reached.', icon: '04' },
+                { title: 'Developer Path', desc: 'Extend the product into API-driven workflows when teams need verification inside their own systems.', icon: '05' },
+                { title: 'Security Controls', desc: 'Add storage, access, and review controls that fit both individual use and larger environments.', icon: '06' },
+              ].map((item, i) => (
               <motion.div
                 key={item.title}
                 initial={{ opacity: 0, y: 20 }}
@@ -98,7 +99,7 @@ export default function ProductPage() {
                 transition={{ duration: 0.5, delay: i * 0.08 }}
                 className="p-6 rounded-xl bg-white-warm border border-stone-light hover:border-amber/20 hover:shadow-sm transition-all duration-300"
               >
-                <span className="text-2xl mb-3 block">{item.icon}</span>
+                  <span className="text-amber font-mono text-xs uppercase tracking-[0.2em]">{item.icon}</span>
                 <h3 className="font-serif text-lg text-charcoal mb-2">{item.title}</h3>
                 <p className="text-charcoal-mid text-sm leading-relaxed">{item.desc}</p>
               </motion.div>
@@ -165,7 +166,7 @@ export default function ProductPage() {
               transition={{ delay: 0.3 }}
               className="mt-8 text-center"
             >
-              <Link to="/" className="inline-flex px-6 py-3 bg-amber text-charcoal font-medium text-sm rounded-xl hover:bg-amber-light transition-all duration-200">
+              <Link to="/docs" className="inline-flex px-6 py-3 bg-amber text-charcoal font-medium text-sm rounded-xl hover:bg-amber-light transition-all duration-200">
                 View API Documentation
               </Link>
             </motion.div>

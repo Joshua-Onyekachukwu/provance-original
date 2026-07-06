@@ -1,23 +1,24 @@
 import { motion } from 'framer-motion'
+import { Link } from 'react-router-dom'
 
 const answers = [
-  { q: 'How does Provance detect AI-generated media?', a: 'Our multi-modal engine analyzes 47 forensic dimensions including pixel-level inconsistencies, generative model fingerprints, metadata anomalies, and compression artifact patterns. Each detection is explainable with heatmap visualizations.' },
-  { q: 'What file formats do you support?', a: 'We support all major image formats (JPEG, PNG, WebP, TIFF, BMP) and video formats (MP4, WebM, AVI, MOV). Maximum file size depends on your plan.' },
-  { q: 'Can I integrate Provance into my existing workflow?', a: 'Yes. We offer a RESTful API with SDKs for Python, Node.js, and Go. Enterprise plans include custom integration support and SSO authentication.' },
-  { q: 'Are your reports admissible as evidence?', a: 'Our forensic reports include complete audit trails, chain-of-custody documentation, and detailed methodology notes designed to meet evidentiary standards.' },
-  { q: 'How fast is the verification process?', a: 'Most image verifications complete in under 3 seconds. Video analysis times vary by duration. Enterprise plans include priority processing queues.' },
+  { q: 'What kind of users is Provance built for?', a: 'Provance is being shaped first for journalists, investigators, legal-adjacent review teams, and trust-focused operators who need evidence they can inspect and communicate.' },
+  { q: 'Does Provance support images or video?', a: 'The current public direction is image-first for early access. Video remains part of the product roadmap, but it is not the primary launch requirement.' },
+  { q: 'What happens if a result is uncertain?', a: 'Uncertainty is surfaced explicitly. The goal is not to hide ambiguity, but to show when the evidence is mixed or insufficient and human review should carry more weight.' },
+  { q: 'Can I join before broader access opens?', a: 'Yes. Access is currently waitlist-first, with review and invite-based activation for early users and design partners.' },
+  { q: 'Will there be an API?', a: 'Yes, API access is part of the long-term product direction. Developer interest is being gathered now so we can prioritize access and onboarding correctly.' },
 ]
 
 export default function CLEARAnswers() {
   return (
-    <section id="demo" className="section-padding bg-parchment relative overflow-hidden">
+    <section id="faq" className="section-padding bg-parchment relative overflow-hidden">
       <div className="content-container">
         <motion.div
           initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}
           className="text-center max-w-2xl mx-auto mb-16"
         >
           <motion.span variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5 } } }} className="text-amber font-mono text-xs uppercase tracking-[0.2em]">
-            C.L.E.A.R. Trust Answers
+            Frequently Asked Questions
           </motion.span>
           <motion.h2 variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, delay: 0.1 } } }} className="font-serif text-3xl sm:text-4xl lg:text-5xl mt-4 text-balance text-charcoal">
             Everything you need to <span className="italic text-amber">know</span>.
@@ -54,11 +55,21 @@ export default function CLEARAnswers() {
           transition={{ duration: 0.5, delay: 0.3 }}
           className="max-w-2xl mx-auto mt-16 text-center"
         >
-          <h3 className="font-serif text-2xl sm:text-3xl text-charcoal mb-4">Ready to see Provance in action?</h3>
-          <p className="text-charcoal-mid mb-8 max-w-md mx-auto">Book a personalized demo with our team. We'll walk through your use case and show you exactly how Provance fits your workflow.</p>
-          <a href="#" className="inline-flex px-8 py-4 bg-charcoal text-parchment font-medium text-sm rounded-xl hover:bg-charcoal-soft transition-all duration-200 tracking-wide shadow-lg shadow-charcoal/10">
-            Request a Demo
-          </a>
+          <h3 className="font-serif text-2xl sm:text-3xl text-charcoal mb-4">
+            Ready to explore early access?
+          </h3>
+          <p className="text-charcoal-mid mb-8 max-w-xl mx-auto">
+            Join the waitlist or request a design-partner conversation, depending on how
+            you plan to use Provance.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            <Link to="/waitlist" className="inline-flex px-8 py-4 bg-charcoal text-parchment font-medium text-sm rounded-xl hover:bg-charcoal-soft transition-all duration-200 tracking-wide shadow-lg shadow-charcoal/10">
+              Join Waitlist
+            </Link>
+            <Link to="/contact" className="inline-flex px-8 py-4 border border-stone text-charcoal font-medium text-sm rounded-xl hover:border-charcoal/30 transition-all duration-200 tracking-wide">
+              Request Demo
+            </Link>
+          </div>
         </motion.div>
       </div>
     </section>

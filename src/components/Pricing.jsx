@@ -1,28 +1,32 @@
+import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 
 const tiers = [
   {
-    name: 'Pro',
-    price: '49',
-    desc: 'For individual professionals and small teams.',
-    features: ['100 verifications/month', 'Web dashboard & API access', 'PDF forensic reports', 'Email support'],
-    cta: 'Start Free Trial',
+    name: 'Early Access',
+    price: 'Waitlist',
+    desc: 'For individual professionals who want to join the first image-review cohorts.',
+    features: ['Priority waitlist review', 'Guided onboarding', 'Feedback-driven rollout', 'Early workflow access'],
+    cta: 'Join Waitlist',
+    href: '/waitlist',
     featured: false,
   },
   {
     name: 'Team',
     price: 'Custom',
-    desc: 'For growing teams with higher verification needs.',
-    features: ['Unlimited verifications', 'Priority processing', 'SSO & role-based access', 'Slack & email support', 'Custom integrations'],
+    desc: 'For teams evaluating Provance for repeat verification workflows.',
+    features: ['Shared onboarding', 'Pilot planning', 'Workflow mapping', 'Priority product support'],
     cta: 'Contact Sales',
+    href: '/contact',
     featured: true,
   },
   {
     name: 'Enterprise',
     price: 'Custom',
-    desc: 'For organizations requiring dedicated infrastructure.',
-    features: ['SLA-backed uptime', 'On-premise deployment option', 'Dedicated support engineer', 'Custom model fine-tuning', 'Audit log exports', 'SOC 2 Type II reports'],
+    desc: 'For organizations with higher-trust requirements and custom implementation needs.',
+    features: ['Custom evaluation path', 'Security review support', 'Deployment planning', 'Long-term enterprise roadmap'],
     cta: 'Contact Sales',
+    href: '/contact',
     featured: false,
   },
 ]
@@ -67,10 +71,7 @@ export default function Pricing() {
                 {tier.price === 'Custom' ? (
                   <span className={`text-3xl font-medium ${tier.featured ? 'text-parchment' : 'text-charcoal'}`}>Custom</span>
                 ) : (
-                  <>
-                    <span className={`text-4xl font-medium ${tier.featured ? 'text-parchment' : 'text-charcoal'}`}>${tier.price}</span>
-                    <span className={`text-sm ${tier.featured ? 'text-stone' : 'text-charcoal-mid'}`}>/mo</span>
-                  </>
+                  <span className={`text-3xl font-medium ${tier.featured ? 'text-parchment' : 'text-charcoal'}`}>{tier.price}</span>
                 )}
               </div>
               <p className={`text-sm mb-6 ${tier.featured ? 'text-stone' : 'text-charcoal-mid'}`}>{tier.desc}</p>
@@ -82,8 +83,8 @@ export default function Pricing() {
                   </li>
                 ))}
               </ul>
-              <a
-                href="#demo"
+              <Link
+                to={tier.href}
                 className={`block text-center py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
                   tier.featured
                     ? 'bg-amber text-charcoal hover:bg-amber-light'
@@ -91,7 +92,7 @@ export default function Pricing() {
                 }`}
               >
                 {tier.cta}
-              </a>
+              </Link>
             </motion.div>
           ))}
         </div>

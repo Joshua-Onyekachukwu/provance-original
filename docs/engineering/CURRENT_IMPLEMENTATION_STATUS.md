@@ -1,0 +1,154 @@
+# Provance Current Implementation Status
+
+Last updated: 2026-07-06
+
+## Purpose
+
+This document tracks what Provance is building, what is already implemented in the repo, what remains in progress, and what engineers should update after each major phase.
+
+Update this file after major engineering changes, especially when backend structure, auth flows, public-site messaging, data models, or deployment paths change.
+
+## What We Are Building
+
+Provance is a trust infrastructure platform for synthetic media verification.
+
+The working product direction is:
+
+- explainable image and video verification
+- downloadable and reviewable forensic reports
+- waitlist-first onboarding and invite-based account access
+- future protected application workflows for uploads, analysis, review, reporting, and team collaboration
+- future API access for programmatic verification and operational integration
+
+## Current Architecture
+
+### Frontend
+
+- React + Vite marketing and public-product site
+- Public routes for home, product, methodology, pricing, docs, sample report, security, contact, waitlist, and sign-in
+- Tailwind-based styling with Framer Motion for section transitions and interactions
+
+### Backend
+
+- New NestJS backend scaffold located in `backend/`
+- Versioned API prefix at `/v1`
+- Validation and CORS configured in the app bootstrap
+- Waitlist-first auth and onboarding structure prepared
+- Supabase-ready service layer added for persistence and auth wiring
+
+### Existing Legacy Backend
+
+- A legacy `api/` folder still exists with ad hoc Hono-based code
+- It is not the long-term backend direction
+- New work should target `backend/` unless a deliberate migration plan says otherwise
+
+## What Is Done
+
+### Public Site
+
+- Homepage sections have been revised through multiple content and visibility passes
+- `How It Works` visibility bug has been fixed
+- Public-page copy has been cleaned to remove staging-tone language across major pages
+- Legal pages now contain fuller production-style Privacy, Terms, and Cookies content
+- `Why Provance` now uses a four-card, two-by-two layout aligned more closely with the `Use Cases` visual system
+
+### Waitlist And Sign-In Frontend
+
+- `WaitlistPage.jsx` now submits to a real API shape through `src/lib/api.js`
+- `SignInPage.jsx` now submits to a real API shape through `src/lib/api.js`
+- Both pages support loading, error, and success states
+
+### NestJS Backend Scaffold
+
+- `GET /v1/health`
+- `POST /v1/waitlist/applications`
+- `POST /v1/auth/sign-in`
+- `POST /v1/auth/password-reset/request`
+- `POST /v1/auth/password-reset/confirm`
+- `POST /v1/auth/invites/accept`
+
+### Supabase Preparation
+
+- Supabase client service scaffold added
+- Backend environment template added
+- Starter SQL migration added at `backend/supabase/migrations/0001_waitlist_auth.sql`
+- Waitlist persistence is ready to target `waitlist_applications`
+
+## What Is Not Done Yet
+
+### Auth
+
+- Real Supabase Auth sign-in wiring
+- Invite token generation and acceptance
+- Password reset email delivery
+- Session persistence and refresh-token handling
+- Protected frontend routes and authenticated app shell
+
+### Waitlist Operations
+
+- Admin review flow
+- Approval and rejection workflow
+- Invite issuing
+- Waitlist status dashboard
+- Notification and email automation
+
+### Product Application
+
+- Authenticated dashboard
+- Upload and analysis workflow
+- Report management
+- Organization and team access controls
+- Audit review tools
+
+## Validation Status
+
+Validated in this phase:
+
+- frontend diagnostics on edited files
+- frontend production build
+- backend NestJS build
+- backend e2e test for health endpoint
+
+Environment note:
+
+- `npm install` for the backend hit an npm resolver bug in this environment
+- backend validation succeeded using `pnpm` install, followed by `npm run build` and `npm run test:e2e`
+- until that resolver issue is addressed, engineers should install backend dependencies with `npx pnpm@9 install`
+
+## Important Files
+
+### Frontend
+
+- `src/lib/api.js`
+- `src/pages/WaitlistPage.jsx`
+- `src/pages/SignInPage.jsx`
+- `src/pages/PrivacyPage.jsx`
+- `src/pages/TermsPage.jsx`
+- `src/pages/CookiesPage.jsx`
+
+### Backend
+
+- `backend/src/main.ts`
+- `backend/src/app.module.ts`
+- `backend/src/health/health.controller.ts`
+- `backend/src/waitlist/waitlist.controller.ts`
+- `backend/src/waitlist/waitlist.service.ts`
+- `backend/src/auth/auth.controller.ts`
+- `backend/src/auth/auth.service.ts`
+- `backend/src/supabase/supabase.service.ts`
+- `backend/supabase/migrations/0001_waitlist_auth.sql`
+
+## Next Recommended Steps
+
+1. Connect real Supabase environment values in `backend/.env`
+2. Apply the starter migration in Supabase
+3. Replace scaffold auth responses with real Supabase Auth operations
+4. Add invite issuance, acceptance, and review state transitions
+5. Add protected frontend routes and session-aware navigation
+6. Start building the first authenticated product area
+
+## Collaboration Notes
+
+- Update this file after every major engineering phase
+- Update `docs/changelogs/CHANGELOG.md` with each significant repo change
+- Push tested, reviewable work to `main` after each major phase so collaborators can pull the latest stable state

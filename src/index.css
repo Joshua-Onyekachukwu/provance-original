@@ -35,6 +35,20 @@ body {
   line-height: 1.6;
 }
 
+a,
+button,
+input,
+textarea,
+select,
+summary {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-amber);
+  outline-offset: 3px;
+}
+
 /* ── Selection ── */
 ::selection {
   background-color: var(--color-amber-subtle);
@@ -87,6 +101,24 @@ body {
   margin: 0 auto;
 }
 
+.skip-link {
+  position: fixed;
+  left: 1rem;
+  top: 1rem;
+  z-index: 100;
+  transform: translateY(-200%);
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  background: var(--color-charcoal);
+  color: var(--color-parchment);
+  font-size: 0.875rem;
+  transition: transform 0.2s ease;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
 /* ── Decorative Elements ── */
 .forensic-grid {
   background-image:
@@ -97,4 +129,18 @@ body {
 
 .amber-glow {
   box-shadow: 0 0 40px rgba(217, 119, 6, 0.08), 0 0 80px rgba(217, 119, 6, 0.04);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
