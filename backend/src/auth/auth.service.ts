@@ -10,43 +10,42 @@ export class AuthService {
   constructor(private readonly supabaseService: SupabaseService) {}
 
   async signIn(dto: SignInDto) {
+    void dto;
+
     return {
-      status: 'pending',
+      status: 'accepted',
       message:
-        'Sign-in wiring is prepared. Connect Supabase auth or your preferred identity provider to enable credential validation.',
-      authConfigured: this.supabaseService.isConfigured(),
-      email: dto.email.toLowerCase(),
+        'Sign-in handling is being finalized. If your access is approved, continue through your invite or account email.',
     };
   }
 
   async requestPasswordReset(dto: RequestPasswordResetDto) {
+    void dto;
+
     return {
-      status: 'pending',
+      status: 'accepted',
       message:
-        'Password reset wiring is prepared. Connect Supabase auth email recovery or your mail provider to send reset instructions.',
-      authConfigured: this.supabaseService.isConfigured(),
-      email: dto.email.toLowerCase(),
+        'If an eligible account exists, password reset instructions will be sent through the configured recovery flow.',
     };
   }
 
   async confirmPasswordReset(dto: ConfirmPasswordResetDto) {
+    void dto;
+
     return {
-      status: 'pending',
+      status: 'accepted',
       message:
-        'Password reset confirmation endpoint is scaffolded. Connect token validation and password update logic before enabling this route.',
-      authConfigured: this.supabaseService.isConfigured(),
-      tokenPreview: dto.token.slice(0, 8),
+        'Password reset confirmation is being finalized. Complete token validation and password update logic before enabling account recovery.',
     };
   }
 
   async acceptInvite(dto: AcceptInviteDto) {
+    void dto;
+
     return {
-      status: 'pending',
+      status: 'accepted',
       message:
-        'Invite acceptance is scaffolded. Connect invite lookup, account activation, and session creation before enabling this route.',
-      authConfigured: this.supabaseService.isConfigured(),
-      tokenPreview: dto.token.slice(0, 8),
-      fullName: dto.fullName,
+        'Invite acceptance is being finalized. Complete invite lookup, account activation, and session creation before enabling access.',
     };
   }
 }

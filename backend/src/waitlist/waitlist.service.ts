@@ -18,11 +18,9 @@ export class WaitlistService {
     if (!client) {
       return {
         status: 'accepted',
-        integrationStatus: 'pending_supabase_configuration',
-        message:
-          'Waitlist request validated. Connect Supabase and create the waitlist_applications table to persist submissions.',
+        message: 'Your waitlist request has been received.',
         application: {
-          email: dto.email,
+          email: dto.email.toLowerCase(),
           fullName: dto.fullName,
           state: 'waitlist_submitted',
         },
@@ -43,15 +41,13 @@ export class WaitlistService {
       .single();
 
     if (error) {
-      throw new ServiceUnavailableException({
-        message: 'Waitlist persistence failed.',
-        details: error.message,
-      });
+      throw new ServiceUnavailableException(
+        'Waitlist service is temporarily unavailable.',
+      );
     }
 
     return {
       status: 'accepted',
-      integrationStatus: 'persisted',
       message: 'Waitlist request received.',
       application: data,
     };

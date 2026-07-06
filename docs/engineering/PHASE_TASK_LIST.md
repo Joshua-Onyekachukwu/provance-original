@@ -228,5 +228,6 @@ After every major phase:
 
 - update this file
 - update `docs/engineering/CURRENT_IMPLEMENTATION_STATUS.md`
+- update `docs/engineering/SECURITY_AND_LAUNCH_CHECKLIST.md` when security gates or release checks change
 - update `docs/changelogs/CHANGELOG.md`
 - push the tested phase to `main`

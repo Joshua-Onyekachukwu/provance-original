@@ -123,6 +123,18 @@ Build the backend:
 npm run backend:build
 ```
 
+Run the backend e2e tests:
+
+```bash
+npm run backend:test:e2e
+```
+
+Run the release check bundle:
+
+```bash
+npm run check:launch
+```
+
 Start the backend production build:
 
 ```bash
@@ -154,6 +166,7 @@ Core documentation for the current engineering state:
 
 - implementation status: `docs/engineering/CURRENT_IMPLEMENTATION_STATUS.md`
 - phase task list: `docs/engineering/PHASE_TASK_LIST.md`
+- security and launch checklist: `docs/engineering/SECURITY_AND_LAUNCH_CHECKLIST.md`
 - changelog: `docs/changelogs/CHANGELOG.md`
 - auth and waitlist direction: `docs/architecture/2026-07-06-auth-waitlist-strategy.md`
 - backend stack evaluation: `docs/architecture/2026-07-06-backend-stack-evaluation.md`

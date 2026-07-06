@@ -9,6 +9,8 @@ NestJS backend scaffold for the Provance waitlist-first authentication flow.
 - Auth endpoint structure for sign in, invite acceptance, and password reset
 - Supabase-ready service layer for persistence and auth integration
 - Validation, CORS, and API versioning setup
+- Security headers, request throttling, and startup environment validation
+- Sanitized exception handling and request ID tracing
 
 ## Folder Shape
 
@@ -33,6 +35,10 @@ Optional:
 
 - `PORT`
 - `FRONTEND_ORIGIN`
+- `TRUST_PROXY`
+- `HELMET_ENABLED`
+- `THROTTLE_TTL_MS`
+- `THROTTLE_LIMIT`
 
 ## Install
 
@@ -49,6 +55,18 @@ npm run start:dev
 Backend runs on `http://localhost:4000` by default.
 
 If `npm install` fails in your environment with an `Invalid Version` resolver error, use `pnpm` for dependency installation and continue using the normal npm scripts afterward.
+
+## Security Baseline
+
+Current backend protections include:
+
+- strict DTO validation and field whitelisting
+- request throttling with proxy-aware client tracking
+- explicit CORS allow-listing
+- `helmet` security headers
+- sanitized exception responses
+- request IDs for tracing
+- startup validation for key environment variables
 
 ## Current Endpoints
 
