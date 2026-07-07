@@ -1,6 +1,14 @@
 import { Link } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
 import AppStatePanel from '../../components/app/AppStatePanel.jsx'
+import ScanStatusBadge from '../../components/app/ScanStatusBadge.jsx'
+import {
+  formatFileSize,
+  formatScanTimestamp,
+  getVerdictLabel,
+} from '../../components/app/scanPresentation.js'
 import { useAuth } from '../../context/AuthContext.jsx'
+import { listScans } from '../../lib/api.js'
 
 function StatCard({ label, value, detail }) {
   return (
@@ -14,6 +22,51 @@ function StatCard({ label, value, detail }) {
 
 export default function AppDashboardPage() {
   const { profile, permissions, workspaceContext } = useAuth()
+  const [scanState, setScanState] = useState({
+    status: 'loading',
+    scans: [],
+    error: '',
+  })
+
+  useEffect(() => {
+    let isCancelled = false
+
+    async function loadScans() {
+      try {
+        const response = await listScans()
+
+        if (isCancelled) return
+        setScanState({
+          status: 'ready',
+          scans: response.scans || [],
+          error: '',
+        })
+      } catch (error) {
+        if (isCancelled) return
+        setScanState({
+          status: 'error',
+          scans: [],
+          error: error.message || 'Failed to load dashboard activity.',
+        })
+      }
+    }
+
+    void loadScans()
+
+    return () => {
+      isCancelled = true
+    }
+  }, [])
+
+  const stats = useMemo(() => {
+    const scans = scanState.scans
+    return {
+      total: scans.length,
+      active: scans.filter((scan) => ['queued', 'processing'].includes(scan.status)).length,
+      complete: scans.filter((scan) => scan.status === 'complete').length,
+      latest: scans[0] || null,
+    }
+  }, [scanState.scans])
 
   return (
     <div className="space-y-8">
@@ -37,44 +90,115 @@ export default function AppDashboardPage() {
             detail="Context-aware navigation is live and saved between sessions."
           />
           <StatCard
-            label="Upload queue"
-            value="0"
-            detail="No media has been submitted yet in this phase."
+            label="Active queue"
+            value={scanState.status === 'loading' ? '...' : String(stats.active)}
+            detail="Queued and processing cases now surface directly in the dashboard."
           />
           <StatCard
-            label="Team access"
-            value={permissions.team ? 'On' : 'Off'}
-            detail="Team routes are permission-checked before access is granted."
+            label="Completed cases"
+            value={scanState.status === 'loading' ? '...' : String(stats.complete)}
+            detail="Completed scans are ready to review in the reports workspace."
           />
         </div>
       </section>
 
       <section className="grid gap-6 xl:grid-cols-2">
-        <AppStatePanel
-          label="Empty"
-          title="No uploads have been started yet"
-          description="The authenticated shell is ready to receive the real verification workflow next. Users land in a clear zero-state instead of a blank screen."
-          action={
-            <Link
-              to="/app/uploads"
-              className="inline-flex rounded-xl bg-charcoal px-5 py-3 text-sm font-medium text-parchment transition hover:bg-charcoal-soft"
-            >
-              Review upload workspace
-            </Link>
-          }
-        />
+        {scanState.status === 'loading' && (
+          <AppStatePanel
+            label="Loading"
+            title="Loading recent cases"
+            description="Fetching the latest verification cases so the dashboard can surface queue activity and recent report outcomes."
+            variant="loading"
+          />
+        )}
+
+        {scanState.status === 'error' && (
+          <AppStatePanel
+            label="Error"
+            title="Dashboard activity could not be loaded"
+            description={scanState.error}
+            variant="error"
+            action={
+              <Link
+                to="/app/uploads"
+                className="inline-flex rounded-xl bg-charcoal px-5 py-3 text-sm font-medium text-parchment transition hover:bg-charcoal-soft"
+              >
+                Open upload workspace
+              </Link>
+            }
+          />
+        )}
+
+        {scanState.status === 'ready' && scanState.scans.length === 0 && (
+          <AppStatePanel
+            label="Empty"
+            title="No uploads have been started yet"
+            description="The workflow is live. Start a scan to create your first case, then return here to monitor queue activity and open the resulting report."
+            action={
+              <Link
+                to="/app/uploads"
+                className="inline-flex rounded-xl bg-charcoal px-5 py-3 text-sm font-medium text-parchment transition hover:bg-charcoal-soft"
+              >
+                Start first scan
+              </Link>
+            }
+          />
+        )}
+
+        {scanState.status === 'ready' && scanState.scans.length > 0 && (
+          <section className="rounded-3xl border border-stone-light bg-white-warm p-6 shadow-sm">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">
+                  Recent cases
+                </p>
+                <h3 className="mt-3 font-serif text-2xl text-charcoal">
+                  Latest verification activity
+                </h3>
+              </div>
+              <Link
+                to="/app/reports"
+                className="text-sm font-medium text-charcoal transition hover:text-charcoal-soft"
+              >
+                View all reports
+              </Link>
+            </div>
+            <div className="mt-6 space-y-4">
+              {scanState.scans.slice(0, 4).map((scan) => (
+                <Link
+                  key={scan.id}
+                  to={`/app/reports/${scan.id}`}
+                  className="block rounded-2xl border border-stone-light bg-parchment px-4 py-4 transition hover:border-charcoal/35"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-charcoal">{scan.original_filename}</p>
+                      <p className="mt-1 text-xs text-charcoal-mid">
+                        {formatFileSize(scan.file_size_bytes)}. {formatScanTimestamp(scan.created_at)}
+                      </p>
+                    </div>
+                    <ScanStatusBadge status={scan.status} />
+                  </div>
+                  <p className="mt-3 text-sm text-charcoal-mid">
+                    Verdict: <span className="font-medium text-charcoal">{getVerdictLabel(scan)}</span>
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
 
         <AppStatePanel
           label="Success"
           title="Access is active and protected"
-          description="Your session is stored, restored on refresh, and gated behind protected routes so only approved users can reach the product shell."
+          description="Your session is restored on refresh, protected routes are enforced, and dashboard activity now reflects live scan records."
           variant="success"
         />
 
         <AppStatePanel
           label="Loading"
-          title="Async workflow states are defined"
-          description="Loading surfaces are already in place for route protection and will also support future upload processing, report retrieval, and dashboard refresh operations."
+          title="Async workflow states are active"
+          description="Uploads, queued jobs, processing status, and report history now follow the same state-driven product surfaces instead of relying on placeholder messaging."
           variant="loading"
           children={
             <div className="flex items-center gap-3 rounded-2xl border border-sky-100 bg-sky-50/50 px-4 py-3">
@@ -87,10 +211,29 @@ export default function AppDashboardPage() {
         />
 
         <AppStatePanel
-          label="Error"
-          title="Failure messaging has a dedicated surface"
-          description="When uploads, reports, or account actions fail, the shell already has a consistent error presentation instead of forcing users back into generic browser alerts."
-          variant="error"
+          label="Workspace"
+          title={permissions.team ? 'Team access is enabled' : 'Team access stays gated'}
+          description={
+            permissions.team
+              ? 'This account can move into team-aware workflows once shared case review ships.'
+              : 'The current MVP remains individual-first. Team routes stay locked until organization workflows are implemented.'
+          }
+          variant={permissions.team ? 'success' : 'empty'}
+          children={
+            stats.latest ? (
+              <div className="rounded-2xl border border-stone-light bg-parchment px-4 py-4">
+                <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">
+                  Latest case
+                </p>
+                <p className="mt-2 text-sm font-medium text-charcoal">
+                  {stats.latest.original_filename}
+                </p>
+                <p className="mt-1 text-sm text-charcoal-mid">
+                  Updated {formatScanTimestamp(stats.latest.updated_at)}
+                </p>
+              </div>
+            ) : null
+          }
         />
       </section>
     </div>

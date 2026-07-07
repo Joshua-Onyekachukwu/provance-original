@@ -1,5 +1,6 @@
 import AppStatePanel from '../../components/app/AppStatePanel.jsx'
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { getScan, initiateScan, submitScan } from '../../lib/api.js'
 import { supabase } from '../../lib/supabase.js'
 
@@ -231,6 +232,16 @@ export default function AppUploadsPage() {
             title="Scan completed"
             description="A placeholder verdict payload is now attached to this scan. Report rendering and real signal engines ship in subsequent phases."
             variant="success"
+            action={
+              activeScanId ? (
+                <Link
+                  to={`/app/reports/${activeScanId}`}
+                  className="inline-flex rounded-xl bg-charcoal px-5 py-3 text-sm font-medium text-parchment transition hover:bg-charcoal-soft"
+                >
+                  Open report workspace
+                </Link>
+              ) : null
+            }
           />
         )}
 

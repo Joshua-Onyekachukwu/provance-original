@@ -1,5 +1,38 @@
 # Provance — Changelog
 
+## [2026-07-07] - Queue Worker And Report Workspace
+
+### Added
+- `backend/src/queue/*` - Queue module, Redis connection parsing, and job enqueue service for worker-backed scan processing
+- `backend/src/worker.ts` - Dedicated worker runtime for background scan processing
+- `backend/Dockerfile.worker` - Separate worker image for Fly deployment
+- `backend/fly.worker.toml` - Fly configuration for the worker service
+- `src/components/app/ScanStatusBadge.jsx` - Shared scan-status badge for dashboard and reports surfaces
+- `src/components/app/scanPresentation.js` - Shared scan formatting and verdict presentation helpers
+
+### Updated
+- `backend/src/scans/scans.service.ts` - Enqueues scans into Redis when configured and processes them through the worker path
+- `backend/src/main.ts` - Explicitly binds the backend service to `0.0.0.0` for Fly machine networking
+- `backend/src/config/env.validation.ts` - Added Redis URL, queue name, and worker concurrency validation
+- `backend/package.json` - Added the worker start script and queue dependencies
+- `src/pages/app/AppDashboardPage.jsx` - Replaced placeholder dashboard stats with live scan-backed metrics and recent case links
+- `src/pages/app/AppReportsPage.jsx` - Replaced the placeholder reports state with real case listing and report detail rendering
+- `src/pages/app/AppUploadsPage.jsx` - Added direct navigation into report review after a scan completes
+- `src/components/app/AppShellLayout.jsx` - Updated shell messaging to reflect the live MVP workspace instead of the old Phase 4 label
+- `src/App.jsx` - Added `/app/reports/:scanId` report-detail routing
+- `.env.example` - Expanded the frontend template as a clearer single source of truth
+- `backend/.env.example` - Added queue and worker environment template values
+- `docs/engineering/CREDENTIALS_AND_ENVIRONMENT_VARIABLES.md` - Added ready-to-paste platform values and current configuration status
+- `docs/engineering/DEPLOYMENT_FLYIO_AND_UPSTASH.md` - Documented worker deployment and queue environment setup
+- `docs/engineering/PHASE_TASK_LIST.md` - Updated the phase map to reflect queue-backed processing, report surfaces, and the future dashboard redesign
+- `docs/engineering/CURRENT_IMPLEMENTATION_STATUS.md` - Recorded the report workspace and worker-backed scan processing status
+
+### Validated
+- `npm run check:launch`
+- Fly deployment of `provance-api`
+- Fly deployment of `provance-worker`
+- live `GET https://provance-api.fly.dev/v1/health`
+
 ## [2026-07-07] - Phase 5 Upload Workflow Foundation
 
 ### Added

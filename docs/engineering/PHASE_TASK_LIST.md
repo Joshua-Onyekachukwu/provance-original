@@ -112,13 +112,16 @@ Core tasks:
 - validate file types and upload constraints
 - store uploaded files and metadata
 - create job records for analysis
+- enqueue jobs through the worker-backed queue
 - define verification status lifecycle
 - show analysis progress and result states in the app
+- surface case history in the dashboard and reports workspace
 
 Exit criteria:
 
 - users can submit a file into a real workflow
 - the system can track a verification case from submission to result
+- authenticated users can find and reopen prior cases without leaving the app
 
 ## Phase 6. Report And Evidence Layer
 
@@ -129,6 +132,7 @@ Turn analysis results into structured, reviewable outputs.
 Core tasks:
 
 - build report view inside the application
+- build a report list and report detail view backed by real scan records
 - define report sections for verdict, evidence, metadata, timeline, and references
 - support report export or printable output
 - preserve audit trail and report identifiers
@@ -205,6 +209,7 @@ Core tasks:
 
 - run end-to-end flow review from waitlist to authenticated use
 - tighten copy, UX, and support content across the full experience
+- redesign the authenticated dashboard once the MVP data surfaces are stable
 - complete deployment and environment readiness review
 - ensure documentation reflects the shipped state
 - finalize launch checklist and beta support workflow
@@ -217,10 +222,10 @@ Exit criteria:
 
 The most important next tasks are:
 
-1. build the first real upload and verification workflow
-2. connect file validation, intake constraints, and job lifecycle handling
-3. render real case progress and result states inside the authenticated shell
-4. begin the structured report and evidence layer after upload flow is stable
+1. validate the live end-to-end upload, queue, and report flow against production services
+2. deepen the report and evidence layer beyond the placeholder verdict payload
+3. build the internal waitlist and invite operations workflow
+4. plan the authenticated dashboard redesign after MVP workflows are complete
 
 ## Documentation Rules
 

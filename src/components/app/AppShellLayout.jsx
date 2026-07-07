@@ -141,15 +141,16 @@ export default function AppShellLayout() {
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">
-                  Phase 4
+                  MVP workspace
                 </p>
                 <h1 className="mt-2 font-serif text-3xl text-charcoal sm:text-4xl">
-                  Authenticated app shell
+                  Verification operations
                 </h1>
               </div>
               <div className="rounded-2xl border border-stone-light bg-white-warm px-4 py-3 text-sm text-charcoal-mid">
-                Protected routes, account preferences, and product-ready navigation are
-                now available inside the signed-in experience.
+                Protected navigation, uploads, report review, and account management now
+                share one authenticated workspace while the deeper dashboard redesign
+                remains a later phase.
               </div>
             </div>
           </header>

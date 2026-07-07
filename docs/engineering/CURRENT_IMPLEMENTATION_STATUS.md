@@ -82,6 +82,14 @@ The working product direction is:
   - `GET /v1/scans/:scanId` (scan detail with result payload)
 - Supabase JWT authentication guard added for scan endpoints
 - Scan storage and data model migration added at `supabase/migrations/0002_scans.sql`
+- Upstash-backed queue processing is now wired through the Fly worker deployment path
+
+### Phase 6 Report And Case Review Foundation
+
+- `/app/reports` now loads real scan history instead of a placeholder panel
+- `/app/reports/:scanId` now renders report detail for a selected case
+- Dashboard cards and recent activity are now backed by live scan records
+- Completed uploads now deep-link directly into the report workspace
 
 ### NestJS Backend Scaffold
 
@@ -132,10 +140,12 @@ The working product direction is:
 
 ### Product Application
 
-- Upload and analysis workflow beyond the initial Phase 5 scaffold
-- Report management
+- Richer upload and analysis workflow beyond the current placeholder verdict payload
+- Report export and printable output
+- Evidence timeline and reference handling
 - Organization and team access controls
 - Audit review tools
+- Authenticated dashboard redesign and higher-density case triage UI
 
 ## Validation Status
 
@@ -193,10 +203,11 @@ Validated in this phase:
 1. Add invite issuance and waitlist review tooling for internal operators
 2. Implement password reset UI and the recovery callback flow
 3. Apply the Phase 5 scan migration, create the uploads bucket, and validate the upload flow against Supabase
-4. Replace stub processing with a real fast worker and a queue-backed job lifecycle
-5. Add a first report list view under `/app/reports` backed by real scan records
+4. Validate the live worker-backed queue flow end to end through the deployed frontend
+5. Replace the placeholder verdict payload with richer signal outputs and evidence sections
 6. Move account preference storage from local-only to a Supabase-backed profile model
-7. Extend audit coverage into admin actions and suspicious-auth monitoring
+7. Add internal waitlist review, approval, and invite issuance tooling
+8. Extend audit coverage into admin actions and suspicious-auth monitoring
 
 ## Collaboration Notes
 

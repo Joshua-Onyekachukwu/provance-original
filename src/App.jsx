@@ -75,6 +75,7 @@ export default function App() {
         <Route index element={<AppDashboardPage />} />
         <Route path="uploads" element={<AppUploadsPage />} />
         <Route path="reports" element={<AppReportsPage />} />
+        <Route path="reports/:scanId" element={<AppReportsPage />} />
         <Route path="account" element={<AppAccountPage />} />
         <Route path="access-denied" element={<AppAccessDeniedPage />} />
         <Route
