@@ -35,13 +35,13 @@ powershell -Command "iwr `https://fly.io/install.ps1` -useb | iex"
 Verify:
 
 ```powershell
-fly version
+flyctl version
 ```
 
 ### 2) Authenticate
 
 ```powershell
-fly auth login
+flyctl auth login
 ```
 
 ### 3) Deploy the API (NestJS)
@@ -55,7 +55,7 @@ Run these commands from the repo root, but set the working directory to `backend
 
 ```powershell
 cd backend
-fly launch
+flyctl launch
 ```
 
 Recommended launch answers:
@@ -65,6 +65,13 @@ Recommended launch answers:
 - Deploy now: Yes (after fly launch finishes generating config)
 
 If Fly asks for a builder choice, choose the Dockerfile-based option if available. If it only offers buildpacks, accept for the first deploy. We can harden this to a deterministic Docker build immediately after.
+
+If the default remote builder hangs while waiting for Depot, deploy with the Buildkit remote builder instead:
+
+```powershell
+cd backend
+flyctl deploy --config fly.toml --buildkit --depot=false
+```
 
 ### 4) Set production environment variables for the API
 
