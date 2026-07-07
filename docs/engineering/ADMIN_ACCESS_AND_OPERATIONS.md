@@ -38,7 +38,7 @@ An account must meet both requirements below:
 Backend environment variable:
 
 ```bash
-ADMIN_EMAILS=founder@example.com,ops@example.com
+ADMIN_EMAILS=founder@example.com,ops@example.com,founder.admin@provance.local
 ```
 
 Rules:
@@ -74,6 +74,35 @@ Once an approved admin user signs in:
 If the signed-in email is included in `ADMIN_EMAILS`, the sidebar will show an `Admin` navigation item.
 
 If the email is not allowlisted, the route is blocked by the backend and the protected frontend route handling.
+
+## Local Admin Test Account Pattern
+
+For controlled local development, use a dedicated admin test account instead of reusing a normal test user.
+
+Recommended local admin email:
+
+```bash
+founder.admin@provance.local
+```
+
+Recommended local standard user:
+
+```bash
+founder.test@provance.local
+```
+
+How to use the local admin pattern:
+
+1. create the account through the normal invite flow or directly in Supabase Auth for local-only testing
+2. add `founder.admin@provance.local` to `ADMIN_EMAILS`
+3. sign in with that account at `/signin`
+4. open `/app/admin`
+
+Important notes:
+
+- the email alone does not create the account. it only grants admin permission after a real account exists
+- do not use the local admin email in production
+- keep local-only admin emails out of live Fly secrets unless intentionally needed for staging
 
 ## Current Admin Routes
 

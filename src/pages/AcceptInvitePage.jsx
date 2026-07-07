@@ -44,7 +44,7 @@ export default function AcceptInvitePage() {
             </h1>
             <p className="mt-4 text-base leading-relaxed text-charcoal-mid">
               Approved users can activate their account here and continue into the
-              authenticated workspace.
+              verification workspace.
             </p>
 
             {!inviteToken && (

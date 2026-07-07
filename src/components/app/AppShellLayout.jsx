@@ -5,9 +5,9 @@ function getNavItems(permissions) {
   const items = [
     { label: 'Dashboard', href: '/app', note: 'Operations overview' },
     { label: 'Uploads', href: '/app/uploads', note: 'Media intake' },
-    { label: 'Reports', href: '/app/reports', note: 'Case review' },
+    { label: 'Reports', href: '/app/reports', note: 'Verification results' },
     { label: 'Account', href: '/app/account', note: 'Profile and settings' },
-    { label: 'Team', href: '/app/team', note: 'Organization layer' },
+    { label: 'Team', href: '/app/team', note: 'Shared workspace' },
   ]
 
   if (permissions.admin) {
@@ -22,23 +22,23 @@ function getPageMeta(pathname) {
     return {
       eyebrow: 'Intake',
       title: 'Verification intake',
-      detail: 'Create scans, upload evidence, and hand cases into the async processing queue.',
+      detail: 'Create a verification job, upload media securely, and send it into the processing queue.',
     }
   }
 
   if (pathname.startsWith('/app/reports/')) {
     return {
-      eyebrow: 'Case review',
+      eyebrow: 'Verification results',
       title: 'Report workspace',
-      detail: 'Review verdicts, evidence signals, report IDs, and printable output for each case.',
+      detail: 'Review the verdict, technical signals, report ID, and printable output for each upload.',
     }
   }
 
   if (pathname.startsWith('/app/reports')) {
     return {
-      eyebrow: 'Case review',
+      eyebrow: 'Verification results',
       title: 'Report library',
-      detail: 'Browse the verification ledger and open any completed case from one workspace.',
+      detail: 'Browse recent verification activity and open any completed report from one workspace.',
     }
   }
 
@@ -46,7 +46,7 @@ function getPageMeta(pathname) {
     return {
       eyebrow: 'Identity',
       title: 'Account settings',
-      detail: 'Manage operator details, workspace preferences, and session context.',
+      detail: 'Manage profile details, workspace preferences, and session context.',
     }
   }
 
@@ -62,7 +62,7 @@ function getPageMeta(pathname) {
     return {
       eyebrow: 'Operations',
       title: 'Admin control room',
-      detail: 'Review the waitlist, issue invites, and track operational audit activity.',
+      detail: 'Review the waitlist, issue invites, and track operational activity.',
     }
   }
 
@@ -77,7 +77,7 @@ function getPageMeta(pathname) {
   return {
     eyebrow: 'Overview',
     title: 'Verification operations',
-    detail: 'Track queue posture, case readiness, and analyst actions from a single command surface.',
+    detail: 'Track queue posture, report readiness, and workspace activity from a single command surface.',
   }
 }
 
@@ -133,13 +133,13 @@ export default function AppShellLayout() {
                   <div>
                     <p className="font-serif text-2xl text-parchment">Provance</p>
                     <p className="text-xs uppercase tracking-[0.18em] text-parchment/55">
-                      Analyst Console
+                      Verification Workspace
                     </p>
                   </div>
                 </div>
                 <p className="mt-4 max-w-xs text-sm leading-relaxed text-parchment/72">
-                  A controlled workspace for intake, review, and operational trust signals
-                  across the current Provance MVP.
+                  A secure workspace for media intake, verification review, and internal
+                  operations across the current Provance MVP.
                 </p>
               </div>
               <button
@@ -164,11 +164,11 @@ export default function AppShellLayout() {
                   Active session
                 </span>
                 <span className="rounded-full border border-amber-300/18 bg-amber-300/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-amber-100">
-                  {permissions.team ? 'Team enabled' : 'Individual access'}
+                  {permissions.team ? 'Team ready' : 'Individual workspace'}
                 </span>
                 {permissions.admin && (
                   <span className="rounded-full border border-sky-300/18 bg-sky-300/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-sky-100">
-                    Admin enabled
+                    Admin access
                   </span>
                 )}
               </div>
@@ -268,11 +268,11 @@ export default function AppShellLayout() {
                   <p className="mt-2 text-sm font-medium text-charcoal">
                     {permissions.admin
                       ? permissions.team
-                        ? 'Admin · Team-capable'
-                        : 'Admin · Individual'
+                        ? 'Admin. Team ready'
+                        : 'Admin. Individual'
                       : permissions.team
-                        ? 'Operator · Team-capable'
-                        : 'Operator · Individual'}
+                        ? 'Member. Team ready'
+                        : 'Member. Individual'}
                   </p>
                 </div>
               </div>

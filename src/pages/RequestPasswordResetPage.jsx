@@ -33,8 +33,8 @@ export default function RequestPasswordResetPage() {
               Request a password reset
             </h1>
             <p className="mt-4 text-base leading-relaxed text-charcoal-mid">
-              Enter the approved work email tied to your Provance account and we will send
-              a secure recovery link.
+              Enter the email tied to your Provance account and we will send a secure
+              recovery link.
             </p>
 
             {status === 'success' ? (
@@ -43,7 +43,7 @@ export default function RequestPasswordResetPage() {
                   Recovery instructions were requested successfully.
                 </p>
                 <p className="mt-2 text-sm text-emerald-700/90">
-                  If the email belongs to an approved account, a reset link will arrive
+                  If the email belongs to an active account, a reset link will arrive
                   shortly.
                 </p>
                 <Link

@@ -5,8 +5,8 @@ import { getScan, initiateScan, submitScan } from '../../lib/api.js'
 import { supabase } from '../../lib/supabase.js'
 
 const CONSTRAINTS = [
-  'Image-first uploads are the immediate priority for the next workflow phase.',
-  'Video handling will follow the same case-driven flow with audio references folded into the review record.',
+  'Image uploads are supported today and power the current verification workflow.',
+  'Video and audio support will follow the same report structure once those pipelines are enabled.',
   'Validation will enforce file type, size, and integrity checks before analysis starts.',
 ]
 
@@ -133,8 +133,8 @@ export default function AppUploadsPage() {
           Submit a file for verification
         </h2>
         <p className="mt-4 max-w-3xl text-base leading-relaxed text-charcoal-mid">
-          Uploads now create a real scan record, move through an async-ready status
-          lifecycle, and return a structured image-first evidence payload while deeper
+          Uploads create a real verification record, move through an async-ready status
+          lifecycle, and return a structured image-first report payload while deeper
           signal engines continue to mature.
         </p>
 
@@ -185,16 +185,16 @@ export default function AppUploadsPage() {
         {phase === 'idle' && (
           <AppStatePanel
             label="Ready"
-            title="No file is in review yet"
-            description="Select an image to begin. The scan record and upload token are created server-side, then processing starts once the file is stored."
+            title="No file is in progress yet"
+            description="Select an image to begin. The verification record and upload token are created server-side, then processing starts once the file is stored."
           />
         )}
 
         {phase === 'preparing' && (
           <AppStatePanel
             label="Preparing"
-            title="Creating a scan record"
-            description="Generating an upload authorization token and reserving a scan ID."
+            title="Creating a verification record"
+            description="Generating an upload authorization token and reserving a verification ID."
             variant="loading"
           />
         )}
@@ -212,7 +212,7 @@ export default function AppUploadsPage() {
           <AppStatePanel
             label="Submitting"
             title="Starting verification"
-            description="The scan is queued and a processing job is being started."
+            description="The upload is queued and a processing job is being started."
             variant="loading"
           />
         )}
@@ -229,8 +229,8 @@ export default function AppUploadsPage() {
         {phase === 'complete' && (
           <AppStatePanel
             label="Complete"
-            title="Scan completed"
-            description="A structured MVP evidence payload is now attached to this scan, including fingerprints, metadata review, and printable report output."
+            title="Verification completed"
+            description="A structured MVP report payload is now attached to this upload, including fingerprints, metadata review, and printable report output."
             variant="success"
             action={
               activeScanId ? (
@@ -238,7 +238,7 @@ export default function AppUploadsPage() {
                   to={`/app/reports/${activeScanId}`}
                   className="inline-flex rounded-xl bg-charcoal px-5 py-3 text-sm font-medium text-parchment transition hover:bg-charcoal-soft"
                 >
-                  Open report workspace
+                  Open verification report
                 </Link>
               ) : null
             }
@@ -248,7 +248,7 @@ export default function AppUploadsPage() {
         {phase === 'error' && (
           <AppStatePanel
             label="Error"
-            title="Scan failed"
+            title="Verification failed"
             description={error || 'Something went wrong.'}
             variant="error"
           />
@@ -265,7 +265,7 @@ export default function AppUploadsPage() {
           </ul>
           {activeScanId && (
             <div className="mt-6 rounded-2xl border border-stone-light bg-parchment px-4 py-3 text-xs text-charcoal-mid">
-              Active scan ID: <span className="font-mono text-charcoal">{activeScanId}</span>
+              Active verification ID: <span className="font-mono text-charcoal">{activeScanId}</span>
             </div>
           )}
           {activeScan?.status && (

@@ -60,7 +60,7 @@ export default function SignInPage() {
                 transition={{ delay: 0.08 }}
                 className="font-serif text-4xl sm:text-5xl mt-4 text-balance text-charcoal"
               >
-                Early-access sign in for approved users.
+                Sign in to your Provance workspace.
               </motion.h1>
               <motion.p
                 initial={{ opacity: 0, y: 18 }}
@@ -68,17 +68,18 @@ export default function SignInPage() {
                 transition={{ delay: 0.16 }}
                 className="mt-6 text-lg text-charcoal-mid leading-relaxed"
               >
-                Sign in is available for approved users. If you have not been invited
-                yet, join the waitlist and we will route access in cohorts.
+                Access is currently enabled through invite-based onboarding. If your
+                organization has not been approved yet, join the waitlist and we will open
+                access in cohorts.
               </motion.p>
 
               <div className="mt-8 rounded-2xl border border-stone-light bg-white-warm p-6">
                 <h2 className="font-serif text-2xl text-charcoal">Access model</h2>
                 <ul className="mt-4 space-y-3 text-sm text-charcoal-mid">
-                  <li>Waitlist and review</li>
+                  <li>Waitlist review and approvals</li>
                   <li>Invite-based account activation</li>
                   <li>Email verification and secure session handling</li>
-                  <li>Future account management and protected app access</li>
+                  <li>Protected access to the verification workspace</li>
                 </ul>
               </div>
             </div>
@@ -139,7 +140,7 @@ export default function SignInPage() {
 
               <p className="mt-4 text-xs leading-relaxed text-charcoal-light">
                 Access is opened by invitation. Approved users are redirected into the
-                authenticated workspace after sign-in.
+                verification workspace after sign-in.
               </p>
 
               {errorMessage && (

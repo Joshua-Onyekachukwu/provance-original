@@ -126,15 +126,14 @@ export default function AppReportsPage() {
           Reports
         </p>
         <h2 className="mt-3 font-serif text-4xl text-charcoal">
-          Case history and report review
+          Verification history and reports
         </h2>
         <p className="mt-4 max-w-3xl text-base leading-relaxed text-charcoal-mid">
-          Uploaded media now lands in a report workspace where operators can review case
-          status, open completed verdict payloads, and track the queue as the workflow
-          matures.
+          Uploaded media lands in a report workspace where teams can review status,
+          open completed verdict payloads, and track the queue as the workflow matures.
         </p>
         <div className="mt-8 grid gap-4 md:grid-cols-4">
-          <ReportMetaItem label="Total cases" value={String(summary.total)} />
+          <ReportMetaItem label="Total uploads" value={String(summary.total)} />
           <ReportMetaItem label="Completed" value={String(summary.completed)} />
           <ReportMetaItem label="In progress" value={String(summary.active)} />
           <ReportMetaItem label="Failed" value={String(summary.failed)} />
@@ -146,9 +145,9 @@ export default function AppReportsPage() {
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">
-                Case list
+                Verification list
               </p>
-              <h3 className="mt-2 font-serif text-2xl text-charcoal">All scans</h3>
+              <h3 className="mt-2 font-serif text-2xl text-charcoal">All uploads</h3>
             </div>
             <Link
               to="/app/uploads"
@@ -162,8 +161,8 @@ export default function AppReportsPage() {
             <div className="mt-6">
               <AppStatePanel
                 label="Loading"
-                title="Loading case history"
-                description="Fetching uploaded cases and report-ready records."
+                title="Loading verification history"
+                description="Fetching uploaded files and report-ready records."
                 variant="loading"
               />
             </div>
@@ -185,7 +184,7 @@ export default function AppReportsPage() {
               <AppStatePanel
                 label="Empty"
                 title="No reports are available yet"
-                description="Start a scan in the upload workspace and the resulting case will appear here."
+                description="Start a verification in the upload workspace and the resulting report will appear here."
                 action={
                   <Link
                     to="/app/uploads"
@@ -238,8 +237,8 @@ export default function AppReportsPage() {
         {!scanId && (
           <AppStatePanel
             label="Ready"
-            title="Choose a case to review"
-            description="Select a scan from the case list to inspect verdict details, metadata, and the current report payload."
+            title="Choose a report to review"
+            description="Select an upload from the list to inspect verdict details, metadata, and the current report payload."
           />
         )}
 
@@ -247,7 +246,7 @@ export default function AppReportsPage() {
           <AppStatePanel
             label="Loading"
             title="Loading report detail"
-            description="Fetching the latest case payload and status details."
+            description="Fetching the latest verification payload and status details."
             variant="loading"
           />
         )}
@@ -296,6 +295,18 @@ export default function AppReportsPage() {
                   value={`${formatFileSize(selectedScan.file_size_bytes)}. ${selectedScan.mime_type}`}
                 />
               </div>
+              {selectedScan.asset_preview_url && (
+                <div className="mt-6 rounded-2xl border border-stone-light bg-parchment p-4">
+                  <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">
+                    Media preview
+                  </p>
+                  <img
+                    src={selectedScan.asset_preview_url}
+                    alt={selectedScan.original_filename}
+                    className="mt-4 max-h-[24rem] w-full rounded-2xl object-contain"
+                  />
+                </div>
+              )}
             </section>
 
             <section className="rounded-3xl border border-stone-light bg-white-warm p-6 shadow-sm">
@@ -308,7 +319,7 @@ export default function AppReportsPage() {
               <p className="mt-3 text-sm leading-relaxed text-charcoal-mid">
                 {selectedVerdict?.plain_language_summary ||
                   selectedScan.failure_reason ||
-                  'This case has not produced a verdict payload yet.'}
+                  'This upload has not produced a verdict payload yet.'}
               </p>
               <div className="mt-6 grid gap-4 md:grid-cols-3">
                 <ReportMetaItem
@@ -338,10 +349,10 @@ export default function AppReportsPage() {
               <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">
                 Signals
               </p>
-              <h3 className="mt-3 font-serif text-2xl text-charcoal">Evidence pipeline</h3>
+              <h3 className="mt-3 font-serif text-2xl text-charcoal">Signal analysis</h3>
               {selectedSignals.length === 0 ? (
                 <p className="mt-4 text-sm text-charcoal-mid">
-                  No signal detail is available for this case yet.
+                  No signal detail is available for this upload yet.
                 </p>
               ) : (
                 <div className="mt-5 space-y-4">

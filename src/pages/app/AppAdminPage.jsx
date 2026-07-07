@@ -200,9 +200,9 @@ export default function AppAdminPage() {
           Waitlist and access operations
         </h2>
         <p className="mt-4 max-w-3xl text-base leading-relaxed text-charcoal-mid">
-          The MVP admin layer gives operators a controlled way to review applicants,
-          record notes, approve access, and generate secure invite links without going
-          directly into the database.
+          The MVP admin layer gives internal operators a controlled way to review
+          applicants, record notes, approve access, and generate secure invite links
+          without going directly into the database.
         </p>
         <div className="mt-8 grid gap-4 md:grid-cols-3 xl:grid-cols-6">
           <StatCard label="Registrations" value={String(summary.totalRegistrations)} detail="All waitlist records captured so far." />
@@ -276,7 +276,7 @@ export default function AppAdminPage() {
                   </span>
                 </div>
                 <p className="mt-3 text-sm text-charcoal-mid">
-                  {application.company || 'Independent operator'}. {application.role_title || 'Role not provided'}
+                  {application.company || 'Independent user'}. {application.role_title || 'Role not provided'}
                 </p>
               </button>
             ))}
@@ -295,7 +295,7 @@ export default function AppAdminPage() {
               <div className="mt-5 grid gap-4 md:grid-cols-2">
                 <StatCard label="Email" value={selectedApplication.email} detail="Primary account email." />
                 <StatCard label="Company" value={selectedApplication.company || 'Not provided'} detail="Organization or team context." />
-                <StatCard label="Role" value={selectedApplication.role_title || 'Not provided'} detail="Declared operator role." />
+                <StatCard label="Role" value={selectedApplication.role_title || 'Not provided'} detail="Declared role or function." />
                 <StatCard label="Current status" value={selectedApplication.status.replaceAll('_', ' ')} detail="Latest review outcome." />
               </div>
 
@@ -308,6 +308,9 @@ export default function AppAdminPage() {
 
               <label className="mt-6 block">
                 <span className="text-sm font-medium text-charcoal">Operator notes</span>
+                <span className="mt-1 block text-sm text-charcoal-mid">
+                  Capture internal context, onboarding notes, or follow-up decisions for this applicant.
+                </span>
                 <textarea
                   value={notes}
                   onChange={(event) => setNotes(event.target.value)}

@@ -10,15 +10,15 @@ export default function AppAccessDeniedPage() {
         </p>
         <h2 className="mt-3 font-serif text-4xl text-charcoal">Team access is not enabled</h2>
         <p className="mt-4 max-w-3xl text-base leading-relaxed text-charcoal-mid">
-          Your current account is signed in successfully, but it does not yet have team
-          workspace permission. The individual shell remains available.
+          Your account is signed in successfully, but it does not yet have access to this
+          shared workspace. Your individual workspace remains available.
         </p>
       </section>
 
       <AppStatePanel
         label="Error"
         title="Permission check blocked this route"
-        description="Phase 4 includes explicit route-level permission handling so team-only product areas do not quietly expose unfinished or unauthorized surfaces."
+        description="Route-level permission handling keeps shared and restricted areas from appearing before the required access is enabled."
         variant="error"
         action={
           <div className="flex flex-wrap gap-3">

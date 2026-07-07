@@ -27,7 +27,7 @@ function StatCard({ label, value, detail, tone = 'default' }) {
   )
 }
 
-function CaseLedgerRow({ scan, index }) {
+function VerificationRow({ scan, index }) {
   return (
     <Link
       to={`/app/reports/${scan.id}`}
@@ -35,7 +35,7 @@ function CaseLedgerRow({ scan, index }) {
     >
       <div className="flex items-center gap-4 lg:block">
         <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-charcoal-light">
-          Case
+          Item
         </p>
         <p className="mt-1 font-serif text-3xl text-charcoal lg:mt-3">
           {String(index + 1).padStart(2, '0')}
@@ -148,7 +148,7 @@ export default function AppDashboardPage() {
             : `${stats.active} active job${stats.active === 1 ? '' : 's'}`,
         detail:
           stats.active === 0
-            ? 'No scans are currently waiting in the live queue.'
+            ? 'No files are currently waiting in the live queue.'
             : `${stats.queued} queued and ${stats.processing} processing.`,
       },
       {
@@ -156,16 +156,16 @@ export default function AppDashboardPage() {
         value: `${stats.complete}/${stats.total || 0}`,
         detail:
           stats.complete > 0
-            ? 'Completed cases are available for structured report review.'
+            ? 'Completed uploads are available for report review.'
             : 'No completed report packages are available yet.',
       },
       {
-        label: 'Review pressure',
+        label: 'Risk watch',
         value: stats.suspicious > 0 ? `${stats.suspicious} flagged` : 'Stable',
         detail:
           stats.suspicious > 0
-            ? 'Suspicious verdicts should be escalated into manual review.'
-            : 'No suspicious verdicts are currently surfaced in the latest case set.',
+            ? 'Uploads with elevated risk should be reviewed before you share results.'
+            : 'No elevated-risk uploads are currently surfaced in the latest results.',
       },
     ]
   }, [scanState.status, stats])
@@ -179,12 +179,12 @@ export default function AppDashboardPage() {
           {
             label: 'Queue posture',
             value: 'Loading',
-            detail: 'The dashboard is loading the latest scan ledger and queue state now.',
+            detail: 'The dashboard is loading the latest verification activity and queue state now.',
           },
           {
             label: 'Report coverage',
             value: 'Loading',
-            detail: 'Completed case coverage will appear here as soon as the feed responds.',
+            detail: 'Completed report coverage will appear here as soon as the feed responds.',
           },
         ],
       }
@@ -200,10 +200,10 @@ export default function AppDashboardPage() {
             detail: scanState.error,
           },
           {
-            label: 'Operator action',
+            label: 'Next action',
             value: 'Use uploads',
             detail:
-              'You can continue into the upload workspace while the dashboard feed is recovering.',
+              'You can continue in the upload workspace while the dashboard feed recovers.',
           },
         ],
       }
@@ -221,15 +221,14 @@ export default function AppDashboardPage() {
         <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
           <div>
             <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-parchment/48">
-              Analyst overview
+              Workspace overview
             </p>
             <h2 className="mt-4 max-w-4xl font-serif text-4xl leading-tight text-parchment sm:text-[3.35rem]">
-              {profile?.displayName || 'Provance Operator'}, the verification ledger is live.
+              {profile?.displayName || 'Provance User'}, your verification workspace is live.
             </h2>
             <p className="mt-4 max-w-3xl text-base leading-relaxed text-parchment/72">
-              The dashboard now acts as a forensic command surface. It highlights active
-              queue pressure, recent case readiness, and the current review posture before
-              you drop into uploads, reports, or admin operations.
+              Track active processing, completed reports, and recent verification outcomes
+              before you move into uploads, reports, or admin operations.
             </p>
 
             <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -241,19 +240,19 @@ export default function AppDashboardPage() {
               <StatCard
                 label="Queue"
                 value={scanState.status === 'loading' ? '...' : String(stats.active)}
-                detail="Active cases currently queued or processing."
+                detail="Uploads currently queued or processing."
                 tone="active"
               />
               <StatCard
                 label="Completed"
                 value={scanState.status === 'loading' ? '...' : String(stats.complete)}
-                detail="Cases ready for structured report review."
+                detail="Reports ready to review or export."
                 tone="success"
               />
               <StatCard
                 label="Flagged"
                 value={scanState.status === 'loading' ? '...' : String(stats.suspicious)}
-                detail="Recent cases with suspicious verdict posture."
+                detail="Recent uploads that merit closer review."
                 tone="warning"
               />
             </div>
@@ -287,8 +286,8 @@ export default function AppDashboardPage() {
         {scanState.status === 'loading' && (
           <AppStatePanel
             label="Loading"
-            title="Loading recent cases"
-            description="Fetching the latest verification cases so the dashboard can surface queue activity and recent report outcomes."
+            title="Loading recent activity"
+            description="Fetching the latest uploads so the dashboard can surface queue activity and recent report outcomes."
             variant="loading"
           />
         )}
@@ -314,7 +313,7 @@ export default function AppDashboardPage() {
           <AppStatePanel
             label="Empty"
             title="No uploads have been started yet"
-            description="The workflow is live. Start a scan to create your first case, then return here to monitor queue activity and open the resulting report."
+            description="The workflow is live. Start a verification to create your first report, then return here to monitor progress and open the result."
             action={
               <Link
                 to="/app/uploads"
@@ -334,12 +333,12 @@ export default function AppDashboardPage() {
                   Verification ledger
                 </p>
                 <h3 className="mt-3 font-serif text-3xl text-charcoal">
-                  Latest analyst-ready cases
+                  Latest verification activity
                 </h3>
                 <p className="mt-3 max-w-3xl text-sm leading-relaxed text-charcoal-mid">
-                  This ledger condenses the newest cases into one review surface so an
-                  operator can scan filename, verdict, report identity, and queue status
-                  before opening the full report.
+                  This view condenses your newest uploads into one surface so you can scan
+                  filename, verdict, report ID, and queue status before opening the full
+                  report.
                 </p>
               </div>
               <Link
@@ -351,7 +350,7 @@ export default function AppDashboardPage() {
             </div>
             <div className="mt-6 space-y-4">
               {scanState.scans.slice(0, 5).map((scan, index) => (
-                <CaseLedgerRow key={scan.id} scan={scan} index={index} />
+                <VerificationRow key={scan.id} scan={scan} index={index} />
               ))}
             </div>
           </section>
@@ -360,10 +359,10 @@ export default function AppDashboardPage() {
         <div className="space-y-6">
           <section className="rounded-[2rem] border border-stone-light bg-white-warm p-6 shadow-sm">
             <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-charcoal-light">
-              Analyst notes
+              Workspace notes
             </p>
             <h3 className="mt-3 font-serif text-3xl text-charcoal">
-              Current working posture
+              Current platform status
             </h3>
             <div className="mt-5 space-y-4">
               <div className="rounded-2xl border border-stone-light bg-parchment px-4 py-4">
@@ -374,19 +373,19 @@ export default function AppDashboardPage() {
                 </p>
               </div>
               <div className="rounded-2xl border border-stone-light bg-parchment px-4 py-4">
-                <p className="text-sm font-medium text-charcoal">Team posture</p>
+                <p className="text-sm font-medium text-charcoal">Collaboration status</p>
                 <p className="mt-2 text-sm leading-relaxed text-charcoal-mid">
                   {permissions.team
-                    ? 'Team access is available for this operator. Collaboration workflows remain the next major expansion.'
-                    : 'This workspace stays individual-first until the Phase 7 organization layer is opened.'}
+                    ? 'Team access is available for this account. Shared review workflows remain the next major expansion.'
+                    : 'This workspace stays individual-first until the organization layer is opened.'}
                 </p>
               </div>
               <div className="rounded-2xl border border-stone-light bg-parchment px-4 py-4">
-                <p className="text-sm font-medium text-charcoal">Latest case heartbeat</p>
+                <p className="text-sm font-medium text-charcoal">Latest activity</p>
                 <p className="mt-2 text-sm leading-relaxed text-charcoal-mid">
                   {stats.latest
                     ? `${stats.latest.original_filename} last changed ${formatScanTimestamp(stats.latest.updated_at)}.`
-                    : 'No case heartbeat is available yet.'}
+                    : 'No recent upload activity is available yet.'}
                 </p>
               </div>
             </div>
@@ -395,10 +394,10 @@ export default function AppDashboardPage() {
           {stats.latest ? (
             <section className="rounded-[2rem] border border-stone-light bg-white-warm p-6 shadow-sm">
               <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-charcoal-light">
-                Latest evidence package
+                Latest signal summary
               </p>
               <h3 className="mt-3 font-serif text-3xl text-charcoal">
-                Current case signal readout
+                Current verification readout
               </h3>
               <div className="mt-5 grid gap-3">
                 {latestSignals.length > 0 ? (
@@ -431,7 +430,7 @@ export default function AppDashboardPage() {
                   <AppStatePanel
                     label="Pending"
                     title="No signal package is available yet"
-                    description="This card will summarize the latest signal outputs once the newest case finishes processing."
+                    description="This card summarizes the latest signal outputs once the newest upload finishes processing."
                   />
                 )}
               </div>

@@ -64,8 +64,8 @@ export default function AppAccountPage() {
           Profile and workspace preferences
         </h2>
         <p className="mt-4 max-w-3xl text-base leading-relaxed text-charcoal-mid">
-          Basic settings are available now so users have a stable account surface while
-          backend profile management and organization controls are still being built.
+          Basic settings are available now so you have a stable account surface while
+          deeper profile management and organization controls are still being built.
         </p>
       </section>
 
@@ -131,8 +131,8 @@ export default function AppAccountPage() {
                   Email notifications
                 </span>
                 <span className="mt-1 block text-sm leading-relaxed text-charcoal-mid">
-                  Keep account-related access and workflow updates enabled for this local
-                  shell profile.
+                  Keep account updates, verification progress, and access notices enabled
+                  for this profile.
                 </span>
               </span>
             </label>
@@ -161,7 +161,7 @@ export default function AppAccountPage() {
         <AppStatePanel
           label="Success"
           title="Preference saving is active"
-          description="Phase 4 includes a working account surface so users can manage display information and workspace defaults before deeper account APIs are introduced."
+          description="This account surface lets you manage display information and workspace defaults before deeper account APIs are introduced."
           variant="success"
         />
       </div>

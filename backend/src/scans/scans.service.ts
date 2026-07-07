@@ -171,7 +171,7 @@ export class ScansService {
     const { data, error } = await adminClient
       .from(this.scansTable)
       .select(
-        'id,status,original_filename,mime_type,file_size_bytes,created_at,updated_at,failure_reason',
+        'id,status,original_filename,mime_type,file_size_bytes,created_at,updated_at,failure_reason,result_payload',
       )
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
@@ -191,8 +191,21 @@ export class ScansService {
     }
 
     const scan = await this.getScanOrThrow(adminClient, userId, scanId);
+    const previewUrl =
+      scan.storage_bucket && scan.storage_path
+        ? await this.createAssetPreviewUrl(
+            adminClient,
+            scan.storage_bucket,
+            scan.storage_path,
+          )
+        : null;
 
-    return { scan };
+    return {
+      scan: {
+        ...scan,
+        asset_preview_url: previewUrl,
+      },
+    };
   }
 
   async processQueuedScan(scanId: string) {
@@ -320,6 +333,25 @@ export class ScansService {
 
     const arrayBuffer = await data.arrayBuffer();
     return Buffer.from(arrayBuffer);
+  }
+
+  private async createAssetPreviewUrl(
+    adminClient: NonNullable<ReturnType<SupabaseService['getAdminClient']>>,
+    bucket: string,
+    storagePath: string,
+  ) {
+    const { data, error } = await adminClient.storage
+      .from(bucket)
+      .createSignedUrl(storagePath, 60 * 60);
+
+    if (error || !data?.signedUrl) {
+      this.logger.warn(
+        `Failed to create asset preview URL for ${bucket}/${storagePath}.`,
+      );
+      return null;
+    }
+
+    return data.signedUrl;
   }
 
   private async buildAnalysisResultPayload(

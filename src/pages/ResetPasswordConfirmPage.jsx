@@ -41,7 +41,7 @@ export default function ResetPasswordConfirmPage() {
               Set a new password
             </h1>
             <p className="mt-4 text-base leading-relaxed text-charcoal-mid">
-              Complete the password reset using the secure token from your recovery email.
+              Complete the password reset using the secure link from your recovery email.
             </p>
 
             {!resetToken && (
