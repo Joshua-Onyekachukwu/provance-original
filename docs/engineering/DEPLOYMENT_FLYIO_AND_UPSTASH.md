@@ -46,6 +46,11 @@ fly auth login
 
 ### 3) Deploy the API (NestJS)
 
+The repo includes Fly.io deployment primitives in:
+
+- `backend/Dockerfile`
+- `backend/fly.toml`
+
 Run these commands from the repo root, but set the working directory to `backend/` before launching.
 
 ```powershell
@@ -55,7 +60,7 @@ fly launch
 
 Recommended launch answers:
 
-- App name: `provance-api` (or `provance-api-prod`)
+- App name: `provance-api` (or `provance-api-prod`). If you pick a different name, update `app = "..."` inside `backend/fly.toml`.
 - Region: pick the closest region to your primary users and to your Upstash Redis region
 - Deploy now: Yes (after fly launch finishes generating config)
 
@@ -123,4 +128,3 @@ Set `REDIS_URL` in:
 - Never store secrets in git. Only store templates in `.env.example`.
 - Use `main` as the production branch. Merge only after `npm run check:launch` passes.
 - For each deploy-related change, update this file and the changelog.
-
