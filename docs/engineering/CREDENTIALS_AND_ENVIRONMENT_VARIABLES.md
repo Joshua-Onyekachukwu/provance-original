@@ -9,6 +9,8 @@ This document lists the environment variables and credentials required to run Pr
 
 This file intentionally does not include any secret values. Store secret values only in the relevant platform secret managers and local `.env` files that are not committed.
 
+This is the single source of truth for environment variable names, safe defaults, deployment targets, and current status.
+
 ## Current Live Endpoints
 
 - Frontend (Vercel): https://provanc3.vercel.app
@@ -33,7 +35,15 @@ These must be configured in the Vercel project environment variables.
 Recommended values:
 
 - `VITE_API_BASE_URL=https://provance-api.fly.dev/v1`
-- `VITE_SUPABASE_URL=https://<your-supabase-project-ref>.supabase.co`
+- `VITE_SUPABASE_URL=https://dmhrwdcuwtgscwlaagsa.supabase.co`
+
+Ready-to-paste Vercel values:
+
+```bash
+VITE_API_BASE_URL=https://provance-api.fly.dev/v1
+VITE_SUPABASE_URL=https://dmhrwdcuwtgscwlaagsa.supabase.co
+VITE_SUPABASE_ANON_KEY=<paste-supabase-anon-key>
+```
 
 ## Fly.io (Backend API) `provance-api`
 
@@ -50,6 +60,8 @@ These are configured as Fly secrets for the `provance-api` app.
 | `SUPABASE_SCANS_TABLE` | Yes | Scans table name (default `scans`). | Done |
 | `SUPABASE_UPLOADS_BUCKET` | Yes | Storage bucket for uploads (default `provance-uploads`). | Done |
 | `REDIS_URL` | No for current stub | Queue connection string for async job processing. | Done |
+| `SCAN_PROCESSING_QUEUE_NAME` | No | Queue name for background scan jobs. | Pending |
+| `WORKER_CONCURRENCY` | No | Worker concurrency for queue processing. | Pending |
 | `THROTTLE_TTL_MS` | No | Rate limiting window. | Pending |
 | `THROTTLE_LIMIT` | No | Rate limiting max requests per window. | Pending |
 | `HELMET_ENABLED` | No | Security headers toggle. | Pending |
@@ -58,6 +70,51 @@ These are configured as Fly secrets for the `provance-api` app.
 Effective configured CORS origin for production:
 
 - `FRONTEND_ORIGIN=https://provanc3.vercel.app`
+
+Ready-to-paste Fly secrets for `provance-api`:
+
+```bash
+SUPABASE_URL=https://dmhrwdcuwtgscwlaagsa.supabase.co
+SUPABASE_ANON_KEY=<paste-supabase-anon-key>
+SUPABASE_SERVICE_ROLE_KEY=<paste-supabase-service-role-key>
+FRONTEND_ORIGIN=https://provanc3.vercel.app
+SUPABASE_SCANS_TABLE=scans
+SUPABASE_UPLOADS_BUCKET=provance-uploads
+REDIS_URL=<paste-upstash-rediss-url>
+SCAN_PROCESSING_QUEUE_NAME=scan-processing
+THROTTLE_TTL_MS=60000
+THROTTLE_LIMIT=60
+HELMET_ENABLED=true
+TRUST_PROXY=true
+```
+
+## Fly.io (Worker) `provance-worker`
+
+The worker processes scan jobs from Upstash Redis. It is deployed separately from the API.
+
+| Variable | Required | Purpose | Status |
+|---|---:|---|---|
+| `SUPABASE_URL` | Yes | Supabase URL for reading and updating scan records. | Pending |
+| `SUPABASE_ANON_KEY` | Yes | Supabase anon key for auth-related helpers. | Pending |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Privileged Supabase key for processing updates. | Pending |
+| `SUPABASE_SCANS_TABLE` | Yes | Scans table name (default `scans`). | Pending |
+| `SUPABASE_UPLOADS_BUCKET` | Yes | Storage bucket for uploads (default `provance-uploads`). | Pending |
+| `REDIS_URL` | Yes | Queue connection string. | Pending |
+| `SCAN_PROCESSING_QUEUE_NAME` | No | Queue name for background scan jobs. | Pending |
+| `WORKER_CONCURRENCY` | No | Number of jobs processed in parallel. | Pending |
+
+Ready-to-paste Fly secrets for `provance-worker`:
+
+```bash
+SUPABASE_URL=https://dmhrwdcuwtgscwlaagsa.supabase.co
+SUPABASE_ANON_KEY=<paste-supabase-anon-key>
+SUPABASE_SERVICE_ROLE_KEY=<paste-supabase-service-role-key>
+SUPABASE_SCANS_TABLE=scans
+SUPABASE_UPLOADS_BUCKET=provance-uploads
+REDIS_URL=<paste-upstash-rediss-url>
+SCAN_PROCESSING_QUEUE_NAME=scan-processing
+WORKER_CONCURRENCY=4
+```
 
 ## Supabase
 
@@ -93,18 +150,38 @@ Notes:
 
 Frontend `.env` (not committed):
 
-- `VITE_API_BASE_URL=http://localhost:4000/v1`
-- `VITE_SUPABASE_URL=...`
-- `VITE_SUPABASE_ANON_KEY=...`
+```bash
+VITE_API_BASE_URL=http://localhost:4000/v1
+VITE_SUPABASE_URL=https://dmhrwdcuwtgscwlaagsa.supabase.co
+VITE_SUPABASE_ANON_KEY=<paste-supabase-anon-key>
+```
 
 Backend `backend/.env.local` or `backend/.env` (not committed):
 
-- `PORT=4000`
-- `FRONTEND_ORIGIN=http://localhost:3000,http://localhost:5173`
-- `SUPABASE_URL=...`
-- `SUPABASE_ANON_KEY=...`
-- `SUPABASE_SERVICE_ROLE_KEY=...`
-- `SUPABASE_SCANS_TABLE=scans`
-- `SUPABASE_UPLOADS_BUCKET=provance-uploads`
-- `REDIS_URL=...` (optional until worker is enabled)
+```bash
+PORT=4000
+FRONTEND_ORIGIN=http://localhost:3000,http://localhost:3001,http://localhost:5173,https://provanc3.vercel.app
+TRUST_PROXY=true
+HELMET_ENABLED=true
+THROTTLE_TTL_MS=60000
+THROTTLE_LIMIT=60
+SUPABASE_URL=https://dmhrwdcuwtgscwlaagsa.supabase.co
+SUPABASE_ANON_KEY=<paste-supabase-anon-key>
+SUPABASE_SERVICE_ROLE_KEY=<paste-supabase-service-role-key>
+SUPABASE_WAITLIST_TABLE=waitlist_applications
+SUPABASE_SCANS_TABLE=scans
+SUPABASE_UPLOADS_BUCKET=provance-uploads
+MAX_UPLOAD_BYTES=52428800
+ALLOWED_UPLOAD_MIME_TYPES=image/jpeg,image/png,image/webp,image/gif
+REDIS_URL=<paste-upstash-rediss-url>
+SCAN_PROCESSING_QUEUE_NAME=scan-processing
+WORKER_CONCURRENCY=4
+```
 
+## Current Platform Status Snapshot
+
+- Fly `provance-api`: deployed and configured with Supabase keys, Redis, and live frontend origin
+- Fly `provance-worker`: code and deployment config added to repo, still needs first deploy
+- Vercel: still needs `VITE_API_BASE_URL`, `VITE_SUPABASE_URL`, and `VITE_SUPABASE_ANON_KEY`
+- Supabase: connected and used by both frontend and backend
+- Upstash Redis: connected at the API level, worker deployment pending

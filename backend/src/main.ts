@@ -81,6 +81,6 @@ async function bootstrap() {
   app.useGlobalFilters(new GlobalExceptionFilter());
   app.enableShutdownHooks();
 
-  await app.listen(configService.get<number>('PORT', 4000));
+  await app.listen(configService.get<number>('PORT', 4000), '0.0.0.0');
 }
 bootstrap();

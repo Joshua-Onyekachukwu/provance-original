@@ -1,0 +1,10 @@
+app = "provance-worker"
+primary_region = "ams"
+
+[build]
+  dockerfile = "Dockerfile.worker"
+
+[env]
+  NODE_ENV = "production"
+  WORKER_CONCURRENCY = "4"
+

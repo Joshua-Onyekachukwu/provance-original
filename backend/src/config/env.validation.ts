@@ -65,6 +65,26 @@ function validateUploadMimeTypes(value: string | undefined): string {
   return [...new Set(mimeTypes)].join(',');
 }
 
+function validateRedisUrl(value: string | undefined): string | undefined {
+  const redisUrl = value?.trim();
+
+  if (!redisUrl) {
+    return undefined;
+  }
+
+  try {
+    const parsed = new URL(redisUrl);
+
+    if (!['redis:', 'rediss:'].includes(parsed.protocol)) {
+      throw new Error();
+    }
+  } catch {
+    throw new Error('REDIS_URL must be a valid redis:// or rediss:// URL.');
+  }
+
+  return redisUrl;
+}
+
 export function validateEnv(config: Record<string, unknown>) {
   const env = config as Record<string, string | undefined>;
   const supabaseUrl = env.SUPABASE_URL?.trim();
@@ -126,5 +146,13 @@ export function validateEnv(config: Record<string, unknown>) {
       'MAX_UPLOAD_BYTES',
     ),
     ALLOWED_UPLOAD_MIME_TYPES: validateUploadMimeTypes(env.ALLOWED_UPLOAD_MIME_TYPES),
+    REDIS_URL: validateRedisUrl(env.REDIS_URL),
+    SCAN_PROCESSING_QUEUE_NAME:
+      env.SCAN_PROCESSING_QUEUE_NAME?.trim() || 'scan-processing',
+    WORKER_CONCURRENCY: parsePositiveInteger(
+      env.WORKER_CONCURRENCY,
+      4,
+      'WORKER_CONCURRENCY',
+    ),
   };
 }

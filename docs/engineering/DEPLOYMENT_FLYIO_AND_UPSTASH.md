@@ -83,6 +83,8 @@ Set these in Fly.io for the `provance-api` app:
 - `FRONTEND_ORIGIN` (your Vercel domains)
 - `SUPABASE_UPLOADS_BUCKET=provance-uploads`
 - `SUPABASE_SCANS_TABLE=scans`
+- `REDIS_URL=<upstash rediss url>`
+- `SCAN_PROCESSING_QUEUE_NAME=scan-processing`
 
 Optional but recommended:
 
@@ -123,6 +125,36 @@ Set `REDIS_URL` in:
 
 - Fly.io `provance-api`
 - Fly.io `provance-worker`
+
+## Worker Deployment
+
+The repo includes a dedicated worker image and Fly config:
+
+- `backend/Dockerfile.worker`
+- `backend/fly.worker.toml`
+- `backend/src/worker.ts`
+
+Deploy it from `backend/`:
+
+```powershell
+flyctl launch --config fly.worker.toml
+flyctl deploy --config fly.worker.toml --buildkit --depot=false
+```
+
+Recommended app name:
+
+- `provance-worker`
+
+Worker secrets to set in Fly:
+
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_SCANS_TABLE=scans`
+- `SUPABASE_UPLOADS_BUCKET=provance-uploads`
+- `REDIS_URL=<upstash rediss url>`
+- `SCAN_PROCESSING_QUEUE_NAME=scan-processing`
+- `WORKER_CONCURRENCY=4`
 
 ## Supabase Notes
 

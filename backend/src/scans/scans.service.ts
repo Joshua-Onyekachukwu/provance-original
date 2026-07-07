@@ -1,11 +1,13 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'crypto';
+import { QueueService } from '../queue/queue.service';
 import { SupabaseService } from '../supabase/supabase.service';
 import { InitiateScanDto } from './dto/initiate-scan.dto';
 import { ScanStatus } from './scans.types';
@@ -27,6 +29,7 @@ type ScanRow = {
 
 @Injectable()
 export class ScansService {
+  private readonly logger = new Logger(ScansService.name);
   private readonly scansTable: string;
   private readonly uploadsBucket: string;
   private readonly maxUploadBytes: number;
@@ -35,6 +38,7 @@ export class ScansService {
   constructor(
     private readonly supabaseService: SupabaseService,
     private readonly configService: ConfigService,
+    private readonly queueService: QueueService,
   ) {
     this.scansTable = this.configService.get<string>('SUPABASE_SCANS_TABLE', 'scans');
     this.uploadsBucket = this.configService.get<string>(
@@ -135,7 +139,11 @@ export class ScansService {
       updated_at: new Date().toISOString(),
     });
 
-    void this.runStubProcessing(adminClient, scanId, scan.user_id, scan);
+    if (this.queueService.isConfigured()) {
+      await this.queueService.enqueueScanProcessing(scanId);
+    } else {
+      void this.runStubProcessing(adminClient, scan);
+    }
 
     return { scanId, status: 'queued' as const };
   }
@@ -174,6 +182,17 @@ export class ScansService {
     return { scan };
   }
 
+  async processQueuedScan(scanId: string) {
+    const adminClient = this.supabaseService.getAdminClient();
+
+    if (!adminClient) {
+      throw new ServiceUnavailableException('Supabase is not configured.');
+    }
+
+    const scan = await this.getScanByIdOrThrow(adminClient, scanId);
+    await this.runStubProcessing(adminClient, scan);
+  }
+
   private async getScanOrThrow(
     adminClient: NonNullable<ReturnType<SupabaseService['getAdminClient']>>,
     userId: string,
@@ -184,6 +203,27 @@ export class ScansService {
       .select('*')
       .eq('id', scanId)
       .eq('user_id', userId)
+      .maybeSingle();
+
+    if (error) {
+      throw new ServiceUnavailableException('Failed to fetch scan.');
+    }
+
+    if (!data) {
+      throw new NotFoundException('Scan not found.');
+    }
+
+    return data as ScanRow;
+  }
+
+  private async getScanByIdOrThrow(
+    adminClient: NonNullable<ReturnType<SupabaseService['getAdminClient']>>,
+    scanId: string,
+  ): Promise<ScanRow> {
+    const { data, error } = await adminClient
+      .from(this.scansTable)
+      .select('*')
+      .eq('id', scanId)
       .maybeSingle();
 
     if (error) {
@@ -214,12 +254,15 @@ export class ScansService {
 
   private async runStubProcessing(
     adminClient: NonNullable<ReturnType<SupabaseService['getAdminClient']>>,
-    scanId: string,
-    userId: string,
     scan: ScanRow,
   ) {
     try {
-      await this.updateScan(adminClient, scanId, {
+      if (!['queued', 'awaiting_upload', 'processing'].includes(scan.status)) {
+        this.logger.warn(`Skipping scan ${scan.id} because it is already ${scan.status}.`);
+        return;
+      }
+
+      await this.updateScan(adminClient, scan.id, {
         status: 'processing',
         updated_at: new Date().toISOString(),
       });
@@ -229,92 +272,13 @@ export class ScansService {
       const completedAt = Date.now();
 
       const analysisTimestamp = new Date().toISOString();
+      const resultPayload = this.buildStubResultPayload(
+        scan,
+        analysisTimestamp,
+        completedAt - startedAt,
+      );
 
-      const resultPayload = {
-        scan_id: scanId,
-        organization_id: null,
-        user_id: userId,
-        media: {
-          original_filename: scan.original_filename,
-          media_type: 'image',
-          mime_type: scan.mime_type,
-          file_size_bytes: scan.file_size_bytes,
-          file_hash_sha256: null,
-          media_hash_md5: null,
-          width: null,
-          height: null,
-          duration_seconds: null,
-          is_ephemeral: false,
-        },
-        verdict: {
-          class: 'inconclusive',
-          display_label: 'Inconclusive',
-          display_color: '#6b6b6b',
-          confidence_score: 0.5,
-          confidence_level: 'insufficient',
-          signal_count_total: 0,
-          signal_count_completed: 0,
-          primary_contributing_signals: [],
-          plain_language_summary:
-            'Processing pipeline is initializing. This result is a placeholder while signal engines are brought online.',
-        },
-        signals: [
-          {
-            signal_id: randomUUID(),
-            signal_name: 'generator_attribution',
-            signal_display_name: 'Generator Attribution (Preview)',
-            signal_category: 'generative',
-            methodology_version: '0.1.0',
-            model_id: 'attribution-stub',
-            model_version: '2026-07-07',
-            analysis_timestamp: analysisTimestamp,
-            status: 'inconclusive',
-            status_reason: 'Generator likelihood estimation is not enabled yet.',
-            confidence: {
-              score: null,
-              level: 'insufficient',
-              threshold_applied: 0.7,
-            },
-            findings: [
-              {
-                finding_id: randomUUID(),
-                finding_type: 'signal_absent',
-                severity: 'informational',
-                label: 'Generator likelihood pending',
-                description:
-                  'Model-likelihood attribution will appear here once generator fingerprints are enabled.',
-                technical_detail: null,
-                raw_value: null,
-                reference_range: null,
-              },
-            ],
-            supplementary_data: null,
-            processing_time_ms: completedAt - startedAt,
-            signal_weight: 0.0,
-          },
-        ],
-        methodology: {
-          version: '0.1.0',
-          release_date: '2026-07-07',
-          analysis_timestamp: analysisTimestamp,
-          environment: null,
-          node_id: null,
-        },
-        report: {
-          report_id: null,
-          report_url: null,
-          share_url: null,
-          generated_at: null,
-        },
-        metadata: {
-          scan_created_at: scan.created_at,
-          scan_completed_at: analysisTimestamp,
-          total_processing_time_ms: completedAt - startedAt,
-          processing_cost_credits: null,
-        },
-      };
-
-      await this.updateScan(adminClient, scanId, {
+      await this.updateScan(adminClient, scan.id, {
         status: 'complete',
         result_payload: resultPayload,
         failure_reason: null,
@@ -322,12 +286,102 @@ export class ScansService {
       });
     } catch (error) {
       const reason = error instanceof Error ? error.message : 'Unknown error.';
-      await this.updateScan(adminClient, scanId, {
+      await this.updateScan(adminClient, scan.id, {
         status: 'failed',
         failure_reason: reason,
         updated_at: new Date().toISOString(),
       });
     }
+  }
+
+  private buildStubResultPayload(
+    scan: ScanRow,
+    analysisTimestamp: string,
+    processingTimeMs: number,
+  ) {
+    return {
+      scan_id: scan.id,
+      organization_id: null,
+      user_id: scan.user_id,
+      media: {
+        original_filename: scan.original_filename,
+        media_type: 'image',
+        mime_type: scan.mime_type,
+        file_size_bytes: scan.file_size_bytes,
+        file_hash_sha256: null,
+        media_hash_md5: null,
+        width: null,
+        height: null,
+        duration_seconds: null,
+        is_ephemeral: false,
+      },
+      verdict: {
+        class: 'inconclusive',
+        display_label: 'Inconclusive',
+        display_color: '#6b6b6b',
+        confidence_score: 0.5,
+        confidence_level: 'insufficient',
+        signal_count_total: 0,
+        signal_count_completed: 0,
+        primary_contributing_signals: [],
+        plain_language_summary:
+          'Processing pipeline is now running through the background queue. This verdict remains a placeholder until the signal engines are enabled.',
+      },
+      signals: [
+        {
+          signal_id: randomUUID(),
+          signal_name: 'generator_attribution',
+          signal_display_name: 'Generator Attribution (Preview)',
+          signal_category: 'generative',
+          methodology_version: '0.1.0',
+          model_id: 'attribution-stub',
+          model_version: '2026-07-07',
+          analysis_timestamp: analysisTimestamp,
+          status: 'inconclusive',
+          status_reason: 'Generator likelihood estimation is not enabled yet.',
+          confidence: {
+            score: null,
+            level: 'insufficient',
+            threshold_applied: 0.7,
+          },
+          findings: [
+            {
+              finding_id: randomUUID(),
+              finding_type: 'signal_absent',
+              severity: 'informational',
+              label: 'Generator likelihood pending',
+              description:
+                'Model-likelihood attribution will appear here once generator fingerprints are enabled.',
+              technical_detail: null,
+              raw_value: null,
+              reference_range: null,
+            },
+          ],
+          supplementary_data: null,
+          processing_time_ms: processingTimeMs,
+          signal_weight: 0.0,
+        },
+      ],
+      methodology: {
+        version: '0.1.0',
+        release_date: '2026-07-07',
+        analysis_timestamp: analysisTimestamp,
+        environment: null,
+        node_id: null,
+      },
+      report: {
+        report_id: null,
+        report_url: null,
+        share_url: null,
+        generated_at: null,
+      },
+      metadata: {
+        scan_created_at: scan.created_at,
+        scan_completed_at: analysisTimestamp,
+        total_processing_time_ms: processingTimeMs,
+        processing_cost_credits: null,
+      },
+    };
   }
 }
 
