@@ -91,7 +91,7 @@ Initial waitlist persistence expects:
 
 Starter schema lives at:
 
-- `backend/supabase/migrations/0001_waitlist_auth.sql`
+- `supabase/migrations/0001_waitlist_auth.sql`
 
 Suggested columns:
 

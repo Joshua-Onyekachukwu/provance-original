@@ -81,7 +81,7 @@ The working product direction is:
   - `GET /v1/scans` (list scans)
   - `GET /v1/scans/:scanId` (scan detail with result payload)
 - Supabase JWT authentication guard added for scan endpoints
-- Scan storage and data model migration added at `backend/supabase/migrations/0002_scans.sql`
+- Scan storage and data model migration added at `supabase/migrations/0002_scans.sql`
 
 ### NestJS Backend Scaffold
 
@@ -108,7 +108,7 @@ The working product direction is:
 
 - Supabase project is connected for local backend validation
 - Backend environment template added
-- Starter SQL migration added at `backend/supabase/migrations/0001_waitlist_auth.sql`
+- Starter SQL migration added at `supabase/migrations/0001_waitlist_auth.sql`
 - Remote tables exist for `waitlist_applications`, `access_invites`, and `auth_audit_events`
 - Waitlist submissions persist into the live `waitlist_applications` table
 - Invite acceptance creates a real Supabase user and updates waitlist and invite state
@@ -185,8 +185,8 @@ Validated in this phase:
 - `backend/src/auth/auth.controller.ts`
 - `backend/src/auth/auth.service.ts`
 - `backend/src/supabase/supabase.service.ts`
-- `backend/supabase/migrations/0001_waitlist_auth.sql`
-- `backend/supabase/migrations/0002_scans.sql`
+- `supabase/migrations/0001_waitlist_auth.sql`
+- `supabase/migrations/0002_scans.sql`
 
 ## Next Recommended Steps
 

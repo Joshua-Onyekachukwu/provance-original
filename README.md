@@ -157,7 +157,7 @@ Environment templates:
 Expected next setup steps:
 
 - connect real Supabase project values
-- apply the starter SQL migration in `backend/supabase/migrations/0001_waitlist_auth.sql`
+- apply the starter SQL migration in `supabase/migrations/0001_waitlist_auth.sql`
 - replace scaffold auth logic with real Supabase Auth integration
 
 ## Documentation

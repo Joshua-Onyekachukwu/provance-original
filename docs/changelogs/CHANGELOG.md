@@ -6,7 +6,7 @@
 - `backend/src/scans/*` - Scan module with signed-upload initiation, submit endpoint, scan listing, and scan detail payloads
 - `backend/src/common/guards/supabase-auth.guard.ts` - Supabase JWT enforcement for authenticated endpoints
 - `backend/src/common/decorators/current-user.decorator.ts` - Request user decorator for authenticated controllers
-- `backend/supabase/migrations/0002_scans.sql` - Scan table and RLS policies for owner access
+- `supabase/migrations/0002_scans.sql` - Scan table, RLS policies for owner access, and the private uploads bucket definition
 - `src/lib/supabase.js` - Supabase client for signed Storage uploads (no persisted browser session)
 
 ### Updated
@@ -124,7 +124,7 @@
 - `backend/src/waitlist/*` - Waitlist module, DTO, controller, and service
 - `backend/src/auth/*` - Auth module, DTOs, controller, and service scaffold
 - `backend/src/supabase/*` - Supabase-ready service layer
-- `backend/supabase/migrations/0001_waitlist_auth.sql` - Starter waitlist and auth-adjacent schema
+- `supabase/migrations/0001_waitlist_auth.sql` - Starter waitlist and auth-adjacent schema
 - `backend/.env.example` - Backend environment template
 - `.env.example` - Frontend API base URL template
 - `src/lib/api.js` - Shared frontend API helper for waitlist and sign-in calls

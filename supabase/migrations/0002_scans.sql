@@ -52,3 +52,17 @@ to authenticated
 using (auth.uid() = user_id)
 with check (auth.uid() = user_id);
 
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'provance-uploads',
+  'provance-uploads',
+  false,
+  52428800,
+  array['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+)
+on conflict (id)
+do update set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types,
+  updated_at = now();
