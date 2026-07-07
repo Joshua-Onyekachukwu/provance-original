@@ -4,6 +4,15 @@
 **Date:** 2026-06-25
 **Purpose:** Sales script, objection handling, and competitive positioning for enterprise sales conversations
 
+> Current-state note. Updated 2026-07-07.
+>
+> This is positioning collateral, not a release-accuracy document.
+>
+> Before using it externally, align language with the current MVP:
+> - current workflow is image-first
+> - the live product has scan history, queue-backed processing, and report detail views
+> - downloadable PDF reports, URL ingestion, batch processing, API integrations, live pricing packages, and video workflows are still future scope
+
 ---
 
 ## 1. Core Sales Narrative

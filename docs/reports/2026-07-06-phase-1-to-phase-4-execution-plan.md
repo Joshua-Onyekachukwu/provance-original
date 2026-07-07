@@ -2,7 +2,13 @@
 
 **Date:** 2026-07-06  
 **Scope:** Ordered delivery plan for public experience, authentication, backend decision, and startup infrastructure actions  
-**Status:** Ready for founder review before implementation
+**Status:** Historical execution plan before the current backend and product-shell implementation
+
+> Update note. 2026-07-07.
+>
+> This plan reflects the repo before backend direction was fully locked and before major parts of the authenticated product were shipped.
+>
+> Since then, the public foundation, sign-in flow, protected app shell, NestJS backend, Fly deployments, and Redis-backed worker path have all advanced. Use `docs/engineering/PHASE_TASK_LIST.md` for the active phase view.
 
 ## 1. Guiding Principle
 

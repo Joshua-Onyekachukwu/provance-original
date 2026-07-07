@@ -1,9 +1,22 @@
 # Provance: Design Partner Outreach Collateral — Phase 1
 
 **Document Owner:** CMO  
-**Status:** Live — Ready for Execution  
+**Status:** Planning collateral. Requires claim review before external use  
 **Date:** 2026-06-25  
 **Goal:** Secure 5 introductory calls with key decision-makers at top-tier newsrooms
+
+> Current-state note. Updated 2026-07-07.
+>
+> This outreach collateral should be reviewed before sending because parts of the product language describe future-state capability.
+>
+> Safe current claims:
+> - Provance is building an evidence-first verification workflow
+> - the product has a live authenticated workspace, queue-backed scan processing, and report review foundations
+>
+> Claims that still require future-state framing:
+> - downloadable forensic PDF reports as a shipped feature
+> - citation exports, share links, and full courtroom-ready package language
+> - image and video parity as current product scope
 
 ---
 

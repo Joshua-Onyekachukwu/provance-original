@@ -2,7 +2,18 @@
 
 **Author:** CTO  
 **Date:** 2026-06-25  
-**Status:** Ratified for Founding Redesign planning  
+**Status:** Historical audit before the backend and authenticated app buildout  
+
+> Update note. 2026-07-07.
+>
+> This audit was accurate when the repo was frontend-only. It is no longer a current description of the codebase.
+>
+> Since then, the repo has added:
+> - a NestJS backend in `backend/`
+> - Supabase-backed auth and scan persistence
+> - protected `/app/*` routes
+> - queue-backed scan processing with a Fly worker
+> - live dashboard, uploads, and report detail foundations
 
 ---
 

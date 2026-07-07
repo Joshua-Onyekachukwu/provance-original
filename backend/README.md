@@ -1,44 +1,58 @@
 # Provance Backend
 
-NestJS backend scaffold for the Provance waitlist-first authentication flow.
+NestJS backend and worker runtime for the Provance MVP.
 
 ## Current Scope
 
-- Health endpoint for local verification
-- Waitlist submission endpoint
-- Auth endpoint structure for sign in, invite acceptance, and password reset
-- Supabase-ready service layer for persistence and auth integration
-- Validation, CORS, and API versioning setup
-- Security headers, request throttling, and startup environment validation
-- Sanitized exception handling and request ID tracing
+The backend currently covers:
+
+- health endpoint for service verification
+- waitlist submission
+- sign-in, invite acceptance, and password reset endpoints
+- Supabase-backed auth and persistence wiring
+- scan initiation, signed upload preparation, scan submission, scan listing, and scan detail retrieval
+- queue-backed scan processing through the worker runtime
+- validation, CORS, API versioning, throttling, and exception handling
 
 ## Folder Shape
 
 ```text
 src/
   auth/
+  common/
+  config/
   health/
+  queue/
+  scans/
   supabase/
   waitlist/
+  main.ts
+  worker.ts
 ```
 
 ## Environment
 
-Copy `backend/.env.example` to `backend/.env` and fill in the values you want to use.
+Copy `backend/.env.example` to `backend/.env` and fill in the values for your environment.
 
-Required for persistence:
-
-- `SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
-
-Optional:
+Core variables:
 
 - `PORT`
 - `FRONTEND_ORIGIN`
-- `TRUST_PROXY`
-- `HELMET_ENABLED`
-- `THROTTLE_TTL_MS`
-- `THROTTLE_LIMIT`
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_WAITLIST_TABLE`
+- `SUPABASE_SCANS_TABLE`
+- `SUPABASE_UPLOADS_BUCKET`
+- `MAX_UPLOAD_BYTES`
+- `ALLOWED_UPLOAD_MIME_TYPES`
+- `REDIS_URL`
+- `SCAN_PROCESSING_QUEUE_NAME`
+- `WORKER_CONCURRENCY`
+
+Reference:
+
+- `../docs/engineering/CREDENTIALS_AND_ENVIRONMENT_VARIABLES.md`
 
 ## Install
 
@@ -46,25 +60,34 @@ Optional:
 npx pnpm@9 install
 ```
 
+If `npm install` fails with an `Invalid Version` resolver issue, continue using `pnpm` for dependency installation and the normal npm scripts afterward.
+
 ## Run
+
+API in development:
 
 ```bash
 npm run start:dev
 ```
 
-Backend runs on `http://localhost:4000` by default.
+Worker locally after build:
 
-For local development, allow both Vite ports unless you have a stricter reason not to:
-
-```env
-FRONTEND_ORIGIN=http://localhost:3000,http://localhost:5173
+```bash
+npm run build
+npm run start:worker
 ```
 
-If `npm install` fails in your environment with an `Invalid Version` resolver error, use `pnpm` for dependency installation and continue using the normal npm scripts afterward.
+Backend runs on `http://localhost:4000` by default.
+
+Recommended local origins:
+
+```env
+FRONTEND_ORIGIN=http://localhost:3000,http://localhost:3001,http://localhost:5173
+```
 
 ## Security Baseline
 
-Current backend protections include:
+Current protections include:
 
 - strict DTO validation and field whitelisting
 - request throttling with proxy-aware client tracking
@@ -73,6 +96,7 @@ Current backend protections include:
 - sanitized exception responses
 - request IDs for tracing
 - startup validation for key environment variables
+- protected scan endpoints through Supabase JWT enforcement
 
 ## Current Endpoints
 
@@ -82,32 +106,41 @@ Current backend protections include:
 - `POST /v1/auth/password-reset/request`
 - `POST /v1/auth/password-reset/confirm`
 - `POST /v1/auth/invites/accept`
+- `POST /v1/scans`
+- `POST /v1/scans/:scanId/submit`
+- `GET /v1/scans`
+- `GET /v1/scans/:scanId`
 
-## Expected Supabase Tables
+## Data Requirements
 
-Initial waitlist persistence expects:
-
-- `waitlist_applications`
-
-Starter schema lives at:
+Migrations currently expected:
 
 - `supabase/migrations/0001_waitlist_auth.sql`
+- `supabase/migrations/0002_scans.sql`
 
-Suggested columns:
+Active tables and storage:
 
-- `id`
-- `email`
-- `full_name`
-- `company`
-- `role_title`
-- `use_case`
-- `status`
-- `created_at`
+- `waitlist_applications`
+- `access_invites`
+- `auth_audit_events`
+- `scans`
+- private storage bucket `provance-uploads`
 
-## Next Implementation Steps
+## Deployment
 
-- Create Supabase tables and row-level access rules
-- Wire invite creation and acceptance to auth records
-- Implement password reset mail delivery
-- Add session storage and protected-route checks
-- Add admin review endpoints for waitlist approval
+Primary deployment path:
+
+- API: `fly.toml`
+- Worker: `fly.worker.toml`
+
+Reference docs:
+
+- `../docs/engineering/DEPLOYMENT_FLYIO_AND_UPSTASH.md`
+- `../docs/engineering/CREDENTIALS_AND_ENVIRONMENT_VARIABLES.md`
+
+## Next Backend Work
+
+- validate the full live queue path through the deployed frontend
+- deepen the placeholder verdict into richer signals and evidence
+- add internal waitlist review and invite issuance tooling
+- move local-only profile state toward a persisted account model

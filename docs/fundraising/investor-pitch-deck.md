@@ -5,6 +5,15 @@
 **Date: 2026-06-25**
 **Author: Business Strategy Lead**
 
+> Current-state note. Updated 2026-07-07.
+>
+> This deck is an investor narrative document and includes future-state product claims.
+>
+> Before using it as an execution reference, align it with current MVP reality:
+> - current product is image-first
+> - authenticated dashboard, uploads, history, and report detail foundations are already live
+> - PDF export, share links, citation tooling, public packaging tiers, and video parity are not shipped yet
+
 ---
 
 ## Slide 1: Title

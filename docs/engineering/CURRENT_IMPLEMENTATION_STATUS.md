@@ -19,10 +19,11 @@ Provance is a trust infrastructure platform for synthetic media verification.
 
 The working product direction is:
 
-- explainable image and video verification
-- downloadable and reviewable forensic reports
+- explainable image-first verification with a future path to video
+- reviewable report workspace with future downloadable forensic report export
 - waitlist-first onboarding and invite-based account access
-- future protected application workflows for uploads, analysis, review, reporting, and team collaboration
+- protected application workflows for uploads, analysis, case review, and account access
+- future team collaboration, admin tooling, and API access
 - future API access for programmatic verification and operational integration
 
 ## Current Architecture
@@ -35,11 +36,11 @@ The working product direction is:
 
 ### Backend
 
-- New NestJS backend scaffold located in `backend/`
+- NestJS backend located in `backend/`
 - Versioned API prefix at `/v1`
 - Validation and CORS configured in the app bootstrap
-- Waitlist-first auth and onboarding structure prepared
-- Supabase-backed service layer added for persistence, invite activation, and auth wiring
+- Waitlist-first auth and onboarding structure implemented
+- Supabase-backed service layer for persistence, invite activation, auth wiring, and scan records
 
 ### Existing Legacy Backend
 

@@ -1,5 +1,23 @@
 # Development Roadmap
 
+> Current-state note. Updated 2026-07-07.
+>
+> This roadmap still captures the intended order of work, but several items from early phases are already complete in the repo.
+>
+> Already shipped or substantially in place:
+> - public site foundation
+> - sign-in and protected app shell
+> - API-backed scan creation
+> - queue-backed async processing foundation
+> - scan history, dashboard metrics, and report detail foundations
+>
+> Still ahead:
+> - richer evidence payloads
+> - report export
+> - internal admin tooling
+> - dashboard redesign
+> - video workflows
+
 ## Roadmap Principles
 
 - Prove trust before scale.

@@ -1,5 +1,16 @@
 # System Design Document
 
+> Current-state note. Updated 2026-07-07.
+>
+> This is a future-state system design document. It should not be read as the literal deployed topology today.
+>
+> Current implementation is simpler:
+> - React + Vite frontend
+> - NestJS API
+> - Supabase for auth, database, and storage
+> - Upstash Redis plus a Fly worker for async scan jobs
+> - polling-based scan status updates rather than a broader service mesh or BFF model
+
 ## 1. System Objective
 
 Design a trustworthy, scalable platform for AI-generated media verification that supports self-serve product usage, API-driven workflows, and evidence-oriented reporting.

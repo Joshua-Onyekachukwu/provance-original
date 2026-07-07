@@ -1,5 +1,15 @@
 # Full Product Flow And Page Map
 
+> Current-state note. Updated 2026-07-07.
+>
+> This file is a full future-state page map, not a literal list of already shipped routes.
+>
+> Current shipped reality:
+> - public auth entry is `/signin`
+> - authenticated routes live under `/app/*`
+> - the current upload flow is image-first
+> - report detail exists, while API keys, billing, full team workflows, share flows, and video surfaces remain future work
+
 ## Purpose
 
 This document defines the complete user journey across the public site and the authenticated product.

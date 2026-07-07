@@ -1,5 +1,15 @@
 # Master Development Plan
 
+> Current-state note. Updated 2026-07-07.
+>
+> This is a strategy and long-range planning document. It should not be read as the literal current implementation state.
+>
+> Current implementation differs in a few important ways:
+> - the shipped product is image-first, with video kept as future scope
+> - the live frontend stack is React + Vite
+> - the live backend direction is NestJS plus a BullMQ worker on Fly.io, not a Python-first compute stack
+> - report detail foundations are live, while PDF export is still planned work
+
 ## 1. Executive Direction
 
 This plan assumes Provance is being built for the **best possible outcome**, not for a small demo product.

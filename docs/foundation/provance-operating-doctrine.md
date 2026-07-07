@@ -1,5 +1,11 @@
 # Provance Operating Doctrine
 
+> Current-state note. Updated 2026-07-07.
+>
+> This doctrine remains directionally correct. Read references to full image-and-video parity as long-range ambition rather than current shipped scope.
+>
+> The current MVP is image-first, while preserving an architectural path to future video support.
+
 ## Purpose
 
 This document defines the operating philosophy for Provance.

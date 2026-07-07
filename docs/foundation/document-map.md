@@ -2,14 +2,15 @@
 
 ## Purpose
 
-This repository currently contains two source strategy documents for the underlying product concept, which is consistently described as **VerifAI**: an explainable AI-generated media forensics platform. This documentation suite translates that concept into an execution-ready operating foundation for product, engineering, design, operations, fundraising, and governance.
+> Current-state note. Updated 2026-07-07.
+>
+> This document is historical context for how the documentation set was originally assembled. It is no longer the best entry point for the live codebase.
+>
+> For current implementation truth, start with `README.md`, `docs/engineering/CURRENT_IMPLEMENTATION_STATUS.md`, and `docs/engineering/PHASE_TASK_LIST.md`.
 
-The current working repository name is `Provance`, while the product concept in the source material is `VerifAI`. This suite treats:
+This repository originally drew from source strategy documents where the product concept was described as **VerifAI**. The live repo, codebase, and active product identity now use **Provance** consistently.
 
-- `Provance` as the company / working program identity
-- `VerifAI` as the current product concept and category framing
-
-That naming tension is addressed in `docs/brand/naming-and-brand-strategy-report.md`.
+Older references to `VerifAI` should be treated as legacy naming, not the current shipped brand.
 
 ## Source Inputs Reviewed
 

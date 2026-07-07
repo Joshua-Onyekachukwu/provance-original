@@ -2,6 +2,12 @@
 **Date:** 2026-06-26 12:45 UTC  
 **Subject:** Comprehensive Technical Audit and Strategy Recommendation  
 
+> Update note. 2026-07-07.
+>
+> This report is a historical status snapshot from before the current NestJS backend, worker deployment, and authenticated product foundations were completed.
+>
+> Use it as a dated audit record only. For current implementation truth, use `README.md` and `docs/engineering/CURRENT_IMPLEMENTATION_STATUS.md`.
+
 ---
 
 ## 1. Project Status

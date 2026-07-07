@@ -1,7 +1,18 @@
 # Provance — Interactive Dashboard Product Requirements Document (PRD)
 *Document Owner: Head of Product*
 *Revision: 1.0*
-*Status: Draft for Team Review*
+*Status: Mixed state. Partially implemented, partially future-state planning*
+
+> Current-state note. Updated 2026-07-07.
+>
+> This document mixes shipped dashboard foundations with future dashboard scope. For current implementation truth, use `README.md`, `docs/engineering/CURRENT_IMPLEMENTATION_STATUS.md`, and `src/App.jsx`.
+>
+> Current shipped reality:
+> - auth entry is `/signin`, not `/auth/login`
+> - authenticated routes live under `/app/*`
+> - current workflow is image-first
+> - scan history, uploads, dashboard metrics, and report detail are live foundations
+> - PDF export, share links, billing, API keys, citations, video workflows, and advanced team features are not shipped yet
 
 ---
 

@@ -1,157 +1,153 @@
-# Deployment And Auth Strategy (Temporary Supabase, Long-Term API)
+# Deployment And Auth Strategy
 
 Last updated: 2026-07-07
 
+## Status Note
+
+This document has been updated from a planning note into a current-state reference.
+
+Provance no longer relies on a temporary frontend-direct auth path. The active deployment model is:
+
+- Vercel for the frontend
+- Fly.io for the NestJS API
+- Fly.io for the worker
+- Supabase for auth, database, and storage
+- Upstash Redis for queue-backed processing
+
 ## Goal
 
-Ship a working live experience quickly using Supabase as the temporary auth and data backbone, while preparing a production-grade API deployment for the NestJS backend.
+Describe the currently deployed auth and backend strategy, and document the decisions new engineers should follow.
 
-This document also explains the most common cause of the sign-in error:
+## Current Deployment Model
 
-`NetworkError when attempting to fetch resource.`
+Frontend:
 
-## Current Reality
+- Vercel serves the public site and authenticated React application
+- browser env points to the deployed API and Supabase browser client values
 
-Provance currently has:
+Backend:
 
-- Frontend: React + Vite app deployed on Vercel.
-- Data and auth platform: Supabase (Postgres + Auth).
-- Backend API: NestJS service in `backend/` that runs locally on `http://localhost:4000/v1`.
+- NestJS API is deployed on Fly and exposed at `https://provance-api.fly.dev/v1`
+- authenticated frontend actions call the API, not a local development URL
 
-Supabase does not automatically host or run the NestJS backend. If the Vercel frontend still points to `http://localhost:4000/v1` in production, the browser will fail to reach it and you will see a network error.
+Worker:
 
-## Recommended Approach
+- background scan processing runs through the separate Fly worker app `provance-worker`
+- jobs are queued through Redis and consumed asynchronously
 
-### Track A. Temporary Supabase-First (Fastest To Stabilize)
+Infrastructure:
 
-Use Supabase directly for:
+- Supabase handles Postgres, Auth, and Storage
+- Upstash Redis handles the queue connection for the API and worker
 
-- Sign-in and sign-out
-- Password reset
-- Session restoration
-- Waitlist insert and read paths (with correct Row Level Security policies)
+## Active Auth Strategy
 
-This removes the need for a live API host immediately and eliminates cross-origin failures between Vercel and a separate API.
+Provance uses a backend-mediated auth path:
 
-#### What to change in the frontend
+- frontend submits sign-in to the NestJS API
+- NestJS signs in against Supabase Auth
+- frontend stores the returned access and refresh tokens for the current MVP flow
+- protected routes use those tokens to authorize access and API calls
 
-- Use `@supabase/supabase-js` in the frontend.
-- Add environment variables to Vercel:
-  - `VITE_SUPABASE_URL`
-  - `VITE_SUPABASE_ANON_KEY`
+This means the frontend should not be switched back to a Supabase-direct auth flow unless that decision is intentionally revisited.
 
-Do not use the Supabase service role key in the frontend.
+## Active Upload And Scan Strategy
 
-#### Waitlist notes
+The current scan workflow is:
 
-If the frontend writes directly to `waitlist_applications`, Supabase Row Level Security must allow inserts safely.
+1. authenticated user creates a scan through the API
+2. API returns signed upload information
+3. frontend uploads the file to the private Supabase storage bucket
+4. frontend submits the scan for processing
+5. API enqueues the job through Redis
+6. worker processes the queued job and updates the scan record
+7. frontend polls for status and renders the report workspace
 
-Typical pattern:
+## Common Production Failure Cases
 
-- RLS enabled.
-- A policy that allows `INSERT` for anonymous users but only for the fields you accept, and ideally only through a constrained RPC or Edge Function.
+### Frontend points to localhost
 
-If you prefer not to open direct anonymous inserts on a table, then route waitlist writes through:
+If the live frontend is still calling `http://localhost:4000/v1`, browser requests will fail immediately.
 
-- a Supabase Edge Function, or
-- a small deployed API.
+Correct production value:
 
-### Track B. Deploy The NestJS API (Long-Term Direction)
+```text
+VITE_API_BASE_URL=https://provance-api.fly.dev/v1
+```
 
-Deploy the NestJS backend as a separate service and keep Supabase as the managed data and auth provider behind it.
+### Missing CORS origin
 
-Recommended hosting options for NestJS:
+If `FRONTEND_ORIGIN` does not include the deployed frontend domain, the browser will block API calls even when the API is healthy.
 
-- Railway (simple container and environment management)
-- Render (simple web service, good for early-stage APIs)
-- Fly.io (good control and scaling for APIs)
+Current production origin:
 
-You then set the Vercel frontend environment variable:
+```text
+https://provanc3.vercel.app
+```
 
-- `VITE_API_BASE_URL=https://your-api-domain.com/v1`
+### Invalid Redis connection string
 
-And configure backend environment:
+The worker and API queue path require a real Redis connection string, not the Upstash REST endpoint.
 
-- `FRONTEND_ORIGIN=https://your-vercel-domain.com`
+Accepted format:
+
+```text
+rediss://default:<password>@<host>:6379
+```
+
+## Required Platform Variables
+
+Vercel:
+
+- `VITE_API_BASE_URL`
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+
+Fly API:
+
+- `FRONTEND_ORIGIN`
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY` (backend only)
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_SCANS_TABLE`
+- `SUPABASE_UPLOADS_BUCKET`
+- `REDIS_URL`
+- `SCAN_PROCESSING_QUEUE_NAME`
 
-This is required before any live users can sign in through your NestJS endpoints.
-
-## Fixing The Sign-In NetworkError
-
-### 1. Determine where the error happens
-
-There are two distinct cases:
-
-- Local testing: frontend should call `http://localhost:4000/v1`.
-- Live Vercel site: frontend must call a public API URL or Supabase directly.
-
-### 2. The most common cause
-
-The live site is still configured to call:
-
-`http://localhost:4000/v1/auth/sign-in`
-
-Browsers cannot reach your laptop from the Vercel domain, so the request fails and throws:
-
-`NetworkError when attempting to fetch resource.`
-
-### 3. Confirm what URL the browser is using
-
-Open DevTools Network tab and inspect the failing request URL.
-
-- If it is `http://localhost:4000/...`, the live site is missing a production API configuration.
-
-### 4. Immediate remediation paths
-
-Pick one:
-
-1. Temporary Supabase-first (recommended for now)
-   - Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to Vercel.
-   - Update the frontend sign-in logic to use Supabase directly.
-
-2. Deploy the NestJS API now
-   - Deploy `backend/` to a real host.
-   - Set `VITE_API_BASE_URL` on Vercel to the deployed API.
-
-### 5. CORS considerations (applies to deployed API)
-
-If you deploy the NestJS API, your backend must allow the Vercel frontend origin, otherwise the browser will block it.
-
-Backend configuration already supports an allow list via `FRONTEND_ORIGIN`.
-
-## Deployment Checklist (When Deploying NestJS)
-
-### Service settings
-
-- Build: `npm run backend:build`
-- Start: `npm run backend:start`
-- Health check: `GET /v1/health`
-
-### Required secrets
+Fly worker:
 
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY` (server only)
-- `FRONTEND_ORIGIN` (the exact Vercel domain)
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_SCANS_TABLE`
+- `SUPABASE_UPLOADS_BUCKET`
+- `REDIS_URL`
+- `SCAN_PROCESSING_QUEUE_NAME`
+- `WORKER_CONCURRENCY`
 
-### Launch gate
+Reference:
 
-Run before shipping:
+- `docs/engineering/CREDENTIALS_AND_ENVIRONMENT_VARIABLES.md`
+- `docs/engineering/DEPLOYMENT_FLYIO_AND_UPSTASH.md`
+
+## Deployment Checklist
+
+Run before shipping backend changes:
 
 1. `npm run build`
 2. `npm run backend:build`
 3. `npm run backend:test:e2e`
 4. `npm run check:launch`
 
-## Recommended Next Step
+Then deploy:
 
-If the goal is to stabilize sign-in on the live Vercel site today without deploying the API host yet:
+1. Fly API from `backend/fly.toml`
+2. Fly worker from `backend/fly.worker.toml`
+3. confirm `GET /v1/health`
+4. confirm worker starts cleanly
 
-- Implement Supabase-direct sign-in in the frontend and set the Supabase env vars on Vercel.
+## Next Strategy Work
 
-If the goal is to keep the current frontend calling the NestJS endpoints:
-
-- Deploy the NestJS backend online and set `VITE_API_BASE_URL` on Vercel.
+- validate the live end-to-end upload and queue flow through the deployed frontend
+- harden auth storage and session handling before broader production rollout
+- introduce internal admin tooling for waitlist approval and invite issuance

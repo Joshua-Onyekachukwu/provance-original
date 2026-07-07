@@ -2,30 +2,40 @@
 
 Provance is a trust infrastructure platform for synthetic media verification.
 
-The product direction is centered on explainable image and video verification, reviewable evidence, downloadable forensic reports, and enterprise-ready trust workflows. The current repo contains the public product site, the first waitlist and sign-in flows, and the scaffold for the long-term backend architecture.
+The current repository contains the public product site, the authenticated MVP workspace, the NestJS backend, the Supabase-backed auth and storage path, and the worker-backed queue foundation for asynchronous scan processing.
 
 ## Repository Status
 
-This repository is actively being built toward a production MVP.
+This repository is active and shipping toward a production-ready MVP.
 
 Current state:
 
-- public marketing and product site is live in development
-- major public pages exist and have been through content and structure cleanup
-- waitlist and sign-in frontend flows are wired to a real backend API shape
-- a new NestJS backend scaffold exists in `backend/`
-- Supabase-ready persistence and auth integration paths are prepared
-- the full authenticated application is not built yet
+- public marketing and product pages are live and production-oriented
+- waitlist submission and sign-in flows are wired to the deployed backend
+- authenticated routes under `/app/*` are live
+- users can upload supported image files into a real scan workflow
+- scan jobs move through a queue-backed lifecycle
+- report history and report detail are now available inside the authenticated workspace
+- account preferences exist, but still persist locally rather than through a backend profile model
 
-## Product Direction
+## Current MVP Scope
 
-Provance is being built to support:
+Provance currently supports:
 
-- explainable media verification
-- forensic-style report generation
 - waitlist-first onboarding and invite-based access
-- future authenticated workflows for uploads, review, reporting, and collaboration
-- future API access for programmatic integrations
+- email and password sign-in through the backend
+- protected application routes
+- image-first uploads with file validation and signed Supabase storage upload
+- queue-backed scan submission with status polling
+- case history, report detail, and placeholder verdict payload review
+
+Not complete yet:
+
+- richer evidence and signal output beyond the placeholder result payload
+- report export and printable forensic output
+- internal waitlist review and invite issuance tooling
+- team and organization workflows
+- dashboard redesign for denser case operations
 
 ## Architecture
 
@@ -37,42 +47,54 @@ Provance is being built to support:
 - Framer Motion
 - React Router
 
-Location:
-
-- `src/` contains the public site, shared components, page routes, and frontend API helpers
+`src/` contains the public site, authenticated app routes, shared components, and frontend API helpers.
 
 ### Backend
 
 - NestJS
 - versioned API under `/v1`
-- Supabase-ready service layer
+- Supabase-backed auth, persistence, and signed upload support
+- BullMQ-compatible queue wiring backed by Upstash Redis
 
-Location:
+`backend/` contains the long-term backend, worker runtime, and Fly deployment config.
 
-- `backend/` contains the long-term backend scaffold
+### Worker
+
+- separate Fly worker deployment
+- consumes queued scan jobs
+- updates scan records asynchronously
 
 ### Legacy API
 
-- `api/` contains older backend experiments and should not be treated as the long-term backend direction
+- `api/` contains older backend experiments
 - new backend work should target `backend/`
 
-## Key Routes And Features
+## Important Routes
 
-Current public-facing routes include:
+Public routes include:
 
-- home
-- product
-- methodology
-- pricing
-- docs
-- sample report
-- security
-- contact
-- sign in
-- join waitlist
-- legal pages including privacy, terms, and cookies
+- `/`
+- `/product`
+- `/methodology`
+- `/pricing`
+- `/docs`
+- `/sample-report`
+- `/security`
+- `/contact`
+- `/signin`
+- `/waitlist`
+- legal pages for privacy, terms, and cookies
 
-Current backend scaffold includes:
+Authenticated routes include:
+
+- `/app`
+- `/app/uploads`
+- `/app/reports`
+- `/app/reports/:scanId`
+- `/app/account`
+- `/app/team`
+
+Backend endpoints currently include:
 
 - `GET /v1/health`
 - `POST /v1/waitlist/applications`
@@ -80,20 +102,27 @@ Current backend scaffold includes:
 - `POST /v1/auth/password-reset/request`
 - `POST /v1/auth/password-reset/confirm`
 - `POST /v1/auth/invites/accept`
+- `POST /v1/scans`
+- `POST /v1/scans/:scanId/submit`
+- `GET /v1/scans`
+- `GET /v1/scans/:scanId`
+
+## Deployment Snapshot
+
+Current deployed services:
+
+- frontend: `https://provanc3.vercel.app`
+- API: `https://provance-api.fly.dev/v1`
+- worker: Fly app `provance-worker`
+- auth, database, and storage: Supabase
+- queue: Upstash Redis
 
 ## Local Development
 
 ### Frontend
 
-Install dependencies:
-
 ```bash
 npm install
-```
-
-Run the frontend:
-
-```bash
 npm run dev
 ```
 
@@ -123,7 +152,7 @@ Build the backend:
 npm run backend:build
 ```
 
-Run the backend e2e tests:
+Run backend e2e tests:
 
 ```bash
 npm run backend:test:e2e
@@ -135,62 +164,59 @@ Run the release check bundle:
 npm run check:launch
 ```
 
-Start the backend production build:
+Start the backend production build locally:
 
 ```bash
 npm run backend:start
 ```
 
-Important note:
-
-- backend dependency installation is currently safest through `npm run backend:install`
-- that script uses `npx pnpm@9 install --dir backend`
-- this is documented because `npm install` in `backend/` hit a resolver issue in the current environment
-
 ## Environment
 
 Environment templates:
 
-- root frontend template: `.env.example`
+- frontend template: `.env.example`
 - backend template: `backend/.env.example`
 
-Expected next setup steps:
+Single source of truth for deployment variables:
 
-- connect real Supabase project values
-- apply the starter SQL migration in `supabase/migrations/0001_waitlist_auth.sql`
-- replace scaffold auth logic with real Supabase Auth integration
+- `docs/engineering/CREDENTIALS_AND_ENVIRONMENT_VARIABLES.md`
 
 ## Documentation
 
-Core documentation for the current engineering state:
+Current engineering source-of-truth docs:
 
 - implementation status: `docs/engineering/CURRENT_IMPLEMENTATION_STATUS.md`
-- phase task list: `docs/engineering/PHASE_TASK_LIST.md`
+- phase map: `docs/engineering/PHASE_TASK_LIST.md`
+- env and credentials checklist: `docs/engineering/CREDENTIALS_AND_ENVIRONMENT_VARIABLES.md`
+- Fly and Upstash deployment playbook: `docs/engineering/DEPLOYMENT_FLYIO_AND_UPSTASH.md`
 - security and launch checklist: `docs/engineering/SECURITY_AND_LAUNCH_CHECKLIST.md`
 - changelog: `docs/changelogs/CHANGELOG.md`
-- auth and waitlist direction: `docs/architecture/2026-07-06-auth-waitlist-strategy.md`
-- backend stack evaluation: `docs/architecture/2026-07-06-backend-stack-evaluation.md`
+
+Important note:
+
+- some older product, audit, and strategy docs are intentionally preserved as planning or historical records
+- if a historical document conflicts with the current codebase, prefer the engineering docs above
 
 ## Working Rules
 
-This repo is being managed with a phase-based workflow:
+This repo follows a phase-based workflow:
 
-- work locally on one major phase at a time
-- validate the phase before shipping
+- build one meaningful phase slice at a time
+- validate changes before shipping
 - update documentation after major engineering changes
 - push tested work directly to `main`
-- treat the repo as collaboration-ready so additional engineers can join without losing context
+- keep the repository collaboration-ready for additional engineers
 
 ## Immediate Priorities
 
 The next major work areas are:
 
-- complete real Supabase auth and waitlist persistence
-- add protected frontend routing and session handling
-- build the first authenticated app shell
-- start the dashboard, upload, and report workflows
-- continue refining public-site polish where needed
+- validate the full live end-to-end upload, queue, and report workflow through the deployed frontend
+- deepen the report and evidence layer beyond the placeholder verdict payload
+- build internal waitlist review and invite issuance tooling
+- move account profile persistence into Supabase-backed storage
+- plan the later dashboard redesign once MVP workflows are stable
 
 ## License
 
-This repository is currently private and under active product development. Licensing and external usage terms should be defined before any public redistribution or external reuse.
+This repository is private and under active product development. Licensing and external usage terms should be defined before any public redistribution or external reuse.

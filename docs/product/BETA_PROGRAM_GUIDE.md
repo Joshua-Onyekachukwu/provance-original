@@ -3,6 +3,16 @@
 *Document Owner: Head of Product*
 *Revision: 1.0*
 
+> Current-state note. Updated 2026-07-07.
+>
+> This guide remains useful for design partner planning, but parts of the feature matrix now overstate shipped product scope.
+>
+> Current shipped reality:
+> - sign-in and invite acceptance exist, but public signup and full password reset UX are not complete
+> - uploads are currently image-first
+> - scan history and report detail views exist
+> - PDF export, API keys, batch workflows, video analysis, and advanced settings remain future work
+
 ---
 
 ## Table of Contents

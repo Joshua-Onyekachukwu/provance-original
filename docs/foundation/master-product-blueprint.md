@@ -1,5 +1,14 @@
 # Master Product Blueprint
 
+> Current-state note. Updated 2026-07-07.
+>
+> This blueprint is still useful for long-range product direction, but several references are historical.
+>
+> Current implementation updates:
+> - the live product identity is `Provance`, not `VerifAI`
+> - the repo now includes a real authenticated app, NestJS backend, queue-backed processing path, and deployed infrastructure
+> - image-first MVP execution is ahead of broader image-and-video platform parity
+
 ## 1. Executive Thesis
 
 Provance is building a trust infrastructure company for the AI-content era. The initial product concept, currently framed as VerifAI, is an explainable forensic verification platform that helps users determine whether images and videos are synthetic, manipulated, or authentic enough for decision-making.

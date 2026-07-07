@@ -2,7 +2,16 @@
 *Bridging Veracity Language to Technical Implementation*
 *Document Owner: Head of Product*
 *Revision: 1.0*
-*Status: Draft for CTO & Engineering Review*
+*Status: Draft future-state schema*
+
+> Current-state note. Updated 2026-07-07.
+>
+> This is an aspirational schema and interface specification, not the current canonical backend payload.
+>
+> Current shipped reality:
+> - scan detail exists, but result payloads are still placeholder-level compared with this spec
+> - video scrubber UX, methodology endpoints, share links, and extended report contracts described here are not implemented yet
+> - use this document to shape future payload design, not to describe current API behavior
 
 ---
 

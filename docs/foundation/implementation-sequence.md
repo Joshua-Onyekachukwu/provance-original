@@ -1,5 +1,14 @@
 # Implementation Sequence
 
+> Current-state note. Updated 2026-07-07.
+>
+> This document still helps explain the intended build order, but several early phases are already complete or partially complete in the live repo.
+>
+> Current shipped reality:
+> - the public site, sign-in flow, protected app shell, upload workflow foundation, queue-backed processing, scan history, and report detail foundations already exist
+> - the current product is image-first
+> - report export, batch workflows, and constrained video verification remain future phases
+
 ## Purpose
 
 This document defines the exact build order for Provance so the team can move from planning into execution without losing speed or building the wrong layers too early.

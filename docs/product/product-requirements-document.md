@@ -2,8 +2,18 @@
 
 ## Product Name
 
+> Current-state note. Updated 2026-07-07.
+>
+> This PRD still contains useful product intent, but some naming and scope details are dated.
+>
+> Current shipped reality:
+> - the product and repo now use `Provance` consistently
+> - the current MVP is image-first
+> - the app has live sign-in, uploads, scan history, and report detail foundations
+> - video parity, external API program, and full report export remain future scope
+
 Working company name: Provance  
-Working product name: VerifAI
+Working product name: Provance
 
 ## Product Summary
 

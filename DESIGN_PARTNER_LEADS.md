@@ -1,10 +1,16 @@
 # Provance: Design Partner Lead List & First-Wave Outreach
 
 **Document Owner:** CMO  
-**Status:** Ready for Lead Review + Execution  
+**Status:** Lead list and draft outreach asset. Requires claim review before external use  
 **Date:** 2026-06-25  
-**Site:** Live at http://localhost:3000 (Trust Infrastructure positioning active)  
+**Site:** Current deployment is the live Provance web app, not localhost  
 **Core Value Props:** Courtroom-Ready Forensic Report | Explainable Multi-Signal Verdicts | Transparent Uncertainty
+
+> Current-state note. Updated 2026-07-07.
+>
+> Treat this file as a lead and messaging worksheet, not as a precise product-status document.
+>
+> Before using the copy externally, remove or future-frame claims about shipped PDF export, citation tooling, chain-of-custody workflows, and any current video support language.
 
 ---
 

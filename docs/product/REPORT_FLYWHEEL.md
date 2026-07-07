@@ -3,6 +3,16 @@
 *Document Owner: Head of Product*
 *Revision: 1.0*
 
+> Current-state note. Updated 2026-07-07.
+>
+> This is a future-state product model, not a literal description of everything that ships today.
+>
+> Current shipped reality:
+> - upload is image-first and file-based
+> - remote URL ingestion, clipboard paste, batch processing, video workflows, share links, and citation tools are still future scope
+> - the live app already supports queue-backed scan submission, scan history, and report detail views
+> - PDF export remains a planned next step rather than a shipped capability
+
 ## Overview
 
 The **Report Flywheel** is Provance's core growth and value loop. Every user journey — from first-time visitor to enterprise admin — revolves around the creation, consumption, and sharing of Forensic Reports. The flywheel describes how each completed cycle generates trust, engagement, and organic growth.

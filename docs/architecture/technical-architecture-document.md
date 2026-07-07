@@ -1,5 +1,15 @@
 # Technical Architecture Document
 
+> Current-state note. Updated 2026-07-07.
+>
+> This document captures an earlier recommended architecture, not the exact stack now implemented in the repo.
+>
+> Current implementation differs in these ways:
+> - frontend is React + Vite, not Next.js
+> - backend is NestJS, not FastAPI
+> - async processing is handled by a BullMQ worker on Fly.io
+> - this document should be used for architectural direction only, not for setup or deployment truth
+
 ## 1. Architecture Principles
 
 - Design for trust, not just throughput.
