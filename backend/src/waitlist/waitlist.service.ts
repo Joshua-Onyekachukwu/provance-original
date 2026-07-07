@@ -41,6 +41,13 @@ export class WaitlistService {
       .single();
 
     if (error) {
+      if (error.code === '23505') {
+        return {
+          status: 'accepted',
+          message: 'We already have your waitlist request on file.',
+        };
+      }
+
       throw new ServiceUnavailableException(
         'Waitlist service is temporarily unavailable.',
       );

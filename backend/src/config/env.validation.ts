@@ -49,11 +49,16 @@ function validateOriginList(value: string | undefined): string {
 export function validateEnv(config: Record<string, unknown>) {
   const env = config as Record<string, string | undefined>;
   const supabaseUrl = env.SUPABASE_URL?.trim();
+  const anonKey = env.SUPABASE_ANON_KEY?.trim();
   const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  const authRedirectUrl = env.SUPABASE_AUTH_REDIRECT_URL?.trim();
 
-  if ((supabaseUrl && !serviceRoleKey) || (!supabaseUrl && serviceRoleKey)) {
+  if (
+    (supabaseUrl && (!serviceRoleKey || !anonKey)) ||
+    (!supabaseUrl && (serviceRoleKey || anonKey))
+  ) {
     throw new Error(
-      'SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be provided together.',
+      'SUPABASE_URL, SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY must be provided together.',
     );
   }
 
@@ -62,6 +67,14 @@ export function validateEnv(config: Record<string, unknown>) {
       new URL(supabaseUrl);
     } catch {
       throw new Error('SUPABASE_URL must be a valid URL.');
+    }
+  }
+
+  if (authRedirectUrl) {
+    try {
+      new URL(authRedirectUrl);
+    } catch {
+      throw new Error('SUPABASE_AUTH_REDIRECT_URL must be a valid URL.');
     }
   }
 
@@ -82,6 +95,8 @@ export function validateEnv(config: Record<string, unknown>) {
     HELMET_ENABLED: isTruthy(env.HELMET_ENABLED, true),
     TRUST_PROXY: isTruthy(env.TRUST_PROXY, true),
     SUPABASE_URL: supabaseUrl,
+    SUPABASE_ANON_KEY: anonKey,
     SUPABASE_SERVICE_ROLE_KEY: serviceRoleKey,
+    SUPABASE_AUTH_REDIRECT_URL: authRedirectUrl,
   };
 }

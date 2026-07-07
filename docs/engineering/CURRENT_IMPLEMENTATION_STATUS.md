@@ -1,6 +1,6 @@
 # Provance Current Implementation Status
 
-Last updated: 2026-07-06
+Last updated: 2026-07-07
 
 ## Purpose
 
@@ -39,7 +39,7 @@ The working product direction is:
 - Versioned API prefix at `/v1`
 - Validation and CORS configured in the app bootstrap
 - Waitlist-first auth and onboarding structure prepared
-- Supabase-ready service layer added for persistence and auth wiring
+- Supabase-backed service layer added for persistence, invite activation, and auth wiring
 
 ### Existing Legacy Backend
 
@@ -80,30 +80,33 @@ The working product direction is:
 - request ID tracing added for API debugging
 - global exception filter added to avoid leaking internal errors
 - public health endpoint reduced to minimal safe status output
+- auth audit events added for sign-in success, sign-in failure, password reset requests, and invite acceptance
+- public Supabase auth clients are now created per request to avoid cross-request session leakage
 - security and launch checklist added at `docs/engineering/SECURITY_AND_LAUNCH_CHECKLIST.md`
 
 ### Supabase Preparation
 
-- Supabase client service scaffold added
+- Supabase project is connected for local backend validation
 - Backend environment template added
 - Starter SQL migration added at `backend/supabase/migrations/0001_waitlist_auth.sql`
-- Waitlist persistence is ready to target `waitlist_applications`
+- Remote tables exist for `waitlist_applications`, `access_invites`, and `auth_audit_events`
+- Waitlist submissions persist into the live `waitlist_applications` table
+- Invite acceptance creates a real Supabase user and updates waitlist and invite state
+- Sign-in is wired to real Supabase Auth credentials
 
 ## What Is Not Done Yet
 
 ### Auth
 
-- Real Supabase Auth sign-in wiring
-- Invite token generation and acceptance
-- Password reset email delivery
+- Password reset email delivery and recovery callback UX
 - Session persistence and refresh-token handling
 - Protected frontend routes and authenticated app shell
+- Invite token issuance tooling for admin and review workflows
 
 ### Waitlist Operations
 
 - Admin review flow
 - Approval and rejection workflow
-- Invite issuing
 - Waitlist status dashboard
 - Notification and email automation
 
@@ -121,9 +124,13 @@ Validated in this phase:
 
 - frontend diagnostics on edited files
 - frontend production build
+- backend unit tests for auth service failure handling and audit logging
 - backend NestJS build
 - backend e2e test for health endpoint
 - combined release check through `npm run check:launch`
+- live waitlist submission verified against the connected Supabase project
+- live invite acceptance and sign-in verified against the connected Supabase project
+- live audit event writes verified in `auth_audit_events`
 
 Environment note:
 
@@ -160,10 +167,10 @@ Environment note:
 ## Next Recommended Steps
 
 1. Connect real Supabase environment values in `backend/.env`
-2. Apply the starter migration in Supabase
-3. Replace scaffold auth responses with real Supabase Auth operations
-4. Add invite issuance, acceptance, and review state transitions
-5. Add protected frontend routes and session-aware navigation
+2. Add invite issuance and waitlist review tooling for internal operators
+3. Build secure frontend session handling, protected routes, and account recovery pages
+4. Add authenticated app-shell navigation and first signed-in dashboard state
+5. Extend auth audit coverage into admin review and invite issuance flows
 6. Start building the first authenticated product area
 
 ## Collaboration Notes

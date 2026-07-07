@@ -1,6 +1,6 @@
 # Provance Security And Launch Checklist
 
-Last updated: 2026-07-06
+Last updated: 2026-07-07
 
 ## Purpose
 
@@ -18,6 +18,7 @@ These protections should exist for every backend phase:
 - environment validation at startup
 - request tracing through request IDs
 - trusted proxy handling for deployed environments
+- per-request auth client isolation for server-side Supabase browser-auth flows
 
 ## Auth And Access Checks
 
@@ -79,14 +80,16 @@ This repo currently includes:
 - request ID propagation for debugging and tracing
 - sanitized global exception responses
 - reduced health endpoint exposure
+- auth audit logging for sign-in, password reset requests, and invite acceptance
+- live Supabase validation of waitlist persistence, invite activation, and sign-in
 
 ## Next Security Work
 
 High-priority follow-up work:
 
-- real Supabase Auth wiring with secure session handling
+- secure browser session persistence and protected-route enforcement
 - CSRF and cookie strategy for browser-authenticated flows where applicable
 - duplicate waitlist protection and abuse handling
-- audit logging for auth and admin review actions
+- audit logging for admin review, invite issuance, and suspicious-auth monitoring
 - role-based access controls for internal and team workflows
 - monitoring and alerting for suspicious auth behavior

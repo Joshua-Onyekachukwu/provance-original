@@ -1,5 +1,31 @@
 # Provance — Changelog
 
+## [2026-07-07] - Live Supabase Auth And Waitlist Foundation
+
+### Added
+- `backend/src/auth/auth.service.spec.ts` - Targeted unit coverage for fresh auth-client usage, sign-in failure auditing, and invite rollback handling
+
+### Updated
+- `backend/src/auth/auth.service.ts` - Replaced scaffold auth behavior with live Supabase-backed sign-in, invite activation hardening, rollback safeguards, and audit-event writes
+- `backend/src/supabase/supabase.service.ts` - Switched public auth access to per-request Supabase client creation to prevent shared in-memory session state across requests
+- `backend/src/waitlist/waitlist.service.ts` - Verified live persistence behavior against the connected Supabase waitlist table
+- `backend/src/config/env.validation.ts` - Continued validation support for the live Supabase environment configuration
+- `docs/engineering/CURRENT_IMPLEMENTATION_STATUS.md` - Updated the repo status to reflect live waitlist, invite, sign-in, and audit verification
+- `docs/engineering/SECURITY_AND_LAUNCH_CHECKLIST.md` - Expanded the active security baseline with per-request auth isolation and live auth validation coverage
+
+### Validated
+- `npm --prefix backend run test -- --runInBand`
+- `npm run backend:build`
+- `npm run backend:test:e2e`
+- `npm run check:launch`
+- live `POST /v1/waitlist/applications` submission verified against remote Supabase
+- live `POST /v1/auth/invites/accept` and `POST /v1/auth/sign-in` verified against remote Supabase
+- live `auth_audit_events` writes verified for invite acceptance and sign-in
+
+### Notes
+- remote Supabase tables are now active for `waitlist_applications`, `access_invites`, and `auth_audit_events`
+- the next auth phase should focus on secure frontend session handling, recovery UX, invite issuance tooling, and protected routes
+
 ## [2026-07-06] - Backend Security Foundation And Launch Checks
 
 ### Added
