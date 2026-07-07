@@ -40,12 +40,21 @@ export class SupabaseService {
     return this.adminClient;
   }
 
-  createPublicClient(): SupabaseClient | null {
+  createPublicClient(accessToken?: string): SupabaseClient | null {
     if (!this.url || !this.anonKey) {
       return null;
     }
 
     // Auth flows mutate in-memory session state, so each request gets its own client.
-    return createClient(this.url, this.anonKey, this.clientOptions);
+    return createClient(this.url, this.anonKey, {
+      ...this.clientOptions,
+      global: accessToken
+        ? {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          }
+        : undefined,
+    });
   }
 }

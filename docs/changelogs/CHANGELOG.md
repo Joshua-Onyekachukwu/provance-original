@@ -1,5 +1,29 @@
 # Provance — Changelog
 
+## [2026-07-07] - Phase 5 Upload Workflow Foundation
+
+### Added
+- `backend/src/scans/*` - Scan module with signed-upload initiation, submit endpoint, scan listing, and scan detail payloads
+- `backend/src/common/guards/supabase-auth.guard.ts` - Supabase JWT enforcement for authenticated endpoints
+- `backend/src/common/decorators/current-user.decorator.ts` - Request user decorator for authenticated controllers
+- `backend/supabase/migrations/0002_scans.sql` - Scan table and RLS policies for owner access
+- `src/lib/supabase.js` - Supabase client for signed Storage uploads (no persisted browser session)
+
+### Updated
+- `src/pages/app/AppUploadsPage.jsx` - Replaced the placeholder with a real scan-initiate, upload, submit, and status polling workflow
+- `src/lib/api.js` - Added automatic Authorization bearer header support and scan API helpers
+- `backend/src/supabase/supabase.service.ts` - Added per-request public client creation with bearer-token header support
+- `backend/src/app.module.ts` - Registered the scan module
+- `backend/src/config/env.validation.ts` - Added upload-related environment validation defaults
+- `.env.example` - Added Supabase frontend environment keys for Storage uploads
+- `backend/.env.example` - Added scan table and upload bucket environment settings
+- `package.json` - Added frontend dependency on `@supabase/supabase-js` for Storage uploads
+- `docs/engineering/CURRENT_IMPLEMENTATION_STATUS.md` - Recorded Phase 5 upload foundation status and validation requirements
+
+### Validated
+- `npm run build`
+- `npm run check:launch`
+
 ## [2026-07-07] - Authenticated App Shell
 
 ### Added
