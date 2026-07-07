@@ -23,3 +23,7 @@ Recommended review order:
 14. `docs/business/business-plan.md`
 15. `docs/business/v2prom-analysis-report.md`
 16. `docs/brand/naming-and-brand-strategy-report.md`
+
+Deployment playbook:
+
+- `docs/engineering/DEPLOYMENT_FLYIO_AND_UPSTASH.md`
