@@ -55,6 +55,7 @@ These belong in the Fly secrets and app config for `provance-api`.
 | `THROTTLE_LIMIT` | No | Rate limiting max requests per window. | Done |
 | `HELMET_ENABLED` | No | Security headers toggle. | Done |
 | `TRUST_PROXY` | No | Proxy-trust toggle for correct client IP handling. | Done |
+| `ADMIN_EMAILS` | Yes for admin access | Comma-separated allowlist for internal admin users. | Verify |
 
 Ready-to-paste template:
 
@@ -71,6 +72,7 @@ THROTTLE_TTL_MS=60000
 THROTTLE_LIMIT=60
 HELMET_ENABLED=true
 TRUST_PROXY=true
+ADMIN_EMAILS=founder@example.com,ops@example.com
 ```
 
 ## Fly.io Worker `provance-worker`
@@ -155,6 +157,7 @@ TRUST_PROXY=true
 HELMET_ENABLED=true
 THROTTLE_TTL_MS=60000
 THROTTLE_LIMIT=60
+ADMIN_EMAILS=founder@example.com,ops@example.com
 SUPABASE_URL=https://<your-supabase-project-ref>.supabase.co
 SUPABASE_ANON_KEY=<paste-supabase-anon-key>
 SUPABASE_SERVICE_ROLE_KEY=<paste-supabase-service-role-key>
