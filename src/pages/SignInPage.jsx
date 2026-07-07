@@ -115,8 +115,17 @@ export default function SignInPage() {
                 <Link to="/waitlist" className="text-charcoal-mid hover:text-charcoal transition-colors">
                   Need access?
                 </Link>
-                <Link to="/contact" className="text-charcoal-mid hover:text-charcoal transition-colors">
-                  Need account help?
+                <Link
+                  to="/reset-password"
+                  className="text-charcoal-mid hover:text-charcoal transition-colors"
+                >
+                  Forgot password?
+                </Link>
+              </div>
+
+              <div className="mt-3 text-sm">
+                <Link to="/accept-invite" className="text-charcoal-mid hover:text-charcoal transition-colors">
+                  Already have an invite link?
                 </Link>
               </div>
 

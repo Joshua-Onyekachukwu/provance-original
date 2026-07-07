@@ -130,9 +130,6 @@ describe('AuthService', () => {
       update: jest.fn().mockReturnThis(),
       eq: jest.fn().mockResolvedValue({ error: null }),
     };
-    const auditEventsTable = {
-      insert: jest.fn().mockResolvedValue({ error: null }),
-    };
     const deleteUser = jest.fn().mockResolvedValue({ error: null });
     const createUser = jest.fn().mockResolvedValue({
       data: {

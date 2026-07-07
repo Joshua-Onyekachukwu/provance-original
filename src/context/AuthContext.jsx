@@ -80,8 +80,9 @@ function normalizeAuthState(response, storedProfile = null) {
   const defaultProfile = storedProfile || createDefaultProfile(response.user.email)
   const requestedWorkspace = defaultProfile.defaultWorkspace || 'individual'
   const permissions = {
-    individual: true,
-    team: false,
+    individual: response?.permissions?.individual ?? true,
+    team: response?.permissions?.team ?? false,
+    admin: response?.permissions?.admin ?? false,
   }
 
   return {
@@ -249,6 +250,7 @@ export function AuthProvider({ children }) {
       permissions: sessionData?.permissions ?? {
         individual: false,
         team: false,
+        admin: false,
       },
       workspaceContext: sessionData?.workspaceContext ?? 'individual',
       signIn,

@@ -127,22 +127,20 @@ The working product direction is:
 
 ### Auth
 
-- Password reset email delivery and recovery callback UX
-- Session persistence and refresh-token handling
-- Hardened production session storage strategy (cookie or token transport plan)
-- Invite token issuance tooling for admin and review workflows
+- Password reset request and confirmation UI are now implemented
+- Invite acceptance UI is now implemented
+- Refresh-token handling is now implemented for the authenticated client
+- Hardened cookie-based session transport remains a possible future hardening step, not an MVP blocker
 
 ### Waitlist Operations
 
-- Admin review flow
-- Approval and rejection workflow
-- Waitlist status dashboard
-- Notification and email automation
+- Admin review flow is now implemented inside `/app/admin`
+- Approval, rejection, defer, notes, invite creation, filtering, and CSV export are now implemented
+- Manual transactional email delivery remains the current MVP operational model
 
 ### Product Application
 
-- Richer upload and analysis workflow beyond the current placeholder verdict payload
-- Report export and printable output
+- Richer evidence models, share links, and PDF rendering can still be expanded
 - Evidence timeline and reference handling
 - Organization and team access controls
 - Audit review tools
@@ -201,14 +199,11 @@ Validated in this phase:
 
 ## Next Recommended Steps
 
-1. Add invite issuance and waitlist review tooling for internal operators
-2. Implement password reset UI and the recovery callback flow
-3. Apply the Phase 5 scan migration, create the uploads bucket, and validate the upload flow against Supabase
-4. Validate the live worker-backed queue flow end to end through the deployed frontend
-5. Replace the placeholder verdict payload with richer signal outputs and evidence sections
-6. Move account preference storage from local-only to a Supabase-backed profile model
-7. Add internal waitlist review, approval, and invite issuance tooling
-8. Extend audit coverage into admin actions and suspicious-auth monitoring
+1. Apply the latest Supabase migrations in the connected project
+2. Validate the live worker-backed queue flow end to end through the deployed frontend
+3. Move account preference storage from local-only to a Supabase-backed profile model
+4. Expand printable reports into full PDF export when needed
+5. Start Phase 7 team and organization workflows
 
 ## Collaboration Notes
 

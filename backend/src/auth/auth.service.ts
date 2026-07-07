@@ -8,6 +8,7 @@ import { createHash } from 'crypto';
 import { SupabaseService } from '../supabase/supabase.service';
 import { AcceptInviteDto } from './dto/accept-invite.dto';
 import { ConfirmPasswordResetDto } from './dto/confirm-password-reset.dto';
+import { RefreshSessionDto } from './dto/refresh-session.dto';
 import { RequestPasswordResetDto } from './dto/request-password-reset.dto';
 import { SignInDto } from './dto/sign-in.dto';
 
@@ -61,6 +62,7 @@ export class AuthService {
         id: data.user.id,
         email: data.user.email,
       },
+      permissions: this.getPermissions(data.user.email),
       session: {
         accessToken: data.session.access_token,
         refreshToken: data.session.refresh_token,
@@ -147,6 +149,50 @@ export class AuthService {
     return {
       status: 'updated',
       message: 'Password updated successfully.',
+    };
+  }
+
+  async refreshSession(dto: RefreshSessionDto) {
+    const client = this.supabaseService.createPublicClient();
+
+    if (!client) {
+      return {
+        status: 'accepted',
+        message:
+          'Session refresh handling is being finalized. Sign in again if your current session has expired.',
+      };
+    }
+
+    const { data, error } = await client.auth.refreshSession({
+      refresh_token: dto.refreshToken,
+    });
+
+    if (error || !data.session || !data.user) {
+      throw new UnauthorizedException('Invalid or expired session.');
+    }
+
+    await this.insertAuditEvent({
+      actor_email: data.user.email,
+      action: 'session_refreshed',
+      entity_type: 'auth_user',
+      entity_id: data.user.id,
+      details: {},
+    });
+
+    return {
+      status: 'authenticated',
+      message: 'Session refreshed successfully.',
+      user: {
+        id: data.user.id,
+        email: data.user.email,
+      },
+      permissions: this.getPermissions(data.user.email),
+      session: {
+        accessToken: data.session.access_token,
+        refreshToken: data.session.refresh_token,
+        expiresAt: data.session.expires_at,
+        tokenType: data.session.token_type,
+      },
     };
   }
 
@@ -315,5 +361,27 @@ export class AuthService {
         'Audit logging is temporarily unavailable.',
       );
     }
+  }
+
+  private getPermissions(email?: string | null) {
+    return {
+      individual: true,
+      team: false,
+      admin: this.isAdminEmail(email),
+    };
+  }
+
+  private isAdminEmail(email?: string | null) {
+    if (!email) {
+      return false;
+    }
+
+    const configuredEmails =
+      this.configService.get<string>('ADMIN_EMAILS')?.split(',') ?? [];
+
+    return configuredEmails
+      .map((value) => value.trim().toLowerCase())
+      .filter(Boolean)
+      .includes(email.trim().toLowerCase());
   }
 }

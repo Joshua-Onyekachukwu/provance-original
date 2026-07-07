@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 
 const MediaCrop = ({ label, type, description }) => (
   <div className="space-y-3">

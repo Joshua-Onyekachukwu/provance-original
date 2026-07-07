@@ -273,10 +273,22 @@ export default function AppReportsPage() {
                     {selectedScan.original_filename}
                   </h3>
                 </div>
-                <ScanStatusBadge status={selectedScan.status} />
+                <div className="flex flex-wrap items-center gap-3">
+                  <Link
+                    to={`/app/reports/${selectedScan.id}/print`}
+                    className="inline-flex rounded-xl border border-stone-light px-4 py-2 text-sm font-medium text-charcoal transition hover:border-charcoal"
+                  >
+                    Printable report
+                  </Link>
+                  <ScanStatusBadge status={selectedScan.status} />
+                </div>
               </div>
               <div className="mt-6 grid gap-4 md:grid-cols-2">
                 <ReportMetaItem label="Scan ID" value={selectedScan.id} />
+                <ReportMetaItem
+                  label="Report ID"
+                  value={selectedScan.result_payload?.report?.report_id || 'Pending'}
+                />
                 <ReportMetaItem label="Uploaded" value={formatScanTimestamp(selectedScan.created_at)} />
                 <ReportMetaItem label="Last updated" value={formatScanTimestamp(selectedScan.updated_at)} />
                 <ReportMetaItem

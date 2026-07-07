@@ -85,6 +85,21 @@ function validateRedisUrl(value: string | undefined): string | undefined {
   return redisUrl;
 }
 
+function validateEmailList(value: string | undefined): string {
+  const emails = (value?.trim() || '')
+    .split(',')
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+
+  for (const email of emails) {
+    if (!email.includes('@')) {
+      throw new Error(`ADMIN_EMAILS contains an invalid email: ${email}`);
+    }
+  }
+
+  return [...new Set(emails)].join(',');
+}
+
 export function validateEnv(config: Record<string, unknown>) {
   const env = config as Record<string, string | undefined>;
   const supabaseUrl = env.SUPABASE_URL?.trim();
@@ -147,6 +162,7 @@ export function validateEnv(config: Record<string, unknown>) {
     ),
     ALLOWED_UPLOAD_MIME_TYPES: validateUploadMimeTypes(env.ALLOWED_UPLOAD_MIME_TYPES),
     REDIS_URL: validateRedisUrl(env.REDIS_URL),
+    ADMIN_EMAILS: validateEmailList(env.ADMIN_EMAILS),
     SCAN_PROCESSING_QUEUE_NAME:
       env.SCAN_PROCESSING_QUEUE_NAME?.trim() || 'scan-processing',
     WORKER_CONCURRENCY: parsePositiveInteger(

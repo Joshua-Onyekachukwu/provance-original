@@ -15,7 +15,7 @@ function LoadingScreen() {
   )
 }
 
-export default function ProtectedRoute({ children, requireTeam = false }) {
+export default function ProtectedRoute({ children, requireTeam = false, requireAdmin = false }) {
   const location = useLocation()
   const { isAuthenticated, isLoading, permissions } = useAuth()
 
@@ -29,6 +29,10 @@ export default function ProtectedRoute({ children, requireTeam = false }) {
   }
 
   if (requireTeam && !permissions.team) {
+    return <Navigate to="/app/access-denied" replace />
+  }
+
+  if (requireAdmin && !permissions.admin) {
     return <Navigate to="/app/access-denied" replace />
   }
 

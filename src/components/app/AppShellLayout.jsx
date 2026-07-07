@@ -1,13 +1,21 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext.jsx'
 
-const NAV_ITEMS = [
-  { label: 'Dashboard', href: '/app' },
-  { label: 'Uploads', href: '/app/uploads' },
-  { label: 'Reports', href: '/app/reports' },
-  { label: 'Account', href: '/app/account' },
-  { label: 'Team', href: '/app/team' },
-]
+function getNavItems(permissions) {
+  const items = [
+    { label: 'Dashboard', href: '/app' },
+    { label: 'Uploads', href: '/app/uploads' },
+    { label: 'Reports', href: '/app/reports' },
+    { label: 'Account', href: '/app/account' },
+    { label: 'Team', href: '/app/team' },
+  ]
+
+  if (permissions.admin) {
+    items.push({ label: 'Admin', href: '/app/admin' })
+  }
+
+  return items
+}
 
 function WorkspaceToggle() {
   const { permissions, workspaceContext, setWorkspaceContext } = useAuth()
@@ -43,6 +51,7 @@ function WorkspaceToggle() {
 
 export default function AppShellLayout() {
   const { profile, user, signOut, permissions } = useAuth()
+  const navItems = getNavItems(permissions)
 
   return (
     <div className="min-h-screen bg-parchment">
@@ -104,7 +113,7 @@ export default function AppShellLayout() {
             </div>
 
             <nav className="mt-8 grid gap-2">
-              {NAV_ITEMS.map((item) => {
+              {navItems.map((item) => {
                 const isLocked = item.href === '/app/team' && !permissions.team
 
                 return (

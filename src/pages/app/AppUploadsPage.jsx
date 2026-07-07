@@ -134,8 +134,8 @@ export default function AppUploadsPage() {
         </h2>
         <p className="mt-4 max-w-3xl text-base leading-relaxed text-charcoal-mid">
           Uploads now create a real scan record, move through an async-ready status
-          lifecycle, and return a placeholder verdict while the signal engines are
-          brought online.
+          lifecycle, and return a structured image-first evidence payload while deeper
+          signal engines continue to mature.
         </p>
 
         <div className="mt-7 grid gap-4 rounded-3xl border border-stone-light bg-parchment p-6 sm:grid-cols-[1fr_auto] sm:items-end">
@@ -221,7 +221,7 @@ export default function AppUploadsPage() {
           <AppStatePanel
             label="Processing"
             title="Verification is running"
-            description="This is a stubbed pipeline for now. The status lifecycle is stable so we can swap in real signal engines and a fast worker later."
+            description="Provance is extracting file fingerprints, metadata, provenance markers, and visual statistics before generating the initial report payload."
             variant="loading"
           />
         )}
@@ -230,7 +230,7 @@ export default function AppUploadsPage() {
           <AppStatePanel
             label="Complete"
             title="Scan completed"
-            description="A placeholder verdict payload is now attached to this scan. Report rendering and real signal engines ship in subsequent phases."
+            description="A structured MVP evidence payload is now attached to this scan, including fingerprints, metadata review, and printable report output."
             variant="success"
             action={
               activeScanId ? (

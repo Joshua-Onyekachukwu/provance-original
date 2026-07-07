@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
 import { ApiThrottlerGuard } from './common/guards/api-throttler.guard';
 import { validateEnv } from './config/env.validation';
@@ -34,6 +35,7 @@ import { WaitlistModule } from './waitlist/waitlist.module';
     WaitlistModule,
     AuthModule,
     ScansModule,
+    AdminModule,
   ],
   providers: [
     {

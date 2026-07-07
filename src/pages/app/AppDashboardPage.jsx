@@ -200,15 +200,14 @@ export default function AppDashboardPage() {
           title="Async workflow states are active"
           description="Uploads, queued jobs, processing status, and report history now follow the same state-driven product surfaces instead of relying on placeholder messaging."
           variant="loading"
-          children={
-            <div className="flex items-center gap-3 rounded-2xl border border-sky-100 bg-sky-50/50 px-4 py-3">
-              <div className="h-5 w-5 rounded-full border-2 border-sky-200 border-t-sky-600 animate-spin" />
-              <p className="text-sm text-sky-700">
-                Preparing the next verification workspace state.
-              </p>
-            </div>
-          }
-        />
+        >
+          <div className="flex items-center gap-3 rounded-2xl border border-sky-100 bg-sky-50/50 px-4 py-3">
+            <div className="h-5 w-5 rounded-full border-2 border-sky-200 border-t-sky-600 animate-spin" />
+            <p className="text-sm text-sky-700">
+              Preparing the next verification workspace state.
+            </p>
+          </div>
+        </AppStatePanel>
 
         <AppStatePanel
           label="Workspace"
@@ -219,22 +218,21 @@ export default function AppDashboardPage() {
               : 'The current MVP remains individual-first. Team routes stay locked until organization workflows are implemented.'
           }
           variant={permissions.team ? 'success' : 'empty'}
-          children={
-            stats.latest ? (
-              <div className="rounded-2xl border border-stone-light bg-parchment px-4 py-4">
-                <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">
-                  Latest case
-                </p>
-                <p className="mt-2 text-sm font-medium text-charcoal">
-                  {stats.latest.original_filename}
-                </p>
-                <p className="mt-1 text-sm text-charcoal-mid">
-                  Updated {formatScanTimestamp(stats.latest.updated_at)}
-                </p>
-              </div>
-            ) : null
-          }
-        />
+        >
+          {stats.latest ? (
+            <div className="rounded-2xl border border-stone-light bg-parchment px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">
+                Latest case
+              </p>
+              <p className="mt-2 text-sm font-medium text-charcoal">
+                {stats.latest.original_filename}
+              </p>
+              <p className="mt-1 text-sm text-charcoal-mid">
+                Updated {formatScanTimestamp(stats.latest.updated_at)}
+              </p>
+            </div>
+          ) : null}
+        </AppStatePanel>
       </section>
     </div>
   )

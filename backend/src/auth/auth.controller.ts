@@ -3,6 +3,7 @@ import { Throttle } from '@nestjs/throttler';
 import { AcceptInviteDto } from './dto/accept-invite.dto';
 import { AuthService } from './auth.service';
 import { ConfirmPasswordResetDto } from './dto/confirm-password-reset.dto';
+import { RefreshSessionDto } from './dto/refresh-session.dto';
 import { RequestPasswordResetDto } from './dto/request-password-reset.dto';
 import { SignInDto } from './dto/sign-in.dto';
 
@@ -27,6 +28,12 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   confirmPasswordReset(@Body() dto: ConfirmPasswordResetDto) {
     return this.authService.confirmPasswordReset(dto);
+  }
+
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  refreshSession(@Body() dto: RefreshSessionDto) {
+    return this.authService.refreshSession(dto);
   }
 
   @Post('invites/accept')
