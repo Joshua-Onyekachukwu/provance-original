@@ -20,9 +20,9 @@ Provance is a trust infrastructure platform for synthetic media verification.
 The working product direction is:
 
 - explainable image-first verification with a future path to video
-- reviewable report workspace with future downloadable forensic report export
+- reviewable report workspace with printable, professional report output and a future path to deeper export workflows
 - waitlist-first onboarding and invite-based account access
-- protected application workflows for uploads, analysis, case review, and account access
+- protected application workflows for uploads, analysis, report review, and account access
 - future team collaboration, admin tooling, and API access
 - future API access for programmatic verification and operational integration
 
@@ -75,6 +75,7 @@ The working product direction is:
 - Account preference editing persists locally across refreshes
 - Explicit team permission handling redirects unauthorized access to an access denied page
 - Admin permission handling now exposes the admin workspace only for allowlisted emails
+- Dashboard and app-shell copy have been rewritten to position Provance as a broader verification workspace rather than a legal-only tool
 
 ### Phase 5 Upload Workflow Foundation
 
@@ -89,15 +90,17 @@ The working product direction is:
 - Upstash-backed queue processing is now wired through the Fly worker deployment path
 - Worker processing now writes a structured image-first evidence payload instead of a single placeholder signal
 
-### Phase 6 Report And Case Review Foundation
+### Phase 6 Report And Report Review Foundation
 
 - `/app/reports` now loads real scan history instead of a placeholder panel
-- `/app/reports/:scanId` now renders report detail for a selected case
+- `/app/reports/:scanId` now renders report detail for a selected upload
 - `/app/reports/:scanId/print` now provides printable report output
 - Dashboard cards and recent activity are now backed by live scan records
 - Completed uploads now deep-link directly into the report workspace
 - Report IDs and structured evidence sections are now attached to completed scans
-- The authenticated dashboard and sidebar have been redesigned into a denser analyst workspace with a stronger operations layout
+- The authenticated dashboard and sidebar have been redesigned into a denser verification workspace with a stronger operations layout
+- Printable reports now include the analyzed media preview through a signed asset URL from the backend
+- Printable reports now include overall verdict, authenticity score, confidence score, risk level, executive summary, media information, metadata summary, AI/manipulation result grouping, signal analysis, key findings, processing timeline, recommendations, and supporting evidence
 
 ### Admin Operations
 
@@ -105,6 +108,7 @@ The working product direction is:
 - Admin users can search and filter applications, record notes, update review status, export CSV data, and create secure invite links
 - Backend admin endpoints now enforce signed-in admin access through the `ADMIN_EMAILS` allowlist
 - Admin operations are tracked through the audit trail
+- A documented local admin test-account pattern now exists for controlled local-only testing with `founder.admin@provance.local`
 
 ### NestJS Backend Scaffold
 
@@ -156,11 +160,14 @@ The working product direction is:
 
 ### Product Application
 
-- Richer evidence models, share links, and PDF rendering can still be expanded
+- Richer evidence models, share links, and dedicated PDF rendering can still be expanded
 - Evidence timeline and reference handling
 - Organization and team access controls
 - Audit review tools
-- Higher-density multi-user case triage beyond the current analyst dashboard redesign
+- Higher-density multi-user report triage beyond the current dashboard redesign
+- Real video preview support in reports
+- Real audio waveform or playback-summary support in reports
+- Actual video and audio upload, extraction, and processing pipeline support
 
 ## Validation Status
 
@@ -181,6 +188,7 @@ Validated in this phase:
   - creating a private Storage bucket named `provance-uploads`
   - setting `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in the frontend environment
   - setting `SUPABASE_UPLOADS_BUCKET` and related settings in the backend environment
+- latest dashboard-copy, auth-copy, admin-doc, and printable-report refinements verified through frontend diagnostics, frontend production build, and backend production build
 
 ## Important Files
 
@@ -218,8 +226,9 @@ Validated in this phase:
 1. Apply the latest Supabase migrations in the connected project
 2. Validate the live worker-backed queue flow end to end through the deployed frontend
 3. Move account preference storage from local-only to a Supabase-backed profile model
-4. Expand printable reports into full PDF export when needed
-5. Start Phase 7 team and organization workflows
+4. Expand the media pipeline beyond images so reports can support real video thumbnails and audio summaries
+5. Expand printable reports into full PDF export when needed
+6. Start Phase 7 team and organization workflows only when the roadmap is reopened
 
 ## Collaboration Notes
 

@@ -24,7 +24,7 @@ Current MVP posture:
 - image-first
 - waitlist-first
 - invite-based access
-- authenticated analyst workspace
+- authenticated verification workspace
 - queue-backed scan processing
 - structured in-app report review
 - printable report output
@@ -167,6 +167,12 @@ Admin access currently depends on the backend environment variable:
 
 If the signed-in email appears in that allowlist, the UI exposes the admin route and the backend authorizes the request.
 
+For controlled local-only admin testing, the current recommended admin test email is:
+
+- `founder.admin@provance.local`
+
+This must still correspond to a real account and still must be present in `ADMIN_EMAILS`.
+
 ## How Scan Processing Works
 
 ### Step 1. Initiate scan
@@ -213,6 +219,24 @@ The result payload is stored on the `scans` row and rendered in:
 - dashboard recent activity
 - report detail view
 - printable report view
+
+The current printable report now includes:
+
+- signed media preview for uploaded images
+- verification ID and report ID
+- overall verdict
+- authenticity score
+- confidence score
+- risk level
+- executive summary
+- media information
+- metadata summary
+- AI and manipulation result groupings
+- signal-by-signal analysis
+- key findings
+- processing timeline
+- recommendations
+- supporting evidence
 
 ## Current Database Objects
 
@@ -270,7 +294,9 @@ The result payload is stored on the `scans` row and rendered in:
 - report detail
 - printable report view
 - image-first evidence extraction
-- redesigned dashboard and sidebar aligned to an analyst-operations workspace
+- redesigned dashboard and sidebar aligned to a broader verification workspace
+- broader dashboard and auth copy positioning so the product does not read as legal-only
+- backend-signed media preview support for report rendering
 
 ### Security baseline
 
@@ -295,6 +321,32 @@ The result payload is stored on the `scans` row and rendered in:
 - external API product
 - billing
 - enterprise observability stack
+
+## Latest Completed Refinement Pass
+
+The latest completed refinement pass focused on three areas:
+
+1. admin test-account guidance
+2. dashboard and auth copy broadening
+3. printable report redesign
+
+Completed in this pass:
+
+- documented a local admin test-account pattern using `founder.admin@provance.local`
+- updated `backend/.env.example` to reflect that local admin example
+- rewrote the app-shell, dashboard, uploads, reports, account, access, admin, and auth copy so the product reads as a general-purpose media verification platform
+- replaced narrower legal-style wording such as repeated `case`, `evidence package`, and `analyst` framing where that wording was not required
+- redesigned the printable report into a professional report-style document with the actual analyzed image preview
+- added a signed asset preview URL to `GET /v1/scans/:scanId`
+
+## Recommended Resume Point
+
+When work resumes later, start from these items in order:
+
+1. validate the live deployed report preview and printable layout through the production or staging frontend
+2. expand the upload and processing pipeline beyond images so video and audio reports can use real previews instead of placeholder future-state messaging
+3. move account preferences from local storage into a Supabase-backed profile model
+4. decide when to reopen Phase 7 team and organization workflows
 
 ## Local Development
 

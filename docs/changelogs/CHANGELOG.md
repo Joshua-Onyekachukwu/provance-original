@@ -1,5 +1,33 @@
 # Provance — Changelog
 
+## [2026-07-07] - Report Refinement, Broader Dashboard Copy, And Local Admin Test Pattern
+
+### Updated
+- `backend/src/scans/scans.service.ts` - Added signed asset preview URLs to scan detail responses and included result payloads in scan listings for richer report surfaces
+- `backend/.env.example` - Added `founder.admin@provance.local` as the documented local admin example inside `ADMIN_EMAILS`
+- `src/pages/app/AppReportPrintPage.jsx` - Rebuilt the printable report into a more professional report document with analyzed media preview, executive summary, scorecards, metadata, findings, timeline, recommendations, and supporting evidence
+- `src/pages/app/AppReportsPage.jsx` - Added inline media preview support on report detail and rewrote report language toward broader verification use cases
+- `src/pages/app/AppDashboardPage.jsx` - Repositioned dashboard language away from narrow legal-only phrasing toward broader verification workflows
+- `src/components/app/AppShellLayout.jsx` - Renamed and refined shell copy to present the app as a verification workspace rather than an analyst console
+- `src/pages/app/AppUploadsPage.jsx` - Rewrote upload states and helper text to match the updated brand positioning
+- `src/pages/app/AppAdminPage.jsx` - Refined internal admin copy and helper text
+- `src/pages/app/AppAccountPage.jsx` - Refined account and notification copy
+- `src/pages/app/AppTeamPage.jsx` - Refined team placeholder language
+- `src/pages/app/AppAccessDeniedPage.jsx` - Refined restricted-access copy
+- `src/pages/SignInPage.jsx` - Refined access messaging and onboarding language
+- `src/pages/AcceptInvitePage.jsx` - Refined activation copy
+- `src/pages/RequestPasswordResetPage.jsx` - Refined reset-request copy
+- `src/pages/ResetPasswordConfirmPage.jsx` - Refined recovery confirmation copy
+- `docs/engineering/ADMIN_ACCESS_AND_OPERATIONS.md` - Documented the local admin test-account pattern and local-only usage guidance
+- `docs/engineering/CURRENT_IMPLEMENTATION_STATUS.md` - Recorded the report refinement and copy-positioning pass
+- `docs/engineering/ENGINEERING_HANDOFF_2026-07-07.md` - Added the latest refinement-pass handoff notes and resume point
+- `README.md` - Updated the current MVP scope and immediate priorities to reflect the refined report and paused-next-step posture
+
+### Validated
+- `npm run build`
+- `npm run backend:build`
+- diagnostics on the edited frontend and backend files
+
 ## [2026-07-07] - Dashboard And Sidebar Redesign
 
 ### Updated

@@ -28,16 +28,17 @@ Provance currently supports:
 - protected application routes
 - image-first uploads with file validation and signed Supabase storage upload
 - queue-backed scan submission with status polling
-- case history, report detail, printable report output, and MVP evidence payload review
+- report history, report detail, printable report output, analyzed media preview, and MVP signal review
 - internal waitlist review and secure invite issuance tooling
-- redesigned authenticated dashboard and sidebar for denser analyst operations
+- redesigned authenticated dashboard and sidebar with broader verification-workspace positioning
 
 Not complete yet:
 
 - deeper evidence and signal output beyond the current MVP image-first heuristics
 - full PDF export and share workflows beyond the printable report view
+- real video preview and audio-summary support inside reports
 - team and organization workflows
-- shared case triage and organization-aware dashboards
+- shared report triage and organization-aware dashboards
 
 ## Architecture
 
@@ -225,9 +226,9 @@ This repo follows a phase-based workflow:
 The next major work areas are:
 
 - validate the full live end-to-end upload, queue, and report workflow through the deployed frontend
-- deepen the report and evidence layer beyond the current MVP heuristic payload
+- expand the media pipeline beyond images so reports can support real video and audio preview workflows
 - move account profile persistence into Supabase-backed storage
-- hold Phase 7 until the next roadmap decision and continue refining the analyst workspace where needed
+- hold Phase 7 until the next roadmap decision and continue refining the verification workspace where needed
 
 ## License
 
