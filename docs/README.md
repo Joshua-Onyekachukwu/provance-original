@@ -27,3 +27,4 @@ Recommended review order:
 Deployment playbook:
 
 - `docs/engineering/DEPLOYMENT_FLYIO_AND_UPSTASH.md`
+- `docs/engineering/CREDENTIALS_AND_ENVIRONMENT_VARIABLES.md`
