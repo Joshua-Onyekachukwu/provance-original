@@ -1,5 +1,61 @@
 # Provance — Changelog
 
+## [2026-07-07] - Dashboard And Sidebar Redesign
+
+### Updated
+- `src/components/app/AppShellLayout.jsx` - Reworked the authenticated shell into a darker analyst control rail with clearer route context, denser identity state, and stronger navigation hierarchy
+- `src/pages/app/AppDashboardPage.jsx` - Redesigned the dashboard into an analyst-facing operations surface with a verification ledger, system posture panel, denser status metrics, and live signal readouts
+- `README.md` - Updated the MVP scope and immediate priorities to reflect the redesigned analyst workspace
+- `docs/engineering/CURRENT_IMPLEMENTATION_STATUS.md` - Recorded the dashboard and sidebar redesign in the current-state tracker
+- `docs/engineering/ENGINEERING_HANDOFF_2026-07-07.md` - Added the redesigned analyst workspace to the handoff summary
+
+### Validated
+- `npm run build`
+- browser review of the updated dashboard and sidebar through the local preview
+
+## [2026-07-07] - MVP Auth Recovery, Admin Operations, And Structured Report Output
+
+### Added
+- `backend/src/admin/*` - Admin module, controller, DTOs, and service for waitlist review and invite issuance
+- `backend/src/common/guards/admin.guard.ts` - Admin allowlist enforcement based on `ADMIN_EMAILS`
+- `backend/src/auth/dto/refresh-session.dto.ts` - Session refresh input DTO
+- `supabase/migrations/0003_admin_ops.sql` - Admin-ops schema additions for notes and invite metadata
+- `src/pages/AcceptInvitePage.jsx` - Invite activation page
+- `src/pages/RequestPasswordResetPage.jsx` - Password reset request page
+- `src/pages/ResetPasswordConfirmPage.jsx` - Password reset confirmation page
+- `src/pages/app/AppAdminPage.jsx` - Internal admin workspace
+- `src/pages/app/AppReportPrintPage.jsx` - Printable report page
+- `docs/engineering/ADMIN_ACCESS_AND_OPERATIONS.md` - Admin setup and usage guide
+- `docs/engineering/ENGINEERING_HANDOFF_2026-07-07.md` - Detailed engineer handoff
+- `docs/checkpoints/*` - Phase, admin, verification pipeline, and report checkpoint documents
+
+### Updated
+- `backend/src/auth/auth.controller.ts` - Added session refresh endpoint
+- `backend/src/auth/auth.service.ts` - Added permission payloads and session refresh handling
+- `backend/src/config/env.validation.ts` - Added `ADMIN_EMAILS` validation
+- `backend/src/scans/scans.service.ts` - Replaced the single placeholder signal with image-first evidence extraction, fingerprints, metadata parsing, and structured report output
+- `backend/.env.example` - Added `ADMIN_EMAILS`
+- `src/lib/api.js` - Added automatic token refresh, admin API helpers, and auth recovery helpers
+- `src/context/AuthContext.jsx` - Added admin permission handling
+- `src/App.jsx` - Added auth-recovery, admin, and printable report routes
+- `src/components/app/AppShellLayout.jsx` - Added admin navigation support
+- `src/components/auth/ProtectedRoute.jsx` - Added admin-gated route support
+- `src/pages/SignInPage.jsx` - Added recovery and invite entry links
+- `src/pages/app/AppReportsPage.jsx` - Added report ID display and printable report access
+- `src/pages/app/AppUploadsPage.jsx` - Updated workflow copy to reflect the new MVP evidence payload
+- `README.md` - Updated current MVP scope and route inventory
+- `docs/engineering/CURRENT_IMPLEMENTATION_STATUS.md` - Recorded auth recovery, admin ops, and report/output progress
+- `docs/engineering/CREDENTIALS_AND_ENVIRONMENT_VARIABLES.md` - Added admin environment configuration
+
+### Validated
+- `npm run build`
+- `npm run backend:build`
+- `npm --prefix backend test -- --runInBand`
+- `npm run backend:test:e2e`
+- `npm run lint`
+- `npm run check:launch`
+- remote Supabase migration apply for `0003_admin_ops.sql`
+
 ## [2026-07-07] - Queue Worker And Report Workspace
 
 ### Added

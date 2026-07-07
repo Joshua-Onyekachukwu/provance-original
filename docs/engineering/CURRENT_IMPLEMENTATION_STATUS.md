@@ -62,6 +62,8 @@ The working product direction is:
 
 - `WaitlistPage.jsx` now submits to a real API shape through `src/lib/api.js`
 - `SignInPage.jsx` now signs users in through the shared auth context and redirects into the authenticated workspace
+- `AcceptInvitePage.jsx` now activates invited users through the backend
+- Password reset request and confirmation pages are now implemented
 - Both pages support loading, error, and success states
 
 ### Authenticated App Shell
@@ -69,9 +71,10 @@ The working product direction is:
 - New signed-in route group under `/app/*`
 - Protected route gate that redirects unauthenticated users back to sign-in with a return URL
 - Dedicated authenticated layout with left-side navigation and top-level app structure
-- Initial in-product pages for dashboard, uploads, reports, account settings, and team workspace placeholders
+- Initial in-product pages for dashboard, uploads, reports, account settings, admin operations, and team workspace placeholders
 - Account preference editing persists locally across refreshes
 - Explicit team permission handling redirects unauthorized access to an access denied page
+- Admin permission handling now exposes the admin workspace only for allowlisted emails
 
 ### Phase 5 Upload Workflow Foundation
 
@@ -84,13 +87,24 @@ The working product direction is:
 - Supabase JWT authentication guard added for scan endpoints
 - Scan storage and data model migration added at `supabase/migrations/0002_scans.sql`
 - Upstash-backed queue processing is now wired through the Fly worker deployment path
+- Worker processing now writes a structured image-first evidence payload instead of a single placeholder signal
 
 ### Phase 6 Report And Case Review Foundation
 
 - `/app/reports` now loads real scan history instead of a placeholder panel
 - `/app/reports/:scanId` now renders report detail for a selected case
+- `/app/reports/:scanId/print` now provides printable report output
 - Dashboard cards and recent activity are now backed by live scan records
 - Completed uploads now deep-link directly into the report workspace
+- Report IDs and structured evidence sections are now attached to completed scans
+- The authenticated dashboard and sidebar have been redesigned into a denser analyst workspace with a stronger operations layout
+
+### Admin Operations
+
+- `/app/admin` now provides an internal waitlist and access operations workspace
+- Admin users can search and filter applications, record notes, update review status, export CSV data, and create secure invite links
+- Backend admin endpoints now enforce signed-in admin access through the `ADMIN_EMAILS` allowlist
+- Admin operations are tracked through the audit trail
 
 ### NestJS Backend Scaffold
 
@@ -110,8 +124,10 @@ The working product direction is:
 - global exception filter added to avoid leaking internal errors
 - public health endpoint reduced to minimal safe status output
 - auth audit events added for sign-in success, sign-in failure, password reset requests, and invite acceptance
+- admin audit events are now written for waitlist review and invite creation operations
 - public Supabase auth clients are now created per request to avoid cross-request session leakage
 - security and launch checklist added at `docs/engineering/SECURITY_AND_LAUNCH_CHECKLIST.md`
+- frontend session refresh is now handled through the authenticated client and `POST /v1/auth/refresh`
 
 ### Supabase Preparation
 
@@ -144,7 +160,7 @@ The working product direction is:
 - Evidence timeline and reference handling
 - Organization and team access controls
 - Audit review tools
-- Authenticated dashboard redesign and higher-density case triage UI
+- Higher-density multi-user case triage beyond the current analyst dashboard redesign
 
 ## Validation Status
 

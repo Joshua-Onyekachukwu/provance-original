@@ -33,10 +33,12 @@ If you are onboarding into the codebase today, read in this order:
 3. `docs/engineering/PHASE_TASK_LIST.md`
 4. `docs/engineering/DEPLOYMENT_AND_AUTH_STRATEGY.md`
 5. `docs/engineering/CREDENTIALS_AND_ENVIRONMENT_VARIABLES.md`
-6. `backend/README.md`
-7. `docs/product/PRD_DASHBOARD.md`
-8. `docs/product/REPORT_FLYWHEEL.md`
-9. `docs/foundation/provance-operating-doctrine.md`
+6. `docs/engineering/ADMIN_ACCESS_AND_OPERATIONS.md`
+7. `docs/engineering/ENGINEERING_HANDOFF_2026-07-07.md`
+8. `backend/README.md`
+9. `docs/product/PRD_DASHBOARD.md`
+10. `docs/product/REPORT_FLYWHEEL.md`
+11. `docs/foundation/provance-operating-doctrine.md`
 
 ## Current Product Notes
 

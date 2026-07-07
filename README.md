@@ -24,18 +24,20 @@ Provance currently supports:
 
 - waitlist-first onboarding and invite-based access
 - email and password sign-in through the backend
+- invite acceptance and password reset UX
 - protected application routes
 - image-first uploads with file validation and signed Supabase storage upload
 - queue-backed scan submission with status polling
-- case history, report detail, and placeholder verdict payload review
+- case history, report detail, printable report output, and MVP evidence payload review
+- internal waitlist review and secure invite issuance tooling
+- redesigned authenticated dashboard and sidebar for denser analyst operations
 
 Not complete yet:
 
-- richer evidence and signal output beyond the placeholder result payload
-- report export and printable forensic output
-- internal waitlist review and invite issuance tooling
+- deeper evidence and signal output beyond the current MVP image-first heuristics
+- full PDF export and share workflows beyond the printable report view
 - team and organization workflows
-- dashboard redesign for denser case operations
+- shared case triage and organization-aware dashboards
 
 ## Architecture
 
@@ -83,6 +85,9 @@ Public routes include:
 - `/contact`
 - `/signin`
 - `/waitlist`
+- `/accept-invite`
+- `/reset-password`
+- `/reset-password/confirm`
 - legal pages for privacy, terms, and cookies
 
 Authenticated routes include:
@@ -91,8 +96,10 @@ Authenticated routes include:
 - `/app/uploads`
 - `/app/reports`
 - `/app/reports/:scanId`
+- `/app/reports/:scanId/print`
 - `/app/account`
 - `/app/team`
+- `/app/admin`
 
 Backend endpoints currently include:
 
@@ -101,11 +108,15 @@ Backend endpoints currently include:
 - `POST /v1/auth/sign-in`
 - `POST /v1/auth/password-reset/request`
 - `POST /v1/auth/password-reset/confirm`
+- `POST /v1/auth/refresh`
 - `POST /v1/auth/invites/accept`
 - `POST /v1/scans`
 - `POST /v1/scans/:scanId/submit`
 - `GET /v1/scans`
 - `GET /v1/scans/:scanId`
+- `GET /v1/admin/dashboard`
+- `PATCH /v1/admin/waitlist/:applicationId`
+- `POST /v1/admin/waitlist/:applicationId/invite`
 
 ## Deployment Snapshot
 
@@ -188,6 +199,8 @@ Current engineering source-of-truth docs:
 - implementation status: `docs/engineering/CURRENT_IMPLEMENTATION_STATUS.md`
 - phase map: `docs/engineering/PHASE_TASK_LIST.md`
 - env and credentials checklist: `docs/engineering/CREDENTIALS_AND_ENVIRONMENT_VARIABLES.md`
+- admin operations guide: `docs/engineering/ADMIN_ACCESS_AND_OPERATIONS.md`
+- engineer handoff: `docs/engineering/ENGINEERING_HANDOFF_2026-07-07.md`
 - Fly and Upstash deployment playbook: `docs/engineering/DEPLOYMENT_FLYIO_AND_UPSTASH.md`
 - security and launch checklist: `docs/engineering/SECURITY_AND_LAUNCH_CHECKLIST.md`
 - changelog: `docs/changelogs/CHANGELOG.md`
@@ -212,10 +225,9 @@ This repo follows a phase-based workflow:
 The next major work areas are:
 
 - validate the full live end-to-end upload, queue, and report workflow through the deployed frontend
-- deepen the report and evidence layer beyond the placeholder verdict payload
-- build internal waitlist review and invite issuance tooling
+- deepen the report and evidence layer beyond the current MVP heuristic payload
 - move account profile persistence into Supabase-backed storage
-- plan the later dashboard redesign once MVP workflows are stable
+- hold Phase 7 until the next roadmap decision and continue refining the analyst workspace where needed
 
 ## License
 
