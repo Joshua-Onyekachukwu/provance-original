@@ -52,6 +52,19 @@ function validateOriginList(value: string | undefined): string {
   return origins.join(',');
 }
 
+function validateUploadMimeTypes(value: string | undefined): string {
+  const mimeTypes = (value?.trim() || '')
+    .split(',')
+    .map((mimeType) => mimeType.trim())
+    .filter(Boolean);
+
+  if (mimeTypes.length === 0) {
+    return 'image/jpeg,image/png,image/webp,image/gif';
+  }
+
+  return [...new Set(mimeTypes)].join(',');
+}
+
 export function validateEnv(config: Record<string, unknown>) {
   const env = config as Record<string, string | undefined>;
   const supabaseUrl = env.SUPABASE_URL?.trim();
@@ -104,5 +117,14 @@ export function validateEnv(config: Record<string, unknown>) {
     SUPABASE_ANON_KEY: anonKey,
     SUPABASE_SERVICE_ROLE_KEY: serviceRoleKey,
     SUPABASE_AUTH_REDIRECT_URL: authRedirectUrl,
+    SUPABASE_WAITLIST_TABLE: env.SUPABASE_WAITLIST_TABLE?.trim() || 'waitlist_applications',
+    SUPABASE_SCANS_TABLE: env.SUPABASE_SCANS_TABLE?.trim() || 'scans',
+    SUPABASE_UPLOADS_BUCKET: env.SUPABASE_UPLOADS_BUCKET?.trim() || 'provance-uploads',
+    MAX_UPLOAD_BYTES: parsePositiveInteger(
+      env.MAX_UPLOAD_BYTES,
+      50 * 1024 * 1024,
+      'MAX_UPLOAD_BYTES',
+    ),
+    ALLOWED_UPLOAD_MIME_TYPES: validateUploadMimeTypes(env.ALLOWED_UPLOAD_MIME_TYPES),
   };
 }

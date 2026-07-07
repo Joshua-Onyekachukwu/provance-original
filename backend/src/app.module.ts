@@ -6,6 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { ApiThrottlerGuard } from './common/guards/api-throttler.guard';
 import { validateEnv } from './config/env.validation';
 import { HealthModule } from './health/health.module';
+import { ScansModule } from './scans/scans.module';
 import { SupabaseModule } from './supabase/supabase.module';
 import { WaitlistModule } from './waitlist/waitlist.module';
 
@@ -30,6 +31,7 @@ import { WaitlistModule } from './waitlist/waitlist.module';
     SupabaseModule,
     WaitlistModule,
     AuthModule,
+    ScansModule,
   ],
   providers: [
     {

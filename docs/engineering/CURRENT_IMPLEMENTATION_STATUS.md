@@ -72,6 +72,17 @@ The working product direction is:
 - Account preference editing persists locally across refreshes
 - Explicit team permission handling redirects unauthorized access to an access denied page
 
+### Phase 5 Upload Workflow Foundation
+
+- New upload flow scaffold in `/app/uploads` that creates a scan record, uploads directly to private storage, submits a job, and polls status
+- New NestJS scan endpoints:
+  - `POST /v1/scans` (initiate upload and return signed upload token)
+  - `POST /v1/scans/:scanId/submit` (queue processing)
+  - `GET /v1/scans` (list scans)
+  - `GET /v1/scans/:scanId` (scan detail with result payload)
+- Supabase JWT authentication guard added for scan endpoints
+- Scan storage and data model migration added at `supabase/migrations/0002_scans.sql`
+
 ### NestJS Backend Scaffold
 
 - `GET /v1/health`
@@ -97,7 +108,7 @@ The working product direction is:
 
 - Supabase project is connected for local backend validation
 - Backend environment template added
-- Starter SQL migration added at `backend/supabase/migrations/0001_waitlist_auth.sql`
+- Starter SQL migration added at `supabase/migrations/0001_waitlist_auth.sql`
 - Remote tables exist for `waitlist_applications`, `access_invites`, and `auth_audit_events`
 - Waitlist submissions persist into the live `waitlist_applications` table
 - Invite acceptance creates a real Supabase user and updates waitlist and invite state
@@ -121,7 +132,7 @@ The working product direction is:
 
 ### Product Application
 
-- Upload and analysis workflow
+- Upload and analysis workflow beyond the initial Phase 5 scaffold
 - Report management
 - Organization and team access controls
 - Audit review tools
@@ -140,12 +151,11 @@ Validated in this phase:
 - live waitlist submission verified against the connected Supabase project
 - live invite acceptance and sign-in verified against the connected Supabase project
 - live audit event writes verified in `auth_audit_events`
-
-Environment note:
-
-- `npm install` for the backend hit an npm resolver bug in this environment
-- backend validation succeeded using `pnpm` install, followed by `npm run build` and `npm run test:e2e`
-- until that resolver issue is addressed, engineers should install backend dependencies with `npx pnpm@9 install`
+- Phase 5 upload scaffold verified through build and test gates, but requires:
+  - applying `0002_scans.sql` in Supabase
+  - creating a private Storage bucket named `provance-uploads`
+  - setting `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in the frontend environment
+  - setting `SUPABASE_UPLOADS_BUCKET` and related settings in the backend environment
 
 ## Important Files
 
@@ -175,16 +185,18 @@ Environment note:
 - `backend/src/auth/auth.controller.ts`
 - `backend/src/auth/auth.service.ts`
 - `backend/src/supabase/supabase.service.ts`
-- `backend/supabase/migrations/0001_waitlist_auth.sql`
+- `supabase/migrations/0001_waitlist_auth.sql`
+- `supabase/migrations/0002_scans.sql`
 
 ## Next Recommended Steps
 
 1. Add invite issuance and waitlist review tooling for internal operators
 2. Implement password reset UI and the recovery callback flow
-3. Begin the upload and verification workflow inside `/app/uploads`
-4. Add a first report list view under `/app/reports` backed by real case records
-5. Move account preference storage from local-only to a Supabase-backed profile model
-6. Extend audit coverage into admin actions and suspicious-auth monitoring
+3. Apply the Phase 5 scan migration, create the uploads bucket, and validate the upload flow against Supabase
+4. Replace stub processing with a real fast worker and a queue-backed job lifecycle
+5. Add a first report list view under `/app/reports` backed by real scan records
+6. Move account preference storage from local-only to a Supabase-backed profile model
+7. Extend audit coverage into admin actions and suspicious-auth monitoring
 
 ## Collaboration Notes
 
