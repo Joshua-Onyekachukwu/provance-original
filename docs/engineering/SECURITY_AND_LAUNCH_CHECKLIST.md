@@ -30,6 +30,7 @@ Before enabling real auth flows:
 - password rules must enforce minimum and maximum safe length
 - session cookies or tokens must be configured for secure transport and correct expiry
 - protected routes must be enforced both on the backend and in frontend navigation
+- local-only session storage should not be treated as production session hardening
 
 ## Waitlist And Public Form Checks
 
@@ -82,12 +83,13 @@ This repo currently includes:
 - reduced health endpoint exposure
 - auth audit logging for sign-in, password reset requests, and invite acceptance
 - live Supabase validation of waitlist persistence, invite activation, and sign-in
+- frontend protected routing and authenticated navigation under `/app/*`
 
 ## Next Security Work
 
 High-priority follow-up work:
 
-- secure browser session persistence and protected-route enforcement
+- secure browser session persistence strategy (cookie vs token transport)
 - CSRF and cookie strategy for browser-authenticated flows where applicable
 - duplicate waitlist protection and abuse handling
 - audit logging for admin review, invite issuance, and suspicious-auth monitoring

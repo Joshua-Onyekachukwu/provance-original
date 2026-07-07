@@ -1,3 +1,8 @@
+const DEFAULT_FRONTEND_ORIGINS = [
+  'http://localhost:3000',
+  'http://localhost:5173',
+];
+
 function isTruthy(value: string | undefined, fallback: boolean): boolean {
   if (value === undefined || value === '') return fallback;
 
@@ -21,11 +26,11 @@ function parsePositiveInteger(
 }
 
 function validateOriginList(value: string | undefined): string {
-  const input = value?.trim() || 'http://localhost:5173';
-  const origins = input
+  const configuredOrigins = (value?.trim() || '')
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);
+  const origins = [...new Set([...DEFAULT_FRONTEND_ORIGINS, ...configuredOrigins])];
 
   if (origins.length === 0) {
     throw new Error('FRONTEND_ORIGIN must include at least one valid origin.');
