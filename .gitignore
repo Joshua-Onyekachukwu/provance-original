@@ -12,6 +12,12 @@ dist
 dist-ssr
 .trae
 *.local
+.env
+.env.*
+!/.env.example
+!**/.env.example
+backend/.env
+backend/.env.*
 
 # Editor directories and files
 .vscode/*
