@@ -60,8 +60,17 @@ The working product direction is:
 ### Waitlist And Sign-In Frontend
 
 - `WaitlistPage.jsx` now submits to a real API shape through `src/lib/api.js`
-- `SignInPage.jsx` now submits to a real API shape through `src/lib/api.js`
+- `SignInPage.jsx` now signs users in through the shared auth context and redirects into the authenticated workspace
 - Both pages support loading, error, and success states
+
+### Authenticated App Shell
+
+- New signed-in route group under `/app/*`
+- Protected route gate that redirects unauthenticated users back to sign-in with a return URL
+- Dedicated authenticated layout with left-side navigation and top-level app structure
+- Initial in-product pages for dashboard, uploads, reports, account settings, and team workspace placeholders
+- Account preference editing persists locally across refreshes
+- Explicit team permission handling redirects unauthorized access to an access denied page
 
 ### NestJS Backend Scaffold
 
@@ -100,7 +109,7 @@ The working product direction is:
 
 - Password reset email delivery and recovery callback UX
 - Session persistence and refresh-token handling
-- Protected frontend routes and authenticated app shell
+- Hardened production session storage strategy (cookie or token transport plan)
 - Invite token issuance tooling for admin and review workflows
 
 ### Waitlist Operations
@@ -112,7 +121,6 @@ The working product direction is:
 
 ### Product Application
 
-- Authenticated dashboard
 - Upload and analysis workflow
 - Report management
 - Organization and team access controls
@@ -124,6 +132,7 @@ Validated in this phase:
 
 - frontend diagnostics on edited files
 - frontend production build
+- authenticated routing verified in browser (sign-in redirect, protected routes, account persistence, team denial)
 - backend unit tests for auth service failure handling and audit logging
 - backend NestJS build
 - backend e2e test for health endpoint
@@ -145,6 +154,10 @@ Environment note:
 - `src/lib/api.js`
 - `src/pages/WaitlistPage.jsx`
 - `src/pages/SignInPage.jsx`
+- `src/context/AuthContext.jsx`
+- `src/components/auth/ProtectedRoute.jsx`
+- `src/components/app/AppShellLayout.jsx`
+- `src/pages/app/*`
 - `src/pages/PrivacyPage.jsx`
 - `src/pages/TermsPage.jsx`
 - `src/pages/CookiesPage.jsx`
@@ -166,12 +179,12 @@ Environment note:
 
 ## Next Recommended Steps
 
-1. Connect real Supabase environment values in `backend/.env`
-2. Add invite issuance and waitlist review tooling for internal operators
-3. Build secure frontend session handling, protected routes, and account recovery pages
-4. Add authenticated app-shell navigation and first signed-in dashboard state
-5. Extend auth audit coverage into admin review and invite issuance flows
-6. Start building the first authenticated product area
+1. Add invite issuance and waitlist review tooling for internal operators
+2. Implement password reset UI and the recovery callback flow
+3. Begin the upload and verification workflow inside `/app/uploads`
+4. Add a first report list view under `/app/reports` backed by real case records
+5. Move account preference storage from local-only to a Supabase-backed profile model
+6. Extend audit coverage into admin actions and suspicious-auth monitoring
 
 ## Collaboration Notes
 

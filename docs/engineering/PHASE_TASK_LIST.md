@@ -1,6 +1,6 @@
 # Provance Phase Task List
 
-Last updated: 2026-07-06
+Last updated: 2026-07-07
 
 ## Purpose
 
@@ -217,10 +217,10 @@ Exit criteria:
 
 The most important next tasks are:
 
-1. connect real Supabase project values and apply the starter migration
-2. wire real waitlist persistence and Supabase Auth
-3. add protected frontend routing and session management
-4. build the first authenticated app shell
+1. build the first real upload and verification workflow
+2. connect file validation, intake constraints, and job lifecycle handling
+3. render real case progress and result states inside the authenticated shell
+4. begin the structured report and evidence layer after upload flow is stable
 
 ## Documentation Rules
 

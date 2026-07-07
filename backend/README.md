@@ -54,6 +54,12 @@ npm run start:dev
 
 Backend runs on `http://localhost:4000` by default.
 
+For local development, allow both Vite ports unless you have a stricter reason not to:
+
+```env
+FRONTEND_ORIGIN=http://localhost:3000,http://localhost:5173
+```
+
 If `npm install` fails in your environment with an `Invalid Version` resolver error, use `pnpm` for dependency installation and continue using the normal npm scripts afterward.
 
 ## Security Baseline

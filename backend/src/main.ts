@@ -6,11 +6,18 @@ import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { randomUUID } from 'crypto';
 
+const DEFAULT_FRONTEND_ORIGINS = [
+  'http://localhost:3000',
+  'http://localhost:5173',
+];
+
 function parseOrigins(value: string | undefined): string[] {
-  return (value || 'http://localhost:5173')
+  const configuredOrigins = (value || '')
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);
+
+  return [...new Set([...DEFAULT_FRONTEND_ORIGINS, ...configuredOrigins])];
 }
 
 async function bootstrap() {

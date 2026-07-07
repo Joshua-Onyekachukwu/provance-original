@@ -1,5 +1,31 @@
 # Provance — Changelog
 
+## [2026-07-07] - Authenticated App Shell
+
+### Added
+- `src/context/AuthContext.jsx` - Frontend auth state with session restore, sign-in, sign-out, workspace context, and profile preferences
+- `src/components/auth/ProtectedRoute.jsx` - Protected-route gate with redirect preservation and team-permission enforcement
+- `src/components/app/AppShellLayout.jsx` - Authenticated layout shell and navigation for signed-in users
+- `src/components/app/AppStatePanel.jsx` - Shared empty, loading, success, and error presentation surface for app pages
+- `src/pages/app/*` - Initial dashboard, uploads, reports, account, team, and access denied pages
+
+### Updated
+- `src/App.jsx` - Split public and authenticated layouts and introduced `/app/*` routing
+- `src/pages/SignInPage.jsx` - Signed-in redirect handling and auth-context integration
+- `src/components/Navbar.jsx` - Session-aware navigation that surfaces Dashboard and Sign Out when authenticated
+- `backend/src/main.ts` - Default CORS allow-list now includes `http://localhost:3000` and `http://localhost:5173`
+- `backend/src/config/env.validation.ts` - Default frontend origins now include both Vite ports for local development
+- `backend/.env.example` - Updated default `FRONTEND_ORIGIN` list for local development
+- `backend/README.md` - Documented the recommended local CORS origin list
+- `docs/engineering/PHASE_TASK_LIST.md` - Updated immediate priorities after the app shell work
+- `docs/engineering/CURRENT_IMPLEMENTATION_STATUS.md` - Recorded the Phase 4 app shell status and validation notes
+- `docs/engineering/SECURITY_AND_LAUNCH_CHECKLIST.md` - Added frontend protected routing coverage and clarified production session strategy still required
+
+### Validated
+- `npm run build`
+- `npm run check:launch`
+- browser validation of sign-in redirect, `/app` protected routes, account preference persistence, and team denial state
+
 ## [2026-07-07] - Live Supabase Auth And Waitlist Foundation
 
 ### Added

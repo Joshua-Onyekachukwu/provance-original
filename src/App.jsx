@@ -1,7 +1,9 @@
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Outlet } from 'react-router-dom'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import ScrollToTop from './components/ScrollToTop'
+import ProtectedRoute from './components/auth/ProtectedRoute.jsx'
+import AppShellLayout from './components/app/AppShellLayout.jsx'
 import HomePage from './pages/HomePage'
 import ProductPage from './pages/ProductPage'
 import MethodologyPage from './pages/MethodologyPage'
@@ -18,8 +20,14 @@ import ResourcesPage from './pages/ResourcesPage'
 import WaitlistPage from './pages/WaitlistPage'
 import SignInPage from './pages/SignInPage'
 import NotFoundPage from './pages/NotFoundPage'
+import AppDashboardPage from './pages/app/AppDashboardPage.jsx'
+import AppUploadsPage from './pages/app/AppUploadsPage.jsx'
+import AppReportsPage from './pages/app/AppReportsPage.jsx'
+import AppAccountPage from './pages/app/AppAccountPage.jsx'
+import AppTeamPage from './pages/app/AppTeamPage.jsx'
+import AppAccessDeniedPage from './pages/app/AppAccessDeniedPage.jsx'
 
-export default function App() {
+function PublicLayout() {
   return (
     <div className="min-h-screen bg-parchment">
       <ScrollToTop />
@@ -28,7 +36,17 @@ export default function App() {
       </a>
       <Navbar />
       <main id="main-content">
-        <Routes>
+        <Outlet />
+      </main>
+      <Footer />
+    </div>
+  )
+}
+
+export default function App() {
+  return (
+    <Routes>
+      <Route element={<PublicLayout />}>
           <Route path="/" element={<HomePage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/contact" element={<ContactPage />} />
@@ -44,10 +62,32 @@ export default function App() {
           <Route path="/cookies" element={<CookiesPage />} />
           <Route path="/waitlist" element={<WaitlistPage />} />
           <Route path="/signin" element={<SignInPage />} />
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
-      </main>
-      <Footer />
-    </div>
+      </Route>
+
+      <Route
+        path="/app"
+        element={
+          <ProtectedRoute>
+            <AppShellLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<AppDashboardPage />} />
+        <Route path="uploads" element={<AppUploadsPage />} />
+        <Route path="reports" element={<AppReportsPage />} />
+        <Route path="account" element={<AppAccountPage />} />
+        <Route path="access-denied" element={<AppAccessDeniedPage />} />
+        <Route
+          path="team"
+          element={
+            <ProtectedRoute requireTeam>
+              <AppTeamPage />
+            </ProtectedRoute>
+          }
+        />
+      </Route>
+
+      <Route path="*" element={<NotFoundPage />} />
+    </Routes>
   )
 }

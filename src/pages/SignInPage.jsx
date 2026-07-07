@@ -1,15 +1,24 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Link } from 'react-router-dom'
-import { signInWithPassword } from '../lib/api'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext.jsx'
 
 export default function SignInPage() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const { isAuthenticated, signIn } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [submitted, setSubmitted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
-  const [successMessage, setSuccessMessage] = useState('')
+  const redirectTo =
+    new URLSearchParams(location.search).get('redirect') || '/app'
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate(redirectTo, { replace: true })
+    }
+  }, [isAuthenticated, navigate, redirectTo])
 
   const handleSubmit = async (event) => {
     event.preventDefault()
@@ -18,14 +27,9 @@ export default function SignInPage() {
     setErrorMessage('')
 
     try {
-      const response = await signInWithPassword({ email, password })
-      setSubmitted(true)
-      setSuccessMessage(
-        response?.message ||
-          'Sign-in request received. Continue through your invite email or contact us for account help.',
-      )
+      await signIn({ email, password })
+      navigate(redirectTo, { replace: true })
     } catch (error) {
-      setSubmitted(false)
       setErrorMessage(
         error instanceof Error
           ? error.message
@@ -125,21 +129,13 @@ export default function SignInPage() {
               </button>
 
               <p className="mt-4 text-xs leading-relaxed text-charcoal-light">
-                Access is opened by invitation. If you need help with approval status or
-                onboarding, use the waitlist or contact page.
+                Access is opened by invitation. Approved users are redirected into the
+                authenticated workspace after sign-in.
               </p>
 
               {errorMessage && (
                 <div className="mt-5 rounded-xl border border-rose-200 bg-rose-50/80 p-4">
                   <p className="text-sm text-rose-700">{errorMessage}</p>
-                </div>
-              )}
-
-              {submitted && (
-                <div className="mt-5 rounded-xl border border-amber/20 bg-amber-subtle/60 p-4">
-                  <p className="text-sm text-charcoal">
-                    {successMessage}
-                  </p>
                 </div>
               )}
             </form>

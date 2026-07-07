@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link, useLocation } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext.jsx'
 
 const NAV_ITEMS = [
   { label: 'Product', href: '/product' },
@@ -15,6 +16,7 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const location = useLocation()
+  const { isAuthenticated, signOut } = useAuth()
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20)
@@ -59,18 +61,38 @@ export default function Navbar() {
               {item.label}
             </Link>
           ))}
-          <Link
-            to="/signin"
-            className="text-sm tracking-wide text-charcoal-mid hover:text-charcoal transition-colors duration-200"
-          >
-            Sign In
-          </Link>
-          <Link
-            to="/waitlist"
-            className="ml-1 px-5 py-2.5 bg-charcoal text-parchment text-sm font-medium rounded-lg hover:bg-charcoal-soft transition-all duration-200 tracking-wide"
-          >
-            Join Waitlist
-          </Link>
+          {isAuthenticated ? (
+            <>
+              <Link
+                to="/app"
+                className="text-sm tracking-wide text-charcoal-mid hover:text-charcoal transition-colors duration-200"
+              >
+                Dashboard
+              </Link>
+              <button
+                type="button"
+                onClick={signOut}
+                className="ml-1 px-5 py-2.5 bg-charcoal text-parchment text-sm font-medium rounded-lg hover:bg-charcoal-soft transition-all duration-200 tracking-wide"
+              >
+                Sign Out
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                to="/signin"
+                className="text-sm tracking-wide text-charcoal-mid hover:text-charcoal transition-colors duration-200"
+              >
+                Sign In
+              </Link>
+              <Link
+                to="/waitlist"
+                className="ml-1 px-5 py-2.5 bg-charcoal text-parchment text-sm font-medium rounded-lg hover:bg-charcoal-soft transition-all duration-200 tracking-wide"
+              >
+                Join Waitlist
+              </Link>
+            </>
+          )}
         </nav>
 
         <button
@@ -108,12 +130,38 @@ export default function Navbar() {
                   {item.label}
                 </Link>
               ))}
-              <Link to="/signin" className="text-base text-charcoal-mid hover:text-charcoal transition-colors">
-                Sign In
-              </Link>
-              <Link to="/waitlist" className="mt-2 px-5 py-3 bg-charcoal text-parchment text-sm font-medium rounded-lg text-center">
-                Join Waitlist
-              </Link>
+              {isAuthenticated ? (
+                <>
+                  <Link
+                    to="/app"
+                    className="text-base text-charcoal-mid hover:text-charcoal transition-colors"
+                  >
+                    Dashboard
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={signOut}
+                    className="mt-2 px-5 py-3 bg-charcoal text-parchment text-sm font-medium rounded-lg text-center"
+                  >
+                    Sign Out
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    to="/signin"
+                    className="text-base text-charcoal-mid hover:text-charcoal transition-colors"
+                  >
+                    Sign In
+                  </Link>
+                  <Link
+                    to="/waitlist"
+                    className="mt-2 px-5 py-3 bg-charcoal text-parchment text-sm font-medium rounded-lg text-center"
+                  >
+                    Join Waitlist
+                  </Link>
+                </>
+              )}
             </div>
           </motion.div>
         )}
