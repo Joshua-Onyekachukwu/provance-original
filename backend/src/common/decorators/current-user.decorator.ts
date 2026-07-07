@@ -1,12 +1,11 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
-import type { Request } from 'express';
 
 export type CurrentUserPayload = {
   id: string;
   email?: string;
 };
 
-type RequestWithUser = Request & {
+type RequestWithUser = {
   user?: CurrentUserPayload;
 };
 

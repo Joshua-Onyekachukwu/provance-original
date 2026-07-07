@@ -4,10 +4,12 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import type { Request } from 'express';
 import { SupabaseService } from '../../supabase/supabase.service';
 
-type AuthenticatedRequest = Request & {
+type AuthenticatedRequest = {
+  headers: {
+    authorization?: string | string[];
+  };
   user?: {
     id: string;
     email?: string;
