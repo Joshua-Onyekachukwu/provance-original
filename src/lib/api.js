@@ -184,6 +184,17 @@ export function acceptInvite(payload) {
   })
 }
 
+export function getCurrentViewer() {
+  return request('/auth/me')
+}
+
+export function updateAccountProfile(payload) {
+  return request('/account/profile', {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+}
+
 export function initiateScan(payload) {
   return request('/scans', {
     method: 'POST',

@@ -6,10 +6,13 @@ import {
   useMemo,
   useState,
 } from 'react'
-import { signInWithPassword } from '../lib/api'
+import {
+  getCurrentViewer,
+  signInWithPassword,
+  updateAccountProfile,
+} from '../lib/api'
 
 const AUTH_STORAGE_KEY = 'provance.auth.session.v1'
-const PROFILE_STORAGE_KEY = 'provance.auth.profile.v1'
 
 const AuthContext = createContext(null)
 
@@ -46,7 +49,7 @@ function isSessionExpired(expiresAt) {
   return typeof expiresAt === 'number' && Date.now() >= expiresAt
 }
 
-function createDefaultProfile(email) {
+function createDefaultProfile(email, permissions = { team: false }) {
   const localPart = typeof email === 'string' ? email.split('@')[0] : ''
   const normalizedName = localPart
     .split(/[._-]+/)
@@ -60,45 +63,62 @@ function createDefaultProfile(email) {
     roleTitle: '',
     defaultWorkspace: 'individual',
     emailNotifications: true,
+    accountRole: 'member',
+    teamAccess: Boolean(permissions.team),
   }
 }
 
-function normalizeAuthState(response, storedProfile = null) {
-  if (
-    response?.status !== 'authenticated' ||
-    !response?.user?.id ||
-    !response?.user?.email ||
-    !response?.session?.accessToken
-  ) {
-    throw new Error('Sign-in did not return a usable session.')
-  }
-
-  const expiresAt =
-    typeof response.session.expiresAt === 'number'
-      ? response.session.expiresAt * 1000
-      : null
-  const defaultProfile = storedProfile || createDefaultProfile(response.user.email)
-  const requestedWorkspace = defaultProfile.defaultWorkspace || 'individual'
+function normalizePermissions(response) {
   const permissions = {
     individual: response?.permissions?.individual ?? true,
     team: response?.permissions?.team ?? false,
     admin: response?.permissions?.admin ?? false,
   }
 
+  return permissions
+}
+
+function normalizeSessionPayload(session, fallbackSession = null) {
+  const source = session || fallbackSession
+
+  if (!source?.accessToken) {
+    throw new Error('No usable authenticated session is available.')
+  }
+
+  return {
+    accessToken: source.accessToken,
+    refreshToken: source.refreshToken || fallbackSession?.refreshToken || null,
+    tokenType: source.tokenType || fallbackSession?.tokenType || 'bearer',
+    expiresAt:
+      typeof source.expiresAt === 'number'
+        ? source.expiresAt > 9999999999
+          ? source.expiresAt
+          : source.expiresAt * 1000
+        : fallbackSession?.expiresAt || null,
+  }
+}
+
+function normalizeAuthState(response, fallbackSession = null, workspaceOverride = null) {
+  if (response?.status !== 'authenticated' || !response?.user?.id || !response?.user?.email) {
+    throw new Error('Authentication did not return a usable user payload.')
+  }
+
+  const permissions = normalizePermissions(response)
+  const defaultProfile = {
+    ...createDefaultProfile(response.user.email, permissions),
+    ...(response.profile || {}),
+  }
+  const requestedWorkspace =
+    workspaceOverride || defaultProfile.defaultWorkspace || 'individual'
+
   return {
     user: {
       id: response.user.id,
       email: response.user.email,
     },
-    session: {
-      accessToken: response.session.accessToken,
-      refreshToken: response.session.refreshToken,
-      tokenType: response.session.tokenType,
-      expiresAt,
-    },
+    session: normalizeSessionPayload(response.session, fallbackSession),
     permissions,
     profile: {
-      ...createDefaultProfile(response.user.email),
       ...defaultProfile,
       defaultWorkspace:
         requestedWorkspace === 'team' && !permissions.team
@@ -110,9 +130,12 @@ function normalizeAuthState(response, storedProfile = null) {
   }
 }
 
+function writeStoredSession(sessionData) {
+  writeJsonStorage(AUTH_STORAGE_KEY, sessionData)
+}
+
 function restoreStoredSession() {
   const storedSession = readJsonStorage(AUTH_STORAGE_KEY)
-  const storedProfile = readJsonStorage(PROFILE_STORAGE_KEY)
 
   if (!storedSession) {
     return null
@@ -126,9 +149,8 @@ function restoreStoredSession() {
   return {
     ...storedSession,
     profile: {
-      ...createDefaultProfile(storedSession.user?.email),
+      ...createDefaultProfile(storedSession.user?.email, storedSession.permissions),
       ...(storedSession.profile || {}),
-      ...(storedProfile || {}),
     },
   }
 }
@@ -142,18 +164,64 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const restoredSession = restoreStoredSession()
 
+    if (!restoredSession) {
+      setAuthState({
+        status: 'ready',
+        sessionData: null,
+      })
+      return
+    }
+
     setAuthState({
-      status: 'ready',
+      status: 'hydrating',
       sessionData: restoredSession,
     })
+
+    let isCancelled = false
+
+    async function hydrateViewerState() {
+      try {
+        const viewer = await getCurrentViewer()
+        const nextSession = normalizeAuthState(
+          viewer,
+          restoredSession.session,
+          restoredSession.workspaceContext,
+        )
+
+        if (isCancelled) {
+          return
+        }
+
+        writeStoredSession(nextSession)
+        setAuthState({
+          status: 'ready',
+          sessionData: nextSession,
+        })
+      } catch {
+        if (isCancelled) {
+          return
+        }
+
+        removeStorageValue(AUTH_STORAGE_KEY)
+        setAuthState({
+          status: 'ready',
+          sessionData: null,
+        })
+      }
+    }
+
+    void hydrateViewerState()
+
+    return () => {
+      isCancelled = true
+    }
   }, [])
 
   const signIn = useCallback(async (credentials) => {
     const response = await signInWithPassword(credentials)
-    const nextSession = normalizeAuthState(response, readJsonStorage(PROFILE_STORAGE_KEY))
+    const nextSession = normalizeAuthState(response)
 
-    writeJsonStorage(AUTH_STORAGE_KEY, nextSession)
-    writeJsonStorage(PROFILE_STORAGE_KEY, nextSession.profile)
+    writeStoredSession(nextSession)
 
     setAuthState({
       status: 'ready',
@@ -172,7 +240,9 @@ export function AuthProvider({ children }) {
     }))
   }, [])
 
-  const updateProfile = useCallback((updates) => {
+  const updateProfile = useCallback(async (updates) => {
+    const response = await updateAccountProfile(updates)
+
     setAuthState((current) => {
       if (!current.sessionData) {
         return current
@@ -180,26 +250,29 @@ export function AuthProvider({ children }) {
 
       const nextProfile = {
         ...current.sessionData.profile,
-        ...updates,
+        ...(response.profile || {}),
       }
+      const nextPermissions = response.permissions || current.sessionData.permissions
       const nextWorkspace =
-        nextProfile.defaultWorkspace === 'team' && current.sessionData.permissions.team
+        nextProfile.defaultWorkspace === 'team' && nextPermissions.team
           ? 'team'
           : 'individual'
       const nextSessionData = {
         ...current.sessionData,
+        permissions: nextPermissions,
         profile: nextProfile,
         workspaceContext: nextWorkspace,
       }
 
-      writeJsonStorage(AUTH_STORAGE_KEY, nextSessionData)
-      writeJsonStorage(PROFILE_STORAGE_KEY, nextProfile)
+      writeStoredSession(nextSessionData)
 
       return {
         ...current,
         sessionData: nextSessionData,
       }
     })
+
+    return response
   }, [])
 
   const setWorkspaceContext = useCallback((workspaceContext) => {
@@ -215,14 +288,9 @@ export function AuthProvider({ children }) {
       const nextSessionData = {
         ...current.sessionData,
         workspaceContext,
-        profile: {
-          ...current.sessionData.profile,
-          defaultWorkspace: workspaceContext,
-        },
       }
 
-      writeJsonStorage(AUTH_STORAGE_KEY, nextSessionData)
-      writeJsonStorage(PROFILE_STORAGE_KEY, nextSessionData.profile)
+      writeStoredSession(nextSessionData)
 
       return {
         ...current,
@@ -242,7 +310,7 @@ export function AuthProvider({ children }) {
     }
 
     return {
-      isLoading: authState.status === 'loading',
+      isLoading: authState.status !== 'ready',
       isAuthenticated: Boolean(sessionData),
       user: sessionData?.user ?? null,
       session: sessionData?.session ?? null,

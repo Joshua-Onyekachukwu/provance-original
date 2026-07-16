@@ -3,6 +3,8 @@ import {
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { AccountService } from '../account/account.service';
+import type { CurrentUserPayload } from '../common/decorators/current-user.decorator';
 import { ConfigService } from '@nestjs/config';
 import { createHash } from 'crypto';
 import { SupabaseService } from '../supabase/supabase.service';
@@ -15,9 +17,14 @@ import { SignInDto } from './dto/sign-in.dto';
 @Injectable()
 export class AuthService {
   constructor(
+    private readonly accountService: AccountService,
     private readonly supabaseService: SupabaseService,
     private readonly configService: ConfigService,
   ) {}
+
+  async getCurrentSession(user: CurrentUserPayload) {
+    return this.accountService.getCurrentViewer(user);
+  }
 
   async signIn(dto: SignInDto) {
     const client = this.supabaseService.createPublicClient();
@@ -55,14 +62,17 @@ export class AuthService {
       details: {},
     });
 
+    const viewerState = await this.accountService.getCurrentViewer({
+      id: data.user.id,
+      email: data.user.email ?? undefined,
+    });
+
     return {
       status: 'authenticated',
       message: 'Sign-in successful.',
-      user: {
-        id: data.user.id,
-        email: data.user.email,
-      },
-      permissions: this.getPermissions(data.user.email),
+      user: viewerState.user,
+      permissions: viewerState.permissions,
+      profile: viewerState.profile,
       session: {
         accessToken: data.session.access_token,
         refreshToken: data.session.refresh_token,
@@ -179,14 +189,17 @@ export class AuthService {
       details: {},
     });
 
+    const viewerState = await this.accountService.getCurrentViewer({
+      id: data.user.id,
+      email: data.user.email ?? undefined,
+    });
+
     return {
       status: 'authenticated',
       message: 'Session refreshed successfully.',
-      user: {
-        id: data.user.id,
-        email: data.user.email,
-      },
-      permissions: this.getPermissions(data.user.email),
+      user: viewerState.user,
+      permissions: viewerState.permissions,
+      profile: viewerState.profile,
       session: {
         accessToken: data.session.access_token,
         refreshToken: data.session.refresh_token,
@@ -361,27 +374,5 @@ export class AuthService {
         'Audit logging is temporarily unavailable.',
       );
     }
-  }
-
-  private getPermissions(email?: string | null) {
-    return {
-      individual: true,
-      team: false,
-      admin: this.isAdminEmail(email),
-    };
-  }
-
-  private isAdminEmail(email?: string | null) {
-    if (!email) {
-      return false;
-    }
-
-    const configuredEmails =
-      this.configService.get<string>('ADMIN_EMAILS')?.split(',') ?? [];
-
-    return configuredEmails
-      .map((value) => value.trim().toLowerCase())
-      .filter(Boolean)
-      .includes(email.trim().toLowerCase());
   }
 }

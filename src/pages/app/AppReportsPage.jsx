@@ -121,11 +121,11 @@ export default function AppReportsPage() {
 
   return (
     <div className="space-y-8">
-      <section className="rounded-3xl border border-stone-light bg-white-warm p-8 shadow-sm">
+      <section className="rounded-3xl border border-stone-light bg-white-warm p-6 shadow-sm sm:p-8">
         <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">
           Reports
         </p>
-        <h2 className="mt-3 font-serif text-4xl text-charcoal">
+        <h2 className="mt-3 font-serif text-3xl text-charcoal sm:text-4xl">
           Verification history and reports
         </h2>
         <p className="mt-4 max-w-3xl text-base leading-relaxed text-charcoal-mid">

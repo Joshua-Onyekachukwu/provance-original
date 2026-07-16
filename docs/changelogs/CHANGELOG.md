@@ -1,5 +1,48 @@
 # Provance — Changelog
 
+## [2026-07-16] - Phase 2 Expansion: Auth, Account Foundation, And Responsive App Polish
+
+### Added
+- `backend/src/account/account.module.ts` - New account module for authenticated profile management
+- `backend/src/account/account.controller.ts` - Authenticated account profile read and update endpoints
+- `backend/src/account/account.service.ts` - Server-backed profile initialization, profile updates, and permission shaping
+- `backend/src/account/dto/update-profile.dto.ts` - Validated account profile update DTO
+- `supabase/migrations/0004_profiles.sql` - Profiles table, RLS policies, and update timestamp trigger
+
+### Updated
+- `backend/src/auth/auth.controller.ts` - Added `GET /v1/auth/me` for current signed-in identity hydration
+- `backend/src/auth/auth.service.ts` - Auth responses now include backend-hydrated profile and permission state
+- `backend/src/auth/auth.module.ts` - Wired auth into the new account module
+- `backend/src/app.module.ts` - Registered the account module
+- `backend/src/auth/auth.service.spec.ts` - Updated auth service coverage for the new account-aware flow
+- `src/lib/api.js` - Added account profile and current-viewer API helpers
+- `src/context/AuthContext.jsx` - Replaced local-only profile persistence with backend-backed profile hydration and save flow
+- `src/components/app/AppShellLayout.jsx` - Added stronger mobile and tablet navigation behavior in the authenticated shell
+- `src/pages/app/AppAccountPage.jsx` - Connected account settings to real backend persistence and improved save-state handling
+- `src/pages/app/AppUploadsPage.jsx` - Refined spacing and typography for better smaller-screen readability
+- `src/pages/app/AppReportsPage.jsx` - Refined spacing and typography for better smaller-screen readability
+- `src/pages/app/AppAdminPage.jsx` - Refined spacing and typography for better smaller-screen readability
+- `docs/roadmap/MASTER_DEVELOPMENT_ROADMAP.md` - Expanded Phase 2 to include auth and backend foundation work
+- `docs/project-state/engineering-roadmap.md` - Synced the summary roadmap to the updated Phase 2 scope
+- `docs/project-state/decision-log.md` - Recorded the roadmap-canonical rule and the expanded Phase 2 decision
+- `docs/project-state/current-feature-status.md` - Updated profile persistence and authenticated app status
+- `docs/project-state/overall-project-architecture.md` - Reflected backend-hydrated identity and the new account module
+- `docs/engineering/CURRENT_IMPLEMENTATION_STATUS.md` - Updated implementation notes for account/profile foundation
+- `docs/engineering/DEPLOYMENT_AND_AUTH_STRATEGY.md` - Documented the current auth and account endpoint surface
+
+### Validated
+- `npm run build`
+- `npm run lint`
+- `npm run backend:build`
+- `npm --prefix backend run test -- --runInBand`
+- `npm run backend:test:e2e`
+- `GET http://localhost:3000/app/account`
+- `GET http://localhost:4000/v1/health`
+
+### Notes
+- frontend lint still shows only the same pre-existing warnings in `src/context/AuthContext.jsx` and `src/pages/app/AppReportPrintPage.jsx`
+- current auth transport is still token-based in the browser; hardened cookie transport remains a later security-hardening phase
+
 ## [2026-07-07] - Report Refinement, Broader Dashboard Copy, And Local Admin Test Pattern
 
 ### Updated
