@@ -19,10 +19,19 @@ Use these files as the current source of truth for the shipped product and activ
 The repo contains three kinds of documentation:
 
 - `engineering/` for current implementation, deployment, environment setup, and phase tracking
+- `project-state/` for living summaries of project status, risks, readiness, roadmaps, and priorities
 - `product/` for product requirements, UX direction, and future-state planning
 - `foundation/`, `architecture/`, `reports/`, `sales/`, and `fundraising/` for strategy, historical planning, and operating materials
 
 Some older planning documents describe future-state product behavior that is not fully shipped yet. When there is a conflict, follow the current-state engineering docs listed above.
+
+## Living Project-State Docs
+
+For an always-updated view of where the project stands today, start here:
+
+- `docs/project-state/README.md`
+
+This directory should be updated alongside major engineering, product, design, and roadmap changes so that the repository remains the practical source of truth for current project status.
 
 ## Recommended Review Order
 
@@ -54,3 +63,8 @@ As of this update:
 - `docs/engineering/DEPLOYMENT_FLYIO_AND_UPSTASH.md`
 - `docs/engineering/CREDENTIALS_AND_ENVIRONMENT_VARIABLES.md`
 - `docs/engineering/DEPLOYMENT_AND_AUTH_STRATEGY.md`
+
+## Development Workflow
+
+- `docs/engineering/DEVELOPMENT_WORKFLOW_AND_RELEASE_PROCESS.md`
+- `docs/roadmap/MASTER_DEVELOPMENT_ROADMAP.md`
