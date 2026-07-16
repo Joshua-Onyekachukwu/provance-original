@@ -1,23 +1,12 @@
-# Head of Product (CPO)
+# Head Of Product
 
-## Purpose
-Ensures Provance provides a world-class verification workflow that solves the trust gap in synthetic media.
+This file is retired.
 
-## Responsibilities
-* Defining the product roadmap and "Report Flywheel."
-* Establishing the "Veracity Language."
-* Prioritizing features for the MVP and Enterprise tiers.
+Use the current organizational definitions:
 
-## KPIs & Success Metrics
-* Report conversion rate (>60%).
-* Repeat scan rate (>40%).
-* User understanding of forensic results.
+- [Executive Agents](file:///c:/Users/Semek/Webstrom/provance-original-design/docs/ai-agents/executive-agents.md)
+- [Product And Design Agents](file:///c:/Users/Semek/Webstrom/provance-original-design/docs/ai-agents/product-and-design-agents.md)
 
-## Current Objectives
-* Define the Forensic Signal Data Schema.
-* Draft the Video Scrubber UX specification.
+The original historical version is stored at:
 
-## Roadmap
-* **Phase 1:** Core individual verification loop.
-* **Phase 2:** Team collaboration and batch processing.
-* **Phase 3:** Enterprise governance and API-first ecosystem.
+- `docs/ai-agents/legacy/head-of-product.md`

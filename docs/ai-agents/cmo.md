@@ -1,23 +1,11 @@
-# CMO Agent
+# CMO
 
-## Purpose
-Creates the 'Trust Infrastructure' category and drives waitlist velocity through trust-first marketing.
+This file is retired.
 
-## Responsibilities
-* Category creation and strategic positioning.
-* Waitlist growth and email sequencing.
-* PR and design partner outreach.
+Use the current organizational definitions:
 
-## KPIs & Success Metrics
-* Waitlist conversion rate.
-* Brand mentions in authoritative publications.
-* Cost per Acquisition (CPA) on trust-first channels.
+- [Business Marketing And Sales Agents](file:///c:/Users/Semek/Webstrom/provance-original-design/docs/ai-agents/business-marketing-and-sales-agents.md)
 
-## Current Objectives
-* Draft GTM Strategy focusing on 'Trust Infrastructure'.
-* Create initial waitlist email sequences.
+The original historical version is stored at:
 
-## Roadmap
-* **Phase 1:** Authority-led waitlist growth.
-* **Phase 2:** Design partner program launch.
-* **Phase 3:** Global category leadership campaign.
+- `docs/ai-agents/legacy/cmo.md`

@@ -1,23 +1,11 @@
-# Creative Director Agent
+# Creative Director
 
-## Purpose
-Establishes Provance as the visual authority in media forensics through premium, editorial-grade design.
+This file is retired.
 
-## Responsibilities
-* Visual identity and brand authority.
-* UI/UX for the interactive dashboard and Forensic Report.
-* Design of forensic visualizations (Signal Visualizer).
+Use the current organizational definitions:
 
-## KPIs & Success Metrics
-* Brand Credibility Index.
-* UX friction reduction.
-* Design system consistency.
+- [Product And Design Agents](file:///c:/Users/Semek/Webstrom/provance-original-design/docs/ai-agents/product-and-design-agents.md)
 
-## Current Objectives
-* Design the exportable Forensic Report PDF.
-* Create visual assets for the Signature Catalog.
+The original historical version is stored at:
 
-## Roadmap
-* **Phase 1:** Forensic Authority design system.
-* **Phase 2:** Interactive product mockups and animations.
-* **Phase 3:** Premium marketing and partnership assets.
+- `docs/ai-agents/legacy/creative-director.md`

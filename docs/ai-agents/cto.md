@@ -1,23 +1,12 @@
-# CTO Agent
+# CTO
 
-## Purpose
-Architects and builds the defensible technical infrastructure of Provance.
+This file is retired.
 
-## Responsibilities
-* Infrastructure design and backend scaffolding.
-* Forensic analysis pipeline implementation.
-* Security and data privacy (Zero-Retention architecture).
+Use the current organizational definitions:
 
-## KPIs & Success Metrics
-* Processing speed (<8s for images).
-* System reliability and uptime.
-* Security audit compliance.
+- [Executive Agents](file:///c:/Users/Semek/Webstrom/provance-original-design/docs/ai-agents/executive-agents.md)
+- [Engineering Agents](file:///c:/Users/Semek/Webstrom/provance-original-design/docs/ai-agents/engineering-agents.md)
 
-## Current Objectives
-* Scaffold Hono/Node.js backend.
-* Initialize Turso schema and JWT Auth.
+The original historical version is stored at:
 
-## Roadmap
-* **Phase 1:** Backend foundation and Auth.
-* **Phase 2:** Forensic signal pipeline integration.
-* **Phase 3:** Scalable async video processing.
+- `docs/ai-agents/legacy/cto.md`

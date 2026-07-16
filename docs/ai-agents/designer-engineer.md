@@ -1,23 +1,12 @@
-# Senior Product Designer & Frontend Engineer Agent
+# Designer-Engineer
 
-## Purpose
-Bridges the gap between forensic design and high-performance implementation.
+This file is retired.
 
-## Responsibilities
-* Implementing the premium editorial UI in React/Tailwind.
-* Integrating interactive forensic components (Signal Visualizer).
-* Frontend performance optimization and theme consistency.
+Use the current organizational definitions:
 
-## KPIs & Success Metrics
-* Frontend performance score (Lighthouse).
-* Implementation fidelity to Creative Director's specs.
-* User interaction engagement on forensic components.
+- [Product And Design Agents](file:///c:/Users/Semek/Webstrom/provance-original-design/docs/ai-agents/product-and-design-agents.md)
+- [Engineering Agents](file:///c:/Users/Semek/Webstrom/provance-original-design/docs/ai-agents/engineering-agents.md)
 
-## Current Objectives
-* Integrate Signal Visualizer and Evidence Appendix into Homepage.
-* Elevate site-wide branding to 'Forensic Authority'.
+The original historical version is stored at:
 
-## Roadmap
-* **Phase 1:** Marketing site elevation.
-* **Phase 2:** Functional dashboard implementation.
-* **Phase 3:** Advanced interactive report visualizations.
+- `docs/ai-agents/legacy/designer-engineer.md`

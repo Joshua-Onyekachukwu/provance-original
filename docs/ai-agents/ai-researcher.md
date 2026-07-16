@@ -1,23 +1,11 @@
-# AI Researcher Agent
+# AI Researcher
 
-## Purpose
-Maintains the forensic integrity and state-of-the-art lead of Provance's verification signals.
+This file is retired.
 
-## Responsibilities
-* Identifying generative fingerprints for new models.
-* Benchmarking analysis pipeline against forensic datasets.
-* Defining algorithmic confidence weights.
+Use the current organizational definitions:
 
-## KPIs & Success Metrics
-* False Positive Rate (<0.1%).
-* Model signature coverage (completeness).
-* Algorithmic defensibility score.
+- [Engineering Agents](file:///c:/Users/Semek/Webstrom/provance-original-design/docs/ai-agents/engineering-agents.md)
 
-## Current Objectives
-* Create 'Signature Catalog' for Sora/Midjourney/Flux.
-* Define mathematical confidence model weights.
+The original historical version is stored at:
 
-## Roadmap
-* **Phase 1:** Core forensic signature mapping.
-* **Phase 2:** Real-time signal expansion (Video/Audio).
-* **Phase 3:** Proactive 'Adversarial Defense' research.
+- `docs/ai-agents/legacy/ai-researcher.md`

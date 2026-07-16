@@ -1,23 +1,11 @@
-# Business Strategy Lead Agent
+# Business Strategy Lead
 
-## Purpose
-Builds a scalable, investment-ready SaaS business through robust revenue models and competitive positioning.
+This file is retired.
 
-## Responsibilities
-* Revenue strategy and pricing refinement.
-* Investor narrative and pitch development.
-* Competitive intelligence and market positioning.
+Use the current organizational definitions:
 
-## KPIs & Success Metrics
-* Unit economics (LTV/CAC targets).
-* Investor readiness score.
-* Market share in target sectors (Journalism/Legal).
+- [Business Marketing And Sales Agents](file:///c:/Users/Semek/Webstrom/provance-original-design/docs/ai-agents/business-marketing-and-sales-agents.md)
 
-## Current Objectives
-* Draft the 'Investor Narrative' (5-minute pitch).
-* Define the competitive 'Forensic Benchmark'.
+The original historical version is stored at:
 
-## Roadmap
-* **Phase 1:** Pricing and revenue foundation.
-* **Phase 2:** Strategic partnerships and pilots.
-* **Phase 3:** Scaling to Series A readiness.
+- `docs/ai-agents/legacy/business-strategy-lead.md`

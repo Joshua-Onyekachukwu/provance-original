@@ -1,0 +1,135 @@
+{
+  "version": "1.0.0",
+  "updated_at": "2026-07-16",
+  "principles": [
+    "one owner per task packet",
+    "smallest effective context",
+    "docs are the source of truth",
+    "specialists produce scoped artifacts, not competing full solutions",
+    "escalate one-way-door decisions"
+  ],
+  "entrypoints": {
+    "how_to_run": "docs/ai-agents/HOW_TO_RUN_THE_ORG.md",
+    "task_packet_template": "docs/ai-agents/TASK_PACKET_TEMPLATE.md",
+    "decision_log_template": "docs/ai-agents/DECISION_LOG_TEMPLATE.md"
+  },
+  "agents": [
+    {
+      "agent_id": "exec.ceo_advisor",
+      "name": "CEO Advisor",
+      "department": "Executive",
+      "reports_to": "Founder and CEO",
+      "definition_doc": "docs/ai-agents/executive-agents.md",
+      "tags": ["strategy", "prioritization", "narrative", "fundraising"],
+      "call_when": [
+        "roadmap conflict",
+        "company-wide tradeoffs",
+        "executive brief needed"
+      ],
+      "inputs": ["task packet v1", "metrics summary", "top risks"],
+      "outputs": ["executive brief", "option matrix", "recommendation"],
+      "decision_authority": "recommend_only",
+      "escalate_if": ["one-way-door strategic commitment"],
+      "runtime_mapping": "ceo-strategy-advisor"
+    },
+    {
+      "agent_id": "exec.chief_of_staff",
+      "name": "Chief of Staff",
+      "department": "Executive",
+      "reports_to": "Founder and CEO",
+      "definition_doc": "docs/ai-agents/executive-agents.md",
+      "tags": ["orchestration", "planning", "operations", "review"],
+      "call_when": ["any new initiative", "multi-department work"],
+      "inputs": ["founder directive", "source-of-truth links"],
+      "outputs": ["task packets", "weekly operating review", "dependency map"],
+      "decision_authority": "routing_and_process",
+      "escalate_if": ["one-way-door decisions", "cross-lead conflict"],
+      "runtime_mapping": "organization-orchestrator"
+    },
+    {
+      "agent_id": "exec.cto",
+      "name": "CTO",
+      "department": "Engineering Leadership",
+      "reports_to": "Founder and CEO",
+      "definition_doc": "docs/ai-agents/executive-agents.md",
+      "tags": ["architecture", "security", "infra", "auth", "data"],
+      "call_when": ["auth changes", "infra changes", "major migrations"],
+      "inputs": ["PRD", "technical spec", "risk register"],
+      "outputs": ["architecture RFC", "technical decision memo"],
+      "decision_authority": "approve_major_technical_changes",
+      "escalate_if": ["pricing or legal implications", "irreversible infra change"],
+      "runtime_mapping": "technical-strategy-lead"
+    },
+    {
+      "agent_id": "exec.vp_engineering",
+      "name": "VP Engineering",
+      "department": "Engineering Leadership",
+      "reports_to": "CTO",
+      "definition_doc": "docs/ai-agents/executive-agents.md",
+      "tags": ["delivery", "execution", "release", "planning"],
+      "call_when": ["multi-PR execution", "release coordination", "refactors"],
+      "inputs": ["scope", "architecture decisions", "test results"],
+      "outputs": ["execution plan", "release plan", "merge plan"],
+      "decision_authority": "engineering_execution",
+      "escalate_if": ["architecture conflicts", "security blockers"],
+      "runtime_mapping": "engineering-delivery-lead"
+    },
+    {
+      "agent_id": "eng.frontend_lead",
+      "name": "Frontend Engineering Lead",
+      "department": "Engineering",
+      "reports_to": "VP Engineering",
+      "definition_doc": "docs/ai-agents/engineering-agents.md",
+      "tags": ["frontend", "ux", "react", "routing", "performance"],
+      "call_when": ["UI changes", "app shell changes", "landing changes"],
+      "inputs": ["design spec", "PRD", "API contract"],
+      "outputs": ["PR", "validation checklist", "doc update list"],
+      "decision_authority": "implementation_detail",
+      "escalate_if": ["auth flow changes", "security-sensitive UI changes"],
+      "runtime_mapping": null
+    },
+    {
+      "agent_id": "eng.backend_lead",
+      "name": "Backend Engineering Lead",
+      "department": "Engineering",
+      "reports_to": "VP Engineering",
+      "definition_doc": "docs/ai-agents/engineering-agents.md",
+      "tags": ["backend", "nestjs", "api", "worker", "queue"],
+      "call_when": ["endpoint changes", "scan pipeline changes", "admin ops"],
+      "inputs": ["technical spec", "schema changes", "security review"],
+      "outputs": ["PR", "test results", "release notes input"],
+      "decision_authority": "implementation_detail",
+      "escalate_if": ["auth transport changes", "data retention changes"],
+      "runtime_mapping": null
+    },
+    {
+      "agent_id": "eng.ai_forensics_lead",
+      "name": "AI And Forensics Engineering Lead",
+      "department": "Engineering",
+      "reports_to": "CTO",
+      "definition_doc": "docs/ai-agents/engineering-agents.md",
+      "tags": ["signals", "verdict", "confidence", "explainability"],
+      "call_when": ["signal changes", "scoring changes", "new media types"],
+      "inputs": ["benchmark results", "product constraints"],
+      "outputs": ["signal proposal", "validation plan"],
+      "decision_authority": "recommend_and_design",
+      "escalate_if": ["claim risk", "confidence model changes"],
+      "runtime_mapping": "ai-forensics-researcher"
+    },
+    {
+      "agent_id": "eng.code_review",
+      "name": "Code Review Agent",
+      "department": "Engineering",
+      "reports_to": "VP Engineering",
+      "definition_doc": "docs/ai-agents/engineering-agents.md",
+      "tags": ["review", "quality", "security", "consistency"],
+      "call_when": ["any non-trivial PR", "any auth or infra PR"],
+      "inputs": ["diff", "tests", "acceptance criteria"],
+      "outputs": ["review notes", "merge recommendation"],
+      "decision_authority": "block_merge_recommendation",
+      "escalate_if": ["unresolved critical issues"],
+      "runtime_mapping": null
+    }
+  ]
+}
+

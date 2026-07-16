@@ -1,0 +1,81 @@
+{
+  "version": "1.0.0",
+  "updated_at": "2026-07-16",
+  "routing_rules": [
+    {
+      "rule_id": "default.intake",
+      "match": {
+        "any": true
+      },
+      "route_to": "exec.chief_of_staff",
+      "notes": "Default intake path. Chief of Staff converts requests into task packets and assigns an owner."
+    },
+    {
+      "rule_id": "exec.strategy",
+      "match": {
+        "keywords_any": ["strategy", "prioritization", "board", "positioning", "narrative"]
+      },
+      "route_to": "exec.ceo_advisor",
+      "secondary": ["exec.chief_of_staff"],
+      "escalation": ["Founder and CEO"]
+    },
+    {
+      "rule_id": "engineering.architecture",
+      "match": {
+        "keywords_any": ["architecture", "auth", "session", "security", "migration", "infra"]
+      },
+      "route_to": "exec.cto",
+      "secondary": ["exec.vp_engineering", "eng.backend_lead", "eng.code_review"],
+      "escalation": ["Founder and CEO"]
+    },
+    {
+      "rule_id": "engineering.frontend",
+      "match": {
+        "keywords_any": ["frontend", "ui", "landing", "routing", "react", "tailwind"]
+      },
+      "route_to": "eng.frontend_lead",
+      "secondary": ["exec.vp_engineering", "eng.code_review"]
+    },
+    {
+      "rule_id": "engineering.backend",
+      "match": {
+        "keywords_any": ["backend", "api", "nestjs", "worker", "queue", "redis", "supabase"]
+      },
+      "route_to": "eng.backend_lead",
+      "secondary": ["exec.vp_engineering", "eng.code_review"]
+    },
+    {
+      "rule_id": "forensics.signals",
+      "match": {
+        "keywords_any": ["signals", "confidence", "verdict", "benchmark", "signature", "model fingerprint"]
+      },
+      "route_to": "eng.ai_forensics_lead",
+      "secondary": ["exec.cto"]
+    },
+    {
+      "rule_id": "code.review",
+      "match": {
+        "keywords_any": ["review", "refactor", "merge", "PR", "diff"]
+      },
+      "route_to": "eng.code_review",
+      "secondary": ["exec.vp_engineering"]
+    }
+  ],
+  "task_packet_required_for": [
+    "architecture changes",
+    "security changes",
+    "multi-file refactors",
+    "new feature development",
+    "fundraising deliverables",
+    "legal and policy changes"
+  ],
+  "one_way_door_escalations": [
+    "auth transport changes",
+    "data retention changes",
+    "pricing changes",
+    "investor-facing financial claims",
+    "public claims about detection certainty",
+    "irreversible infrastructure migrations"
+  ]
+}
+
