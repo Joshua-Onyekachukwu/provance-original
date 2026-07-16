@@ -1,3 +1,5 @@
+import PageHero from '../components/PageHero.jsx'
+
 const sections = [
   {
     title: 'Scope',
@@ -80,26 +82,17 @@ const sections = [
 export default function PrivacyPage() {
   return (
     <div className="pt-20 md:pt-24">
+      <PageHero
+        title="Privacy and data handling"
+        description="This policy explains how Provance handles personal information, service data, uploaded assets, and related records across the public site and the product experience."
+        breadcrumbs={[{ label: 'Home', href: '/' }, { label: 'Privacy Policy' }]}
+      />
+
       <section className="section-padding bg-parchment">
         <div className="content-container max-w-4xl">
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-amber">
-            Privacy Policy
-          </p>
-          <h1 className="mt-4 font-serif text-4xl sm:text-5xl text-charcoal">
-            Privacy and data handling
-          </h1>
-          <p className="mt-6 text-lg leading-relaxed text-charcoal-mid">
-            This policy explains how Provance handles personal information, service
-            data, uploaded assets, and related records across the public site and the
-            product experience.
-          </p>
-          <div className="mt-6 rounded-2xl border border-stone-light bg-white-warm p-5 text-sm text-charcoal-mid">
-            Effective date: 2026-07-06
-          </div>
-
-          <div className="mt-12 space-y-6">
+          <div className="mt-2 space-y-6">
             {sections.map((section) => (
-              <section key={section.title} className="rounded-2xl border border-stone-light bg-white-warm p-7">
+              <section key={section.title} className="legal-card p-7">
                 <h2 className="font-serif text-2xl text-charcoal">{section.title}</h2>
                 <div className="mt-3 space-y-3 text-sm leading-relaxed text-charcoal-mid">
                   {section.paragraphs.map((paragraph) => (

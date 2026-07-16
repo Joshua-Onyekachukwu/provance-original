@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
+import PageHero from '../components/PageHero.jsx'
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -9,22 +10,11 @@ const fadeUp = {
 export default function SecurityPage() {
   return (
     <div className="pt-20 md:pt-24">
-      {/* ── Hero ── */}
-      <section className="section-padding bg-parchment relative overflow-hidden">
-        <div className="absolute inset-0 forensic-grid opacity-30" />
-        <div className="content-container relative z-10">
-          <motion.div initial="hidden" animate="visible" className="max-w-3xl mx-auto text-center">
-            <motion.span variants={fadeUp} custom={0} className="text-amber font-mono text-xs uppercase tracking-[0.2em]">Security</motion.span>
-            <motion.h1 variants={fadeUp} custom={1} className="font-serif text-4xl sm:text-5xl lg:text-6xl mt-4 text-balance text-charcoal">
-              Trust is our <span className="italic text-amber">infrastructure</span>.
-            </motion.h1>
-            <motion.p variants={fadeUp} custom={2} className="mt-6 text-lg text-charcoal-mid leading-relaxed max-w-xl mx-auto">
-              Provance is built around private handling, controlled access, and traceable
-              review workflows so teams can verify sensitive media with confidence.
-            </motion.p>
-          </motion.div>
-        </div>
-      </section>
+      <PageHero
+        title="Trust is part of the infrastructure."
+        description="Provance is built around private handling, controlled access, and traceable review workflows so teams can verify sensitive media with confidence."
+        breadcrumbs={[{ label: 'Home', href: '/' }, { label: 'Security' }]}
+      />
 
       {/* ── Data Retention ── */}
       <section className="section-padding bg-charcoal text-parchment relative overflow-hidden">
@@ -32,9 +22,9 @@ export default function SecurityPage() {
         <div className="content-container relative z-10">
           <div className="max-w-4xl mx-auto">
             <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }} className="text-center mb-14">
-              <motion.span variants={fadeUp} className="text-amber font-mono text-xs uppercase tracking-[0.2em]">Data Retention</motion.span>
+              <motion.span variants={fadeUp} className="eyebrow eyebrow-dark">Data Retention</motion.span>
               <motion.h2 variants={fadeUp} className="font-serif text-3xl sm:text-4xl mt-4 text-balance">
-                Your data, <span className="italic text-amber">your control</span>.
+                Your data, <span className="italic text-trust-soft">your control</span>.
               </motion.h2>
             </motion.div>
 
@@ -65,7 +55,7 @@ export default function SecurityPage() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.5, delay: i * 0.1 }}
-                  className="p-6 md:p-8 rounded-2xl bg-white/5 border border-white/10"
+                  className="surface-card-dark p-6 md:p-8"
                 >
                   <h3 className="font-serif text-xl text-parchment mb-4">{col.title}</h3>
                   <ul className="space-y-3">
@@ -90,9 +80,9 @@ export default function SecurityPage() {
         <div className="content-container">
           <div className="max-w-4xl mx-auto">
             <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }} className="text-center mb-14">
-              <motion.span variants={fadeUp} className="text-amber font-mono text-xs uppercase tracking-[0.2em]">Audit Logs</motion.span>
+              <motion.span variants={fadeUp} className="eyebrow">Audit Logs</motion.span>
               <motion.h2 variants={fadeUp} className="font-serif text-3xl sm:text-4xl mt-4 text-balance text-charcoal">
-                Every action, <span className="italic text-amber">recorded</span>.
+                Every action, <span className="italic text-trust">recorded</span>.
               </motion.h2>
             </motion.div>
 
@@ -117,7 +107,7 @@ export default function SecurityPage() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.4, delay: i * 0.08 }}
-                  className="p-6 md:p-8 rounded-2xl bg-white-warm border border-stone-light"
+                  className="surface-card p-6 md:p-8"
                 >
                   <h3 className="font-serif text-xl text-charcoal mb-2">{item.title}</h3>
                   <p className="text-charcoal-mid text-sm leading-relaxed">{item.desc}</p>
@@ -159,9 +149,9 @@ export default function SecurityPage() {
         <div className="content-container relative z-10">
           <div className="max-w-4xl mx-auto">
             <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }} className="text-center mb-14">
-              <motion.span variants={fadeUp} className="text-amber font-mono text-xs uppercase tracking-[0.2em]">Enterprise Readiness</motion.span>
+              <motion.span variants={fadeUp} className="eyebrow eyebrow-dark">Enterprise Readiness</motion.span>
               <motion.h2 variants={fadeUp} className="font-serif text-3xl sm:text-4xl mt-4 text-balance">
-                Built for the <span className="italic text-amber">enterprise</span>.
+                Built for the <span className="italic text-trust-soft">enterprise</span>.
               </motion.h2>
             </motion.div>
 
@@ -180,7 +170,7 @@ export default function SecurityPage() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.4, delay: i * 0.06 }}
-                  className="p-6 rounded-xl bg-white/5 border border-white/10 hover:bg-white/[0.07] hover:border-amber/20 transition-all duration-300"
+                  className="surface-card-dark p-6 transition-all duration-300 hover:-translate-y-1"
                 >
                   <h3 className="font-serif text-lg text-parchment mb-2">{item.title}</h3>
                   <p className="text-stone text-sm leading-relaxed">{item.desc}</p>
@@ -195,7 +185,7 @@ export default function SecurityPage() {
               transition={{ delay: 0.4 }}
               className="mt-10 text-center"
             >
-              <Link to="/contact" className="inline-flex px-6 py-3 bg-amber text-charcoal font-medium text-sm rounded-xl hover:bg-amber-light transition-all duration-200">
+              <Link to="/contact" className="btn-primary">
                 Talk to us about security and access
               </Link>
             </motion.div>

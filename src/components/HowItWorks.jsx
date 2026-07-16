@@ -10,21 +10,22 @@ const steps = [
 export default function HowItWorks() {
   return (
     <section id="how" className="section-padding bg-parchment-light relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(217,119,6,0.08),transparent_38%)]" />
+      <div className="absolute inset-0 hero-gradient opacity-70" />
       <div className="content-container relative z-10">
         <motion.div
           initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}
           variants={{ hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.15 } } }}
           className="text-center max-w-3xl mx-auto mb-16"
         >
-          <motion.span variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5 } } }} className="inline-flex items-center gap-3 rounded-full border border-stone-light/80 bg-white px-4 py-2 font-mono text-[11px] uppercase tracking-[0.22em] text-amber shadow-[0_18px_45px_rgba(26,26,26,0.06)]">
+          <motion.span variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5 } } }} className="eyebrow">
             How It Works
           </motion.span>
-          <motion.h2 variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, delay: 0.1 } } }} className="mt-4 font-serif text-3xl text-balance text-[#1a1a1a] sm:text-4xl lg:text-5xl">
-            Upload the file, review the evidence, act with clarity.
+          <motion.h2 variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, delay: 0.1 } } }} className="mt-4 font-serif text-3xl text-balance text-charcoal sm:text-4xl lg:text-5xl">
+            From upload to a report your team can defend.
           </motion.h2>
           <motion.p variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, delay: 0.18 } } }} className="mt-5 text-lg leading-relaxed text-[#3f3f46]">
-            A straightforward workflow built for faster verification and clearer decisions.
+            A clear verification flow built to reduce ambiguity, move faster, and preserve
+            evidence along the way.
           </motion.p>
         </motion.div>
 
@@ -42,11 +43,11 @@ export default function HowItWorks() {
                 transition={{ duration: 0.6, delay: i * 0.15, ease: [0.25, 0.1, 0.25, 1] }}
                 className="relative"
               >
-                <InteractivePanel className="rounded-[1.75rem] border border-stone-light/80 bg-white-warm/88 shadow-[0_24px_60px_rgba(26,26,26,0.08)] backdrop-blur-xl">
+                <InteractivePanel className="surface-card rounded-[1.75rem] backdrop-blur-xl">
                   <div className="relative z-10 p-6 md:p-8 text-center lg:text-left">
                     <div className="mb-5 flex items-center justify-between">
-                      <span className="font-serif text-5xl sm:text-6xl text-amber/20 font-bold leading-none">{step.num}</span>
-                      <span className="rounded-full border border-amber/20 bg-amber/10 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.16em] text-amber">
+                      <span className="font-serif text-5xl sm:text-6xl text-trust/16 font-bold leading-none">{step.num}</span>
+                      <span className="rounded-full border border-trust/14 bg-trust-soft/70 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.16em] text-trust-strong">
                         Step {i + 1}
                       </span>
                     </div>

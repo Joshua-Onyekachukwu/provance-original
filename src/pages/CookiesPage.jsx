@@ -1,3 +1,5 @@
+import PageHero from '../components/PageHero.jsx'
+
 const sections = [
   {
     title: 'What this policy covers',
@@ -52,25 +54,17 @@ const sections = [
 export default function CookiesPage() {
   return (
     <div className="pt-20 md:pt-24">
+      <PageHero
+        title="Cookies and similar technologies"
+        description="This page describes how Provance uses cookies and related browser technologies across the public site and authenticated areas of the platform."
+        breadcrumbs={[{ label: 'Home', href: '/' }, { label: 'Cookies Policy' }]}
+      />
+
       <section className="section-padding bg-parchment">
         <div className="content-container max-w-4xl">
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-amber">
-            Cookies Policy
-          </p>
-          <h1 className="mt-4 font-serif text-4xl sm:text-5xl text-charcoal">
-            Cookies and similar technologies
-          </h1>
-          <p className="mt-6 text-lg leading-relaxed text-charcoal-mid">
-            This page describes how Provance uses cookies and related browser
-            technologies across the public site and authenticated areas of the platform.
-          </p>
-          <div className="mt-6 rounded-2xl border border-stone-light bg-white-warm p-5 text-sm text-charcoal-mid">
-            Effective date: 2026-07-06
-          </div>
-
-          <div className="mt-12 space-y-6">
+          <div className="mt-2 space-y-6">
             {sections.map((section) => (
-              <section key={section.title} className="rounded-2xl border border-stone-light bg-white-warm p-7">
+              <section key={section.title} className="legal-card p-7">
                 <h2 className="font-serif text-2xl text-charcoal">{section.title}</h2>
                 <div className="mt-3 space-y-3 text-sm leading-relaxed text-charcoal-mid">
                   {section.paragraphs.map((paragraph) => (

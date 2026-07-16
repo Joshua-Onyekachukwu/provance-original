@@ -39,11 +39,11 @@ export default function Pricing() {
           initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}
           className="text-center max-w-2xl mx-auto mb-16"
         >
-          <motion.span variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5 } } }} className="text-amber font-mono text-xs uppercase tracking-[0.2em]">
+          <motion.span variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5 } } }} className="eyebrow">
             Pricing
           </motion.span>
           <motion.h2 variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, delay: 0.1 } } }} className="font-serif text-3xl sm:text-4xl lg:text-5xl mt-4 text-balance text-charcoal">
-            Simple, transparent <span className="italic text-amber">pricing</span>.
+            Clear paths into <span className="italic text-trust">Provance</span>.
           </motion.h2>
         </motion.div>
 
@@ -57,13 +57,13 @@ export default function Pricing() {
               transition={{ duration: 0.5, delay: i * 0.1, ease: [0.25, 0.1, 0.25, 1] }}
               className={`relative p-6 md:p-8 rounded-2xl border transition-all duration-500 ${
                 tier.featured
-                  ? 'bg-charcoal text-parchment border-amber/30 shadow-xl scale-[1.02] md:scale-105'
-                  : 'bg-white-warm text-charcoal border-stone-light hover:border-stone'
+                  ? 'surface-card-dark text-parchment scale-[1.02] md:scale-105'
+                  : 'surface-card text-charcoal hover:-translate-y-1'
               }`}
             >
               {tier.featured && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-amber text-charcoal text-xs font-medium rounded-full font-mono uppercase tracking-wider">
-                  Most Popular
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-trust px-3 py-1 text-xs font-medium uppercase tracking-wider text-white font-mono">
+                  Best for teams
                 </div>
               )}
               <h3 className={`font-serif text-2xl mb-1 ${tier.featured ? 'text-parchment' : 'text-charcoal'}`}>{tier.name}</h3>
@@ -85,10 +85,10 @@ export default function Pricing() {
               </ul>
               <Link
                 to={tier.href}
-                className={`block text-center py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                className={`block rounded-xl py-3 text-center text-sm font-medium transition-all duration-200 ${
                   tier.featured
-                    ? 'bg-amber text-charcoal hover:bg-amber-light'
-                    : 'bg-charcoal text-parchment hover:bg-charcoal-soft'
+                    ? 'btn-primary'
+                    : 'btn-secondary'
                 }`}
               >
                 {tier.cta}

@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
+import PageHero from '../components/PageHero.jsx'
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -9,31 +10,20 @@ const fadeUp = {
 export default function DocsPage() {
   return (
     <div className="pt-20 md:pt-24">
-      {/* ── Hero ── */}
-      <section className="section-padding bg-parchment relative overflow-hidden">
-        <div className="absolute inset-0 forensic-grid opacity-30" />
-        <div className="content-container relative z-10">
-          <motion.div initial="hidden" animate="visible" className="max-w-3xl mx-auto text-center">
-            <motion.span variants={fadeUp} custom={0} className="text-amber font-mono text-xs uppercase tracking-[0.2em]">Documentation</motion.span>
-            <motion.h1 variants={fadeUp} custom={1} className="font-serif text-4xl sm:text-5xl lg:text-6xl mt-4 text-balance text-charcoal">
-              Developer <span className="italic text-amber">access</span>.
-            </motion.h1>
-            <motion.p variants={fadeUp} custom={2} className="mt-6 text-lg text-charcoal-mid leading-relaxed max-w-xl mx-auto">
-              Use this page to understand the API shape, expected verification flow, and
-              the integration path for teams requesting developer access.
-            </motion.p>
-          </motion.div>
-        </div>
-      </section>
+      <PageHero
+        title="Developer access."
+        description="Use this page to understand the API shape, expected verification flow, and the integration path for teams requesting developer access."
+        breadcrumbs={[{ label: 'Home', href: '/' }, { label: 'Docs' }]}
+      />
 
       {/* ── Getting Started ── */}
       <section className="section-padding bg-parchment-light relative overflow-hidden">
         <div className="content-container">
           <div className="max-w-4xl mx-auto">
             <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }} className="text-center mb-14">
-              <motion.span variants={fadeUp} className="text-amber font-mono text-xs uppercase tracking-[0.2em]">Quick Start</motion.span>
+              <motion.span variants={fadeUp} className="eyebrow">Quick Start</motion.span>
               <motion.h2 variants={fadeUp} className="font-serif text-3xl sm:text-4xl mt-4 text-balance text-charcoal">
-                Verify media in <span className="italic text-amber">three lines</span>.
+                Verify media in <span className="italic text-trust">three lines</span>.
               </motion.h2>
             </motion.div>
 
@@ -49,7 +39,7 @@ export default function DocsPage() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.5, delay: i * 0.1 }}
-                  className="p-6 rounded-xl bg-white-warm border border-stone-light text-center"
+                  className="surface-card p-6 text-center"
                 >
                   <span className="text-amber font-mono text-xs uppercase tracking-[0.2em] mb-3 block">{item.icon}</span>
                   <h3 className="font-serif text-lg text-charcoal mb-2">{item.title}</h3>
@@ -67,9 +57,9 @@ export default function DocsPage() {
         <div className="content-container relative z-10">
           <div className="max-w-4xl mx-auto">
             <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }} className="text-center mb-12">
-              <motion.span variants={fadeUp} className="text-amber font-mono text-xs uppercase tracking-[0.2em]">API Reference</motion.span>
+              <motion.span variants={fadeUp} className="eyebrow eyebrow-dark">API Reference</motion.span>
               <motion.h2 variants={fadeUp} className="font-serif text-3xl sm:text-4xl mt-4 text-balance">
-                `POST /v1/verify` <span className="italic text-amber">endpoint</span>.
+                `POST /v1/verify` <span className="italic text-trust-soft">endpoint</span>.
               </motion.h2>
             </motion.div>
 
@@ -167,9 +157,9 @@ export default function DocsPage() {
         <div className="content-container">
           <div className="max-w-4xl mx-auto">
             <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }} className="text-center mb-12">
-              <motion.span variants={fadeUp} className="text-amber font-mono text-xs uppercase tracking-[0.2em]">Webhooks</motion.span>
+              <motion.span variants={fadeUp} className="eyebrow">Webhooks</motion.span>
               <motion.h2 variants={fadeUp} className="font-serif text-3xl sm:text-4xl mt-4 text-balance text-charcoal">
-                Async verification via <span className="italic text-amber">webhooks</span>.
+                Async verification via <span className="italic text-trust">webhooks</span>.
               </motion.h2>
               <motion.p variants={fadeUp} className="mt-4 text-charcoal-mid text-sm max-w-lg mx-auto">
                 Webhooks support asynchronous verification so teams can submit media,
@@ -206,7 +196,7 @@ export default function DocsPage() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.4, delay: i * 0.06 }}
-                  className="p-6 rounded-xl bg-white-warm border border-stone-light"
+                  className="surface-card p-6"
                 >
                   <h3 className="font-serif text-lg text-charcoal mb-2">{item.title}</h3>
                   <p className="text-charcoal-mid text-sm leading-relaxed mb-3">{item.desc}</p>
@@ -229,10 +219,10 @@ export default function DocsPage() {
               transition={{ delay: 0.3 }}
               className="mt-10 flex flex-wrap gap-4 justify-center"
             >
-              <Link to="/sample-report" className="inline-flex px-6 py-3 bg-charcoal text-parchment font-medium text-sm rounded-xl hover:bg-charcoal-soft transition-all duration-200">
+              <Link to="/sample-report" className="btn-primary">
                 View Sample Report
               </Link>
-              <Link to="/waitlist" className="inline-flex px-6 py-3 border border-stone text-charcoal font-medium text-sm rounded-xl hover:border-charcoal/30 transition-all duration-200">
+              <Link to="/waitlist" className="btn-secondary">
                 Register API interest
               </Link>
             </motion.div>

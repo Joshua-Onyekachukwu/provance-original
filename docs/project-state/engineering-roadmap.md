@@ -26,6 +26,7 @@ Focus:
 - align authenticated app visual language with premium public experience
 - improve design consistency across app pages
 - tighten report and dashboard presentation
+- define what proof assets should eventually connect public marketing and in-app trust surfaces
 
 ### Phase C. Deferred Security Planning Execution
 
@@ -60,6 +61,31 @@ Focus:
 - teams and organizations
 - broader access controls
 - enterprise APIs
+
+### Phase G. Trust Assets And Market Proof
+
+Focus:
+
+- publish real case studies once customer work exists
+- formalize pilot language and enterprise engagement framing
+- add benchmark summaries when the verification engine has stable evaluation data
+- add customer logos when approved for use
+- add methodology visuals and diagrams when the methodology surface matures
+
+## Cross-Phase Technical Vision Rule
+
+All future engineering phases should be reviewed against:
+
+- speed
+- accuracy
+- scalability
+- explainability
+- trust
+- moat formation
+
+Reference:
+
+- `docs/architecture/competitive-advantage-and-technical-vision.md`
 
 ## Current Note
 

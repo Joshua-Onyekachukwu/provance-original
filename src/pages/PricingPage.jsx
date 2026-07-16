@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
+import PageHero from '../components/PageHero.jsx'
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -78,22 +79,11 @@ const tiers = [
 export default function PricingPage() {
   return (
     <div className="pt-20 md:pt-24">
-      {/* ── Hero ── */}
-      <section className="section-padding bg-parchment relative overflow-hidden">
-        <div className="absolute inset-0 forensic-grid opacity-30" />
-        <div className="content-container relative z-10">
-          <motion.div initial="hidden" animate="visible" className="max-w-3xl mx-auto text-center">
-            <motion.span variants={fadeUp} custom={0} className="text-amber font-mono text-xs uppercase tracking-[0.2em]">Pricing</motion.span>
-            <motion.h1 variants={fadeUp} custom={1} className="font-serif text-4xl sm:text-5xl lg:text-6xl mt-4 text-balance text-charcoal">
-              Simple, transparent <span className="italic text-amber">pricing</span>.
-            </motion.h1>
-            <motion.p variants={fadeUp} custom={2} className="mt-6 text-lg text-charcoal-mid leading-relaxed max-w-xl mx-auto">
-              Choose the access path that fits your workflow today, then expand into team
-              support, security review, and deeper integration as your volume grows.
-            </motion.p>
-          </motion.div>
-        </div>
-      </section>
+      <PageHero
+        title="Commercial paths built for trust-critical work."
+        description="Choose the access path that fits your workflow today, then expand into team support, security review, and deeper integration as your volume grows."
+        breadcrumbs={[{ label: 'Home', href: '/' }, { label: 'Pricing' }]}
+      />
 
       {/* ── Pricing Tiers ── */}
       <section className="section-padding bg-parchment-light relative overflow-hidden">
@@ -108,13 +98,13 @@ export default function PricingPage() {
                 transition={{ duration: 0.5, delay: i * 0.08, ease: [0.25, 0.1, 0.25, 1] }}
                 className={`relative flex flex-col p-6 rounded-2xl border transition-all duration-500 ${
                   tier.featured
-                    ? 'bg-charcoal text-parchment border-amber/30 shadow-xl scale-[1.02] lg:scale-105 z-10'
-                    : 'bg-white-warm text-charcoal border-stone-light hover:border-stone'
+                    ? 'surface-card-dark text-parchment scale-[1.02] lg:scale-105 z-10'
+                    : 'surface-card text-charcoal hover:-translate-y-1'
                 }`}
               >
                 {tier.featured && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-amber text-charcoal text-xs font-medium rounded-full font-mono uppercase tracking-wider whitespace-nowrap">
-                    Most Popular
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-trust px-3 py-1 text-xs font-medium uppercase tracking-wider text-white font-mono whitespace-nowrap">
+                    Best for teams
                   </div>
                 )}
 
@@ -141,10 +131,10 @@ export default function PricingPage() {
 
                 <Link
                   to={tier.href}
-                  className={`block text-center py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                  className={`block rounded-xl py-3 text-center text-sm font-medium transition-all duration-200 ${
                     tier.featured
-                      ? 'bg-amber text-charcoal hover:bg-amber-light'
-                      : 'bg-charcoal text-parchment hover:bg-charcoal-soft'
+                      ? 'btn-primary'
+                      : 'btn-secondary'
                   }`}
                 >
                   {tier.cta}
@@ -161,9 +151,9 @@ export default function PricingPage() {
         <div className="content-container relative z-10">
           <div className="max-w-5xl mx-auto">
             <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }} className="text-center mb-12">
-              <motion.span variants={fadeUp} className="text-amber font-mono text-xs uppercase tracking-[0.2em]">Commercial Logic</motion.span>
+              <motion.span variants={fadeUp} className="eyebrow eyebrow-dark">Commercial Logic</motion.span>
               <motion.h2 variants={fadeUp} className="font-serif text-3xl sm:text-4xl mt-4 text-balance">
-                What's included at every <span className="italic text-amber">level</span>.
+                What changes at each <span className="italic text-trust-soft">level</span>.
               </motion.h2>
             </motion.div>
 
@@ -223,9 +213,9 @@ export default function PricingPage() {
       <section className="section-padding bg-parchment relative overflow-hidden">
         <div className="content-container max-w-3xl mx-auto">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }} className="text-center mb-12">
-            <motion.span variants={fadeUp} className="text-amber font-mono text-xs uppercase tracking-[0.2em]">FAQ</motion.span>
+            <motion.span variants={fadeUp} className="eyebrow">FAQ</motion.span>
             <motion.h2 variants={fadeUp} className="font-serif text-3xl sm:text-4xl mt-4 text-balance text-charcoal">
-              Questions about <span className="italic text-amber">pricing</span>?
+              Questions about <span className="italic text-trust">pricing</span>?
             </motion.h2>
           </motion.div>
 
@@ -236,7 +226,7 @@ export default function PricingPage() {
               { q: 'Do you support teams and enterprise buyers?', a: 'Yes. Team and enterprise paths are available for organizations that need workflow planning, rollout support, or custom security discussions.' },
               { q: 'Can I talk to someone before joining?', a: 'Yes. Use the contact page if you want a demo, design-partner conversation, or help choosing between waitlist and team access.' },
             ].map((item) => (
-              <details key={item.q} className="group bg-white-warm rounded-xl border border-stone-light overflow-hidden open:border-amber/20 transition-all duration-300">
+              <details key={item.q} className="surface-card group overflow-hidden open:border-trust/18 transition-all duration-300">
                 <summary className="flex items-center justify-between px-5 py-4 cursor-pointer list-none">
                   <span className="font-serif text-base text-charcoal pr-4">{item.q}</span>
                   <svg className="w-4 h-4 text-charcoal-light shrink-0 group-open:rotate-180 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">

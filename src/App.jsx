@@ -22,6 +22,7 @@ import SignInPage from './pages/SignInPage'
 import AcceptInvitePage from './pages/AcceptInvitePage'
 import RequestPasswordResetPage from './pages/RequestPasswordResetPage'
 import ResetPasswordConfirmPage from './pages/ResetPasswordConfirmPage'
+import SampleReportPrintPage from './pages/SampleReportPrintPage.jsx'
 import NotFoundPage from './pages/NotFoundPage'
 import AppDashboardPage from './pages/app/AppDashboardPage.jsx'
 import AppUploadsPage from './pages/app/AppUploadsPage.jsx'
@@ -51,6 +52,8 @@ function PublicLayout() {
 export default function App() {
   return (
     <Routes>
+      <Route path="/sample-report/print" element={<SampleReportPrintPage />} />
+
       <Route element={<PublicLayout />}>
           <Route path="/" element={<HomePage />} />
           <Route path="/about" element={<AboutPage />} />
