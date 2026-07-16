@@ -1,6 +1,6 @@
 # Deployment And Auth Strategy
 
-Last updated: 2026-07-07
+Last updated: 2026-07-16
 
 ## Status Note
 
@@ -46,10 +46,26 @@ Provance uses a backend-mediated auth path:
 
 - frontend submits sign-in to the NestJS API
 - NestJS signs in against Supabase Auth
-- frontend stores the returned access and refresh tokens for the current MVP flow
+- frontend stores the returned access and refresh tokens for the current pre-cookie flow
+- frontend hydrates signed-in identity, permissions, and account profile state through backend identity endpoints
 - protected routes use those tokens to authorize access and API calls
 
 This means the frontend should not be switched back to a Supabase-direct auth flow unless that decision is intentionally revisited.
+
+## Current Auth And Account Endpoints
+
+The active auth and account surface now includes:
+
+- `POST /v1/auth/sign-in`
+- `POST /v1/auth/refresh`
+- `GET /v1/auth/me`
+- `POST /v1/auth/password-reset/request`
+- `POST /v1/auth/password-reset/confirm`
+- `POST /v1/auth/invites/accept`
+- `GET /v1/account/profile`
+- `PATCH /v1/account/profile`
+
+This allows the frontend to keep the session token flow it already uses while moving profile and permission state onto the backend.
 
 ## Active Upload And Scan Strategy
 
@@ -150,4 +166,5 @@ Then deploy:
 
 - validate the live end-to-end upload and queue flow through the deployed frontend
 - harden auth storage and session handling before broader production rollout
+- transition from browser-stored tokens to hardened cookie transport in the later security-hardening phase
 - introduce internal admin tooling for waitlist approval and invite issuance

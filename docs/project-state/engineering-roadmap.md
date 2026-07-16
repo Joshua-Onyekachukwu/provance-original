@@ -4,31 +4,65 @@ Last updated: 2026-07-16
 
 ## Purpose
 
-This document records the engineering roadmap in the current recommended order.
+This document summarizes the current engineering sequence for quick reference.
 
-## Current Sequence
+The canonical phase order and phase definitions live in:
 
-### Phase A. Premium Frontend Refinement
+- `docs/roadmap/MASTER_DEVELOPMENT_ROADMAP.md`
 
-Focus:
+If this document and the master roadmap ever differ, the master roadmap is the source of truth.
 
-- landing page refinement
-- design-token improvement
-- typography and font work
-- component consistency
-- responsiveness
-- stronger polished UI
+## Current Status
 
-### Phase B. Product Surface Alignment
+- Phase 0. Documentation And Workflow Foundation: complete
+- Phase 1. Landing Page And Brand Experience Refinement: complete
+- Next active phase: Phase 2. App Visual Consistency And Premium UI Polish
+
+## Phase Sequence Summary
+
+### Phase 2. App Visual Consistency And Premium UI Polish
 
 Focus:
 
 - align authenticated app visual language with premium public experience
 - improve design consistency across app pages
 - tighten report and dashboard presentation
+- strengthen mobile and tablet responsiveness across authenticated surfaces
+- move account profile state off local-only browser storage
+- expand auth and account backend primitives needed for future SaaS growth
 - define what proof assets should eventually connect public marketing and in-app trust surfaces
 
-### Phase C. Deferred Security Planning Execution
+### Phase 3. User Profiles And Account Persistence
+
+Focus:
+
+- persist account preferences and basic profile data
+- add profile storage and integration
+- connect account UI to backend persistence
+
+### Phase 4. Evidence And Report Depth Expansion
+
+Focus:
+
+- improve evidence richness and report structure
+- increase trust and clarity in report outputs
+- keep report evolution explainable and conservative
+
+### Phase 5. Billing And Payments
+
+Focus:
+
+- introduce subscriptions and plan enforcement
+- add billing surfaces and account plan handling
+
+### Phase 6. Teams And Organizations
+
+Focus:
+
+- add multi-user collaboration
+- expand roles, permissions, and shared report access
+
+### Phase 7. Security Hardening
 
 Focus:
 
@@ -37,16 +71,15 @@ Focus:
 - RLS expansion for waitlist and admin tables
 - security documentation updates
 
-### Phase D. Product Depth
+### Phase 8. Performance Optimization And Observability
 
 Focus:
 
-- backend profile persistence
-- richer evidence handling
-- export improvements
-- triage and review tooling improvements
+- better logging and metrics
+- performance improvements across frontend and workers
+- stronger operational visibility
 
-### Phase E. Media Expansion
+### Phase 9. Multi-Media Expansion
 
 Focus:
 
@@ -54,23 +87,13 @@ Focus:
 - real audio support
 - preview and report support for non-image media
 
-### Phase F. Organization And Enterprise Expansion
+### Phase 10. Beta Readiness And Production Launch
 
 Focus:
 
-- teams and organizations
-- broader access controls
-- enterprise APIs
-
-### Phase G. Trust Assets And Market Proof
-
-Focus:
-
-- publish real case studies once customer work exists
-- formalize pilot language and enterprise engagement framing
-- add benchmark summaries when the verification engine has stable evaluation data
-- add customer logos when approved for use
-- add methodology visuals and diagrams when the methodology surface matures
+- product stability
+- support and compliance readiness
+- launch planning and release readiness
 
 ## Cross-Phase Technical Vision Rule
 
@@ -86,7 +109,8 @@ All future engineering phases should be reviewed against:
 Reference:
 
 - `docs/architecture/competitive-advantage-and-technical-vision.md`
+- `docs/roadmap/MASTER_DEVELOPMENT_ROADMAP.md`
 
 ## Current Note
 
-Do not let deferred engineering improvements interrupt the current presentation-focused phase unless a critical issue forces reprioritization.
+Do not let later backend or security phases override the approved roadmap sequence unless a blocking issue forces reprioritization and that reprioritization is documented explicitly.

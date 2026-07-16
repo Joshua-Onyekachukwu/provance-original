@@ -30,7 +30,8 @@ Key characteristics:
 
 - client-side routing with React Router
 - app-shell model for authenticated routes
-- local session storage for the current MVP auth model
+- local session token storage for the current pre-cookie auth model
+- backend-hydrated identity, permissions, and account profile state for authenticated routes
 - direct browser upload to private Supabase Storage via signed upload flow
 
 ## Backend Architecture
@@ -42,6 +43,7 @@ It is a NestJS modular monolith with focused modules for:
 - health
 - waitlist
 - auth
+- account
 - scans
 - admin
 - queue
@@ -60,7 +62,7 @@ Key characteristics:
 Supabase currently provides:
 
 - Auth for user identity and session issuance
-- Postgres tables for waitlist, invites, audit events, and scans
+- Postgres tables for waitlist, invites, audit events, scans, and profiles
 - private Storage bucket for uploads
 
 Current migrated objects:
@@ -69,6 +71,7 @@ Current migrated objects:
 - `access_invites`
 - `auth_audit_events`
 - `scans`
+- `profiles`
 - `provance-uploads` storage bucket
 
 ## Upload And Processing Architecture
@@ -125,8 +128,9 @@ Current policy:
 
 Near-term architecture work should support:
 
-- premium frontend refinement
+- authenticated app polish across desktop, tablet, and mobile
 - stronger design consistency
+- server-backed account and identity primitives
 - documentation maturity
 - later auth hardening plan
 - later RLS expansion plan

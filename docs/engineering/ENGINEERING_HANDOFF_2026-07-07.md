@@ -1,6 +1,6 @@
 # Provance Engineering Handoff
 
-Last updated: 2026-07-07
+Last updated: 2026-07-16
 
 ## Purpose
 
@@ -59,6 +59,8 @@ Current MVP posture:
 Read these first:
 
 1. `README.md`
+2. `docs/roadmap/MASTER_DEVELOPMENT_ROADMAP.md`
+3. `docs/reports/2026-07-16-phase-2-expanded-foundation-auth-and-responsive-app-polish.md`
 2. `docs/engineering/CURRENT_IMPLEMENTATION_STATUS.md`
 3. `docs/engineering/PHASE_TASK_LIST.md`
 4. `docs/engineering/CREDENTIALS_AND_ENVIRONMENT_VARIABLES.md`
@@ -106,6 +108,7 @@ Read these first:
 
 - `GET /v1/health`
 - `POST /v1/waitlist/applications`
+- `GET /v1/auth/me`
 - `POST /v1/auth/sign-in`
 - `POST /v1/auth/password-reset/request`
 - `POST /v1/auth/password-reset/confirm`
@@ -114,6 +117,8 @@ Read these first:
 
 ### Authenticated product
 
+- `GET /v1/account/profile`
+- `PATCH /v1/account/profile`
 - `POST /v1/scans`
 - `POST /v1/scans/:scanId/submit`
 - `GET /v1/scans`
@@ -152,12 +157,19 @@ The backend uses Supabase Auth and returns:
 - refresh token
 - session expiry
 - permissions object
+- backend profile payload
 
 ### Session persistence
 
-The frontend stores session state locally and now refreshes tokens automatically through `POST /v1/auth/refresh`.
+The frontend still stores token state locally and refreshes tokens automatically through `POST /v1/auth/refresh`.
 
-This is the current MVP approach.
+However, account profile and permission state are now hydrated from the backend through:
+
+- `GET /v1/auth/me`
+- `GET /v1/account/profile`
+- `PATCH /v1/account/profile`
+
+This means the app no longer treats profile state as local-only browser preference data.
 
 ### Admin authorization
 
@@ -246,6 +258,7 @@ The current printable report now includes:
 - `access_invites`
 - `auth_audit_events`
 - `scans`
+- `profiles`
 
 ### Storage bucket
 
@@ -256,6 +269,7 @@ The current printable report now includes:
 - `0001_waitlist_auth.sql`
 - `0002_scans.sql`
 - `0003_admin_ops.sql`
+- `0004_profiles.sql`
 
 ## What Has Been Completed
 
@@ -274,6 +288,9 @@ The current printable report now includes:
 - password reset confirmation
 - protected app shell
 - token refresh
+- backend current-session identity endpoint
+- backend-backed account profile read and update endpoints
+- server-backed profile persistence
 
 ### Admin
 
@@ -298,6 +315,12 @@ The current printable report now includes:
 - broader dashboard and auth copy positioning so the product does not read as legal-only
 - backend-signed media preview support for report rendering
 
+### Authenticated app refinement
+
+- stronger mobile and tablet navigation behavior in the app shell
+- smaller-screen spacing and heading refinements in account, uploads, reports, and admin surfaces
+- account settings now save through the backend instead of only through local state
+
 ### Security baseline
 
 - helmet
@@ -313,6 +336,7 @@ The current printable report now includes:
 - team and organization workflows
 - deeper RBAC
 - automated invite email delivery
+- hardened cookie-based auth transport
 - PDF rendering beyond the printable report page
 - share links
 - full evidence timeline
@@ -322,31 +346,36 @@ The current printable report now includes:
 - billing
 - enterprise observability stack
 
-## Latest Completed Refinement Pass
+## Latest Completed Phase
 
-The latest completed refinement pass focused on three areas:
+The latest completed phase expanded Phase 2 beyond frontend polish and focused on:
 
-1. admin test-account guidance
-2. dashboard and auth copy broadening
-3. printable report redesign
+1. authenticated app responsive polish
+2. backend-backed account and profile foundation
+3. auth identity hydration and permission shaping
+4. roadmap and engineering documentation sync
 
-Completed in this pass:
+Completed in this phase:
 
-- documented a local admin test-account pattern using `founder.admin@provance.local`
-- updated `backend/.env.example` to reflect that local admin example
-- rewrote the app-shell, dashboard, uploads, reports, account, access, admin, and auth copy so the product reads as a general-purpose media verification platform
-- replaced narrower legal-style wording such as repeated `case`, `evidence package`, and `analyst` framing where that wording was not required
-- redesigned the printable report into a professional report-style document with the actual analyzed image preview
-- added a signed asset preview URL to `GET /v1/scans/:scanId`
+- added `backend/src/account/*` as the backend account module
+- added `supabase/migrations/0004_profiles.sql`
+- added `GET /v1/auth/me`
+- added `GET /v1/account/profile`
+- added `PATCH /v1/account/profile`
+- replaced local-only profile persistence with backend-backed profile hydration and save flows
+- refined authenticated app shell behavior for smaller screens
+- updated the master roadmap so Phase 2 explicitly includes auth/backend foundation and responsive app polish
+- documented the phase in `docs/reports/2026-07-16-phase-2-expanded-foundation-auth-and-responsive-app-polish.md`
 
 ## Recommended Resume Point
 
 When work resumes later, start from these items in order:
 
-1. validate the live deployed report preview and printable layout through the production or staging frontend
-2. expand the upload and processing pipeline beyond images so video and audio reports can use real previews instead of placeholder future-state messaging
-3. move account preferences from local storage into a Supabase-backed profile model
-4. decide when to reopen Phase 7 team and organization workflows
+1. apply `supabase/migrations/0004_profiles.sql` in the connected Supabase project if it has not already been applied
+2. define a stable local signed-in QA account so mobile and tablet authenticated app review can be repeated end to end
+3. continue the current Phase 2 app consistency pass page by page across the authenticated product
+4. reopen deeper security hardening later for cookie transport and expanded RLS
+5. reopen team and organization workflows only when the roadmap reaches that phase
 
 ## Local Development
 
@@ -381,16 +410,18 @@ npm run check:launch
 - Keep real secrets in Fly.io, Vercel, and local ignored env files only.
 - Use `ADMIN_EMAILS` to control admin access.
 - The admin flow now depends on the applied `0003_admin_ops.sql` migration.
+- The account/profile foundation now depends on the applied `0004_profiles.sql` migration.
+- The canonical roadmap source is `docs/roadmap/MASTER_DEVELOPMENT_ROADMAP.md`.
 
 ## Best Next Reading For A New Engineer
 
 1. `README.md`
-2. `docs/engineering/ENGINEERING_HANDOFF_2026-07-07.md`
-3. `docs/engineering/ADMIN_ACCESS_AND_OPERATIONS.md`
-4. `docs/engineering/CURRENT_IMPLEMENTATION_STATUS.md`
-5. `src/App.jsx`
-6. `src/components/app/AppShellLayout.jsx`
-7. `src/pages/app/AppDashboardPage.jsx`
-8. `src/pages/app/AppUploadsPage.jsx`
-9. `src/pages/app/AppReportsPage.jsx`
-10. `backend/src/scans/scans.service.ts`
+2. `docs/roadmap/MASTER_DEVELOPMENT_ROADMAP.md`
+3. `docs/reports/2026-07-16-phase-2-expanded-foundation-auth-and-responsive-app-polish.md`
+4. `docs/engineering/ENGINEERING_HANDOFF_2026-07-07.md`
+5. `docs/engineering/CURRENT_IMPLEMENTATION_STATUS.md`
+6. `src/App.jsx`
+7. `src/components/app/AppShellLayout.jsx`
+8. `src/context/AuthContext.jsx`
+9. `src/pages/app/AppAccountPage.jsx`
+10. `backend/src/account/account.service.ts`

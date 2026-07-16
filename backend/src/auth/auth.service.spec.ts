@@ -6,6 +6,9 @@ describe('AuthService', () => {
   const mockConfigService = {
     get: jest.fn(),
   } as unknown as ConfigService;
+  const mockAccountService = {
+    getCurrentViewer: jest.fn(),
+  };
 
   afterEach(() => {
     jest.clearAllMocks();
@@ -38,7 +41,27 @@ describe('AuthService', () => {
         insert: insertAuditEvent,
       }),
     });
+    mockAccountService.getCurrentViewer.mockResolvedValue({
+      status: 'authenticated',
+      user: {
+        id: 'user-1',
+        email: 'user@example.com',
+      },
+      permissions: {
+        individual: true,
+        team: false,
+        admin: false,
+      },
+      profile: {
+        displayName: 'User',
+        organization: '',
+        roleTitle: '',
+        defaultWorkspace: 'individual',
+        emailNotifications: true,
+      },
+    });
     const service = new AuthService(
+      mockAccountService as any,
       {
         createPublicClient,
         getAdminClient,
@@ -72,6 +95,7 @@ describe('AuthService', () => {
     });
     const insertAuditEvent = jest.fn().mockResolvedValue({ error: null });
     const service = new AuthService(
+      mockAccountService as any,
       {
         createPublicClient: jest.fn().mockReturnValue({
           auth: {
@@ -160,6 +184,7 @@ describe('AuthService', () => {
       });
 
     const service = new AuthService(
+      mockAccountService as any,
       {
         createPublicClient: jest.fn(),
         getAdminClient: jest.fn().mockReturnValue({

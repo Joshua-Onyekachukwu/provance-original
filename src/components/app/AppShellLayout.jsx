@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext.jsx'
 
@@ -116,42 +117,61 @@ function WorkspaceToggle() {
 export default function AppShellLayout() {
   const { profile, user, signOut, permissions } = useAuth()
   const location = useLocation()
+  const [isNavOpen, setIsNavOpen] = useState(false)
   const navItems = getNavItems(permissions)
   const pageMeta = getPageMeta(location.pathname)
+
+  useEffect(() => {
+    setIsNavOpen(false)
+  }, [location.pathname])
 
   return (
     <div className="min-h-screen bg-parchment-light">
       <div className="min-h-screen lg:grid lg:grid-cols-[320px_minmax(0,1fr)]">
         <aside className="border-b border-charcoal-soft bg-charcoal text-parchment lg:min-h-screen lg:border-b-0 lg:border-r">
-          <div className="sticky top-0 p-6 lg:h-screen lg:overflow-y-auto lg:p-8">
-            <div className="flex items-center justify-between gap-3 lg:block">
-              <div>
-                <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/8 font-serif text-lg text-parchment shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
-                    P
-                  </div>
-                  <div>
-                    <p className="font-serif text-2xl text-parchment">Provance</p>
-                    <p className="text-xs uppercase tracking-[0.18em] text-parchment/55">
-                      Verification Workspace
-                    </p>
-                  </div>
+          <div className="sticky top-0 p-4 sm:p-6 lg:h-screen lg:overflow-y-auto lg:p-8">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/8 font-serif text-lg text-parchment shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+                  P
                 </div>
-                <p className="mt-4 max-w-xs text-sm leading-relaxed text-parchment/72">
-                  A secure workspace for media intake, verification review, and internal
-                  operations across the current Provance MVP.
-                </p>
+                <div className="min-w-0">
+                  <p className="truncate font-serif text-2xl text-parchment">Provance</p>
+                  <p className="text-xs uppercase tracking-[0.18em] text-parchment/55">
+                    Verification Workspace
+                  </p>
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={signOut}
-                className="rounded-xl border border-white/12 bg-white/5 px-4 py-2 text-sm text-parchment/80 transition hover:border-white/22 hover:bg-white/8 lg:hidden"
-              >
-                Sign out
-              </button>
+              <div className="flex items-center gap-2 lg:hidden">
+                <button
+                  type="button"
+                  onClick={() => setIsNavOpen((current) => !current)}
+                  className="rounded-xl border border-white/12 bg-white/5 px-4 py-2 text-sm text-parchment/80 transition hover:border-white/22 hover:bg-white/8"
+                >
+                  {isNavOpen ? 'Close' : 'Menu'}
+                </button>
+                <button
+                  type="button"
+                  onClick={signOut}
+                  className="rounded-xl border border-white/12 bg-white/5 px-4 py-2 text-sm text-parchment/80 transition hover:border-white/22 hover:bg-white/8"
+                >
+                  Sign out
+                </button>
+              </div>
             </div>
 
-            <div className="mt-6 rounded-3xl border border-white/10 bg-white/6 p-4 backdrop-blur-sm">
+            <div className={`${isNavOpen ? 'mt-6 block' : 'mt-0 hidden'} lg:mt-0 lg:block`}>
+              <p className="mt-4 max-w-xs text-sm leading-relaxed text-parchment/72">
+                A secure workspace for media intake, verification review, and internal
+                operations across the current Provance MVP.
+              </p>
+            </div>
+
+            <div
+              className={`${
+                isNavOpen ? 'mt-6 block' : 'mt-4 hidden'
+              } rounded-3xl border border-white/10 bg-white/6 p-4 backdrop-blur-sm lg:mt-6 lg:block`}
+            >
               <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-parchment/48">
                 Signed in as
               </p>
@@ -182,13 +202,13 @@ export default function AppShellLayout() {
               </div>
             </div>
 
-            <div className="mt-8">
+            <div className={`${isNavOpen ? 'mt-8 block' : 'hidden'} lg:block`}>
               <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-parchment/48">
                 Navigation
               </p>
             </div>
 
-            <nav className="mt-4 grid gap-2">
+            <nav className={`${isNavOpen ? 'mt-4 grid' : 'hidden'} gap-2 lg:grid`}>
               {navItems.map((item) => {
                 const isLocked = item.href === '/app/team' && !permissions.team
 

@@ -79,6 +79,30 @@ Impact:
 - the marketing site stays disciplined instead of filling space with weak placeholders
 - later phases gain a clearer bridge between brand, product proof, and enterprise conversion
 
+### Master Roadmap Is The Canonical Phase Source
+
+Decision:
+
+`docs/roadmap/MASTER_DEVELOPMENT_ROADMAP.md` is the canonical source for phase numbering, phase naming, and development order. Summary documents must mirror it rather than invent alternate phase sequences.
+
+Impact:
+
+- prevents roadmap drift between summary docs and the master plan
+- keeps planning discussions anchored to one agreed source of truth
+- confirms that the next phase after Phase 1 is Phase 2: App Visual Consistency And Premium UI Polish
+
+### Phase 2 Is Expanded To Include Backend And Auth Foundation
+
+Decision:
+
+Phase 2 is no longer frontend-only. It now includes authenticated app polish, mobile and tablet responsiveness, server-backed account profile persistence, and incremental auth/backend foundation work that supports production readiness without collapsing later phases into one oversized change.
+
+Impact:
+
+- Phase 2 now covers both app UX quality and core account/auth foundation
+- local-only profile state should be replaced by backend-backed account persistence
+- full cookie-based session transport, full organization workflows, and deeper security hardening still remain later roadmap work unless explicitly reprioritized again
+
 ## Maintenance Rule
 
 When a major decision is made:

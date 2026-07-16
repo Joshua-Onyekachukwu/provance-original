@@ -13,6 +13,7 @@ export default function AppAccountPage() {
   })
   const [errorMessage, setErrorMessage] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
     if (profile) {
@@ -30,7 +31,7 @@ export default function AppAccountPage() {
     }))
   }
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault()
     setErrorMessage('')
     setSuccessMessage('')
@@ -45,22 +46,29 @@ export default function AppAccountPage() {
       return
     }
 
-    updateProfile({
-      ...formState,
-      displayName: formState.displayName.trim(),
-      organization: formState.organization.trim(),
-      roleTitle: formState.roleTitle.trim(),
-    })
-    setSuccessMessage('Account preferences saved.')
+    try {
+      setIsSaving(true)
+      await updateProfile({
+        ...formState,
+        displayName: formState.displayName.trim(),
+        organization: formState.organization.trim(),
+        roleTitle: formState.roleTitle.trim(),
+      })
+      setSuccessMessage('Account preferences saved.')
+    } catch (error) {
+      setErrorMessage(error.message || 'Account preferences could not be saved.')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return (
     <div className="space-y-8">
-      <section className="rounded-3xl border border-stone-light bg-white-warm p-8 shadow-sm">
+      <section className="rounded-3xl border border-stone-light bg-white-warm p-6 shadow-sm sm:p-8">
         <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">
           Account
         </p>
-        <h2 className="mt-3 font-serif text-4xl text-charcoal">
+        <h2 className="mt-3 font-serif text-3xl text-charcoal sm:text-4xl">
           Profile and workspace preferences
         </h2>
         <p className="mt-4 max-w-3xl text-base leading-relaxed text-charcoal-mid">
@@ -72,7 +80,7 @@ export default function AppAccountPage() {
       <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
         <form
           onSubmit={handleSubmit}
-          className="rounded-3xl border border-stone-light bg-white-warm p-8 shadow-sm"
+          className="rounded-3xl border border-stone-light bg-white-warm p-6 shadow-sm sm:p-8"
         >
           <div className="grid gap-5 md:grid-cols-2">
             <label className="block">
@@ -152,16 +160,17 @@ export default function AppAccountPage() {
 
           <button
             type="submit"
+            disabled={isSaving}
             className="mt-6 inline-flex rounded-xl bg-charcoal px-5 py-3 text-sm font-medium text-parchment transition hover:bg-charcoal-soft"
           >
-            Save account settings
+            {isSaving ? 'Saving account settings...' : 'Save account settings'}
           </button>
         </form>
 
         <AppStatePanel
           label="Success"
-          title="Preference saving is active"
-          description="This account surface lets you manage display information and workspace defaults before deeper account APIs are introduced."
+          title="Profile persistence is now active"
+          description="This account surface now saves profile details through the backend so workspace identity and preferences are not limited to local browser state."
           variant="success"
         />
       </div>

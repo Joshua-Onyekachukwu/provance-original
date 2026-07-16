@@ -1,6 +1,6 @@
 # Provance Current Implementation Status
 
-Last updated: 2026-07-07
+Last updated: 2026-07-16
 
 ## Purpose
 
@@ -72,10 +72,19 @@ The working product direction is:
 - Protected route gate that redirects unauthenticated users back to sign-in with a return URL
 - Dedicated authenticated layout with left-side navigation and top-level app structure
 - Initial in-product pages for dashboard, uploads, reports, account settings, admin operations, and team workspace placeholders
-- Account preference editing persists locally across refreshes
+- Account preference editing now persists through a backend-backed profile model
 - Explicit team permission handling redirects unauthorized access to an access denied page
 - Admin permission handling now exposes the admin workspace only for allowlisted emails
 - Dashboard and app-shell copy have been rewritten to position Provance as a broader verification workspace rather than a legal-only tool
+- App-shell layout has been refined for better mobile and tablet responsiveness in the authenticated experience
+
+### Account And Identity Foundation
+
+- A new backend account module now exposes authenticated profile read and update endpoints
+- Signed-in identity can now be rehydrated through `GET /v1/auth/me`
+- Profile defaults are now created server-side when a user first authenticates
+- Account profile data now lives in the `profiles` table instead of local-only browser state
+- Permission state now travels through backend identity responses rather than being inferred only in the frontend
 
 ### Phase 5 Upload Workflow Foundation
 
@@ -114,10 +123,13 @@ The working product direction is:
 
 - `GET /v1/health`
 - `POST /v1/waitlist/applications`
+- `GET /v1/auth/me`
 - `POST /v1/auth/sign-in`
 - `POST /v1/auth/password-reset/request`
 - `POST /v1/auth/password-reset/confirm`
 - `POST /v1/auth/invites/accept`
+- `GET /v1/account/profile`
+- `PATCH /v1/account/profile`
 
 ### Security Foundation
 
@@ -138,7 +150,7 @@ The working product direction is:
 - Supabase project is connected for local backend validation
 - Backend environment template added
 - Starter SQL migration added at `supabase/migrations/0001_waitlist_auth.sql`
-- Remote tables exist for `waitlist_applications`, `access_invites`, and `auth_audit_events`
+- Remote tables exist for `waitlist_applications`, `access_invites`, `auth_audit_events`, and `profiles` once the latest migration is applied
 - Waitlist submissions persist into the live `waitlist_applications` table
 - Invite acceptance creates a real Supabase user and updates waitlist and invite state
 - Sign-in is wired to real Supabase Auth credentials
@@ -150,6 +162,7 @@ The working product direction is:
 - Password reset request and confirmation UI are now implemented
 - Invite acceptance UI is now implemented
 - Refresh-token handling is now implemented for the authenticated client
+- Signed-in identity hydration now comes from the backend rather than browser-only profile state
 - Hardened cookie-based session transport remains a possible future hardening step, not an MVP blocker
 
 ### Waitlist Operations
@@ -217,15 +230,18 @@ Validated in this phase:
 - `backend/src/waitlist/waitlist.service.ts`
 - `backend/src/auth/auth.controller.ts`
 - `backend/src/auth/auth.service.ts`
+- `backend/src/account/account.controller.ts`
+- `backend/src/account/account.service.ts`
 - `backend/src/supabase/supabase.service.ts`
 - `supabase/migrations/0001_waitlist_auth.sql`
 - `supabase/migrations/0002_scans.sql`
+- `supabase/migrations/0004_profiles.sql`
 
 ## Next Recommended Steps
 
 1. Apply the latest Supabase migrations in the connected project
 2. Validate the live worker-backed queue flow end to end through the deployed frontend
-3. Move account preference storage from local-only to a Supabase-backed profile model
+3. Harden the current token transport when the security-hardening phase is opened
 4. Expand the media pipeline beyond images so reports can support real video thumbnails and audio summaries
 5. Expand printable reports into full PDF export when needed
 6. Start Phase 7 team and organization workflows only when the roadmap is reopened

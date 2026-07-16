@@ -142,39 +142,56 @@ Improve first impression and conversion while preserving the existing layout and
 
 **Objective**
 
-Carry improved typography and visual system into the authenticated application.
+Carry improved typography and visual system into the authenticated application while strengthening the auth and backend foundation that future SaaS features will rely on.
 
 **Scope**
 
 - app-shell typography and spacing refinement
 - component consistency across dashboard, uploads, reports, admin
 - visual hierarchy improvements in report and dashboard pages
+- mobile and tablet responsiveness across authenticated surfaces
+- server-backed account profiles and account settings
+- auth endpoint expansion for current-session and profile-aware identity reads
+- permission plumbing that can evolve into fuller RBAC later
+- backend foundation updates that improve maintainability, operational clarity, and future extension paths without prematurely forcing final cookie transport or full organization workflows
 
 **Dependencies**
 
 - Phase 1 tokens and typography decisions
+- stable MVP auth and upload/report workflow foundation
 
 **Complexity**
 
-- Medium
+- High
 
 **Deliverables**
 
 - cohesive app UI aligned to improved brand system
+- persisted account profile foundation
+- expanded auth and account API surface
+- updated profile migration and backend module wiring
 
 **Docs To Update**
 
+- `docs/engineering/CURRENT_IMPLEMENTATION_STATUS.md`
+- `docs/engineering/DEPLOYMENT_AND_AUTH_STRATEGY.md`
 - `docs/project-state/current-feature-status.md`
+- `docs/project-state/overall-project-architecture.md`
 - `docs/changelogs/CHANGELOG.md`
 
 **Testing Requirements**
 
 - regression checks on key flows: sign-in, upload, report, admin
-- responsive checks
+- account settings regression checks
+- responsive checks across desktop, tablet, and mobile breakpoints
+- frontend production build
+- backend production build
 
 **Completion Criteria**
 
 - app feels cohesive and premium
+- authenticated account/profile state is no longer local-only
+- backend and auth foundation is meaningfully stronger without conflicting with later security-hardening phases
 - Founder approval
 
 **Branch Naming**
