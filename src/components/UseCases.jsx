@@ -42,11 +42,11 @@ export default function UseCases() {
           initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}
           className="text-center max-w-2xl mx-auto mb-16"
         >
-          <motion.span variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5 } } }} className="text-amber font-mono text-xs uppercase tracking-[0.2em]">
+          <motion.span variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5 } } }} className="eyebrow eyebrow-dark">
             Use Cases
           </motion.span>
           <motion.h2 variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, delay: 0.1 } } }} className="font-serif text-3xl sm:text-4xl lg:text-5xl mt-4 text-balance">
-            Built for <span className="italic text-amber">real-world</span> verification work.
+            Built for <span className="italic text-trust-soft">real-world</span> verification work.
           </motion.h2>
         </motion.div>
 
@@ -58,9 +58,9 @@ export default function UseCases() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: '-60px' }}
               transition={{ duration: 0.5, delay: i * 0.1, ease: [0.25, 0.1, 0.25, 1] }}
-              className="p-6 md:p-8 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/[0.07] hover:border-amber/20 transition-all duration-500 group"
+              className="surface-card-dark p-6 md:p-8 transition-all duration-500 group hover:-translate-y-1"
             >
-              <span className="w-11 h-11 rounded-xl bg-amber/10 text-amber flex items-center justify-center mb-4">
+              <span className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-trust/10 text-trust-soft">
                 {c.icon}
               </span>
               <h3 className="font-serif text-xl mb-3">{c.title}</h3>

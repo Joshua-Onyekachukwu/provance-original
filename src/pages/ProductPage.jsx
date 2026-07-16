@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
+import PageHero from '../components/PageHero.jsx'
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -16,22 +17,11 @@ const verdictSteps = [
 export default function ProductPage() {
   return (
     <div className="pt-20 md:pt-24">
-      {/* ── Hero ── */}
-      <section className="section-padding bg-parchment relative overflow-hidden">
-        <div className="absolute inset-0 forensic-grid opacity-30" />
-        <div className="content-container relative z-10">
-          <motion.div initial="hidden" animate="visible" className="max-w-3xl mx-auto text-center">
-            <motion.span variants={fadeUp} custom={0} className="text-amber font-mono text-xs uppercase tracking-[0.2em]">Product</motion.span>
-            <motion.h1 variants={fadeUp} custom={1} className="font-serif text-4xl sm:text-5xl lg:text-6xl mt-4 text-balance text-charcoal">
-              Every verdict comes with <span className="italic text-amber">evidence</span>.
-            </motion.h1>
-            <motion.p variants={fadeUp} custom={2} className="mt-6 text-lg text-charcoal-mid leading-relaxed max-w-xl mx-auto">
-              Provance helps individuals and teams review suspicious image and video
-              media with clearer reasoning, stronger context, and outputs they can share.
-            </motion.p>
-          </motion.div>
-        </div>
-      </section>
+      <PageHero
+        title="Every verdict comes with evidence."
+        description="Provance helps professionals and teams review suspicious media with clearer reasoning, stronger context, and outputs they can actually use."
+        breadcrumbs={[{ label: 'Home', href: '/' }, { label: 'Product' }]}
+      />
 
       {/* ── Verdict & Evidence Breakdown ── */}
       <section className="section-padding bg-charcoal text-parchment relative overflow-hidden">
@@ -39,10 +29,34 @@ export default function ProductPage() {
         <div className="content-container relative z-10">
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-start">
             <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}>
-              <motion.span variants={fadeUp} className="text-amber font-mono text-xs uppercase tracking-[0.2em]">How It Works</motion.span>
+              <motion.span variants={fadeUp} className="eyebrow eyebrow-dark">How It Works</motion.span>
               <motion.h2 variants={fadeUp} className="font-serif text-3xl sm:text-4xl mt-4 text-balance">
-                From upload to <span className="italic text-amber">verdict</span>.
+                From upload to <span className="italic text-trust-soft">verdict</span>.
               </motion.h2>
+              <motion.p variants={fadeUp} className="mt-5 max-w-xl text-sm leading-relaxed text-stone">
+                The product experience is built around one core idea: keep the evidence, the
+                workflow context, and the final output close enough together that another
+                reviewer can follow the reasoning without guesswork.
+              </motion.p>
+              <motion.div
+                variants={fadeUp}
+                className="mt-8 rounded-[1.75rem] border border-white/10 bg-white/[0.04] p-6"
+              >
+                <div className="grid gap-4 sm:grid-cols-3">
+                  {[
+                    ['Evidence-led', 'Signals stay visible'],
+                    ['Workflow aware', 'Built for review teams'],
+                    ['Report ready', 'Outputs made to travel'],
+                  ].map(([label, value]) => (
+                    <div key={label} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                      <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-stone">
+                        {label}
+                      </div>
+                      <div className="mt-2 font-serif text-lg text-parchment">{value}</div>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
             </motion.div>
 
             <div className="space-y-8">
@@ -76,9 +90,9 @@ export default function ProductPage() {
       <section className="section-padding bg-parchment-light relative overflow-hidden">
         <div className="content-container">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }} className="text-center max-w-2xl mx-auto mb-16">
-            <motion.span variants={fadeUp} className="text-amber font-mono text-xs uppercase tracking-[0.2em]">Workflow Readiness</motion.span>
+            <motion.span variants={fadeUp} className="eyebrow">Workflow Readiness</motion.span>
             <motion.h2 variants={fadeUp} className="font-serif text-3xl sm:text-4xl lg:text-5xl mt-4 text-balance text-charcoal">
-              Fits your existing <span className="italic text-amber">pipeline</span>.
+              Fits your existing <span className="italic text-trust">pipeline</span>.
             </motion.h2>
           </motion.div>
 
@@ -97,7 +111,7 @@ export default function ProductPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: i * 0.08 }}
-                className="p-6 rounded-xl bg-white-warm border border-stone-light hover:border-amber/20 hover:shadow-sm transition-all duration-300"
+                className="surface-card p-6 transition-all duration-300 hover:-translate-y-1"
               >
                   <span className="text-amber font-mono text-xs uppercase tracking-[0.2em]">{item.icon}</span>
                 <h3 className="font-serif text-lg text-charcoal mb-2">{item.title}</h3>
@@ -114,9 +128,9 @@ export default function ProductPage() {
         <div className="content-container relative z-10">
           <div className="max-w-4xl mx-auto">
             <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }} className="text-center mb-12">
-              <motion.span variants={fadeUp} className="text-amber font-mono text-xs uppercase tracking-[0.2em]">API</motion.span>
+              <motion.span variants={fadeUp} className="eyebrow eyebrow-dark">API</motion.span>
               <motion.h2 variants={fadeUp} className="font-serif text-3xl sm:text-4xl mt-4 text-balance">
-                Simple, powerful <span className="italic text-amber">API</span>.
+                Simple, powerful <span className="italic text-trust-soft">API</span>.
               </motion.h2>
             </motion.div>
 
@@ -166,7 +180,7 @@ export default function ProductPage() {
               transition={{ delay: 0.3 }}
               className="mt-8 text-center"
             >
-              <Link to="/docs" className="inline-flex px-6 py-3 bg-amber text-charcoal font-medium text-sm rounded-xl hover:bg-amber-light transition-all duration-200">
+              <Link to="/docs" className="btn-primary">
                 View API Documentation
               </Link>
             </motion.div>

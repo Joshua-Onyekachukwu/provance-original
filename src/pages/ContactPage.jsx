@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { motion } from 'framer-motion'
+import PageHero from '../components/PageHero.jsx'
 
 const initialForm = {
   name: '',
@@ -25,41 +25,28 @@ export default function ContactPage() {
 
   return (
     <div className="pt-20 md:pt-24">
-      <section className="section-padding bg-parchment relative overflow-hidden">
-        <div className="absolute inset-0 forensic-grid opacity-30" />
-        <div className="content-container relative z-10">
-          <div className="max-w-3xl mx-auto text-center">
-            <motion.span
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-amber font-mono text-xs uppercase tracking-[0.2em]"
-            >
-              Contact
-            </motion.span>
-            <motion.h1
-              initial={{ opacity: 0, y: 18 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.08 }}
-              className="font-serif text-4xl sm:text-5xl lg:text-6xl mt-4 text-balance text-charcoal"
-            >
-              Tell us what you need to verify.
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0, y: 18 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.16 }}
-              className="mt-6 text-lg text-charcoal-mid leading-relaxed"
-            >
-              Use this page for demo requests, waitlist questions, API conversations, or
-              general product support.
-            </motion.p>
-          </div>
-        </div>
-      </section>
+      <PageHero
+        title="Tell us what you need to verify."
+        description="Use this page for demo requests, enterprise conversations, API interest, or product and access questions."
+        breadcrumbs={[{ label: 'Home', href: '/' }, { label: 'Contact' }]}
+      />
 
       <section className="section-padding bg-parchment-light">
         <div className="content-container grid gap-8 lg:grid-cols-[0.95fr_1.05fr] items-start">
-          <div className="rounded-2xl border border-stone-light bg-white-warm p-8">
+          <div className="surface-card p-8">
+            <div className="surface-card-muted mb-8 rounded-[1.5rem] p-6">
+              <p className="font-mono text-xs uppercase tracking-[0.2em] text-charcoal-light">
+                Start the conversation
+              </p>
+              <h2 className="mt-4 font-serif text-2xl text-charcoal">
+                Bring us the workflow, the risk, and the review context.
+              </h2>
+              <p className="mt-4 text-sm leading-relaxed text-charcoal-mid">
+                This page is for teams that need a serious conversation about how
+                verification fits into editorial, enterprise, or investigative
+                decision-making.
+              </p>
+            </div>
             <p className="font-mono text-xs uppercase tracking-[0.2em] text-amber">
               Best for
             </p>
@@ -70,18 +57,18 @@ export default function ContactPage() {
               <li>Pilot and onboarding conversations</li>
             </ul>
 
-            <div className="mt-8 rounded-xl border border-stone-light bg-parchment p-5">
+            <div className="surface-card-muted mt-8 rounded-xl p-5">
               <h2 className="font-serif text-xl text-charcoal">What happens next</h2>
               <p className="mt-3 text-sm leading-relaxed text-charcoal-mid">
-                We review inbound requests, route them by use case, and follow up with
-                the correct path for demos, waitlist support, or API conversations.
+                We review inbound requests, route them by use case, and follow up with the
+                right next step for demos, pilots, waitlist support, or API conversations.
               </p>
             </div>
           </div>
 
           <form
             onSubmit={handleSubmit}
-            className="rounded-2xl border border-stone-light bg-white-warm p-8 shadow-sm"
+            className="surface-card p-8"
           >
             <div className="grid gap-5 md:grid-cols-2">
               <label className="block">
@@ -91,7 +78,7 @@ export default function ContactPage() {
                   value={form.name}
                   onChange={handleChange}
                   required
-                  className="mt-2 w-full rounded-xl border border-stone-light bg-parchment px-4 py-3 text-sm text-charcoal outline-none transition focus:border-amber"
+                  className="field-input mt-2 text-sm"
                 />
               </label>
 
@@ -103,7 +90,7 @@ export default function ContactPage() {
                   value={form.email}
                   onChange={handleChange}
                   required
-                  className="mt-2 w-full rounded-xl border border-stone-light bg-parchment px-4 py-3 text-sm text-charcoal outline-none transition focus:border-amber"
+                  className="field-input mt-2 text-sm"
                 />
               </label>
             </div>
@@ -115,7 +102,7 @@ export default function ContactPage() {
                   name="company"
                   value={form.company}
                   onChange={handleChange}
-                  className="mt-2 w-full rounded-xl border border-stone-light bg-parchment px-4 py-3 text-sm text-charcoal outline-none transition focus:border-amber"
+                  className="field-input mt-2 text-sm"
                 />
               </label>
 
@@ -125,7 +112,7 @@ export default function ContactPage() {
                   name="intent"
                   value={form.intent}
                   onChange={handleChange}
-                  className="mt-2 w-full rounded-xl border border-stone-light bg-parchment px-4 py-3 text-sm text-charcoal outline-none transition focus:border-amber"
+                  className="field-input mt-2 text-sm"
                 >
                   <option value="demo">Request a demo</option>
                   <option value="waitlist">Join the waitlist</option>
@@ -143,13 +130,13 @@ export default function ContactPage() {
                 value={form.message}
                 onChange={handleChange}
                 placeholder="Tell us about your workflow, team, or what kind of media you need to review."
-                className="mt-2 w-full rounded-xl border border-stone-light bg-parchment px-4 py-3 text-sm text-charcoal outline-none transition focus:border-amber"
+                className="field-input mt-2 text-sm"
               />
             </label>
 
             <button
               type="submit"
-              className="mt-6 inline-flex px-6 py-3 bg-charcoal text-parchment font-medium text-sm rounded-xl hover:bg-charcoal-soft transition-all duration-200"
+              className="btn-primary mt-6"
             >
               Send request
             </button>

@@ -23,13 +23,11 @@ export default function RequestPasswordResetPage() {
 
   return (
     <div className="pt-20 md:pt-24">
-      <section className="section-padding bg-parchment">
-        <div className="content-container max-w-3xl">
-          <div className="rounded-3xl border border-stone-light bg-white-warm p-8 shadow-sm">
-            <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">
-              Password reset
-            </p>
-            <h1 className="mt-3 font-serif text-4xl text-charcoal">
+      <section className="section-padding bg-parchment relative overflow-hidden">
+        <div className="absolute inset-0 forensic-grid opacity-30" />
+        <div className="content-container relative z-10 max-w-3xl">
+          <div className="surface-card p-8 md:p-10">
+            <h1 className="font-serif text-4xl text-charcoal text-balance">
               Request a password reset
             </h1>
             <p className="mt-4 text-base leading-relaxed text-charcoal-mid">
@@ -48,7 +46,7 @@ export default function RequestPasswordResetPage() {
                 </p>
                 <Link
                   to="/signin"
-                  className="mt-4 inline-flex rounded-xl bg-charcoal px-5 py-3 text-sm font-medium text-parchment transition hover:bg-charcoal-soft"
+                  className="btn-primary mt-4"
                 >
                   Return to sign in
                 </Link>
@@ -63,7 +61,7 @@ export default function RequestPasswordResetPage() {
                     onChange={(event) => setEmail(event.target.value)}
                     required
                     disabled={status === 'submitting'}
-                    className="mt-2 w-full rounded-xl border border-stone-light bg-parchment px-4 py-3 text-sm text-charcoal"
+                    className="field-input mt-2 text-sm"
                   />
                 </label>
 
@@ -76,7 +74,7 @@ export default function RequestPasswordResetPage() {
                 <button
                   type="submit"
                   disabled={status === 'submitting'}
-                  className="inline-flex rounded-xl bg-charcoal px-5 py-3 text-sm font-medium text-parchment transition hover:bg-charcoal-soft disabled:cursor-not-allowed disabled:bg-stone-light disabled:text-charcoal-light"
+                  className="btn-primary disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {status === 'submitting' ? 'Requesting reset...' : 'Send recovery link'}
                 </button>

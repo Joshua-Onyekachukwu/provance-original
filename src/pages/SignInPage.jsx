@@ -47,18 +47,11 @@ export default function SignInPage() {
         <div className="content-container relative z-10">
           <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] items-start max-w-5xl mx-auto">
             <div className="max-w-xl">
-              <motion.span
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-amber font-mono text-xs uppercase tracking-[0.2em]"
-              >
-                Sign In
-              </motion.span>
               <motion.h1
                 initial={{ opacity: 0, y: 18 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.08 }}
-                className="font-serif text-4xl sm:text-5xl mt-4 text-balance text-charcoal"
+                className="font-serif text-4xl sm:text-5xl text-balance text-charcoal"
               >
                 Sign in to your Provance workspace.
               </motion.h1>
@@ -68,14 +61,14 @@ export default function SignInPage() {
                 transition={{ delay: 0.16 }}
                 className="mt-6 text-lg text-charcoal-mid leading-relaxed"
               >
-                Access is currently enabled through invite-based onboarding. If your
-                organization has not been approved yet, join the waitlist and we will open
-                access in cohorts.
+              Access is currently enabled through invite-based onboarding. If your
+              organization has not been approved yet, join the waitlist and we will open
+              access in controlled cohorts.
               </motion.p>
 
-              <div className="mt-8 rounded-2xl border border-stone-light bg-white-warm p-6">
+              <div className="surface-card mt-8 p-6">
                 <h2 className="font-serif text-2xl text-charcoal">Access model</h2>
-                <ul className="mt-4 space-y-3 text-sm text-charcoal-mid">
+                <ul className="feature-list mt-4 text-sm text-charcoal-mid">
                   <li>Waitlist review and approvals</li>
                   <li>Invite-based account activation</li>
                   <li>Email verification and secure session handling</li>
@@ -86,7 +79,7 @@ export default function SignInPage() {
 
             <form
               onSubmit={handleSubmit}
-              className="rounded-2xl border border-stone-light bg-white-warm p-8 shadow-sm"
+              className="surface-card p-8"
             >
               <label className="block">
                 <span className="text-sm font-medium text-charcoal">Work email</span>
@@ -96,7 +89,7 @@ export default function SignInPage() {
                   onChange={(event) => setEmail(event.target.value)}
                   required
                   disabled={isSubmitting}
-                  className="mt-2 w-full rounded-xl border border-stone-light bg-parchment px-4 py-3 text-sm text-charcoal outline-none transition focus:border-amber"
+                  className="field-input mt-2 text-sm"
                 />
               </label>
 
@@ -108,7 +101,7 @@ export default function SignInPage() {
                   onChange={(event) => setPassword(event.target.value)}
                   required
                   disabled={isSubmitting}
-                  className="mt-2 w-full rounded-xl border border-stone-light bg-parchment px-4 py-3 text-sm text-charcoal outline-none transition focus:border-amber"
+                  className="field-input mt-2 text-sm"
                 />
               </label>
 
@@ -133,7 +126,7 @@ export default function SignInPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="mt-6 inline-flex w-full justify-center px-6 py-3 bg-charcoal text-parchment font-medium text-sm rounded-xl hover:bg-charcoal-soft transition-all duration-200"
+                className="btn-primary mt-6 w-full"
               >
                 {isSubmitting ? 'Signing in...' : 'Sign in'}
               </button>

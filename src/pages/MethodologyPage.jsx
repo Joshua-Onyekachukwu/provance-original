@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
+import PageHero from '../components/PageHero.jsx'
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -18,31 +19,23 @@ const dimensions = [
 export default function MethodologyPage() {
   return (
     <div className="pt-20 md:pt-24">
-      {/* ── Hero ── */}
-      <section className="section-padding bg-parchment relative overflow-hidden">
-        <div className="absolute inset-0 forensic-grid opacity-30" />
-        <div className="content-container relative z-10">
-          <motion.div initial="hidden" animate="visible" className="max-w-3xl mx-auto text-center">
-            <motion.span variants={fadeUp} custom={0} className="text-amber font-mono text-xs uppercase tracking-[0.2em]">Methodology</motion.span>
-            <motion.h1 variants={fadeUp} custom={1} className="font-serif text-4xl sm:text-5xl lg:text-6xl mt-4 text-balance text-charcoal">
-              Confidence through <span className="italic text-amber">clarity</span>.
-            </motion.h1>
-            <motion.p variants={fadeUp} custom={2} className="mt-6 text-lg text-charcoal-mid leading-relaxed max-w-xl mx-auto">
-              We believe trust requires transparency. Every Provance verdict is accompanied by a clear explanation of how it was reached, what it means, and where its limits lie.
-            </motion.p>
-          </motion.div>
-        </div>
-      </section>
+      <PageHero
+        title="Evidence-first analysis built for trust."
+        description="Provance pairs structured forensic signals with clear reasoning so teams can understand what was detected, how confident the system is, and where human review still matters."
+        breadcrumbs={[{ label: 'Home', href: '/' }, { label: 'Methodology' }]}
+      />
 
-      {/* ── Confidence Language ── */}
       <section className="section-padding bg-charcoal text-parchment relative overflow-hidden">
         <div className="absolute inset-0 forensic-grid opacity-[0.04]" />
         <div className="content-container relative z-10">
           <div className="text-center max-w-2xl mx-auto mb-16">
-            <motion.span variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} className="text-amber font-mono text-xs uppercase tracking-[0.2em]">Confidence</motion.span>
+            <motion.span variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} className="eyebrow eyebrow-dark">Confidence Language</motion.span>
             <motion.h2 variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} className="font-serif text-3xl sm:text-4xl mt-4 text-balance">
-              How we express <span className="italic text-amber">certainty</span>.
+              How we communicate <span className="italic text-amber">certainty</span>.
             </motion.h2>
+            <p className="mt-5 text-base leading-relaxed text-stone">
+              We avoid opaque verdicts. Confidence ranges are designed to help reviewers decide when evidence is strong, when escalation is appropriate, and when more context is required.
+            </p>
           </div>
 
           <div className="max-w-4xl mx-auto space-y-6">
@@ -59,7 +52,7 @@ export default function MethodologyPage() {
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.4, delay: i * 0.08 }}
-                className="flex items-center gap-4 md:gap-6 p-5 rounded-xl bg-white/5 border border-white/10"
+                className="surface-card-dark flex items-center gap-4 md:gap-6 p-5"
               >
                 <div className={`w-3 h-3 rounded-full shrink-0 ${level.color}`} />
                 <div className="w-20 shrink-0">
@@ -75,14 +68,16 @@ export default function MethodologyPage() {
         </div>
       </section>
 
-      {/* ── How We Detect ── */}
       <section className="section-padding bg-parchment-light relative overflow-hidden">
         <div className="content-container">
           <div className="text-center max-w-2xl mx-auto mb-16">
-            <motion.span variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} className="text-amber font-mono text-xs uppercase tracking-[0.2em]">Detection Dimensions</motion.span>
+            <motion.span variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} className="eyebrow">Detection Dimensions</motion.span>
             <motion.h2 variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} className="font-serif text-3xl sm:text-4xl lg:text-5xl mt-4 text-balance text-charcoal">
-              47 dimensions of <span className="italic text-amber">analysis</span>.
+              Multiple signals, one <span className="italic text-trust">reviewable</span> conclusion.
             </motion.h2>
+            <p className="mt-5 text-base leading-relaxed text-charcoal-mid">
+              The platform combines forensic, provenance, metadata, and model-artifact checks so reports are based on overlapping evidence rather than a single score.
+            </p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-5xl mx-auto">
@@ -93,10 +88,10 @@ export default function MethodologyPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.4, delay: i * 0.05 }}
-                className="p-5 rounded-xl bg-white-warm border border-stone-light hover:border-amber/20 transition-all duration-300"
+                className="surface-card p-5 transition-all duration-300 hover:-translate-y-1 hover:border-trust/18"
               >
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber shrink-0" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-trust shrink-0" />
                   <h3 className="font-serif text-base text-charcoal">{dim.name}</h3>
                 </div>
                 <p className="text-charcoal-mid text-sm leading-relaxed">{dim.desc}</p>
@@ -106,13 +101,12 @@ export default function MethodologyPage() {
         </div>
       </section>
 
-      {/* ── Uncertainty & Limits ── */}
       <section className="section-padding bg-charcoal text-parchment relative overflow-hidden">
         <div className="absolute inset-0 forensic-grid opacity-[0.04]" />
         <div className="content-container relative z-10">
           <div className="max-w-4xl mx-auto">
             <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }} className="text-center mb-14">
-              <motion.span variants={fadeUp} className="text-amber font-mono text-xs uppercase tracking-[0.2em]">Limits & Uncertainty</motion.span>
+              <motion.span variants={fadeUp} className="eyebrow eyebrow-dark">Limits & Uncertainty</motion.span>
               <motion.h2 variants={fadeUp} className="font-serif text-3xl sm:text-4xl mt-4 text-balance">
                 We're transparent about what we <span className="italic text-amber">don't know</span>.
               </motion.h2>
@@ -132,7 +126,7 @@ export default function MethodologyPage() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.4, delay: i * 0.06 }}
-                  className="p-5 md:p-6 rounded-xl bg-white/5 border border-white/10"
+                  className="surface-card-dark p-5 md:p-6"
                 >
                   <h3 className="font-serif text-lg text-parchment mb-2">{limit.title}</h3>
                   <p className="text-stone text-sm leading-relaxed">{limit.desc}</p>
@@ -143,15 +137,17 @@ export default function MethodologyPage() {
         </div>
       </section>
 
-      {/* ── Responsible Use ── */}
       <section className="section-padding bg-parchment relative overflow-hidden">
         <div className="content-container">
           <div className="max-w-4xl mx-auto">
             <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }} className="text-center max-w-2xl mx-auto mb-14">
-              <motion.span variants={fadeUp} className="text-amber font-mono text-xs uppercase tracking-[0.2em]">Responsible Use</motion.span>
+              <motion.span variants={fadeUp} className="eyebrow">Responsible Use</motion.span>
               <motion.h2 variants={fadeUp} className="font-serif text-3xl sm:text-4xl mt-4 text-balance text-charcoal">
                 Built for <span className="italic text-amber">accountability</span>.
               </motion.h2>
+              <p className="mt-5 text-base leading-relaxed text-charcoal-mid">
+                The system is designed to support human judgment, preserve evidence trails, and make high-stakes review more defensible for professional teams.
+              </p>
             </motion.div>
 
             <div className="grid md:grid-cols-2 gap-6">
@@ -167,7 +163,7 @@ export default function MethodologyPage() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.4, delay: i * 0.08 }}
-                  className="p-6 rounded-xl bg-white-warm border border-stone-light"
+                  className="surface-card p-6"
                 >
                   <h3 className="font-serif text-lg text-charcoal mb-2">{item.title}</h3>
                   <p className="text-charcoal-mid text-sm leading-relaxed">{item.desc}</p>
@@ -182,7 +178,7 @@ export default function MethodologyPage() {
               transition={{ delay: 0.4 }}
               className="mt-10 text-center"
             >
-              <Link to="/sample-report" className="inline-flex px-6 py-3 bg-charcoal text-parchment font-medium text-sm rounded-xl hover:bg-charcoal-soft transition-all duration-200">
+              <Link to="/sample-report" className="btn-primary">
                 View Sample Report
               </Link>
             </motion.div>

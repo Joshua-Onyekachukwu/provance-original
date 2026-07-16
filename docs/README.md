@@ -68,3 +68,7 @@ As of this update:
 
 - `docs/engineering/DEVELOPMENT_WORKFLOW_AND_RELEASE_PROCESS.md`
 - `docs/roadmap/MASTER_DEVELOPMENT_ROADMAP.md`
+
+## Technical Vision
+
+- `docs/architecture/competitive-advantage-and-technical-vision.md`

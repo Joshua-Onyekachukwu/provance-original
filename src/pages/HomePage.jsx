@@ -11,8 +11,8 @@ export default function HomePage() {
     <main>
       <Hero />
       <WhyProvance />
-      <HowItWorks />
       <SampleReport />
+      <HowItWorks />
       <UseCases />
       <Pricing />
       <CLEARAnswers />

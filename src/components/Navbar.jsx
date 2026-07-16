@@ -8,8 +8,8 @@ const NAV_ITEMS = [
   { label: 'Methodology', href: '/methodology' },
   { label: 'Pricing', href: '/pricing' },
   { label: 'Sample Report', href: '/sample-report' },
-  { label: 'Docs', href: '/docs' },
   { label: 'Security', href: '/security' },
+  { label: 'Contact', href: '/contact' },
 ]
 
 export default function Navbar() {
@@ -37,16 +37,21 @@ export default function Navbar() {
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
         scrolled
-          ? 'bg-parchment/85 backdrop-blur-xl border-b border-stone-light'
+          ? 'bg-parchment/85 backdrop-blur-xl border-b border-stone-light shadow-[0_10px_35px_rgba(19,22,29,0.06)]'
           : 'bg-transparent'
       }`}
     >
       <div className="content-container flex items-center justify-between h-16 md:h-20 px-4 md:px-6">
         <Link to="/" className="flex items-center gap-2 group">
-          <div className="w-8 h-8 rounded-md bg-charcoal flex items-center justify-center">
-            <span className="text-parchment text-sm font-serif font-bold">P</span>
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-charcoal shadow-[0_10px_30px_rgba(19,22,29,0.18)]">
+            <span className="text-parchment text-sm font-serif font-semibold">P</span>
           </div>
-          <span className="font-serif text-xl text-charcoal font-medium tracking-tight">Provance</span>
+          <div className="flex flex-col leading-none">
+            <span className="font-serif text-[1.3rem] text-charcoal font-semibold tracking-tight">Provance</span>
+            <span className="hidden sm:block text-[10px] font-mono uppercase tracking-[0.22em] text-charcoal-light">
+              Evidence-first verification
+            </span>
+          </div>
         </Link>
 
         <nav className="hidden md:flex items-center gap-8">
@@ -54,8 +59,8 @@ export default function Navbar() {
             <Link
               key={item.href}
               to={item.href}
-              className={`text-sm tracking-wide transition-colors duration-200 ${
-                isActive(item.href) ? 'text-charcoal font-medium' : 'text-charcoal-mid hover:text-charcoal'
+              className={`text-sm font-medium tracking-wide transition-colors duration-200 ${
+                isActive(item.href) ? 'text-charcoal' : 'text-charcoal-mid hover:text-charcoal'
               }`}
             >
               {item.label}
@@ -72,7 +77,7 @@ export default function Navbar() {
               <button
                 type="button"
                 onClick={signOut}
-                className="ml-1 px-5 py-2.5 bg-charcoal text-parchment text-sm font-medium rounded-lg hover:bg-charcoal-soft transition-all duration-200 tracking-wide"
+                className="btn-secondary ml-1 px-5 py-2.5"
               >
                 Sign Out
               </button>
@@ -87,9 +92,9 @@ export default function Navbar() {
               </Link>
               <Link
                 to="/waitlist"
-                className="ml-1 px-5 py-2.5 bg-charcoal text-parchment text-sm font-medium rounded-lg hover:bg-charcoal-soft transition-all duration-200 tracking-wide"
+                className="btn-primary ml-1 px-5 py-2.5"
               >
-                Join Waitlist
+                Join Early Access
               </Link>
             </>
           )}
@@ -123,8 +128,8 @@ export default function Navbar() {
                   key={item.href}
                   to={item.href}
                   onClick={() => setMobileOpen(false)}
-                  className={`text-base transition-colors ${
-                    isActive(item.href) ? 'text-charcoal font-medium' : 'text-charcoal-mid hover:text-charcoal'
+                  className={`text-base font-medium transition-colors ${
+                    isActive(item.href) ? 'text-charcoal' : 'text-charcoal-mid hover:text-charcoal'
                   }`}
                 >
                   {item.label}
@@ -141,7 +146,7 @@ export default function Navbar() {
                   <button
                     type="button"
                     onClick={signOut}
-                    className="mt-2 px-5 py-3 bg-charcoal text-parchment text-sm font-medium rounded-lg text-center"
+                    className="btn-secondary mt-2 text-center"
                   >
                     Sign Out
                   </button>
@@ -156,9 +161,9 @@ export default function Navbar() {
                   </Link>
                   <Link
                     to="/waitlist"
-                    className="mt-2 px-5 py-3 bg-charcoal text-parchment text-sm font-medium rounded-lg text-center"
+                    className="btn-primary mt-2 text-center"
                   >
-                    Join Waitlist
+                    Join Early Access
                   </Link>
                 </>
               )}

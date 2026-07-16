@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { submitWaitlistApplication } from '../lib/api'
+import PageHero from '../components/PageHero.jsx'
 
 const initialForm = {
   name: '',
@@ -51,42 +51,16 @@ export default function WaitlistPage() {
 
   return (
     <div className="pt-20 md:pt-24">
-      <section className="section-padding bg-parchment relative overflow-hidden">
-        <div className="absolute inset-0 forensic-grid opacity-30" />
-        <div className="content-container relative z-10">
-          <div className="max-w-3xl mx-auto text-center">
-            <motion.span
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-amber font-mono text-xs uppercase tracking-[0.2em]"
-            >
-              Early Access
-            </motion.span>
-            <motion.h1
-              initial={{ opacity: 0, y: 18 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.08 }}
-              className="font-serif text-4xl sm:text-5xl lg:text-6xl mt-4 text-balance text-charcoal"
-            >
-              Join the Provance waitlist.
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0, y: 18 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.16 }}
-              className="mt-6 text-lg text-charcoal-mid leading-relaxed"
-            >
-              Early access opens first for individuals and teams who need reviewable
-              evidence, clearer confidence, and a faster verification workflow.
-            </motion.p>
-          </div>
-        </div>
-      </section>
+      <PageHero
+        title="Join the Provance waitlist."
+        description="Early access opens first for professionals and teams who need reviewable evidence, clearer confidence, and a faster path to defensible verification."
+        breadcrumbs={[{ label: 'Home', href: '/' }, { label: 'Waitlist' }]}
+      />
 
       <section className="section-padding bg-parchment-light">
         <div className="content-container grid gap-8 lg:grid-cols-[0.95fr_1.05fr] items-start">
           <div className="space-y-6">
-            <div className="rounded-2xl border border-stone-light bg-white-warm p-8">
+            <div className="surface-card p-8">
               <p className="font-mono text-xs uppercase tracking-[0.2em] text-amber">
                 What to expect
               </p>
@@ -98,7 +72,7 @@ export default function WaitlistPage() {
               </ul>
             </div>
 
-            <div className="rounded-2xl border border-stone-light bg-parchment p-8">
+            <div className="surface-card-muted p-8">
               <h2 className="font-serif text-2xl text-charcoal">Need a faster path?</h2>
               <p className="mt-3 text-sm leading-relaxed text-charcoal-mid">
                 If you already have an urgent workflow or want to explore design-partner
@@ -106,7 +80,7 @@ export default function WaitlistPage() {
               </p>
               <Link
                 to="/contact"
-                className="mt-5 inline-flex px-5 py-3 border border-stone text-charcoal font-medium text-sm rounded-xl hover:border-charcoal/30 transition-all duration-200"
+                className="btn-secondary mt-5"
               >
                 Request a demo or design-partner conversation
               </Link>
@@ -115,7 +89,7 @@ export default function WaitlistPage() {
 
           <form
             onSubmit={handleSubmit}
-            className="rounded-2xl border border-stone-light bg-white-warm p-8 shadow-sm"
+            className="surface-card p-8"
           >
             <div className="grid gap-5 md:grid-cols-2">
               <label className="block">
@@ -126,7 +100,7 @@ export default function WaitlistPage() {
                   onChange={handleChange}
                   required
                   disabled={isSubmitting}
-                  className="mt-2 w-full rounded-xl border border-stone-light bg-parchment px-4 py-3 text-sm text-charcoal outline-none transition focus:border-amber"
+                  className="field-input mt-2 text-sm"
                 />
               </label>
 
@@ -139,7 +113,7 @@ export default function WaitlistPage() {
                   onChange={handleChange}
                   required
                   disabled={isSubmitting}
-                  className="mt-2 w-full rounded-xl border border-stone-light bg-parchment px-4 py-3 text-sm text-charcoal outline-none transition focus:border-amber"
+                  className="field-input mt-2 text-sm"
                 />
               </label>
             </div>
@@ -152,7 +126,7 @@ export default function WaitlistPage() {
                   value={form.company}
                   onChange={handleChange}
                   disabled={isSubmitting}
-                  className="mt-2 w-full rounded-xl border border-stone-light bg-parchment px-4 py-3 text-sm text-charcoal outline-none transition focus:border-amber"
+                  className="field-input mt-2 text-sm"
                 />
               </label>
 
@@ -164,7 +138,7 @@ export default function WaitlistPage() {
                   onChange={handleChange}
                   placeholder="Reporter, investigator, analyst, counsel"
                   disabled={isSubmitting}
-                  className="mt-2 w-full rounded-xl border border-stone-light bg-parchment px-4 py-3 text-sm text-charcoal outline-none transition focus:border-amber"
+                  className="field-input mt-2 text-sm"
                 />
               </label>
             </div>
@@ -178,16 +152,16 @@ export default function WaitlistPage() {
                 onChange={handleChange}
                 placeholder="Tell us how you expect to use Provance and what kind of media review matters most to your team."
                 disabled={isSubmitting}
-                className="mt-2 w-full rounded-xl border border-stone-light bg-parchment px-4 py-3 text-sm text-charcoal outline-none transition focus:border-amber"
+                className="field-input mt-2 text-sm"
               />
             </label>
 
             <button
               type="submit"
               disabled={isSubmitting}
-              className="mt-6 inline-flex px-6 py-3 bg-charcoal text-parchment font-medium text-sm rounded-xl hover:bg-charcoal-soft transition-all duration-200"
+              className="btn-primary mt-6"
             >
-              {isSubmitting ? 'Submitting...' : 'Join waitlist'}
+              {isSubmitting ? 'Submitting...' : 'Join early access'}
             </button>
 
             <p className="mt-4 text-xs leading-relaxed text-charcoal-light">
@@ -202,7 +176,7 @@ export default function WaitlistPage() {
             )}
 
             {submitted && (
-              <div className="mt-5 rounded-xl border border-amber/20 bg-amber-subtle/60 p-4">
+              <div className="mt-5 rounded-xl border border-trust/14 bg-trust-soft/70 p-4">
                 <p className="text-sm text-charcoal">
                   {successMessage}
                 </p>
