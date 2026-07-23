@@ -1,44 +1,64 @@
 # Overall Project Architecture
 
-Last updated: 2026-07-16
+Last updated: 2026-07-23
 
 ## Purpose
 
-This document describes the current implemented architecture of Provance and the intended near-term architectural direction.
+This document describes the current working architecture of Provance and the near-term architecture we are actively building toward for the MVP.
 
-## Current Architecture Summary
+## Current Working Architecture
 
 Provance currently operates as a web application with:
 
 - a React and Vite frontend
-- a NestJS backend
-- Supabase for auth, Postgres, and Storage
-- a Redis-backed queue path
+- a NestJS backend in `backend/`
+- Supabase for auth, Postgres, and storage
+- a Redis-compatible queue path for async processing
 - a dedicated worker process for scan execution
+- Vercel for frontend delivery
+- Fly.io for API and worker hosting
+
+## Product Shape
+
+The current MVP is:
+
+- image-first
+- report-first
+- waitlist-first
+- invite-based
+- admin-assisted
+
+It is not yet:
+
+- multi-tenant
+- billing-enabled
+- API-product complete
+- video- or audio-ready
 
 ## Frontend Architecture
 
-The frontend lives in `src/` and contains:
+The frontend lives in `src/`.
+
+It contains:
 
 - public marketing routes
 - auth and onboarding routes
-- authenticated application routes
-- reusable report and forensic presentation components
+- authenticated application routes under `/app/*`
+- reusable public and report presentation components
 - auth context and API client helpers
 
-Key characteristics:
+Current frontend characteristics:
 
 - client-side routing with React Router
 - app-shell model for authenticated routes
-- local session token storage for the current pre-cookie auth model
-- backend-hydrated identity, permissions, and account profile state for authenticated routes
-- direct browser upload to private Supabase Storage via signed upload flow
+- backend-hydrated identity and profile state
+- direct browser upload to private storage using signed upload URLs
 
 ## Backend Architecture
 
 The active backend lives in `backend/`.
 
-It is a NestJS modular monolith with focused modules for:
+It is a modular monolith with focused modules for:
 
 - health
 - waitlist
@@ -49,90 +69,111 @@ It is a NestJS modular monolith with focused modules for:
 - queue
 - Supabase integration
 
-Key characteristics:
+Current backend characteristics:
 
 - versioned `/v1` API prefix
 - DTO validation and throttling
 - global exception filtering
 - environment validation at startup
-- service-oriented module boundaries
+- signed upload orchestration
+- queue-backed or inline scan processing
 
-## Data And Storage Architecture
+## Data Architecture
 
 Supabase currently provides:
 
-- Auth for user identity and session issuance
-- Postgres tables for waitlist, invites, audit events, scans, and profiles
-- private Storage bucket for uploads
+- Auth for user identity
+- Postgres for waitlist, invite, audit, profile, and scan metadata
+- private object storage for uploaded artifacts
 
-Current migrated objects:
+Current primary data entities:
 
 - `waitlist_applications`
 - `access_invites`
 - `auth_audit_events`
-- `scans`
 - `profiles`
-- `provance-uploads` storage bucket
+- `scans`
 
 ## Upload And Processing Architecture
 
-The upload flow follows this sequence:
+Current image-first flow:
 
-1. frontend requests scan initiation from backend
-2. backend creates a scan record and returns signed upload information
-3. browser uploads directly to Supabase Storage
-4. frontend calls submit endpoint
-5. backend enqueues processing or falls back to inline processing
-6. worker downloads asset and builds result payload
-7. frontend polls and renders reports from persisted scan state
+1. the frontend requests scan initiation from the backend
+2. the backend creates a scan record and returns signed upload information
+3. the browser uploads directly to private storage
+4. the frontend submits the scan for processing
+5. the backend enqueues work or falls back to inline processing
+6. the worker processes the scan and writes the result payload
+7. the frontend polls the scan record and renders the report
 
 ## Report Architecture
 
-The report model is currently based on a structured `result_payload` stored on the scan record.
+The current report model is built around the structured `result_payload` attached to the scan record.
 
-The report includes:
+The current report surface includes:
 
-- report identifier
 - verdict
 - confidence and authenticity scores
 - metadata summary
-- signals
-- key findings
+- findings
 - timeline
 - recommendations
 - evidence sections
-- signed media preview for image reports
+- image preview in print-ready reports
 
-## Deployment Architecture
+## Admin Architecture
 
-The live deployment model is:
+The current internal admin model is intentionally lightweight.
 
-- frontend deployed separately on Vercel
-- API deployed on Fly.io
-- worker deployed on Fly.io
-- shared Supabase project for DB, auth, and storage
-- shared Redis queue transport via Upstash
+It currently supports:
+
+- waitlist review
+- notes
+- status updates
+- invite generation
+- CSV export
+- admin audit trail writes
+
+The next step is to make the admin workspace a stronger internal operations surface for testing and manual validation.
 
 ## Legacy Architecture Note
 
 The repository still contains a legacy `api/` folder.
 
-Current policy:
+Current rule:
 
-- do not remove it just because it appears inactive
 - do not build new functionality there
-- document any cleanup recommendation before removal
-- preserve stability over premature cleanup
+- do not remove it casually
+- document cleanup decisions before touching it
 
-## Near-Term Architectural Guidance
+## Near-Term MVP Architecture Direction
 
-Near-term architecture work should support:
+The next approved implementation target is:
 
-- authenticated app polish across desktop, tablet, and mobile
-- stronger design consistency
-- server-backed account and identity primitives
-- documentation maturity
-- later auth hardening plan
-- later RLS expansion plan
+- stronger dashboard utility
+- stronger admin utility
+- stronger report workflow utility
+- better failure handling and operational visibility
+- measured infrastructure setup using low-cost or free-tier-friendly services first
 
-These items should be documented now even where implementation is deferred.
+## Architectural Boundaries To Preserve
+
+To avoid forced rewrites later, keep these boundaries explicit:
+
+- auth provider boundary
+- queue provider boundary
+- storage provider boundary
+- AI provider boundary
+- email provider boundary
+- analytics and error-monitoring boundary
+
+## Near-Term Infrastructure Direction
+
+Recommended near-term architecture:
+
+- keep Supabase as the MVP database, auth, and initial storage platform
+- keep Fly.io for API and worker hosting
+- keep Vercel for frontend hosting
+- add Cloudflare as the edge, DNS, and security layer
+- add Sentry and PostHog once Phase 5 begins
+- avoid expensive service adoption until it unblocks real product validation

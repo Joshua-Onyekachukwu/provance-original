@@ -1,179 +1,189 @@
 # Development Workflow And Release Process
 
-Last updated: 2026-07-16
+Last updated: 2026-07-23
 
 ## Purpose
 
-This document defines the long-term development workflow for Provance.
+This document defines how Provance is planned, built, tested, documented, reviewed, and merged.
 
-All work should be organized into phases.
+These are standing engineering rules, not temporary instructions.
 
-Each phase is a milestone toward a production-ready SaaS platform.
+## Core Rules
 
-This document describes:
+- documentation is a first-class deliverable
+- code and documentation must stay synchronized
+- work happens in phases, not in unrelated parallel feature jumps
+- no major implementation begins without a documented plan
+- no feature is complete until technical validation and Founder review are both complete
+- nothing merges directly into `main` without the review process
 
-- how phases are planned, built, tested, documented, released, and reviewed
-- how Git branches are used
-- which documents must be updated as part of phase completion
+## Ownership Model
 
-## Non-Negotiables
+- the engineering lead maintains architecture, documentation, standards, and consistency
+- recommendations must include trade-offs, risks, and migration impact where relevant
+- the Founder retains final approval on product, design, architecture, and release decisions
 
-- Documentation is a first-class deliverable.
-- Work is phase-based, not random.
-- Each phase has explicit success criteria and definition of done.
-- No phase is considered complete until its checklist is validated.
-- Major product, design, and architectural decisions require Founder approval before implementation.
+## Required Phase Lifecycle
 
-## Phase Template
+### 1. Analysis
 
-Every phase must define:
+Before implementation:
 
-- Objective
-- Features to implement
-- Technical tasks
-- UI and UX tasks
-- Backend tasks
-- Documentation updates
-- Testing requirements
-- Success criteria
-- Definition of done
-- Release milestone
-
-## Phase Lifecycle
-
-### Step 1. Planning
-
-Planning outputs must be written into the repository as Markdown.
-
-Required planning actions:
-
-- review requirements
-- review existing documentation
-- identify dependencies
-- identify risks
-- define acceptance criteria and definition of done
-- define testing plan
+- review the relevant roadmap phase
+- review related documentation and existing code
+- identify dependencies, blockers, and risks
+- define acceptance criteria
+- define required test coverage and manual validation
 - define required documentation updates
 
-### Step 2. Development
+### 2. Planning
 
-Implementation expectations:
+Planning outputs must be written into the repository as Markdown before major implementation starts.
 
-- keep code modular and maintainable
-- preserve system stability
-- follow existing conventions
-- avoid unnecessary complexity
-- ensure changes are aligned to the current phase objective
+Minimum planning outputs:
 
-### Step 3. Testing
+- roadmap updates where needed
+- phase checklist updates where needed
+- architecture updates where needed
+- setup or configuration updates where needed
 
-Testing must happen before phase completion.
+### 3. Implementation
 
-Required checks vary by phase, but should include:
+During implementation:
 
-- verify new functionality works
-- verify existing functionality still works
-- verify responsiveness
-- verify accessibility
-- verify performance where relevant
-- verify no regressions were introduced
+- work on a dedicated branch
+- keep changes aligned to the active phase
+- do not mix unrelated features into the same task branch
+- preserve maintainability over short-term speed
+- document any accepted trade-off or technical debt
 
-Engineering release gates to use as a baseline:
+### 4. Validation
+
+Before review:
+
+- confirm the feature behaves correctly
+- run the relevant tests
+- fix build issues
+- verify linting where applicable
+- check for obvious regressions
+- verify the affected UX flows manually when needed
+
+Baseline release gates:
 
 - `npm run build`
 - `npm run backend:build`
 - `npm run backend:test:e2e`
 - `npm run check:launch`
 
-### Step 4. Documentation
+Run additional targeted checks when the phase needs them.
 
-Documentation must reflect reality after implementation.
+### 5. Documentation
 
-Minimum required updates when relevant:
+Before the work is considered complete:
 
-- `docs/engineering/CURRENT_IMPLEMENTATION_STATUS.md`
-- `docs/engineering/PHASE_TASK_LIST.md`
-- `docs/changelogs/CHANGELOG.md`
-- `docs/project-state/*`
-- `README.md` or `docs/README.md` when onboarding paths change
+- update every relevant current-state document
+- update setup, architecture, roadmap, and checklist docs when the change affects them
+- update `docs/changelogs/CHANGELOG.md`
+- ensure no active documentation contradicts the shipped behavior
 
-### Step 5. Git Workflow
+### 6. Review
 
-Every phase runs on a dedicated branch.
+After validation and documentation:
 
-Workflow:
+- push the feature branch
+- open a pull request
+- provide a review summary covering:
+  - what changed
+  - why it changed
+  - trade-offs
+  - risks
+  - testing performed
+- wait for Founder review and approval
 
-1. create branch
-2. commit phase work
-3. push branch to GitHub
-4. prepare for merge
-5. merge to `main` only after Founder approval
+### 7. Merge
 
-### Step 6. Review
+Merge is allowed only when:
 
-Founder review happens after the phase is complete and pushed.
+- the implementation is approved
+- required checks pass
+- documentation is updated
+- the branch is ready for stable integration
 
-Possible outcomes:
+## Branching Standard
 
-- approve and merge
-- request refinement and changes
-- adjust priorities and scope
-- request additional features
-
-Only after the phase is approved should we begin the next phase.
-
-## Branch Naming Standard
-
-Use this naming scheme:
+Use dedicated branches:
 
 - `phase/<phase-id>-<short-name>`
+- `feature/<short-name>`
 - `chore/docs-<short-name>`
 - `fix/<short-name>`
 
 Examples:
 
-- `phase/landing-premium-refinement`
-- `phase/profiles-and-accounts`
-- `phase/billing-and-payments`
-- `chore/docs-foundation-sync`
-- `fix/upload-retry-regression`
+- `phase/phase-3-dashboard-admin-maturity`
+- `feature/report-workspace-refinement`
+- `chore/docs-planning-sync`
+- `fix/upload-status-regression`
 
-## Release Milestones
+## Definition Of Done
 
-Each phase should end in one of these milestone outcomes:
+A phase or feature is done only when:
 
-- internal milestone: merged and deployed to staging or preview
-- external milestone: merged and deployed to production
-- partner milestone: deployed for design partners with explicit scope statement
-
-## Definition Of Done Standard
-
-A phase is done when:
-
-- all tasks are implemented
-- all tests and checks pass
+- implementation is complete for the approved scope
+- required tests and checks pass
 - documentation is updated
-- the changelog reflects the work
-- the phase is reviewed and approved
-- the branch is merged into `main`
+- changelog is updated
+- review notes are prepared
+- Founder review is complete
+- the approved branch is merged
 
-## Decision Process
+## Documentation Minimums
 
-Ownership model:
+Update these when relevant:
 
-- the technical lead proposes solutions and tradeoffs
-- the Founder makes final product decisions
+- `README.md`
+- `docs/README.md`
+- `docs/roadmap/MASTER_DEVELOPMENT_ROADMAP.md`
+- `docs/engineering/PHASE_TASK_LIST.md`
+- `docs/engineering/CURRENT_IMPLEMENTATION_STATUS.md`
+- `docs/project-state/*`
+- `docs/changelogs/CHANGELOG.md`
 
-Escalate for approval before implementation:
+## Paid Service Rule For MVP
 
-- major design direction changes
-- major architecture changes
-- major data model changes
-- user-facing claim or positioning changes
+During the MVP phase:
 
-## Relationship To Other Docs
+- prefer production-suitable services with free tiers or startup credits
+- do not adopt paid tools unless they solve a real blocker or meaningfully reduce delivery risk
+- when a paid tool is recommended, document:
+  - why it is needed
+  - monthly starting cost
+  - the problem it solves
+  - whether adoption can be delayed
+  - viable free alternatives during development
 
-- Phase execution map: `docs/engineering/PHASE_TASK_LIST.md`
-- Current implementation state: `docs/engineering/CURRENT_IMPLEMENTATION_STATUS.md`
-- Living status snapshot: `docs/project-state/README.md`
-- Long-term roadmap: `docs/roadmap/MASTER_DEVELOPMENT_ROADMAP.md`
+## Infrastructure Access Rule
+
+If a task requires access that is not currently available:
+
+- explain what account, permission, or credential is missing
+- explain why it is needed
+- provide concise action steps for the Founder
+- avoid blocking unrelated implementation work when a practical fallback exists
+
+## Admin Testing Rule
+
+Internal admin functionality should support Founder-led testing throughout development.
+
+The admin interface should help with:
+
+- waitlist review
+- user inspection
+- verification-request inspection
+- report inspection
+- job monitoring
+- diagnostics and internal validation
+
+## Current Stop Condition
+
+No new feature implementation should begin until the current planning and documentation update set is reviewed and approved.

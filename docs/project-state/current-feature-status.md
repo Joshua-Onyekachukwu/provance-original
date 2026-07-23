@@ -1,15 +1,15 @@
 # Current Feature Status
 
-Last updated: 2026-07-16
+Last updated: 2026-07-23
 
 ## Purpose
 
-This document provides a concise status table for current major features.
+This document provides a concise status view of the major product features.
 
 ## Status Legend
 
 - Complete
-- Partial
+- In Progress
 - Planned
 - Deferred
 
@@ -17,25 +17,25 @@ This document provides a concise status table for current major features.
 
 | Feature | Status | Notes |
 | --- | --- | --- |
-| Public marketing site | Complete | Phase 1 refinement is complete and approved. |
-| Waitlist submission | Complete | Wired to backend and live table flow. |
-| Invite-based onboarding | Complete | Activation path exists through backend invite validation. |
-| Sign-in | Complete | Backend-mediated auth flow in place. |
-| Password reset | Complete | Request and confirmation flows implemented. |
-| Authenticated app shell | Partial | Core app navigation is implemented and Phase 2 is now refining app-shell polish and responsiveness across mobile, tablet, and desktop. |
-| Upload workflow | Complete | Signed upload flow and submit step are in place. |
-| Queue-backed processing | Complete | Worker path exists with inline fallback. |
-| Report detail view | Complete | Loads real report data. |
-| Printable report view | Partial | Good print-ready view exists; dedicated export and deeper PDF workflow remain future work. |
-| Admin workspace | Complete | Review, notes, status updates, CSV export, and invite generation are present. |
-| Team workspace | Deferred | Placeholder route exists; real workflow is not active. |
-| Organization access control | Deferred | Not implemented beyond current basic permission model. |
-| Video verification | Deferred | Not yet supported in real processing flow. |
-| Audio verification | Deferred | Not yet supported in real processing flow. |
-| Share links | Deferred | Not implemented. |
-| Full PDF export pipeline | Deferred | Not implemented beyond print view. |
-| Backend profile persistence | Complete | Account profile data is now persisted through the backend profile layer instead of local-only browser state. |
-| Account settings API | Complete | Authenticated profile read and update endpoints now exist for app account settings. |
-| Current-session identity endpoint | Complete | The frontend can now hydrate signed-in identity, permissions, and profile state from the backend. |
-| Session hardening | Planned | Document now, implement later. |
-| RLS expansion for non-scan tables | Planned | Document now, implement later. |
+| Public marketing site | Complete | Current MVP focus has moved beyond landing-page work. |
+| Waitlist submission | Complete | Wired to the backend and live persistence path. |
+| Invite-based onboarding | Complete | Acceptance flow exists through the backend. |
+| Sign-in | Complete | Backend-mediated auth flow is in place. |
+| Password reset | Complete | Request and confirmation flows are implemented. |
+| Authenticated app shell | In Progress | Stable foundation exists, but the product still needs stronger dashboard and workflow depth. |
+| Dashboard workspace | In Progress | Real data is present, but the workspace needs more utility for daily internal use. |
+| Upload workflow | In Progress | Image-first flow works; reliability and recovery polish remain. |
+| Queue-backed processing | In Progress | Worker path exists, but infrastructure efficiency and operational confidence need work. |
+| Report list and detail | In Progress | Core routes exist; triage density and evidence usability still need improvement. |
+| Print-ready report | In Progress | Useful now, but full export and share flows are not done. |
+| Account profile persistence | Complete | Profile state is backend-backed. |
+| Admin workspace | In Progress | Waitlist and invite tools exist; broader internal operations tooling is still missing. |
+| Team workspace | Deferred | Placeholder route exists only. |
+| Organization access control | Deferred | Not implemented beyond current permission model. |
+| Video verification | Deferred | Not supported in the live processing flow. |
+| Audio verification | Deferred | Not supported in the live processing flow. |
+| Billing and subscriptions | Deferred | Explicitly out of current MVP scope. |
+| OpenAI integration | Deferred | Not part of the immediate implementation plan. |
+| Anthropic integration | Deferred | Not part of the immediate implementation plan. |
+| Session hardening | Planned | Needed before broader beta readiness. |
+| Expanded observability | Planned | Sentry, analytics, and queue monitoring are still to be added. |

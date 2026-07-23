@@ -1,169 +1,107 @@
-# Provance Deployment Playbook (Fly.io + Upstash Redis)
+# Deployment Notes: Fly.io And Redis-Compatible Queue
 
-This document describes the recommended deployment approach for Provance when running:
+Last updated: 2026-07-23
 
-- Frontend on Vercel (already connected to GitHub)
-- API on Fly.io (NestJS in `backend/`)
-- Processing workers on Fly.io (separate service)
-- Queue on Upstash Redis
-- Data and storage on Supabase (Postgres, Auth, Storage)
+## Purpose
 
-## Why This Setup
+This document explains the current deployment path for the API, worker, and queue-backed processing flow.
 
-- Vercel excels at static and edge-friendly frontend delivery.
-- Fly.io is a better fit for long-running API processes and worker processes.
-- Upstash Redis provides a low-ops queue backbone that works well with Fly.io and Vercel.
-- Supabase remains the source of truth for authentication, persistence, and media storage.
+## Current Deployment Model
 
-## Prerequisites
+- frontend on Vercel
+- API on Fly.io
+- worker on Fly.io
+- auth, database, and initial object storage on Supabase
+- Redis-compatible queue transport when async processing is enabled
 
-- Fly.io account created
-- Upstash Redis account created
-- Supabase project configured
-- GitHub repo access is working
+## Important Queue Decision
 
-## Fly.io Setup (Local Machine)
+The queue architecture is valid.
 
-### 1) Install flyctl
+The free-tier hosted Redis plan is not.
 
-Run the Fly.io PowerShell install script:
+Why:
 
-```powershell
-powershell -Command "iwr `https://fly.io/install.ps1` -useb | iex"
-```
+- an always-on worker can generate steady background command usage even with little real traffic
+- this makes free per-command plans a poor fit for BullMQ-style worker patterns
 
-Verify:
+## Current Recommendation
 
-```powershell
-flyctl version
-```
+### Local Development
 
-### 2) Authenticate
+- prefer inline processing or local Redis / Valkey
+- do not default local workflows to a paid hosted Redis instance
 
-```powershell
-flyctl auth login
-```
+### Shared Async Validation
 
-### 3) Deploy the API (NestJS)
+- if we need deployed async validation, use a paid hosted Redis-compatible plan or a self-hosted shared alternative
+- Upstash Fixed 250MB starts at about `$10/month`
+- Upstash Free should not be used for always-on worker validation
 
-The repo includes Fly.io deployment primitives in:
+## Fly.io API
+
+The repo already includes:
 
 - `backend/Dockerfile`
 - `backend/fly.toml`
 
-Run these commands from the repo root, but set the working directory to `backend/` before launching.
-
-```powershell
-cd backend
-flyctl launch
-```
-
-Recommended launch answers:
-
-- App name: `provance-api` (or `provance-api-prod`). If you pick a different name, update `app = "..."` inside `backend/fly.toml`.
-- Region: pick the closest region to your primary users and to your Upstash Redis region
-- Deploy now: Yes (after fly launch finishes generating config)
-
-If Fly asks for a builder choice, choose the Dockerfile-based option if available. If it only offers buildpacks, accept for the first deploy. We can harden this to a deterministic Docker build immediately after.
-
-If the default remote builder hangs while waiting for Depot, deploy with the Buildkit remote builder instead:
-
-```powershell
-cd backend
-flyctl deploy --config fly.toml --buildkit --depot=false
-```
-
-### 4) Set production environment variables for the API
-
-Set these in Fly.io for the `provance-api` app:
+Required API secrets:
 
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `FRONTEND_ORIGIN` (your Vercel domains)
-- `SUPABASE_UPLOADS_BUCKET=provance-uploads`
-- `SUPABASE_SCANS_TABLE=scans`
-- `REDIS_URL=<upstash rediss url>`
-- `SCAN_PROCESSING_QUEUE_NAME=scan-processing`
+- `FRONTEND_ORIGIN`
+- `SUPABASE_UPLOADS_BUCKET`
+- `SUPABASE_SCANS_TABLE`
+- `SUPABASE_WAITLIST_TABLE`
+- `ADMIN_EMAILS`
 
-Optional but recommended:
+Optional queue-related API secrets:
 
-- `THROTTLE_TTL_MS=60000`
-- `THROTTLE_LIMIT=60`
-- `HELMET_ENABLED=true`
-- `TRUST_PROXY=true`
+- `REDIS_URL`
+- `SCAN_PROCESSING_QUEUE_NAME`
 
-### 5) Point Vercel frontend to the Fly API
+## Fly.io Worker
 
-Set these in Vercel project environment variables:
-
-- `VITE_API_BASE_URL=https://<your-fly-api-domain>/v1`
-- `VITE_SUPABASE_URL=https://<your-supabase-project-ref>.supabase.co`
-- `VITE_SUPABASE_ANON_KEY=<supabase anon key>`
-
-## Upstash Redis Setup (Queue Backbone)
-
-### 1) Create a Redis database
-
-In Upstash:
-
-- Create a Redis database (TLS enabled by default)
-- Choose a region close to your Fly.io region for low latency
-- Copy the Redis connection string
-
-For a queue worker (BullMQ style), you want the Redis protocol URL, typically:
-
-- `rediss://default:<password>@<host>:<port>`
-
-### 2) Store queue config as environment variables
-
-We will standardize on:
-
-- `REDIS_URL` for both API and worker
-
-Set `REDIS_URL` in:
-
-- Fly.io `provance-api`
-- Fly.io `provance-worker`
-
-## Worker Deployment
-
-The repo includes a dedicated worker image and Fly config:
+The repo already includes:
 
 - `backend/Dockerfile.worker`
 - `backend/fly.worker.toml`
 - `backend/src/worker.ts`
 
-Deploy it from `backend/`:
+Only run the worker in environments where async queue processing is intentionally enabled.
 
-```powershell
-flyctl launch --config fly.worker.toml
-flyctl deploy --config fly.worker.toml --buildkit --depot=false
-```
-
-Recommended app name:
-
-- `provance-worker`
-
-Worker secrets to set in Fly:
+Required worker secrets:
 
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `SUPABASE_SCANS_TABLE=scans`
-- `SUPABASE_UPLOADS_BUCKET=provance-uploads`
-- `REDIS_URL=<upstash rediss url>`
-- `SCAN_PROCESSING_QUEUE_NAME=scan-processing`
-- `WORKER_CONCURRENCY=4`
+- `SUPABASE_SCANS_TABLE`
+- `SUPABASE_UPLOADS_BUCKET`
+- `REDIS_URL`
+
+Optional worker secrets:
+
+- `SCAN_PROCESSING_QUEUE_NAME`
+- `WORKER_CONCURRENCY`
+
+## Vercel Frontend
+
+Required Vercel variables:
+
+- `VITE_API_BASE_URL`
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
 
 ## Supabase Notes
 
-- The `public.scans` table and the `provance-uploads` bucket are created by `supabase/migrations/0002_scans.sql`.
-- The API uses the service-role key to create scan records and signed upload URLs.
-- The browser uploads directly to Supabase Storage using the signed upload token. This avoids routing large files through the API.
+The current MVP expects:
+
+- waitlist, invite, auth audit, profiles, and scans tables
+- a private uploads bucket named `provance-uploads`
 
 ## Collaboration Rules
 
-- Never store secrets in git. Only store templates in `.env.example`.
-- Use `main` as the production branch. Merge only after `npm run check:launch` passes.
-- For each deploy-related change, update this file and the changelog.
+- never store secrets in git
+- update deployment docs when service decisions or env requirements change
+- merge deployment-affecting changes only after review and approval

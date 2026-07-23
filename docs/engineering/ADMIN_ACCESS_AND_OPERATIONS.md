@@ -1,6 +1,6 @@
 # Provance Admin Access And Operations
 
-Last updated: 2026-07-07
+Last updated: 2026-07-23
 
 ## Purpose
 
@@ -21,6 +21,8 @@ The current MVP admin module is an internal operations surface for:
 - generating secure invite links for approved users
 - exporting the waitlist to CSV
 - reviewing recent admin and auth audit events
+
+Today, this is the easiest way to access the live waitlist that has already been collected.
 
 The current admin module does not yet send transactional invite emails automatically.
 
@@ -189,6 +191,36 @@ The admin flow relies on:
 - no user suspension or account-management panel yet
 - no full RBAC model beyond admin email allowlisting
 - no separate admin application, because MVP keeps admin inside the main app
+
+## Confirmed MVP Expansion Direction
+
+The admin surface is no longer intended to stay waitlist-only.
+
+The confirmed target scope now includes:
+
+- registered users
+- verification requests
+- report inspection
+- job monitoring
+- diagnostics
+- feature flags
+
+This expansion should preserve the current route-based admin model inside the main app during the present testing phase.
+
+Later, the admin area can be further protected through Cloudflare Zero Trust once domain and Cloudflare setup are available.
+
+## Current Delivered Scope
+
+The current admin interface now includes:
+
+- waitlist review queue with search, filtering, notes, status changes, and CSV export
+- invite creation with copyable secure invite links
+- registered user visibility from the `profiles` table
+- verification request visibility from the `scans` table
+- report and signal inspection inside admin for recent requests
+- queue and request posture summaries
+- internal diagnostics pulled from backend configuration
+- persisted feature-flag controls for the current MVP rollout posture
 
 ## Recommended Operations Practice
 

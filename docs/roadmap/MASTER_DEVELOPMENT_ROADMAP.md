@@ -1,601 +1,428 @@
 # Master Development Roadmap
 
-Last updated: 2026-07-16
+Last updated: 2026-07-24
 
 ## Purpose
 
-This is the primary long-term roadmap for taking Provance from the current shipped MVP foundation to a complete production SaaS platform.
+This is the canonical execution roadmap for taking Provance from its current state to a production-ready MVP.
 
-All work is organized into phases.
+It governs:
 
-Each phase includes:
-
-- objective
-- scope
+- phase order
+- phase scope
+- delivery status
 - dependencies
-- complexity estimate
-- deliverables
-- documentation updates
-- testing requirements
-- completion criteria
-- suggested branch naming
-- release milestone
+- acceptance criteria
+- related documentation
 
-## How To Use This Roadmap
+If any summary document conflicts with this roadmap, this file wins.
 
-- Treat this as the master reference.
-- Update it when a phase is completed.
-- Do not start a new phase until the previous phase has passed testing, documentation updates, and Founder review.
+## Status Legend
+
+- Not Started
+- In Progress
+- In Review
+- Completed
+- Deferred
 
 ## Complexity Scale
 
-- Low: contained changes, minimal cross-system impact
-- Medium: multiple components, moderate risk, requires careful coordination
-- High: cross-cutting changes with security, data, or reliability implications
+- Low: limited surface area, low coordination cost
+- Medium: multiple app or backend surfaces, moderate regression risk
+- High: cross-cutting architecture, security, or infrastructure work
 
-## Phase 0. Documentation And Workflow Foundation
+## MVP Delivery Principles
+
+- landing page work is complete enough for the current phase
+- the MVP must favor production-suitable services with strong free tiers or startup credits
+- paid services should be delayed unless they unblock real product validation
+- the immediate product goal is a working dashboard, admin workspace, reports workspace, account system, and reliable verification flow
+- AI-provider expansion, billing, and non-essential integrations are deferred until the working MVP is stable
+
+## Phase 0. Documentation And Execution Foundation
 
 **Objective**
 
-Ensure the repository is the single source of truth and the development lifecycle is standardized.
+Align documentation, workflow, architecture, and standards so the repository becomes the single source of truth.
 
-**Scope**
+**Current Status**
 
-- living project-state documentation
-- AI org documentation
-- phase-based workflow and release process
-- decision logging discipline
+Completed
+
+**Priority**
+
+P0
+
+**Estimated Complexity**
+
+Medium
+
+**Deliverables**
+
+- updated roadmap
+- updated feature checklist
+- updated architecture and stack docs
+- updated setup and infrastructure guides
+- updated workflow standards
+
+**Tasks**
+
+- audit all active planning and engineering docs
+- resolve roadmap and priority drift
+- define canonical document roles
+- define phase-based workflow and review rules
+- identify blockers and unresolved decisions before coding resumes
 
 **Dependencies**
 
 - none
 
-**Complexity**
+**Acceptance Criteria**
 
-- Low
+- canonical docs are updated and internally consistent
+- current priorities reflect dashboard, admin, reports, account, and system work
+- pre-development setup requirements are explicit
+- Founder review is complete
 
-**Deliverables**
+**Related Documentation**
 
-- `docs/project-state/*`
-- `docs/ai-agents/*`
-- workflow and release process doc
-
-**Docs To Update**
-
+- `README.md`
 - `docs/README.md`
-- `docs/changelogs/CHANGELOG.md`
+- `docs/engineering/DEVELOPMENT_WORKFLOW_AND_RELEASE_PROCESS.md`
+- `docs/engineering/PRE_DEVELOPMENT_SETUP_CHECKLIST.md`
 
-**Testing Requirements**
-
-- none required beyond repo hygiene checks
-
-**Completion Criteria**
-
-- docs exist and are committed
-- workflow rules are explicit
-- stale or conflicting docs are marked and routed to canonical sources
-
-**Branch Naming**
-
-- `chore/docs-foundation-sync`
-
-**Release Milestone**
-
-- internal milestone
-
-## Phase 1. Landing Page And Brand Experience Refinement
+## Phase 1. Public Experience And Conversion Layer
 
 **Objective**
 
-Improve first impression and conversion while preserving the existing layout and identity.
+Complete the public site so early users can understand the product, trust the brand, and enter the onboarding funnel.
 
-**Scope**
+**Current Status**
 
-- typography and font upgrades
-- design tokens, spacing, and hierarchy refinement
-- messaging and copy flow improvements
-- CTA clarity and trust signals
-- responsiveness and polish
+Completed
 
-**Dependencies**
+**Priority**
 
-- none
+P1
 
-**Complexity**
+**Estimated Complexity**
 
-- Medium
+Medium
 
 **Deliverables**
 
-- upgraded landing page UI and copy
-- updated design tokens and typography system
-- updated brand consistency across sections
+- public marketing pages
+- policy pages
+- waitlist page
+- sign-in entry point
+- sample report marketing flow
 
-**Docs To Update**
+**Tasks**
 
-- `docs/project-state/development-priorities.md`
+- finalize homepage, product, methodology, pricing, security, contact, resources, docs, and policy pages
+- remove placeholder copy and align public messaging
+- ensure waitlist and sample report flows support early conversion
+
+**Dependencies**
+
+- Phase 0 planning baseline
+
+**Acceptance Criteria**
+
+- public pages are production-presentable
+- key CTA paths are coherent
+- no major public-facing placeholder flows remain
+
+**Related Documentation**
+
+- `docs/project-state/current-feature-status.md`
 - `docs/project-state/product-roadmap.md`
 - `docs/changelogs/CHANGELOG.md`
-- design documentation if tokens and typography change materially
 
-**Testing Requirements**
-
-- responsive checks across breakpoints
-- accessibility checks for headings, contrast, focus states
-- basic performance sanity check
-
-**Completion Criteria**
-
-- premium polish achieved
-- messaging and CTA path is clearer
-- Founder approval
-
-**Branch Naming**
-
-- `phase/landing-premium-refinement`
-
-**Release Milestone**
-
-- external milestone: deploy to production frontend after approval
-
-## Phase 2. App Visual Consistency And Premium UI Polish
+## Phase 2. Core App Foundation And Experience Quality
 
 **Objective**
 
-Carry improved typography and visual system into the authenticated application while strengthening the auth and backend foundation that future SaaS features will rely on.
+Turn the authenticated workspace into a coherent, polished operating surface with stable auth, account, upload, report, and admin foundations.
 
-**Scope**
+**Current Status**
 
-- app-shell typography and spacing refinement
-- component consistency across dashboard, uploads, reports, admin
-- visual hierarchy improvements in report and dashboard pages
-- mobile and tablet responsiveness across authenticated surfaces
-- server-backed account profiles and account settings
-- auth endpoint expansion for current-session and profile-aware identity reads
-- permission plumbing that can evolve into fuller RBAC later
-- backend foundation updates that improve maintainability, operational clarity, and future extension paths without prematurely forcing final cookie transport or full organization workflows
+In Progress
 
-**Dependencies**
+**Priority**
 
-- Phase 1 tokens and typography decisions
-- stable MVP auth and upload/report workflow foundation
+P0
 
-**Complexity**
+**Estimated Complexity**
 
-- High
+High
 
 **Deliverables**
 
-- cohesive app UI aligned to improved brand system
-- persisted account profile foundation
-- expanded auth and account API surface
-- updated profile migration and backend module wiring
+- cohesive app shell
+- stable authenticated routing
+- backend-backed account profile foundation
+- reliable admin access flow
+- improved app responsiveness and visual consistency
 
-**Docs To Update**
+**Tasks**
+
+- preserve and publish the current project knowledge base for handover continuity
+- document the pause on dashboard and admin redesign work until a new design direction is approved
+- finalize dashboard information hierarchy and route cohesion after design direction is reset
+- finish uploads, reports, account, and admin UX consistency work once the replacement design direction is approved
+- keep profile and current-session identity flows backend-backed
+- tighten permission handling and error states
+- remove outdated phase language and placeholder copy from the app
+
+**Dependencies**
+
+- Phase 1 complete
+- stable backend auth and scan endpoints
+
+**Acceptance Criteria**
+
+- signed-in users can move through dashboard, uploads, reports, account, and admin without broken flows
+- app UI feels consistent across desktop, tablet, and mobile
+- current-session identity and profile data no longer rely on local-only state
+
+**Related Documentation**
 
 - `docs/engineering/CURRENT_IMPLEMENTATION_STATUS.md`
-- `docs/engineering/DEPLOYMENT_AND_AUTH_STRATEGY.md`
-- `docs/project-state/current-feature-status.md`
 - `docs/project-state/overall-project-architecture.md`
-- `docs/changelogs/CHANGELOG.md`
+- `docs/project-state/development-priorities.md`
 
-**Testing Requirements**
-
-- regression checks on key flows: sign-in, upload, report, admin
-- account settings regression checks
-- responsive checks across desktop, tablet, and mobile breakpoints
-- frontend production build
-- backend production build
-
-**Completion Criteria**
-
-- app feels cohesive and premium
-- authenticated account/profile state is no longer local-only
-- backend and auth foundation is meaningfully stronger without conflicting with later security-hardening phases
-- Founder approval
-
-**Branch Naming**
-
-- `phase/app-premium-polish`
-
-**Release Milestone**
-
-- external milestone: deploy to production frontend after approval
-
-## Phase 3. User Profiles And Account Persistence
+## Phase 3. Working MVP Product Completion
 
 **Objective**
 
-Persist account preferences and basic profile data to the backend.
+Finish the remaining MVP-critical product capabilities needed for a usable internal and early-user verification workflow.
 
-**Scope**
+**Current Status**
 
-- profile table and RLS
-- API endpoints for profile
-- frontend integration for account page
+Not Started
 
-**Dependencies**
+**Priority**
 
-- current auth flow stability
+P0
 
-**Complexity**
+**Estimated Complexity**
 
-- Medium
+High
 
 **Deliverables**
 
-- persisted profiles
-- migration files
-- UI integration
+- production-usable dashboard
+- production-usable admin workspace
+- solid report review workflow
+- improved system status and operational visibility for manual testing
 
-**Docs To Update**
+**Tasks**
 
-- `docs/engineering/CURRENT_IMPLEMENTATION_STATUS.md`
-- `docs/project-state/current-feature-status.md`
-- `docs/changelogs/CHANGELOG.md`
+- upgrade the dashboard from a foundation surface into a real operating workspace
+- expand report triage and scan-history utility
+- strengthen admin workspace coverage for users, scans, reports, and jobs
+- move session hardening into active implementation instead of leaving it as a distant follow-up
+- add missing empty, loading, and failure states across app-critical flows
+- document and expose internal diagnostics needed for Founder testing
+- evaluate whether any existing template assets are worth selective reuse without adopting a full template system
 
-**Testing Requirements**
+**Dependencies**
 
-- backend tests for profile endpoints
-- UI regression checks
+- Phase 2 stable
 
-**Completion Criteria**
+**Acceptance Criteria**
 
-- profile persists and loads reliably
-- Founder approval
+- the dashboard supports real daily use for MVP testing
+- the admin workspace materially improves manual QA and internal operations
+- the app surface supports repeated end-to-end product testing without relying on ad hoc scripts or database inspection
 
-**Branch Naming**
+**Related Documentation**
 
-- `phase/profiles-and-accounts`
+- `docs/engineering/PHASE_TASK_LIST.md`
+- `docs/project-state/what-is-in-development.md`
+- `docs/project-state/outstanding-questions.md`
 
-**Release Milestone**
-
-- external milestone
-
-## Phase 4. Evidence And Report Depth Expansion
+## Phase 4. Verification Pipeline Reliability And Report Depth
 
 **Objective**
 
-Improve report credibility, structure, and evidence richness while staying explainable and conservative.
+Strengthen the evidence pipeline so the MVP produces reliable, explainable, and testable verification reports.
 
-**Scope**
+**Current Status**
 
-- signal expansion where justified
-- better evidence timeline structure
-- improved report sections and clarity
+Not Started
 
-**Dependencies**
+**Priority**
 
-- stable scan pipeline
+P0
 
-**Complexity**
+**Estimated Complexity**
 
-- High
+High
 
 **Deliverables**
 
-- updated report payload schema versioning approach
-- improved report UI and print view
+- more reliable queue-backed processing
+- improved result payload structure
+- stronger report sections and evidence presentation
+- benchmark and instrumentation foundations
 
-**Docs To Update**
+**Tasks**
 
+- complete live end-to-end validation of upload, queue, processing, and report flows
+- reduce queue infrastructure waste and document the Redis strategy
+- improve failure handling, retries, and status tracking
+- version result payload structure where needed
+- improve report usefulness without overstating confidence
+- establish benchmark methodology for speed, accuracy, and pipeline validation
+
+**Dependencies**
+
+- Phase 3 complete enough for consistent internal use
+
+**Acceptance Criteria**
+
+- scan lifecycle is reliable enough for repeated internal and design-partner testing
+- reports are usable, understandable, and operationally credible
+- queue and worker behavior are measurable and cost-aware
+
+**Related Documentation**
+
+- `docs/engineering/BENCHMARK_METHODOLOGY.md`
+- `docs/engineering/DEPLOYMENT_FLYIO_AND_UPSTASH.md`
 - `docs/project-state/technical-risks.md`
-- report design specs
-- changelog
 
-**Testing Requirements**
-
-- regression tests for report rendering
-- validation of payload compatibility
-
-**Completion Criteria**
-
-- improved report clarity and trust
-- Founder approval
-
-**Branch Naming**
-
-- `phase/report-depth-expansion`
-
-**Release Milestone**
-
-- partner milestone: validate with design partners before wider launch
-
-## Phase 5. Billing And Payments
+## Phase 5. MVP Security, Observability, And Release Readiness
 
 **Objective**
 
-Introduce a paid plan structure aligned to pricing decisions.
+Harden the working MVP enough for broader beta usage without prematurely overbuilding enterprise infrastructure.
 
-**Scope**
+**Current Status**
 
-- subscription model
-- plan enforcement
-- billing UI
+Not Started
 
-**Dependencies**
+**Priority**
 
-- pricing and packaging approval
-- legal and policy review
+P0
 
-**Complexity**
+**Estimated Complexity**
 
-- High
+High
 
 **Deliverables**
 
-- billing integration
-- account plan surfaces
+- security baseline improvements
+- monitoring and analytics baseline
+- deployment and release readiness checklist
+- documented operational playbooks
 
-**Docs To Update**
+**Tasks**
 
-- pricing decision docs
-- product roadmap
-- security and launch checklist
+- implement session hardening strategy at the right scope for MVP
+- expand authorization and RLS where required
+- add Sentry and product analytics instrumentation
+- add structured operational monitoring for backend and worker flows
+- finalize environment and service configuration guides
+- review file validation, rate limiting, bot protection, and admin protections
 
-**Testing Requirements**
+**Dependencies**
 
-- payment flow testing
-- access control testing
+- Phase 4 stable
 
-**Completion Criteria**
+**Acceptance Criteria**
 
-- billing works end-to-end
-- Founder approval
+- the MVP has an explicit security and observability baseline
+- critical app flows are monitored and diagnosable
+- deployment, rollback, and environment requirements are documented
 
-**Branch Naming**
+**Related Documentation**
 
-- `phase/billing-and-payments`
+- `docs/engineering/SECURITY_AND_LAUNCH_CHECKLIST.md`
+- `docs/engineering/CREDENTIALS_AND_ENVIRONMENT_VARIABLES.md`
+- `docs/engineering/INFRASTRUCTURE_AND_SERVICE_CONFIGURATION_GUIDE.md`
 
-**Release Milestone**
-
-- external milestone
-
-## Phase 6. Teams And Organizations
+## Phase 6. Production-Ready MVP Launch
 
 **Objective**
 
-Introduce multi-user collaboration safely.
+Ship a production-ready MVP that can onboard early users, support internal operations, and validate the verification workflow in the real world.
 
-**Scope**
+**Current Status**
 
-- organization model
-- team roles and permissions
-- shared report access
+Not Started
 
-**Dependencies**
+**Priority**
 
-- profile and billing groundwork
-- security and RLS readiness
+P0
 
-**Complexity**
+**Estimated Complexity**
 
-- High
+High
 
 **Deliverables**
 
-- org and team flows
-- expanded access control
+- stable release candidate
+- validated end-to-end onboarding and verification flow
+- launch-ready docs and support guidance
+- approved merge and deployment plan
 
-**Docs To Update**
+**Tasks**
 
-- architecture docs
-- RLS docs
-- current implementation status
-
-**Testing Requirements**
-
-- permission tests
-- regression tests
-
-**Completion Criteria**
-
-- secure multi-user workflows
-- Founder approval
-
-**Branch Naming**
-
-- `phase/teams-and-orgs`
-
-**Release Milestone**
-
-- partner milestone then external milestone
-
-## Phase 7. Security Hardening
-
-**Objective**
-
-Bring auth, sessions, policies, and RLS to a more enterprise-ready baseline.
-
-**Scope**
-
-- cookie-based session transport
-- CSRF strategy
-- RLS expansion including waitlist and admin tables
-- tighter admin controls
-- security review updates
+- run a full product readiness review from waitlist to report completion
+- close remaining P0 and P1 bugs
+- validate build, test, and deployment gates
+- confirm the documentation set matches the shipped behavior
+- prepare Founder review package for MVP release
 
 **Dependencies**
 
-- stability of core product flows
+- Phase 5 complete
 
-**Complexity**
+**Acceptance Criteria**
 
-- High
+- release gates pass
+- documentation reflects reality
+- Founder approval is granted
+- MVP can be operated without hidden setup knowledge
 
-**Deliverables**
+**Related Documentation**
 
-- hardened auth transport
-- RLS policies and validation
+- `docs/project-state/production-readiness-assessment.md`
+- `docs/changelogs/CHANGELOG.md`
+- `docs/engineering/DEVELOPMENT_WORKFLOW_AND_RELEASE_PROCESS.md`
 
-**Docs To Update**
+## Post-MVP Expansion Themes
 
-- security checklist
-- deployment and auth strategy
-- risk docs
+These are intentionally deferred until the production-ready MVP is stable:
 
-**Testing Requirements**
+- team and organization workflows
+- billing and subscriptions
+- external API product
+- video and audio verification
+- deeper enterprise controls
+- multi-region and compliance-heavy infrastructure
 
-- auth regression tests
-- security regression checks
+## Immediate Active Phase
 
-**Completion Criteria**
+The current work remains in Phase 2.
 
-- hardened session model working
-- Founder approval
+Immediate focus:
 
-**Branch Naming**
+- documentation preservation and GitHub handover
+- verification of current implementation truth before any more UI work
+- pause on dashboard and admin redesign work pending a new approved design direction
 
-- `phase/security-hardening`
+The next execution phase after approval is:
 
-**Release Milestone**
+**Phase 3. Working MVP Product Completion**
 
-- external milestone with careful rollout
+The immediate implementation focus will be:
 
-## Phase 8. Performance Optimization And Observability
-
-**Objective**
-
-Improve performance and operational visibility for reliability at scale.
-
-**Scope**
-
-- better logging and metrics
-- worker throughput improvements
-- frontend performance improvements
-
-**Dependencies**
-
-- stable security posture
-
-**Complexity**
-
-- Medium
-
-**Deliverables**
-
-- performance improvements
-- monitoring and operational documentation
-
-**Docs To Update**
-
-- production readiness assessment
-- deployment runbooks
-
-**Testing Requirements**
-
-- performance verification
-- regression tests
-
-**Completion Criteria**
-
-- measurable improvements
-- Founder approval
-
-**Branch Naming**
-
-- `phase/perf-and-observability`
-
-**Release Milestone**
-
-- external milestone
-
-## Phase 9. Multi-Media Expansion
-
-**Objective**
-
-Extend beyond images to video and audio support.
-
-**Scope**
-
-- upload and processing for video
-- previews and report support
-- audio waveform or summary support
-
-**Dependencies**
-
-- stable worker and queue model
-- storage and cost planning
-
-**Complexity**
-
-- High
-
-**Deliverables**
-
-- video and audio processing foundations
-- report support for non-image media
-
-**Docs To Update**
-
-- architecture docs
-- product roadmap
-- risk docs
-
-**Testing Requirements**
-
-- end-to-end media pipeline tests
-
-**Completion Criteria**
-
-- media types supported with credible reporting
-- Founder approval
-
-**Branch Naming**
-
-- `phase/multimedia-support`
-
-**Release Milestone**
-
-- partner milestone then external milestone
-
-## Phase 10. Beta Readiness And Production Launch
-
-**Objective**
-
-Reach a stable beta and then production launch state.
-
-**Scope**
-
-- product stability
-- support readiness
-- compliance readiness
-- incident response readiness
-- launch messaging alignment
-
-**Dependencies**
-
-- completion of earlier phases as required by strategy
-
-**Complexity**
-
-- High
-
-**Deliverables**
-
-- beta readiness checklist completion
-- launch plan and release notes
-
-**Docs To Update**
-
-- production readiness assessment
-- security and launch checklist
-- changelog
-
-**Testing Requirements**
-
-- full regression suite
-- operational checks
-
-**Completion Criteria**
-
-- Founder approval for launch
-- stable production deploy
-
-**Branch Naming**
-
-- `phase/beta-and-launch`
-
-**Release Milestone**
-
-- external milestone: production launch
+- dashboard depth
+- admin interface maturity
+- early session hardening
+- report workflow utility
+- account and operational polish
+- system reliability required for internal and early-user testing

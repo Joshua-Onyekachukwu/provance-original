@@ -2,96 +2,92 @@
 
 Provance is a trust infrastructure platform for synthetic media verification.
 
-The current repository contains the public product site, the authenticated MVP workspace, the NestJS backend, the Supabase-backed auth and storage path, and the worker-backed queue foundation for asynchronous scan processing.
+This repository contains the public product site, the authenticated application, the NestJS API, the worker-backed scan pipeline, and the documentation set that governs how the product is built.
 
-## Repository Status
+## Current Status
 
-This repository is active and shipping toward a production-ready MVP.
+Provance is not starting from scratch.
 
-Current state:
+The current codebase already includes:
 
-- public marketing and product pages are live and production-oriented
-- waitlist submission and sign-in flows are wired to the deployed backend
-- authenticated routes under `/app/*` are live
-- users can upload supported image files into a real scan workflow
-- scan jobs move through a queue-backed lifecycle
-- report history and report detail are now available inside the authenticated workspace
-- account preferences exist, but still persist locally rather than through a backend profile model
+- a completed public marketing site
+- waitlist and invite-based onboarding
+- sign-in and password recovery flows
+- an authenticated application shell under `/app/*`
+- image-first upload and scan workflows
+- report history, report detail, and print-ready report output
+- an internal admin workspace for waitlist and invite operations
+- a NestJS backend in `backend/`
+- Supabase-backed auth, database, and storage
+- a worker-backed async processing path
 
-## Current MVP Scope
+## Current Development Focus
 
-Provance currently supports:
+The current product priority is:
 
-- waitlist-first onboarding and invite-based access
-- email and password sign-in through the backend
-- invite acceptance and password reset UX
-- protected application routes
-- image-first uploads with file validation and signed Supabase storage upload
-- queue-backed scan submission with status polling
-- report history, report detail, printable report output, analyzed media preview, and MVP signal review
-- internal waitlist review and secure invite issuance tooling
-- redesigned authenticated dashboard and sidebar with broader verification-workspace positioning
+1. finish the working MVP application
+2. strengthen the dashboard, admin, reports, account, and core system flows
+3. tighten documentation, architecture, and development standards
+4. defer non-essential integrations until they are needed
 
-Not complete yet:
+For the current MVP planning phase:
 
-- deeper evidence and signal output beyond the current MVP image-first heuristics
-- full PDF export and share workflows beyond the printable report view
-- real video preview and audio-summary support inside reports
-- team and organization workflows
-- shared report triage and organization-aware dashboards
+- the landing page is considered complete
+- OpenAI and Anthropic integrations are not current implementation priorities
+- billing and store integrations are deferred
+- new feature implementation should not begin until the updated planning documents are approved
 
-## Architecture
+## Architecture Snapshot
 
 ### Frontend
 
-- React
+- React 19
 - Vite
-- Tailwind CSS
-- Framer Motion
+- Tailwind CSS v4
 - React Router
-
-`src/` contains the public site, authenticated app routes, shared components, and frontend API helpers.
+- Framer Motion
 
 ### Backend
 
-- NestJS
+- NestJS modular monolith in `backend/`
 - versioned API under `/v1`
-- Supabase-backed auth, persistence, and signed upload support
-- BullMQ-compatible queue wiring backed by Upstash Redis
+- DTO validation, throttling, helmet, request IDs, and global exception filtering
 
-`backend/` contains the long-term backend, worker runtime, and Fly deployment config.
+### Data And Infrastructure
 
-### Worker
-
-- separate Fly worker deployment
-- consumes queued scan jobs
-- updates scan records asynchronously
-
-### Legacy API
-
-- `api/` contains older backend experiments
-- new backend work should target `backend/`
+- Supabase Auth
+- Supabase Postgres
+- Supabase Storage
+- BullMQ-compatible queue flow
+- Fly.io API deployment
+- Fly.io worker deployment
+- Vercel frontend deployment
 
 ## Important Routes
 
-Public routes include:
+### Public
 
 - `/`
+- `/about`
+- `/contact`
 - `/product`
 - `/methodology`
 - `/pricing`
-- `/docs`
-- `/sample-report`
 - `/security`
-- `/contact`
-- `/signin`
+- `/sample-report`
+- `/sample-report/print`
+- `/docs`
+- `/resources`
+- `/privacy`
+- `/terms`
+- `/cookies`
 - `/waitlist`
+- `/signin`
 - `/accept-invite`
 - `/reset-password`
 - `/reset-password/confirm`
-- legal pages for privacy, terms, and cookies
 
-Authenticated routes include:
+### Authenticated
 
 - `/app`
 - `/app/uploads`
@@ -99,18 +95,22 @@ Authenticated routes include:
 - `/app/reports/:scanId`
 - `/app/reports/:scanId/print`
 - `/app/account`
-- `/app/team`
+- `/app/access-denied`
 - `/app/admin`
+- `/app/team`
 
-Backend endpoints currently include:
+## Important Backend Endpoints
 
 - `GET /v1/health`
 - `POST /v1/waitlist/applications`
+- `GET /v1/auth/me`
 - `POST /v1/auth/sign-in`
+- `POST /v1/auth/refresh`
 - `POST /v1/auth/password-reset/request`
 - `POST /v1/auth/password-reset/confirm`
-- `POST /v1/auth/refresh`
 - `POST /v1/auth/invites/accept`
+- `GET /v1/account/profile`
+- `PATCH /v1/account/profile`
 - `POST /v1/scans`
 - `POST /v1/scans/:scanId/submit`
 - `GET /v1/scans`
@@ -127,7 +127,22 @@ Current deployed services:
 - API: `https://provance-api.fly.dev/v1`
 - worker: Fly app `provance-worker`
 - auth, database, and storage: Supabase
-- queue: Upstash Redis
+- queue transport: Redis-compatible provider
+
+## Source Of Truth Docs
+
+Start here:
+
+1. `README.md`
+2. `docs/README.md`
+3. `docs/roadmap/MASTER_DEVELOPMENT_ROADMAP.md`
+4. `docs/engineering/PHASE_TASK_LIST.md`
+5. `docs/architecture/TECHNOLOGY_STACK_REFERENCE.md`
+6. `docs/engineering/CURRENT_IMPLEMENTATION_STATUS.md`
+7. `docs/engineering/PRE_DEVELOPMENT_SETUP_CHECKLIST.md`
+8. `docs/engineering/INFRASTRUCTURE_AND_SERVICE_CONFIGURATION_GUIDE.md`
+
+If an older document conflicts with the files above, update the stale document and follow the current-state planning set listed here.
 
 ## Local Development
 
@@ -138,7 +153,7 @@ npm install
 npm run dev
 ```
 
-Build the frontend:
+### Frontend Build
 
 ```bash
 npm run build
@@ -146,89 +161,40 @@ npm run build
 
 ### Backend
 
-Install backend dependencies:
-
 ```bash
 npm run backend:install
-```
-
-Run the backend in development:
-
-```bash
 npm run backend:dev
-```
-
-Build the backend:
-
-```bash
 npm run backend:build
-```
-
-Run backend e2e tests:
-
-```bash
 npm run backend:test:e2e
 ```
 
-Run the release check bundle:
+### Full Launch Check
 
 ```bash
 npm run check:launch
 ```
 
-Start the backend production build locally:
-
-```bash
-npm run backend:start
-```
-
-## Environment
-
-Environment templates:
+## Environment Templates
 
 - frontend template: `.env.example`
 - backend template: `backend/.env.example`
-
-Single source of truth for deployment variables:
-
-- `docs/engineering/CREDENTIALS_AND_ENVIRONMENT_VARIABLES.md`
-
-## Documentation
-
-Current engineering source-of-truth docs:
-
-- implementation status: `docs/engineering/CURRENT_IMPLEMENTATION_STATUS.md`
-- phase map: `docs/engineering/PHASE_TASK_LIST.md`
-- env and credentials checklist: `docs/engineering/CREDENTIALS_AND_ENVIRONMENT_VARIABLES.md`
-- admin operations guide: `docs/engineering/ADMIN_ACCESS_AND_OPERATIONS.md`
-- engineer handoff: `docs/engineering/ENGINEERING_HANDOFF_2026-07-07.md`
-- Fly and Upstash deployment playbook: `docs/engineering/DEPLOYMENT_FLYIO_AND_UPSTASH.md`
-- security and launch checklist: `docs/engineering/SECURITY_AND_LAUNCH_CHECKLIST.md`
-- changelog: `docs/changelogs/CHANGELOG.md`
-
-Important note:
-
-- some older product, audit, and strategy docs are intentionally preserved as planning or historical records
-- if a historical document conflicts with the current codebase, prefer the engineering docs above
+- canonical environment reference: `docs/engineering/CREDENTIALS_AND_ENVIRONMENT_VARIABLES.md`
 
 ## Working Rules
 
-This repo follows a phase-based workflow:
+- documentation is a first-class deliverable
+- work is phase-based
+- use a dedicated branch for each phase or task
+- run relevant build and test gates before review
+- update docs before considering work complete
+- open a pull request and wait for Founder approval before merge
+- do not merge directly into `main` without review approval
 
-- build one meaningful phase slice at a time
-- validate changes before shipping
-- update documentation after major engineering changes
-- push tested work directly to `main`
-- keep the repository collaboration-ready for additional engineers
+## Immediate Next Step
 
-## Immediate Priorities
+The immediate next step is documentation approval.
 
-The next major work areas are:
-
-- validate the full live end-to-end upload, queue, and report workflow through the deployed frontend
-- expand the media pipeline beyond images so reports can support real video and audio preview workflows
-- move account profile persistence into Supabase-backed storage
-- hold Phase 7 until the next roadmap decision and continue refining the verification workspace where needed
+No new feature implementation should begin until the updated roadmap, stack reference, setup guide, architecture docs, and feature checklist are reviewed and approved.
 
 ## License
 
