@@ -12,7 +12,7 @@ function getNavItems(permissions) {
   ]
 
   if (permissions.admin) {
-    items.push({ label: 'Admin', href: '/app/admin', note: 'Waitlist operations' })
+    items.push({ label: 'Admin', href: '/app/admin', note: 'Internal control room' })
   }
 
   return items
@@ -63,7 +63,7 @@ function getPageMeta(pathname) {
     return {
       eyebrow: 'Operations',
       title: 'Admin control room',
-      detail: 'Review the waitlist, issue invites, and track operational activity.',
+      detail: 'Internal workspace for waitlist review, user management, system monitoring, and platform configuration.',
     }
   }
 

@@ -1,9 +1,10 @@
-import { Routes, Route, Outlet } from 'react-router-dom'
+import { Routes, Route, Outlet, Navigate } from 'react-router-dom'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import ScrollToTop from './components/ScrollToTop'
 import ProtectedRoute from './components/auth/ProtectedRoute.jsx'
 import AppShellLayout from './components/app/AppShellLayout.jsx'
+import AdminShell from './components/admin/AdminShell.jsx'
 import HomePage from './pages/HomePage'
 import ProductPage from './pages/ProductPage'
 import MethodologyPage from './pages/MethodologyPage'
@@ -31,7 +32,9 @@ import AppReportPrintPage from './pages/app/AppReportPrintPage.jsx'
 import AppAccountPage from './pages/app/AppAccountPage.jsx'
 import AppTeamPage from './pages/app/AppTeamPage.jsx'
 import AppAccessDeniedPage from './pages/app/AppAccessDeniedPage.jsx'
-import AppAdminPage from './pages/app/AppAdminPage.jsx'
+import AdminOverviewPage from './pages/admin/OverviewPage.jsx'
+import AdminWaitlistPage from './pages/admin/WaitlistPage.jsx'
+import PlaceholderPage from './pages/admin/PlaceholderPage.jsx'
 
 function PublicLayout() {
   return (
@@ -94,10 +97,24 @@ export default function App() {
           path="admin"
           element={
             <ProtectedRoute requireAdmin>
-              <AppAdminPage />
+              <AdminShell />
             </ProtectedRoute>
           }
-        />
+        >
+          <Route index element={<Navigate to="overview" replace />} />
+          <Route path="overview" element={<AdminOverviewPage />} />
+          <Route path="waitlist" element={<AdminWaitlistPage />} />
+          <Route path="users" element={<PlaceholderPage module="users" />} />
+          <Route path="organizations" element={<PlaceholderPage module="organizations" />} />
+          <Route path="jobs" element={<PlaceholderPage module="jobs" />} />
+          <Route path="reports" element={<PlaceholderPage module="reports" />} />
+          <Route path="analytics" element={<PlaceholderPage module="analytics" />} />
+          <Route path="monitoring" element={<PlaceholderPage module="monitoring" />} />
+          <Route path="feature-flags" element={<PlaceholderPage module="feature-flags" />} />
+          <Route path="roles" element={<PlaceholderPage module="roles" />} />
+          <Route path="audit-logs" element={<PlaceholderPage module="audit-logs" />} />
+          <Route path="settings" element={<PlaceholderPage module="settings" />} />
+        </Route>
         <Route
           path="team"
           element={
