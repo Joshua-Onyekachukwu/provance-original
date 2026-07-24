@@ -1,3 +1,31 @@
+// ---------------------------------------------------------------------------
+// Mock mode — set to true while building the frontend-first MVP.
+// All API functions delegate to mock implementations with realistic data,
+// delays, and occasional error injection for state testing.
+// ---------------------------------------------------------------------------
+export const USE_MOCK = true
+
+import {
+  mockGetCurrentViewer,
+  mockGetAdminDashboard,
+  mockGetAdminUsers,
+  mockGetOrganizations,
+  mockGetFeatureFlags,
+  mockUpdateFeatureFlag,
+  mockListScans,
+  mockGetScan,
+  mockGetReports,
+  mockGetAnalytics,
+  mockGetSystemHealth,
+  mockGetQueueSnapshot,
+  mockGetNotifications,
+  mockGetAuditLogs,
+  mockGetSupportTickets,
+  mockGetActivityLogs,
+  mockReviewWaitlistApplication,
+  mockCreateAccessInvite,
+} from './mockApi.js'
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/v1'
 const AUTH_STORAGE_KEY = 'provance.auth.session.v1'
 
@@ -185,6 +213,7 @@ export function acceptInvite(payload) {
 }
 
 export function getCurrentViewer() {
+  if (USE_MOCK) return mockGetCurrentViewer()
   return request('/auth/me')
 }
 
@@ -208,19 +237,23 @@ export function submitScan(scanId) {
   })
 }
 
-export function listScans() {
+export function listScans(params) {
+  if (USE_MOCK) return mockListScans(params)
   return request('/scans')
 }
 
 export function getScan(scanId) {
+  if (USE_MOCK) return mockGetScan(scanId)
   return request(`/scans/${scanId}`)
 }
 
 export function getAdminDashboard() {
+  if (USE_MOCK) return mockGetAdminDashboard()
   return request('/admin/dashboard')
 }
 
 export function reviewWaitlistApplication(applicationId, payload) {
+  if (USE_MOCK) return mockReviewWaitlistApplication(applicationId, payload)
   return request(`/admin/waitlist/${applicationId}`, {
     method: 'PATCH',
     body: JSON.stringify(payload),
@@ -228,8 +261,76 @@ export function reviewWaitlistApplication(applicationId, payload) {
 }
 
 export function createAccessInvite(applicationId, payload = {}) {
+  if (USE_MOCK) return mockCreateAccessInvite(applicationId, payload)
   return request(`/admin/waitlist/${applicationId}/invite`, {
     method: 'POST',
     body: JSON.stringify(payload),
   })
+}
+
+// ---------------------------------------------------------------------------
+// Additional endpoints (mock-only during frontend-first phase)
+// ---------------------------------------------------------------------------
+
+export function getAdminUsers(params) {
+  if (USE_MOCK) return mockGetAdminUsers(params)
+  return request('/admin/users')
+}
+
+export function getOrganizations() {
+  if (USE_MOCK) return mockGetOrganizations()
+  return request('/admin/organizations')
+}
+
+export function getFeatureFlags() {
+  if (USE_MOCK) return mockGetFeatureFlags()
+  return request('/admin/feature-flags')
+}
+
+export function updateFeatureFlag(key, enabled) {
+  if (USE_MOCK) return mockUpdateFeatureFlag(key, enabled)
+  return request(`/admin/feature-flags/${key}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ enabled }),
+  })
+}
+
+export function getReports(params) {
+  if (USE_MOCK) return mockGetReports(params)
+  return request('/reports')
+}
+
+export function getAnalytics() {
+  if (USE_MOCK) return mockGetAnalytics()
+  return request('/admin/analytics')
+}
+
+export function getSystemHealth() {
+  if (USE_MOCK) return mockGetSystemHealth()
+  return request('/admin/system-health')
+}
+
+export function getQueueSnapshot() {
+  if (USE_MOCK) return mockGetQueueSnapshot()
+  return request('/admin/queue-snapshot')
+}
+
+export function getNotifications(params) {
+  if (USE_MOCK) return mockGetNotifications(params)
+  return request('/notifications')
+}
+
+export function getAuditLogs(params) {
+  if (USE_MOCK) return mockGetAuditLogs(params)
+  return request('/admin/audit-logs')
+}
+
+export function getSupportTickets(params) {
+  if (USE_MOCK) return mockGetSupportTickets(params)
+  return request('/admin/support-tickets')
+}
+
+export function getActivityLogs(params) {
+  if (USE_MOCK) return mockGetActivityLogs(params)
+  return request('/account/activity')
 }
