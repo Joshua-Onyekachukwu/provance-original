@@ -1,96 +1,41 @@
 # Technical Risks
 
-Last updated: 2026-07-16
+Last updated: 2026-07-23
 
 ## Purpose
 
-This document records the current major technical risks in priority order.
+This document records the major current technical risks in delivery order.
 
 ## Priority 1 Risks
 
-### Session Transport Risk
+### App Maturity Risk
 
-The current MVP stores session tokens locally in the frontend.
+The authenticated application exists, but the dashboard, admin, and report surfaces still need more operational depth for real internal and early-user usage.
 
-Impact:
+### Queue Cost And Reliability Risk
 
-- larger XSS blast radius
-- weaker production security posture
+The async worker pattern is valid, but the free-tier Redis setup is not suitable for always-on worker usage.
 
-Status:
+### Observability Risk
 
-- documented
-- not current implementation priority
-
-### Non-Scan Table Security Risk
-
-Waitlist and invite-related tables are not yet fully hardened with RLS.
-
-Impact:
-
-- future exposure risk if access patterns change
-- avoidable security debt if deferred too long
-
-Status:
-
-- document now
-- implement in a later security phase
+Without Sentry, analytics, and queue monitoring, issue diagnosis and beta support will be slower than necessary.
 
 ## Priority 2 Risks
 
-### Brand-Perception Risk
+### Session Transport Risk
 
-The current public experience is solid, but not yet distinctive or premium enough to create the intended first impression.
-
-Impact:
-
-- weaker conversion
-- lower perceived enterprise credibility
-- underperformance in early market trust
-
-Status:
-
-- active priority
+The current token transport remains weaker than the later hardened session model we expect for a broader beta.
 
 ### Documentation Drift Risk
 
-As the repo grows, older docs can drift away from current implementation.
-
-Impact:
-
-- onboarding confusion
-- repeated work
-- mistaken architecture assumptions
-
-Status:
-
-- mitigated through living docs
-- requires continuous maintenance
+The repo contains a large amount of historical and future-state documentation, so stale documents can mislead implementation if not maintained carefully.
 
 ## Priority 3 Risks
 
-### Legacy Backend Cleanup Risk
+### Schema Drift Risk
 
-Removing or ignoring legacy backend artifacts without validation could destabilize workflows or erase context prematurely.
+Local migration expectations and remote Supabase state must stay aligned as account and admin work continues.
 
-Impact:
+### Template Adoption Risk
 
-- accidental loss of needed logic
-- incorrect assumptions about environment usage
-
-Status:
-
-- cleanup must be documented before removal
-
-### Multi-Media Expansion Risk
-
-Video and audio support are part of the product vision but not yet supported in production.
-
-Impact:
-
-- roadmap pressure
-- possible mismatch between vision and current capability
-
-Status:
-
-- defer implementation until after current presentation-focused phase
+Adopting an external admin template without careful evaluation could create visual inconsistency and frontend technical debt.

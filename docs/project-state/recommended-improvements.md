@@ -1,60 +1,39 @@
 # Recommended Improvements
 
-Last updated: 2026-07-16
+Last updated: 2026-07-23
 
 ## Purpose
 
-This document lists the major recommended improvements based on the current codebase and project posture.
+This document lists the major current recommendations for the working MVP.
 
 ## Immediate Improvements
 
-- refine the landing page without replacing the core layout direction
-- improve typography and font choices
-- strengthen spacing and design tokens
-- increase visual consistency across sections
-- improve component polish
-- sharpen messaging and storytelling
-- improve premium feel while preserving identity
+- strengthen the dashboard as a real operating surface
+- strengthen the admin interface as a real internal testing tool
+- improve report review utility and evidence navigation
+- improve upload and processing failure handling
+- keep the documentation set tightly synchronized with implementation
 
 ## Near-Term Improvements
 
-- align app and public-site visual language more tightly
-- persist account settings to backend
-- improve documentation cross-linking and maintenance habits
-- keep a clearer distinction between live implementation, planned work, and historical material
-- add proof and authority assets as soon as they exist, including case studies, pilot language, benchmark summaries, customer logos, and methodology visuals
+- add Sentry and product analytics
+- refine queue strategy to avoid unnecessary hosted Redis cost during MVP
+- tighten session and authorization posture at the right phase
+- add internal diagnostics that reduce reliance on raw infrastructure dashboards
 
-## Later Improvements
+## Deferred Improvements
 
-- implement secure cookie-based sessions
-- expand RLS coverage
-- improve operational observability
-- add richer report exports
-- add video and audio support
-- expand organization and team workflows
+- billing and subscription infrastructure
+- team and organization workflows
+- video and audio verification
+- external API product
+- enterprise SSO and advanced compliance controls
 
-## Marketing And Trust Assets To Capture Later
+## Design And UX Recommendation
 
-When the underlying business and product material exists, add the following to the public site and supporting sales surfaces:
+Do not adopt a full third-party admin template unless it clearly reduces delivery time without damaging consistency.
 
-- case studies
-- pilot-program language and engagement framing
-- benchmark summaries
-- customer logos
-- methodology visuals and diagrams
+Current provisional recommendation:
 
-These should be treated as high-value trust assets, not filler content. They become most valuable once they are backed by real customer work, real product performance, or stable methodology communication.
-
-## Long-Term Strategic Improvement Area
-
-The long-term technical vision should be evaluated continuously against:
-
-- competitive defensibility
-- verification speed
-- verification accuracy
-- enterprise trust
-- workflow lock-in and report credibility
-
-Reference:
-
-- `docs/architecture/competitive-advantage-and-technical-vision.md`
+- build the admin experience in-house
+- only consider selective reuse of neutral layout primitives if the actual template files are later provided and pass review

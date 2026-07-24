@@ -1,40 +1,34 @@
 # Product Roadmap
 
-Last updated: 2026-07-16
+Last updated: 2026-07-23
 
 ## Purpose
 
-This document records the current product roadmap with emphasis on user-facing priorities.
+This document records the current user-facing product sequence.
 
-## Immediate Product Priority
+## Current Product Priority
 
-Deliver a world-class first impression through a refined and premium public experience.
+Deliver a working MVP application that users and internal operators can actually rely on.
 
 ### Immediate Objectives
 
-- preserve the existing layout direction that already works
-- improve typography and font quality
-- improve design tokens and spacing
-- improve hierarchy and readability
-- strengthen storytelling and message sequence
-- make the product feel more premium and enterprise-ready
+- strengthen the dashboard as a real workspace
+- strengthen the admin surface as a real internal tool
+- improve report review utility
+- improve upload and processing reliability
+- keep the account and session experience stable
 
 ## Near-Term Product Priorities
 
-- align app-shell and report UI quality with the public-site experience
-- improve report credibility and presentation
-- improve account and operational user experience
+- improve report depth and evidence usefulness
+- add operational diagnostics that support internal validation
+- prepare a trustworthy beta-ready product experience
 
-## Mid-Term Product Priorities
+## Deferred Product Priorities
 
-- richer evidence interactions
-- exports
-- organization workflows
-- team collaboration
-
-## Longer-Term Product Priorities
-
+- billing and subscriptions
+- team and organization workflows
+- API product
 - video verification
 - audio verification
-- API product
-- enterprise operational workflows
+- deeper enterprise controls

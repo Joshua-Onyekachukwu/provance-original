@@ -1,52 +1,50 @@
 # What Is Currently In Development
 
-Last updated: 2026-07-16
+Last updated: 2026-07-23
 
 ## Purpose
 
-This document tracks the areas that are active, partial, or intentionally being prepared for near-term execution.
+This document tracks the areas that are active, partial, or being prepared for near-term execution.
 
 ## Active Priority
 
-The current top priority is the redesign and refinement of the public landing page and visual system.
+The active implementation target after planning approval is the working MVP application surface.
 
 This includes:
 
-- typography improvement
-- better fonts
-- stronger design tokens
-- spacing refinement
-- component consistency
-- visual hierarchy improvements
-- more premium and cohesive presentation
-- stronger storytelling and messaging
-- improved responsiveness
+- dashboard maturity
+- admin workspace maturity
+- report workflow utility
+- upload and processing reliability
+- account and session experience polish
 
 ## Partially Developed Product Areas
 
 The following areas exist but are not yet mature:
 
-- authenticated dashboard depth and report triage density
-- richer evidence models
-- team and organization workflows
-- account preferences persisted to backend
-- share and export workflows beyond current print view
+- dashboard triage density and internal utility
+- admin visibility into users, scans, reports, and jobs
+- report evidence navigation and export depth
+- upload recovery and failure messaging
+- operational diagnostics for manual testing
 
 ## Prepared But Deferred Technical Areas
 
-These are recognized and documented but are not the current execution focus:
+These are documented and intentionally deferred until the correct phase:
 
-- session hardening and cookie-based auth transport
-- RLS expansion for waitlist and admin tables
-- security hardening and broader compliance preparation
-- backend cleanup and legacy removal decisions
-- video and audio support
-- more advanced observability
+- cookie-based session transport
+- broader authorization and RLS hardening
+- product analytics and fuller observability
+- billing and subscription infrastructure
+- video and audio processing
+- organization and team workflows
+- OpenAI and Anthropic integrations
 
 ## Documentation Work In Progress
 
 Ongoing documentation priorities include:
 
-- maintaining living state docs
-- keeping decision records current
-- documenting future security and cleanup plans before implementation
+- keeping roadmap and checklist docs canonical
+- keeping setup and environment guides accurate
+- keeping architecture and stack references synchronized with real implementation
+- recording unresolved risks before they become blockers

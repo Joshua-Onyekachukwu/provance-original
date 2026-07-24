@@ -1,238 +1,268 @@
-# Provance Phase Task List
+# Provance Feature And Phase Checklist
 
-Last updated: 2026-07-07
+Last updated: 2026-07-24
 
 ## Purpose
 
-This document is the working phase map for Provance. It lists the major product, engineering, infrastructure, and operational phases required to move from the current state to a production-ready MVP.
-
-Update this file after each major phase so the team always has a clear build sequence, current focus, and next set of deliverables.
-
-## Phase 0. Current Baseline
-
-Current repo status:
-
-- public marketing and product site exists
-- major public pages exist
-- legal pages now have fuller production-style content
-- frontend waitlist and sign-in flows target a real backend API shape
-- NestJS backend scaffold exists in `backend/`
-- Supabase-ready auth and persistence direction is prepared
-
-## Phase 1. Public Site Completion
-
-Goal:
-
-Finish the public-facing website so it is clean, credible, consistent, and ready to support waitlist and early-access conversion.
-
-Core tasks:
-
-- finish remaining homepage polish and consistency cleanup
-- review all public pages for copy quality, hierarchy, spacing, and clarity
-- refine product, methodology, pricing, docs, sample report, and security pages
-- ensure site-wide consistency for typography, color, spacing, and motion
-- remove any remaining placeholder or staging-tone copy
-- confirm navigation, footer, and route coverage are complete
-
-Exit criteria:
-
-- all public pages feel production-ready
-- no placeholder or reporting-style copy remains
-- legal and support pages are present and coherent
-
-## Phase 2. Waitlist And Access Foundation
-
-Goal:
-
-Turn the current waitlist and sign-in frontend into a real working early-access system.
-
-Core tasks:
-
-- connect waitlist submissions to Supabase persistence
-- define waitlist application schema and review status fields
-- connect sign-in to real Supabase Auth
-- implement password reset request and confirmation
-- implement invite acceptance flow
-- add protected route handling on the frontend
-- add session-aware navigation and auth state management
-
-Exit criteria:
-
-- users can submit to the waitlist successfully
-- approved users can sign in through a real auth flow
-- auth state survives refresh and protected routes enforce access
-
-## Phase 3. Admin And Internal Operations Layer
-
-Goal:
-
-Create the minimum internal workflow needed to review waitlist users and control access.
-
-Core tasks:
-
-- build admin view for waitlist applications
-- support approval, rejection, and invite issuance
-- track status history and audit events
-- add lightweight internal notes and review metadata
-- add operational email hooks for invite and access notifications
-
-Exit criteria:
-
-- team can review waitlist demand and control onboarding
-- access approvals are traceable and repeatable
-
-## Phase 4. Authenticated App Shell
-
-Goal:
-
-Establish the first real in-product experience for authenticated users.
-
-Core tasks:
-
-- build dashboard shell and authenticated layout
-- add top-level navigation for uploads, reports, account, and team areas
-- create empty, loading, success, and error states
-- add account profile and basic settings
-- define permission checks for individual and team contexts
-
-Exit criteria:
-
-- approved users land in a working authenticated product shell
-- core app navigation and state handling exist
-
-## Phase 5. Upload And Verification Workflow
-
-Goal:
-
-Build the first usable verification flow for submitted media.
-
-Core tasks:
-
-- create media upload flow
-- validate file types and upload constraints
-- store uploaded files and metadata
-- create job records for analysis
-- enqueue jobs through the worker-backed queue
-- define verification status lifecycle
-- show analysis progress and result states in the app
-- surface case history in the dashboard and reports workspace
-
-Exit criteria:
-
-- users can submit a file into a real workflow
-- the system can track a verification case from submission to result
-- authenticated users can find and reopen prior cases without leaving the app
-
-## Phase 6. Report And Evidence Layer
-
-Goal:
-
-Turn analysis results into structured, reviewable outputs.
-
-Core tasks:
-
-- build report view inside the application
-- build a report list and report detail view backed by real scan records
-- define report sections for verdict, evidence, metadata, timeline, and references
-- support report export or printable output
-- preserve audit trail and report identifiers
-- prepare evidence structures for future explainability tooling
-
-Exit criteria:
-
-- users can review a structured report from a real case
-- report output is suitable for sharing and follow-up review
-
-## Phase 7. Team And Organization Workflows
-
-Goal:
-
-Expand beyond single-user use and support shared review environments.
-
-Core tasks:
-
-- add organization and team entities
-- add role-based access control
-- add shared case visibility and assignment logic
-- add collaboration metadata such as ownership, reviewer state, and comments
-- add organization-aware report and case access rules
-
-Exit criteria:
-
-- teams can work in shared environments with controlled access
-
-## Phase 8. Reliability, Security, And Compliance Readiness
-
-Goal:
-
-Make the system stable, secure, observable, and ready for broader beta usage.
-
-Core tasks:
-
-- add structured logging and monitoring
-- add rate limiting and abuse protection
-- harden auth, cookies, tokens, and session handling
-- improve validation, error boundaries, and failure handling
-- document retention, deletion, and access control policies
-- prepare security review checklist and incident response basics
-
-Exit criteria:
-
-- the system is safer to expose to early users
-- operational visibility exists for debugging and support
-
-## Phase 9. Developer And API Foundation
-
-Goal:
-
-Prepare the product for future programmatic integrations and internal acceleration.
-
-Core tasks:
-
-- define API authentication approach
-- formalize request and response contracts
-- document key endpoints and object models
-- create initial external API plan for verification jobs and report retrieval
-- improve docs for internal and external developers
-
-Exit criteria:
-
-- backend contracts are clear enough for future integration work
-
-## Phase 10. MVP Launch Readiness
-
-Goal:
-
-Pull the public site, onboarding system, authenticated workflow, and operations into one stable MVP release.
-
-Core tasks:
-
-- run end-to-end flow review from waitlist to authenticated use
-- tighten copy, UX, and support content across the full experience
-- redesign the authenticated dashboard once the MVP data surfaces are stable
-- complete deployment and environment readiness review
-- ensure documentation reflects the shipped state
-- finalize launch checklist and beta support workflow
-
-Exit criteria:
-
-- Provance has a coherent, usable MVP for early users
-
-## Immediate Active Priorities
-
-The most important next tasks are:
-
-1. validate the live end-to-end upload, queue, and report flow against production services
-2. deepen the report and evidence layer beyond the placeholder verdict payload
-3. build the internal waitlist and invite operations workflow
-4. plan the authenticated dashboard redesign after MVP workflows are complete
-
-## Documentation Rules
-
-After every major phase:
-
-- update this file
-- update `docs/engineering/CURRENT_IMPLEMENTATION_STATUS.md`
-- update `docs/engineering/SECURITY_AND_LAUNCH_CHECKLIST.md` when security gates or release checks change
-- update `docs/changelogs/CHANGELOG.md`
-- push the tested phase to `main`
+This is the definitive engineering checklist for the MVP.
+
+It complements `docs/roadmap/MASTER_DEVELOPMENT_ROADMAP.md` by turning roadmap phases into actionable feature-level tasks.
+
+Status tags:
+
+- Complete
+- In Progress
+- Not Started
+- Deferred
+
+## Phase Alignment
+
+- Phase 1: public experience and conversion layer
+- Phase 2: core app foundation and experience quality
+- Phase 3: working MVP product completion
+- Phase 4: verification pipeline reliability and report depth
+- Phase 5: MVP security, observability, and release readiness
+- Phase 6: production-ready MVP launch
+
+## 1. Landing Website
+
+### Global Public Experience
+
+- [x] Complete: global navigation
+- [x] Complete: footer
+- [x] Complete: privacy page
+- [x] Complete: terms page
+- [x] Complete: cookies page
+- [x] Complete: 404 page
+- [x] Complete: responsive public layout baseline
+- [ ] In Progress: keep docs and messaging synchronized with current product scope
+
+### Homepage
+
+- [x] Complete: hero
+- [x] Complete: why Provance section
+- [x] Complete: how it works section
+- [x] Complete: use cases section
+- [x] Complete: product showcase section
+- [x] Complete: sample report teaser
+- [x] Complete: pricing preview
+- [x] Complete: FAQ / clarity section
+- [x] Complete: conversion CTA flow
+
+### Public Product Pages
+
+- [x] Complete: about page
+- [x] Complete: product page
+- [x] Complete: methodology page
+- [x] Complete: pricing page
+- [x] Complete: security page
+- [x] Complete: resources page
+- [x] Complete: docs landing page
+- [x] Complete: contact page
+- [x] Complete: sample report page
+- [x] Complete: sample report print page
+
+### Marketing And Content Surfaces
+
+- [x] Complete: waitlist page
+- [ ] Deferred: blog
+- [ ] Deferred: case studies
+- [ ] Deferred: benchmark summaries
+- [ ] Deferred: customer proof assets
+
+### Authentication Entry Pages
+
+- [x] Complete: sign-in page
+- [x] Complete: accept invite page
+- [x] Complete: password reset request page
+- [x] Complete: password reset confirmation page
+- [ ] Deferred: dedicated self-serve sign-up page
+
+## 2. Application
+
+### App Shell And Navigation
+
+- [x] Complete: protected `/app/*` route group
+- [x] Complete: authenticated shell layout
+- [x] Complete: sidebar navigation
+- [x] Complete: redirect-preserving auth gate
+- [x] Complete: access denied route
+- [ ] In Progress: tighten information hierarchy across the whole app once the next approved dashboard and admin direction is documented
+- [ ] In Progress: remove remaining placeholder and future-phase language across app surfaces that are still intentionally staged
+
+### Dashboard
+
+- [x] Complete: dashboard route and base layout
+- [x] Complete: live scan-backed summary cards
+- [x] Complete: recent activity / case linkage
+- [x] Complete: stronger case triage density
+- [x] Complete: explicit processing queue health surface
+- [x] Complete: flagged report and failure triage panel
+- [x] Complete: internal diagnostics panel for Founder testing
+- [x] Complete: richer operational quick actions
+- [x] Complete: fast drill-in panels linking dashboard summary to uploads, reports, and admin actions
+- [ ] In Progress: pause further redesign until a new approved dashboard structure and UX direction are documented
+
+### Upload Workflow
+
+- [x] Complete: authenticated upload page
+- [x] Complete: image file validation
+- [x] Complete: signed upload initiation
+- [x] Complete: direct browser upload to private storage
+- [x] Complete: submit scan action
+- [x] Complete: status polling
+- [x] Complete: better failure recovery messaging
+- [ ] Not Started: resumable or chunked uploads for large assets
+- [ ] Deferred: video upload flow
+- [ ] Deferred: audio upload flow
+
+### Reports Workspace
+
+- [x] Complete: reports list
+- [x] Complete: report detail route
+- [x] Complete: print-ready report route
+- [x] Complete: signed media preview for image reports
+- [x] Complete: denser triage UX for repeated review
+- [x] Complete: better evidence navigation and section scanning
+- [ ] Not Started: share links
+- [ ] Not Started: dedicated PDF export pipeline
+- [ ] Deferred: video and audio report support
+
+### Account Workspace
+
+- [x] Complete: account route
+- [x] Complete: backend-backed profile persistence
+- [x] Complete: current-session identity hydration
+- [x] Complete: broader account preferences and validation polish
+- [ ] Deferred: billing and plan management
+- [ ] Deferred: API key management
+
+### Team Workspace
+
+- [x] Complete: guarded placeholder route
+- [ ] In Progress: collaboration architecture is framed, but real shared-workflow implementation remains deferred
+- [ ] Deferred: actual team workflows
+- [ ] Deferred: organization membership model
+- [ ] Deferred: shared case ownership and collaboration
+
+### Admin Workspace
+
+- [x] Complete: admin-gated route
+- [x] Complete: waitlist search and filtering
+- [x] Complete: notes and status review
+- [x] Complete: invite creation
+- [x] Complete: CSV export
+- [x] Complete: better visibility into registered users
+- [x] Complete: better visibility into verification requests
+- [x] Complete: report inspection controls inside admin
+- [x] Complete: job monitoring view
+- [x] Complete: internal logs and diagnostics view
+- [x] Complete: feature-state visibility inside admin
+- [x] Complete: admin actions for invite lifecycle and user lookup
+- [ ] In Progress: pause further redesign until the next approved admin workflow and design direction are documented
+- [ ] Not Started: admin search and filter model across waitlist, users, scans, and reports
+
+## 3. Backend And System
+
+### Auth And Identity
+
+- [x] Complete: sign-in endpoint
+- [x] Complete: invite acceptance endpoint
+- [x] Complete: password reset request endpoint
+- [x] Complete: password reset confirm endpoint
+- [x] Complete: refresh endpoint
+- [x] Complete: current-session identity endpoint
+- [x] Complete: backend-backed profile endpoints
+- [ ] Not Started: cookie-based session transport
+- [ ] Not Started: fuller authorization model beyond allowlists and route guards
+
+### Verification Pipeline
+
+- [x] Complete: scan record creation
+- [x] Complete: image-first processing path
+- [x] Complete: queue-backed processing option
+- [x] Complete: inline processing fallback
+- [x] Complete: structured `result_payload`
+- [ ] In Progress: end-to-end reliability validation in deployed environments
+- [ ] In Progress: better retry and failure classification
+- [ ] Not Started: payload schema versioning strategy
+- [ ] Deferred: multi-media orchestration
+
+### Storage And Data
+
+- [x] Complete: Supabase scans table
+- [x] Complete: waitlist, invite, and auth audit tables
+- [x] Complete: profiles table migration in repo
+- [x] Complete: private uploads bucket expectation
+- [x] Complete: reconcile remote schema state with local migration truth
+- [ ] Not Started: retention policy documentation for uploaded artifacts
+
+### Security
+
+- [x] Complete: request validation
+- [x] Complete: throttling baseline
+- [x] Complete: helmet baseline
+- [x] Complete: request IDs
+- [x] Complete: global exception filtering
+- [x] Complete: admin allowlist gating
+- [ ] In Progress: auth transport hardening
+- [ ] Not Started: expanded RLS review
+- [ ] Not Started: bot protection
+- [ ] Not Started: deeper file inspection before processing
+- [ ] Not Started: malware scanning before beta
+
+### Observability And Operations
+
+- [x] Complete: health endpoint
+- [ ] Not Started: Sentry integration
+- [ ] Not Started: product analytics integration
+- [ ] Not Started: queue metrics and backlog monitoring
+- [ ] Not Started: worker error alerting
+- [ ] Not Started: founder-friendly operational diagnostics surface
+
+## 4. Infrastructure And Setup
+
+### Required For Current MVP Work
+
+- [x] Complete: GitHub repository access verified
+- [x] Complete: Supabase project access verified
+- [x] Complete: Fly deployment files present
+- [x] Complete: Vercel deployment path present
+- [ ] In Progress: decide queue strategy for dev and shared environments
+- [ ] Not Started: Cloudflare account and domain strategy confirmation
+- [ ] Not Started: Sentry setup
+- [ ] Not Started: PostHog setup
+- [ ] Not Started: transactional email provider selection
+
+### Explicitly Deferred
+
+- [ ] Deferred: OpenAI integration
+- [ ] Deferred: Anthropic integration
+- [ ] Deferred: Stripe and billing setup
+- [ ] Deferred: Neon migration
+- [ ] Deferred: enterprise SSO
+
+## 5. Release Gates
+
+These are required before a phase can move to review:
+
+- [ ] Build passes
+- [ ] Backend build passes
+- [ ] Relevant tests pass
+- [ ] Regressions checked in the affected flows
+- [ ] Documentation updated
+- [ ] Changelog updated
+- [ ] Branch pushed
+- [ ] Pull request opened
+- [ ] Founder review requested
+
+## Immediate Execution Queue
+
+After documentation handover and the next approved dashboard and admin specification, the next implementation sequence is:
+
+1. dashboard maturity against the approved design direction
+2. admin workspace maturity against the approved workflow and visual direction
+3. session-hardening entry work
+4. report workflow utility
+5. upload and processing reliability
+6. observability baseline

@@ -1,256 +1,221 @@
 # Provance Current Implementation Status
 
-Last updated: 2026-07-16
+Last updated: 2026-07-24
 
 ## Purpose
 
-This document tracks what Provance is building, what is already implemented in the repo, what remains in progress, and what engineers should update after each major phase.
+This document tracks what is already implemented, what is actively being finished, and what remains deferred.
 
-Update this file after major engineering changes, especially when backend structure, auth flows, public-site messaging, data models, or deployment paths change.
+Use this file as the current engineering truth for the codebase.
 
-Related direction documents:
+## What Provance Is Building
 
-- root overview: `README.md`
-- phase map: `docs/engineering/PHASE_TASK_LIST.md`
+Provance is a trust infrastructure product for synthetic media verification.
 
-## What We Are Building
+The current MVP direction is:
 
-Provance is a trust infrastructure platform for synthetic media verification.
+- image-first verification
+- report-first product experience
+- waitlist-first onboarding
+- invite-based access
+- internal-admin-supported operations
 
-The working product direction is:
+## Current Phase
 
-- explainable image-first verification with a future path to video
-- reviewable report workspace with printable, professional report output and a future path to deeper export workflows
-- waitlist-first onboarding and invite-based account access
-- protected application workflows for uploads, analysis, report review, and account access
-- future team collaboration, admin tooling, and API access
-- future API access for programmatic verification and operational integration
+Phase 2 remains in progress.
+
+The current immediate focus is:
+
+- documentation preservation and temporary handover readiness
+- verification of the current implementation truth before further UI work resumes
+- pause on dashboard and admin redesign work until a new approved design direction is documented
+
+The next queued implementation focus after Phase 2 approval is:
+
+- Phase 3 working MVP product completion
+- session hardening
+- deeper operational reliability
+- observability baseline
 
 ## Current Architecture
 
 ### Frontend
 
-- React + Vite marketing and public-product site
-- Public routes for home, product, methodology, pricing, docs, sample report, security, contact, waitlist, and sign-in
-- Tailwind-based styling with Framer Motion for section transitions and interactions
+- React + Vite frontend
+- public routes plus authenticated `/app/*` routes
+- Tailwind CSS v4 styling
+- Framer Motion used selectively
 
 ### Backend
 
-- NestJS backend located in `backend/`
-- Versioned API prefix at `/v1`
-- Validation and CORS configured in the app bootstrap
-- Waitlist-first auth and onboarding structure implemented
-- Supabase-backed service layer for persistence, invite activation, auth wiring, and scan records
+- NestJS backend in `backend/`
+- versioned API prefix at `/v1`
+- validation, throttling, helmet, request IDs, and global exception filtering
 
-### Existing Legacy Backend
+### Data And Infrastructure
 
-- A legacy `api/` folder still exists with ad hoc Hono-based code
-- It is not the long-term backend direction
-- New work should target `backend/` unless a deliberate migration plan says otherwise
+- Supabase Auth
+- Supabase Postgres
+- Supabase Storage
+- Redis-compatible queue path for async processing
+- Fly.io for API and worker hosting
+- Vercel for frontend hosting
 
-## What Is Done
+## What Is Implemented
 
 ### Public Site
 
-- Homepage sections have been revised through multiple content and visibility passes
-- `How It Works` visibility bug has been fixed
-- Public-page copy has been cleaned to remove staging-tone language across major pages
-- Legal pages now contain fuller production-style Privacy, Terms, and Cookies content
-- `Why Provance` now uses a four-card, two-by-two layout aligned more closely with the `Use Cases` visual system
+- homepage and public product pages
+- legal pages
+- sample report pages
+- contact, docs, and resources surfaces
 
-### Waitlist And Sign-In Frontend
+### Authentication And Onboarding
 
-- `WaitlistPage.jsx` now submits to a real API shape through `src/lib/api.js`
-- `SignInPage.jsx` now signs users in through the shared auth context and redirects into the authenticated workspace
-- `AcceptInvitePage.jsx` now activates invited users through the backend
-- Password reset request and confirmation pages are now implemented
-- Both pages support loading, error, and success states
+- waitlist submission
+- sign-in
+- invite acceptance
+- password reset request and confirmation
+- protected route handling
+- backend-mediated identity hydration through `GET /v1/auth/me`
 
-### Authenticated App Shell
+### Authenticated Application
 
-- New signed-in route group under `/app/*`
-- Protected route gate that redirects unauthenticated users back to sign-in with a return URL
-- Dedicated authenticated layout with left-side navigation and top-level app structure
-- Initial in-product pages for dashboard, uploads, reports, account settings, admin operations, and team workspace placeholders
-- Account preference editing now persists through a backend-backed profile model
-- Explicit team permission handling redirects unauthorized access to an access denied page
-- Admin permission handling now exposes the admin workspace only for allowlisted emails
-- Dashboard and app-shell copy have been rewritten to position Provance as a broader verification workspace rather than a legal-only tool
-- App-shell layout has been refined for better mobile and tablet responsiveness in the authenticated experience
+- authenticated app shell with grouped workspace, account, platform, and internal navigation
+- dashboard route
+- uploads route
+- scan history route
+- reports list and report detail route
+- print-ready report route
+- account route
+- notifications route
+- developer portal route
+- billing route
+- broader settings route
+- admin route
+- team workspace route
+- access denied route
 
-### Account And Identity Foundation
+### Account And Identity
 
-- A new backend account module now exposes authenticated profile read and update endpoints
-- Signed-in identity can now be rehydrated through `GET /v1/auth/me`
-- Profile defaults are now created server-side when a user first authenticates
-- Account profile data now lives in the `profiles` table instead of local-only browser state
-- Permission state now travels through backend identity responses rather than being inferred only in the frontend
+- backend-backed profile persistence
+- current-session identity hydration
+- admin permission shaping based on allowlisted emails
+- profile-backed admin role fallback for internal testing and rollout continuity
 
-### Phase 5 Upload Workflow Foundation
+### Upload And Scan Pipeline
 
-- New upload flow scaffold in `/app/uploads` that creates a scan record, uploads directly to private storage, submits a job, and polls status
-- New NestJS scan endpoints:
-  - `POST /v1/scans` (initiate upload and return signed upload token)
-  - `POST /v1/scans/:scanId/submit` (queue processing)
-  - `GET /v1/scans` (list scans)
-  - `GET /v1/scans/:scanId` (scan detail with result payload)
-- Supabase JWT authentication guard added for scan endpoints
-- Scan storage and data model migration added at `supabase/migrations/0002_scans.sql`
-- Upstash-backed queue processing is now wired through the Fly worker deployment path
-- Worker processing now writes a structured image-first evidence payload instead of a single placeholder signal
+- scan initiation endpoint
+- signed upload flow
+- direct browser upload to private storage
+- scan submit endpoint
+- queue-backed processing path with inline fallback
+- scan list and scan detail endpoints
 
-### Phase 6 Report And Report Review Foundation
+### Reports
 
-- `/app/reports` now loads real scan history instead of a placeholder panel
-- `/app/reports/:scanId` now renders report detail for a selected upload
-- `/app/reports/:scanId/print` now provides printable report output
-- Dashboard cards and recent activity are now backed by live scan records
-- Completed uploads now deep-link directly into the report workspace
-- Report IDs and structured evidence sections are now attached to completed scans
-- The authenticated dashboard and sidebar have been redesigned into a denser verification workspace with a stronger operations layout
-- Printable reports now include the analyzed media preview through a signed asset URL from the backend
-- Printable reports now include overall verdict, authenticity score, confidence score, risk level, executive summary, media information, metadata summary, AI/manipulation result grouping, signal analysis, key findings, processing timeline, recommendations, and supporting evidence
+- report history
+- report detail rendering from real scan data
+- print-ready report output
+- signed media preview for image reports
+- scan-history ledger with search, sorting, pagination, and bulk selection
 
 ### Admin Operations
 
-- `/app/admin` now provides an internal waitlist and access operations workspace
-- Admin users can search and filter applications, record notes, update review status, export CSV data, and create secure invite links
-- Backend admin endpoints now enforce signed-in admin access through the `ADMIN_EMAILS` allowlist
-- Admin operations are tracked through the audit trail
-- A documented local admin test-account pattern now exists for controlled local-only testing with `founder.admin@provance.local`
+- waitlist filtering
+- review notes
+- status updates
+- invite generation
+- CSV export
+- audit trail writes
+- registered user visibility
+- verification request monitoring
+- report inspection inside admin
+- internal diagnostics and feature-state visibility
+- persisted feature-flag controls inside admin
+- organization readiness view
+- analytics summary view
+- audit-log workspace
+- role and permission planning surface
+- broader admin module navigation for jobs, reports, monitoring, flags, roles, and audit
 
-### NestJS Backend Scaffold
+## What Is Partial
 
-- `GET /v1/health`
-- `POST /v1/waitlist/applications`
-- `GET /v1/auth/me`
-- `POST /v1/auth/sign-in`
-- `POST /v1/auth/password-reset/request`
-- `POST /v1/auth/password-reset/confirm`
-- `POST /v1/auth/invites/accept`
-- `GET /v1/account/profile`
-- `PATCH /v1/account/profile`
+- deeper upload safety beyond current front-end validation
+- dashboard and admin redesign alignment with the final expected design quality
+- queue reliability and cost posture
+- session hardening
+- richer operational observability
+- broader cross-module admin search and filtering
+- live notification delivery, billing operations, and API customer enablement
 
-### Security Foundation
+## What Is Deferred
 
-- `helmet` headers enabled in the backend bootstrap
-- global request throttling enabled with tighter limits on auth and waitlist endpoints
-- startup environment validation added for critical backend settings
-- request ID tracing added for API debugging
-- global exception filter added to avoid leaking internal errors
-- public health endpoint reduced to minimal safe status output
-- auth audit events added for sign-in success, sign-in failure, password reset requests, and invite acceptance
-- admin audit events are now written for waitlist review and invite creation operations
-- public Supabase auth clients are now created per request to avoid cross-request session leakage
-- security and launch checklist added at `docs/engineering/SECURITY_AND_LAUNCH_CHECKLIST.md`
-- frontend session refresh is now handled through the authenticated client and `POST /v1/auth/refresh`
+- billing and subscriptions
+- organization and team workflows
+- API product
+- video verification
+- audio verification
+- OpenAI integration
+- Anthropic integration
+- enterprise SSO
 
-### Supabase Preparation
+## Validation Snapshot
 
-- Supabase project is connected for local backend validation
-- Backend environment template added
-- Starter SQL migration added at `supabase/migrations/0001_waitlist_auth.sql`
-- Remote tables exist for `waitlist_applications`, `access_invites`, `auth_audit_events`, and `profiles` once the latest migration is applied
-- Waitlist submissions persist into the live `waitlist_applications` table
-- Invite acceptance creates a real Supabase user and updates waitlist and invite state
-- Sign-in is wired to real Supabase Auth credentials
+Recently confirmed against the current codebase and environment:
 
-## What Is Not Done Yet
-
-### Auth
-
-- Password reset request and confirmation UI are now implemented
-- Invite acceptance UI is now implemented
-- Refresh-token handling is now implemented for the authenticated client
-- Signed-in identity hydration now comes from the backend rather than browser-only profile state
-- Hardened cookie-based session transport remains a possible future hardening step, not an MVP blocker
-
-### Waitlist Operations
-
-- Admin review flow is now implemented inside `/app/admin`
-- Approval, rejection, defer, notes, invite creation, filtering, and CSV export are now implemented
-- Manual transactional email delivery remains the current MVP operational model
-
-### Product Application
-
-- Richer evidence models, share links, and dedicated PDF rendering can still be expanded
-- Evidence timeline and reference handling
-- Organization and team access controls
-- Audit review tools
-- Higher-density multi-user report triage beyond the current dashboard redesign
-- Real video preview support in reports
-- Real audio waveform or playback-summary support in reports
-- Actual video and audio upload, extraction, and processing pipeline support
-
-## Validation Status
-
-Validated in this phase:
-
-- frontend diagnostics on edited files
 - frontend production build
-- authenticated routing verified in browser (sign-in redirect, protected routes, account persistence, team denial)
-- backend unit tests for auth service failure handling and audit logging
-- backend NestJS build
-- backend e2e test for health endpoint
-- combined release check through `npm run check:launch`
-- live waitlist submission verified against the connected Supabase project
-- live invite acceptance and sign-in verified against the connected Supabase project
-- live audit event writes verified in `auth_audit_events`
-- Phase 5 upload scaffold verified through build and test gates, but requires:
-  - applying `0002_scans.sql` in Supabase
-  - creating a private Storage bucket named `provance-uploads`
-  - setting `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in the frontend environment
-  - setting `SUPABASE_UPLOADS_BUCKET` and related settings in the backend environment
-- latest dashboard-copy, auth-copy, admin-doc, and printable-report refinements verified through frontend diagnostics, frontend production build, and backend production build
+- backend production build
+- backend e2e health test
+- GitHub remote read, clone, and fetch access
+- Supabase project and table inspection access
+- remote `profiles` migration applied successfully and verified
+- remote `feature_flags` migration applied successfully and verified
+- current frontend redesign changes compile successfully in production build
+
+## Current Engineering Constraints
+
+- the repository contains historical documents that must be kept clearly separated from current-state implementation docs
+- Upstash Free is not suitable for always-on worker usage
+- no further dashboard or admin implementation should continue until the next approved design direction is documented
+- the current documentation set is richer than its formatting consistency, so normalization remains an active documentation improvement area
 
 ## Important Files
 
 ### Frontend
 
-- `src/lib/api.js`
-- `src/pages/WaitlistPage.jsx`
-- `src/pages/SignInPage.jsx`
+- `src/App.jsx`
 - `src/context/AuthContext.jsx`
-- `src/components/auth/ProtectedRoute.jsx`
+- `src/lib/api.js`
+- `src/lib/supabase.js`
 - `src/components/app/AppShellLayout.jsx`
+- `src/components/auth/ProtectedRoute.jsx`
 - `src/pages/app/*`
-- `src/pages/PrivacyPage.jsx`
-- `src/pages/TermsPage.jsx`
-- `src/pages/CookiesPage.jsx`
 
 ### Backend
 
 - `backend/src/main.ts`
 - `backend/src/app.module.ts`
-- `backend/src/common/filters/global-exception.filter.ts`
-- `backend/src/common/guards/api-throttler.guard.ts`
-- `backend/src/config/env.validation.ts`
-- `backend/src/health/health.controller.ts`
-- `backend/src/waitlist/waitlist.controller.ts`
-- `backend/src/waitlist/waitlist.service.ts`
-- `backend/src/auth/auth.controller.ts`
-- `backend/src/auth/auth.service.ts`
-- `backend/src/account/account.controller.ts`
-- `backend/src/account/account.service.ts`
-- `backend/src/supabase/supabase.service.ts`
+- `backend/src/auth/*`
+- `backend/src/account/*`
+- `backend/src/admin/*`
+- `backend/src/scans/*`
+- `backend/src/queue/*`
+- `backend/src/worker.ts`
+- `backend/src/supabase/*`
+
+### Data And Infra
+
 - `supabase/migrations/0001_waitlist_auth.sql`
 - `supabase/migrations/0002_scans.sql`
+- `supabase/migrations/0003_admin_ops.sql`
 - `supabase/migrations/0004_profiles.sql`
+- `backend/fly.toml`
+- `backend/fly.worker.toml`
 
-## Next Recommended Steps
+## Collaboration Rules
 
-1. Apply the latest Supabase migrations in the connected project
-2. Validate the live worker-backed queue flow end to end through the deployed frontend
-3. Harden the current token transport when the security-hardening phase is opened
-4. Expand the media pipeline beyond images so reports can support real video thumbnails and audio summaries
-5. Expand printable reports into full PDF export when needed
-6. Start Phase 7 team and organization workflows only when the roadmap is reopened
-
-## Collaboration Notes
-
-- Update this file after every major engineering phase
-- Update `README.md` when the repo architecture, setup flow, or project direction changes materially
-- Update `docs/engineering/PHASE_TASK_LIST.md` when the working build sequence changes
-- Update `docs/engineering/SECURITY_AND_LAUNCH_CHECKLIST.md` when release gates or security baselines change
-- Update `docs/changelogs/CHANGELOG.md` with each significant repo change
-- Push tested, reviewable work to `main` after each major phase so collaborators can pull the latest stable state
+- update this file after every major engineering phase
+- update the roadmap and checklist when scope or sequence changes
+- update setup and env docs when external services or variables change
+- do not treat implementation as complete until docs and review are done

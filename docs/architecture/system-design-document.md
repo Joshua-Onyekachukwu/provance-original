@@ -1,297 +1,192 @@
 # System Design Document
 
-> Current-state note. Updated 2026-07-07.
->
-> This is a future-state system design document. It should not be read as the literal deployed topology today.
->
-> Current implementation is simpler:
-> - React + Vite frontend
-> - NestJS API
-> - Supabase for auth, database, and storage
-> - Upstash Redis plus a Fly worker for async scan jobs
-> - polling-based scan status updates rather than a broader service mesh or BFF model
+Last updated: 2026-07-23
 
-## 1. System Objective
+## Purpose
 
-Design a trustworthy, scalable platform for AI-generated media verification that supports self-serve product usage, API-driven workflows, and evidence-oriented reporting.
+This document describes the target system design for Provance from the current MVP through early growth, while staying grounded in the architecture that already exists in the repository.
 
-## 2. High-Level Architecture
+## System Objective
+
+Design a trustworthy, scalable platform for synthetic media verification that can:
+
+- launch quickly as an MVP
+- validate verification workflows in production
+- support internal and early-user operations
+- scale into a more enterprise-ready platform without a rewrite
+
+## Current MVP Topology
 
 ```text
-Client Web App / API Client
-        |
-   Edge / CDN / WAF
-        |
-Frontend App (Next.js)
-        |
-API Gateway / Backend-for-Frontend
-        |
-Verification Platform Services
-| Upload Service | Scan Orchestrator | Results Service | Report Service |
-        |
-Worker & Intelligence Layer
-| Signal Workers | Attribution Engine | Explanation Engine |
-        |
-Data Platform
-| Postgres | Object Storage | Cache / Queue | Vector Store | Analytics |
-        |
-Observability & Governance
-| Logs | Metrics | Traces | Audit Log | Security Events |
+User
+  -> Vercel Frontend
+     -> NestJS API on Fly.io
+        -> Supabase Auth / Postgres / Storage
+        -> Redis-compatible queue transport when enabled
+        -> Fly.io worker for async scan processing
 ```
 
-## 3. Core Subsystems
+## Recommended Near-Term Topology
 
-### Frontend
+```text
+User
+  -> Cloudflare DNS / CDN / WAF
+     -> Vercel Frontend
+     -> NestJS API
+        -> Auth service boundary
+        -> Scan service boundary
+        -> Report service boundary
+        -> Admin service boundary
+        -> Queue service boundary
+        -> Storage service boundary
+     -> PostgreSQL + object storage + queue + worker
+     -> Sentry + analytics + operational monitoring
+```
 
-- Marketing site
-- Authenticated product app
-- Dashboard and result views
-- Admin / internal review interface
-
-### Platform Services
-
-- Upload ingestion
-- Scan lifecycle management
-- Result aggregation
-- Report generation
-- Billing and entitlement checks
-- API key and webhook management
-
-### Intelligence Layer
-
-- Signal execution workers
-- Ensemble scoring
-- Attribution retrieval
-- Explanation generation
-- Retraining and evaluation pipeline
-
-### Data Layer
-
-- Operational relational database
-- Private object storage
-- Queue and caching services
-- Vector retrieval for fingerprints
-- Warehouse / analytics layer for product and model telemetry
-
-## 4. Recommended Request Flow
-
-### Web Product
-
-1. User authenticates.
-2. Client requests an upload session.
-3. File uploads directly to private storage using signed URL.
-4. Frontend submits scan job metadata to backend.
-5. Orchestrator validates entitlement and creates scan record.
-6. Worker pipeline processes signals asynchronously.
-7. Result service aggregates outputs.
-8. Client receives status updates via realtime event channel.
-9. User opens structured result and optional report export.
-
-### API Product
-
-1. API client authenticates with key.
-2. Client submits file reference or direct upload flow.
-3. Job is queued and traceable by request ID.
-4. Completion is available by polling, webhook, or event stream.
-
-## 5. Frontend Design
+## Core Subsystems
 
 ### Public Experience
 
-- Homepage
-- Solutions pages
-- Pricing
-- Docs
-- Blog
-- Demo or sample report flow
+- marketing pages
+- sample report and trust-building pages
+- waitlist and contact entry points
 
-### Authenticated Experience
+### Authentication And Onboarding
 
-- Upload
-- Results
-- Scan history
-- API / billing settings
-- Team workspace
+- sign-in
+- invite acceptance
+- password recovery
+- current-session identity reads
 
-### Frontend Principles
+### Verification Workspace
 
-- Use server components where beneficial for performance and SEO
-- Use client components selectively for upload, progress, and live updates
-- Keep evidence rendering deterministic and consistent with backend payloads
+- dashboard
+- uploads
+- reports
+- account
+- admin
 
-## 6. Backend Design
+### Scan Pipeline
 
-### Service Domains
+- upload initiation
+- direct signed upload
+- scan submission
+- async processing
+- result persistence
+- report rendering
 
-- Identity and access
-- Upload and storage
-- Verification orchestration
-- Results and reports
-- Billing and plans
-- Admin and governance
+### Operational Layer
 
-### Preferred Pattern
+- admin controls
+- audit events
+- system diagnostics
+- observability and alerts
 
-Start with a modular monolith for speed, but preserve clean service boundaries in code and contracts. Split services only when scale or ownership requires it.
+## Request Flow
 
-## 7. Data Design
+### Current Upload Flow
 
-### Primary Entities
+1. user authenticates
+2. frontend requests scan initiation
+3. backend creates a scan record and returns signed upload data
+4. browser uploads directly to private storage
+5. frontend submits the scan for processing
+6. backend queues work or falls back to inline processing
+7. worker processes the scan and writes `result_payload`
+8. frontend polls and renders the report
 
-- users
-- organizations
-- memberships
-- scans
-- signal_results
-- attribution_results
-- forensic_reports
-- api_keys
-- usage_events
-- audit_events
+### Future Media Flow
 
-### Storage Strategy
+For later video and audio support, keep this same top-level contract:
 
-- Postgres for transactional entities
-- Private object storage for uploads and report artifacts
-- Vector index for fingerprint similarity
-- Warehouse tables or analytics store for aggregate reporting
+1. initiate upload
+2. direct upload to object storage
+3. async orchestration
+4. preprocessing and extraction
+5. signal execution
+6. aggregation
+7. report generation
 
-## 8. Authentication Design
+## Data Design Principles
 
-### Requirements
+- PostgreSQL remains the system of record
+- large artifacts live in object storage
+- result payloads must be versionable
+- audit trails must remain append-oriented
+- provider choices should stay replaceable through service boundaries
 
-- User auth for web app
-- API key auth for integrations
-- Role-based access for organizations and internal operations
-- Support migration path to enterprise SSO
+## Authentication Design
 
-### Recommendation
+Current MVP:
 
-Use managed auth initially with strong JWT verification server-side. Do not trust client-supplied user identifiers. All protected actions must derive identity from verified tokens or internal service credentials.
+- Supabase Auth
+- backend-verified identity
+- route guards in frontend plus server-side checks
 
-## 9. Notification Design
+Near-term improvement:
 
-### Use Cases
+- strengthen session transport
+- keep auth provider abstraction clean enough for future migration if needed
 
-- Scan status updates
-- Billing notifications
-- Trial conversion prompts
-- Webhook events for API customers
-- Admin alerts for failures
+## Authorization Design
 
-### Channels
+Current MVP:
 
-- In-app status
-- Email
-- Webhooks
-- Internal alerting
+- authenticated access checks
+- admin allowlist
+- team placeholder guard
 
-## 10. Analytics Design
+Future direction:
 
-Track:
+- organization-aware RBAC
+- stronger admin protection
+- broader policy hardening
 
-- acquisition and activation
-- scan throughput and latency
-- model confidence distribution
-- false positive investigations
-- conversion and retention
-- support and failure patterns
+## Queue And Worker Design
 
-Separate product analytics from evidence-grade audit events.
+Current rule:
 
-## 11. Monitoring Design
+- keep async processing available
+- avoid per-command free-tier assumptions for always-on workers
 
-### Minimum Stack
+Design principle:
 
-- Structured application logs
-- Metrics dashboard
-- Distributed tracing
-- Error reporting
-- Queue health monitoring
-- Model performance monitoring
+- queue provider should remain replaceable
 
-### Critical Alerts
+## Monitoring Design
 
-- queue backlog
-- scan failure spikes
-- storage failure
-- auth anomalies
-- webhook delivery failure
-- model drift indicators
+Minimum recommended stack before broader beta:
 
-## 12. Security Design
+- error monitoring
+- product analytics
+- queue and worker health visibility
+- backend and worker troubleshooting signals
 
-### Controls
+## Security Design
 
+Current baseline:
+
+- validation
+- throttling
+- helmet
+- request IDs
 - signed uploads
-- private buckets
-- malware scanning hook
-- server-side token verification
-- RBAC
-- audit logging
-- encryption in transit and at rest
-- secret management
-- rate limiting and abuse detection
+- private storage
 
-### Evidence Integrity
+Near-term additions:
 
-- hash uploaded artifacts
-- track chain-of-custody events
-- version result methodology
-- sign generated reports where applicable
+- session hardening
+- stronger admin protection
+- edge-layer protection through Cloudflare
+- deeper upload safety review
 
-## 13. Infrastructure Design
+## System Design Rule
 
-### Environments
+Provance should remain:
 
-- local
-- development
-- staging
-- production
+- modular
+- provider-aware but not provider-trapped
+- fast to iterate
+- explicit about deferred enterprise complexity
 
-### Hosting Strategy
-
-- frontend on managed edge platform
-- backend and workers on container-friendly compute
-- managed Postgres and object storage early
-- optional GPU nodes introduced only after justified by demand
-
-### CI/CD
-
-- lint, test, build on pull request
-- deploy preview environments for frontend
-- staged deploy pipeline with migrations and rollback plan
-
-## 14. Scalability Strategy
-
-### Early Stage
-
-- modular monolith
-- async workers
-- managed services
-
-### Growth Stage
-
-- separate worker pools by media type
-- introduce event bus where necessary
-- scale vector retrieval and warehouse workloads independently
-
-### Migration Triggers
-
-- sustained queue backlog
-- storage costs exceed target economics
-- enterprise requirements exceed current auth or audit capabilities
-
-## 15. Disaster Recovery And Backup
-
-- daily database backups minimum
-- object storage versioning where possible
-- tested restore procedures
-- RPO and RTO targets defined before enterprise launch
-
-## 16. Key Design Decisions
-
-1. Trust direct-to-storage upload over sending large files through app servers.
-2. Prefer uncertain results over overconfident false claims.
-3. Keep auditability separate from marketing claims.
-4. Design for evidence workflows before enterprise scale complexity.
+The MVP should be built on the architecture we can actually operate today, not on a hypothetical perfect architecture that delays product validation.

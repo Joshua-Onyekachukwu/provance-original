@@ -1,74 +1,91 @@
 # Provance Documentation Suite
 
-Last updated: 2026-07-07
+Last updated: 2026-07-23
 
 ## Start Here
 
-Use these files as the current source of truth for the shipped product and active infrastructure:
+Use these files as the current planning and implementation source of truth:
 
 1. `README.md`
-2. `docs/engineering/CURRENT_IMPLEMENTATION_STATUS.md`
-3. `docs/engineering/PHASE_TASK_LIST.md`
-4. `docs/engineering/DEPLOYMENT_AND_AUTH_STRATEGY.md`
-5. `docs/engineering/CREDENTIALS_AND_ENVIRONMENT_VARIABLES.md`
-6. `docs/engineering/DEPLOYMENT_FLYIO_AND_UPSTASH.md`
-7. `backend/README.md`
+2. `docs/engineering/DOCUMENTATION_STATUS_AND_HANDOVER_2026-07-24.md`
+3. `docs/roadmap/MASTER_DEVELOPMENT_ROADMAP.md`
+4. `docs/engineering/PHASE_TASK_LIST.md`
+5. `docs/architecture/TECHNOLOGY_STACK_REFERENCE.md`
+6. `docs/project-state/overall-project-architecture.md`
+7. `docs/engineering/CURRENT_IMPLEMENTATION_STATUS.md`
+8. `docs/engineering/PRE_DEVELOPMENT_SETUP_CHECKLIST.md`
+9. `docs/engineering/INFRASTRUCTURE_AND_SERVICE_CONFIGURATION_GUIDE.md`
+10. `docs/engineering/CREDENTIALS_AND_ENVIRONMENT_VARIABLES.md`
+11. `docs/engineering/DEVELOPMENT_WORKFLOW_AND_RELEASE_PROCESS.md`
 
-## How To Read The Rest
+## Documentation Rules
 
-The repo contains three kinds of documentation:
+- documentation is a first-class deliverable
+- code and docs must stay synchronized
+- update the relevant docs before marking a phase complete
+- do not create duplicate planning documents when an existing canonical file can be updated
+- if an older file is historical, label it clearly rather than letting it conflict silently
 
-- `engineering/` for current implementation, deployment, environment setup, and phase tracking
-- `project-state/` for living summaries of project status, risks, readiness, roadmaps, and priorities
-- `product/` for product requirements, UX direction, and future-state planning
-- `foundation/`, `architecture/`, `reports/`, `sales/`, and `fundraising/` for strategy, historical planning, and operating materials
+## Canonical Document Roles
 
-Some older planning documents describe future-state product behavior that is not fully shipped yet. When there is a conflict, follow the current-state engineering docs listed above.
+### Roadmap And Execution
 
-## Living Project-State Docs
+- `docs/roadmap/MASTER_DEVELOPMENT_ROADMAP.md`: canonical phase roadmap
+- `docs/engineering/PHASE_TASK_LIST.md`: actionable feature and phase checklist
+- `docs/engineering/DEVELOPMENT_WORKFLOW_AND_RELEASE_PROCESS.md`: workflow, review, and release rules
 
-For an always-updated view of where the project stands today, start here:
+### Architecture And Stack
 
-- `docs/project-state/README.md`
+- `docs/project-state/overall-project-architecture.md`: current working architecture
+- `docs/architecture/system-design-document.md`: target system design from MVP to enterprise
+- `docs/architecture/TECHNOLOGY_STACK_REFERENCE.md`: official technology stack reference
 
-This directory should be updated alongside major engineering, product, design, and roadmap changes so that the repository remains the practical source of truth for current project status.
+### Current State
+
+- `docs/engineering/DOCUMENTATION_STATUS_AND_HANDOVER_2026-07-24.md`: temporary handover and documentation status report
+- `docs/engineering/CURRENT_IMPLEMENTATION_STATUS.md`: current implementation truth
+- `docs/project-state/current-feature-status.md`: concise feature status grid
+- `docs/project-state/development-priorities.md`: active development focus
+- `docs/project-state/what-is-in-development.md`: active and near-term work
+- `docs/project-state/outstanding-questions.md`: unresolved questions, blockers, and risks
+
+### Setup And Infrastructure
+
+- `docs/engineering/PRE_DEVELOPMENT_SETUP_CHECKLIST.md`: pre-coding checklist
+- `docs/engineering/INFRASTRUCTURE_AND_SERVICE_CONFIGURATION_GUIDE.md`: service configuration guide
+- `docs/engineering/CREDENTIALS_AND_ENVIRONMENT_VARIABLES.md`: environment variable inventory
+- `docs/engineering/DEPLOYMENT_FLYIO_AND_UPSTASH.md`: current deployment notes and queue guidance
+
+## Historical And Future-State Material
+
+The repository also contains product, business, foundation, fundraising, and historical architecture material.
+
+Those documents are useful for context, but when they conflict with the current planning set above:
+
+1. trust the canonical current-state docs
+2. update the stale file if it is still meant to be active
+3. mark the stale file as historical if it is no longer meant to drive implementation
 
 ## Recommended Review Order
 
-If you are onboarding into the codebase today, read in this order:
-
 1. `README.md`
-2. `docs/engineering/CURRENT_IMPLEMENTATION_STATUS.md`
-3. `docs/engineering/PHASE_TASK_LIST.md`
-4. `docs/engineering/DEPLOYMENT_AND_AUTH_STRATEGY.md`
-5. `docs/engineering/CREDENTIALS_AND_ENVIRONMENT_VARIABLES.md`
-6. `docs/engineering/ADMIN_ACCESS_AND_OPERATIONS.md`
-7. `docs/engineering/ENGINEERING_HANDOFF_2026-07-07.md`
-8. `backend/README.md`
-9. `docs/product/PRD_DASHBOARD.md`
-10. `docs/product/REPORT_FLYWHEEL.md`
-11. `docs/foundation/provance-operating-doctrine.md`
+2. `docs/engineering/DOCUMENTATION_STATUS_AND_HANDOVER_2026-07-24.md`
+3. `docs/roadmap/MASTER_DEVELOPMENT_ROADMAP.md`
+4. `docs/engineering/PHASE_TASK_LIST.md`
+5. `docs/architecture/TECHNOLOGY_STACK_REFERENCE.md`
+6. `docs/project-state/overall-project-architecture.md`
+7. `docs/engineering/CURRENT_IMPLEMENTATION_STATUS.md`
+8. `docs/engineering/PRE_DEVELOPMENT_SETUP_CHECKLIST.md`
+9. `docs/engineering/INFRASTRUCTURE_AND_SERVICE_CONFIGURATION_GUIDE.md`
+10. `docs/engineering/CREDENTIALS_AND_ENVIRONMENT_VARIABLES.md`
+11. `docs/engineering/DEVELOPMENT_WORKFLOW_AND_RELEASE_PROCESS.md`
 
 ## Current Product Notes
 
-As of this update:
+As of this planning update:
 
-- the live authenticated product uses `/signin` and `/app/*` routes
-- the current workflow is image-first, not full image-and-video parity
-- uploads are created through the API, stored in private Supabase storage, and submitted to a Redis-backed queue
-- report history and report detail views exist, but PDF export, share links, citation tools, batch processing, and video workflows remain future work
-
-## Deployment Playbook
-
-- `docs/engineering/DEPLOYMENT_FLYIO_AND_UPSTASH.md`
-- `docs/engineering/CREDENTIALS_AND_ENVIRONMENT_VARIABLES.md`
-- `docs/engineering/DEPLOYMENT_AND_AUTH_STRATEGY.md`
-
-## Development Workflow
-
-- `docs/engineering/DEVELOPMENT_WORKFLOW_AND_RELEASE_PROCESS.md`
-- `docs/roadmap/MASTER_DEVELOPMENT_ROADMAP.md`
-
-## Technical Vision
-
-- `docs/architecture/competitive-advantage-and-technical-vision.md`
+- the landing page is complete enough for the current phase
+- the active focus is documentation preservation, handover readiness, and maintaining the current implementation truth while dashboard and admin design direction is reset
+- the current verification workflow is image-first
+- OpenAI, Anthropic, and billing integrations are not part of the immediate implementation scope
+- no new dashboard or admin implementation work should resume until the next approved design direction is documented

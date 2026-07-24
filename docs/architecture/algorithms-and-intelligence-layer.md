@@ -198,3 +198,4 @@ Upload
 2. Treat attribution as a gated premium capability, not a guaranteed output.
 3. Use rule-based explanation generation before introducing LLM-generated language.
 4. Maintain a formal benchmark suite before public claims about performance.
+

@@ -1,5 +1,127 @@
 # Provance — Changelog
 
+## [2026-07-23] - Planning, Roadmap, Architecture, And Setup Documentation Sync
+
+### Added
+- `docs/architecture/TECHNOLOGY_STACK_REFERENCE.md` - Official stack reference for the MVP and early growth architecture
+- `docs/engineering/PRE_DEVELOPMENT_SETUP_CHECKLIST.md` - Pre-coding setup and approval checklist
+- `docs/engineering/INFRASTRUCTURE_AND_SERVICE_CONFIGURATION_GUIDE.md` - Current MVP service and infrastructure configuration guide
+- `docs/engineering/TREZO_TEMPLATE_EVALUATION.md` - Audit of the Trezo template and recommendations for Provance dashboard and admin work
+
+### Updated
+- `README.md` - Replaced outdated workflow and priority notes with the current MVP focus and source-of-truth doc set
+- `docs/README.md` - Reorganized the canonical documentation order and roles
+- `docs/roadmap/MASTER_DEVELOPMENT_ROADMAP.md` - Rebuilt the roadmap around the current MVP sequence and approval gate
+- `docs/engineering/PHASE_TASK_LIST.md` - Replaced the old phase summary with a definitive feature and phase checklist
+- `docs/engineering/DEVELOPMENT_WORKFLOW_AND_RELEASE_PROCESS.md` - Formalized the standing workflow, review, and merge rules
+- `docs/engineering/CURRENT_IMPLEMENTATION_STATUS.md` - Synced implementation truth to the current product and planning state
+- `docs/engineering/CREDENTIALS_AND_ENVIRONMENT_VARIABLES.md` - Split environment needs into required-now and required-later groups
+- `docs/engineering/DEPLOYMENT_FLYIO_AND_UPSTASH.md` - Documented the current queue cost guidance and deployment rules
+- `docs/architecture/system-design-document.md` - Updated the system design to match the real MVP stack and target direction
+- `docs/project-state/README.md` - Updated the living-state documentation priorities
+- `docs/project-state/current-feature-status.md` - Synced feature statuses to the current MVP focus
+- `docs/project-state/development-priorities.md` - Moved active priority from landing-page work to app and system work
+- `docs/project-state/what-is-in-development.md` - Synced active work to dashboard, admin, reports, and reliability
+- `docs/project-state/overall-project-architecture.md` - Synced the current architecture and preserved the replaceable system boundaries
+- `docs/project-state/outstanding-questions.md` - Recorded current blockers, risks, and unresolved setup items
+- `docs/project-state/engineering-roadmap.md` - Synced the quick-reference roadmap to the canonical roadmap
+- `docs/project-state/product-roadmap.md` - Synced the product summary roadmap to the current execution focus
+- `docs/project-state/technical-risks.md` - Updated the current delivery and infrastructure risks
+- `docs/project-state/recommended-improvements.md` - Updated the current improvement recommendations
+- `docs/project-state/decision-log.md` - Recorded current planning, infrastructure, and template-adoption decisions
+
+### Notes
+- no production feature code was added in this update
+- this change set exists to align the repository before the next implementation phase begins
+- the remote Supabase `profiles` migration was also applied and verified
+- the planning package was approved and Phase 0 was closed in the roadmap
+
+## 2026-07-23 - Dashboard and admin Phase 2 closeout pass
+
+### Updated
+- `src/pages/app/AppDashboardPage.jsx` - Upgraded the dashboard into a stronger command surface with queue posture, triage panels, quick actions, and faster drill-in paths
+- `src/pages/app/AppAdminPage.jsx` - Expanded admin into a broader control room with users, verification requests, request diagnostics, and feature-state visibility
+- `src/components/app/AppShellLayout.jsx` - Updated admin navigation and page framing to match the broader control-room role
+- `backend/src/admin/admin.service.ts` - Expanded admin dashboard payload with users, scans, diagnostics, and feature-state data
+- `docs/engineering/PHASE_TASK_LIST.md` - Synced dashboard and admin completion progress
+- `docs/engineering/CURRENT_IMPLEMENTATION_STATUS.md` - Synced current implementation scope after the dashboard and admin pass
+- `docs/engineering/ADMIN_ACCESS_AND_OPERATIONS.md` - Documented the current admin surface in more detail
+
+### Validation
+- frontend production build passed
+- backend production build passed
+- backend e2e health test passed
+
+## 2026-07-24 - Phase 2 closeout completion pass
+
+### Updated
+- `src/pages/app/AppReportsPage.jsx` - Expanded reports into a denser triage and evidence-review workspace with filters, findings, and recommendations
+- `src/pages/app/AppUploadsPage.jsx` - Improved upload workflow clarity, stage visibility, failure recovery, and next-step actions
+- `src/pages/app/AppAccountPage.jsx` - Improved account posture, profile clarity, and settings polish
+- `backend/src/common/guards/admin.guard.ts` - Added profile-backed admin role fallback to support safer internal testing
+- `backend/src/admin/admin.controller.ts` - Added admin feature-flag update endpoint
+- `backend/src/admin/admin.service.ts` - Added persisted feature-flag loading and update support
+- `backend/src/admin/dto/update-feature-flag.dto.ts` - Added validation for admin feature-flag updates
+- `src/lib/api.js` - Added frontend helper for admin feature-flag updates
+- `supabase/migrations/0005_feature_flags.sql` - Added persisted feature-flag table and default rollout flags
+- `docs/engineering/PHASE_TASK_LIST.md` - Marked the remaining Phase 2 closeout work complete
+- `docs/engineering/CURRENT_IMPLEMENTATION_STATUS.md` - Moved Phase 2 to review-ready status
+- `docs/roadmap/MASTER_DEVELOPMENT_ROADMAP.md` - Marked Phase 2 as in review
+
+### Validation
+- frontend production build passed
+- backend production build passed
+- backend e2e health test passed
+- remote Supabase feature flag migration applied successfully
+
+## 2026-07-24 - Trezo audit direction reset and verified hero fix
+
+### Updated
+- `src/components/Hero.jsx` - Replaced the hero supporting copy and removed the `Image-first early access` attribute from the live hero component
+- `docs/engineering/TREZO_TEMPLATE_EVALUATION.md` - Expanded the Trezo review into a detailed dashboard and admin implementation plan mapped to Provance pages
+- `docs/engineering/CURRENT_IMPLEMENTATION_STATUS.md` - Reflected that Phase 2 remains in progress pending the Trezo-guided dashboard/admin direction
+- `docs/roadmap/MASTER_DEVELOPMENT_ROADMAP.md` - Moved Phase 2 back to in-progress status after the UI direction reset
+
+### Validation
+- verified the live hero route uses `src/components/Hero.jsx`
+- verified the removed hero attribute string no longer exists in `src/`
+
+## 2026-07-24 - Dashboard and admin platform redesign expansion
+
+### Added
+- `src/components/app/AppWorkspacePrimitives.jsx` - Shared section, metric, card, and pill primitives for the broader Trezo-guided app redesign
+
+### Updated
+- `src/components/app/AppShellLayout.jsx` - Refined route framing and page metadata so the expanded platform surfaces read as a coherent enterprise workspace
+- `src/pages/app/AppAdminPage.jsx` - Expanded the internal control room into broader modules for organizations, jobs, reports, analytics, monitoring, flags, roles, and audit
+- `src/pages/app/AppBillingPage.jsx` - Rebuilt billing from a placeholder into a structured commercial readiness surface with plan, invoice, and payment posture sections
+- `src/pages/app/AppDeveloperPage.jsx` - Rebuilt the developer route into a structured API portal surface with key, webhook, SDK, and documentation patterns
+- `src/pages/app/AppHistoryPage.jsx` - Added sorting, pagination, and bulk-selection behavior to the scan ledger
+- `src/pages/app/AppNotificationsPage.jsx` - Rebuilt notifications into a real in-app event center fed by recent verification activity and system notices
+- `src/pages/app/AppSettingsPage.jsx` - Rebuilt settings into a broader account, security, session, and preference surface
+- `src/pages/app/AppTeamPage.jsx` - Rebuilt the team route into a collaboration architecture surface instead of a simple access placeholder
+- `src/pages/app/AppUploadsPage.jsx` - Added drag-and-drop intake framing and stronger queue, ETA, and validation posture panels
+- `docs/engineering/CURRENT_IMPLEMENTATION_STATUS.md` - Synced the current-state documentation with the expanded platform redesign scope
+
+### Validation
+- frontend production build passed
+
+## 2026-07-24 - Documentation preservation and temporary handover update
+
+### Added
+- `docs/engineering/DOCUMENTATION_STATUS_AND_HANDOVER_2026-07-24.md` - Final documentation status report and temporary handover package for continuation from another environment
+
+### Updated
+- `README.md` - Preserved as the top-level project entry point for the documentation-first handover
+- `docs/README.md` - Added the handover report to the canonical reading order and updated the active focus
+- `docs/roadmap/MASTER_DEVELOPMENT_ROADMAP.md` - Recorded the documentation-preservation focus and the pause on further dashboard and admin redesign work pending a new approved direction
+- `docs/engineering/PHASE_TASK_LIST.md` - Reflected the dashboard and admin redesign pause and clarified the next execution queue
+- `docs/engineering/CURRENT_IMPLEMENTATION_STATUS.md` - Recorded the handover focus, paused UI direction, and remaining documentation-normalization constraint
+
+### Notes
+- this update is documentation-only
+- the Trezo reference template and third-party template code remain excluded from the documentation handover branch
+
 ## [2026-07-16] - Phase 2 Expansion: Auth, Account Foundation, And Responsive App Polish
 
 ### Added
