@@ -24,9 +24,9 @@ const ROLE_LABELS = {
 }
 
 const ROLE_BADGE_COLORS = {
-  super_admin: 'bg-purple-50 text-purple-700 border-purple-200',
-  admin: 'bg-sky-50 text-sky-700 border-sky-200',
-  member: 'bg-stone-100 text-charcoal-mid border-stone-200',
+  super_admin: 'bg-rose-50 text-rose-700 border-rose-200',
+  admin: 'bg-amber-50 text-amber-700 border-amber-200',
+  member: 'bg-sky-50 text-sky-700 border-sky-200',
 }
 
 const PAGE_SIZE = 10
@@ -133,13 +133,12 @@ const USER_COLUMNS = [
     label: 'Team',
     sortable: true,
     render: (row) => (
-      <span
-        className={`inline-flex rounded-full border px-2.5 py-0.5 text-[11px] uppercase tracking-[0.14em] ${
-          row.team_enabled
-            ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-            : 'border-stone-200 bg-stone-100 text-charcoal-mid'
-        }`}
-      >
+      <span className="inline-flex items-center gap-1.5 text-sm text-charcoal">
+        <span
+          className={`inline-block h-2 w-2 rounded-full ${
+            row.team_enabled ? 'bg-emerald-400' : 'bg-stone-300'
+          }`}
+        />
         {row.team_enabled ? 'Enabled' : 'Disabled'}
       </span>
     ),
