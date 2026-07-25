@@ -111,7 +111,7 @@ export default function App() {
           <Route path="reports" element={<PlaceholderPage module="reports" />} />
           <Route path="analytics" element={<PlaceholderPage module="analytics" />} />
           <Route path="monitoring" element={<PlaceholderPage module="monitoring" />} />
-          <Route path="feature-flags" element={<PlaceholderPage module="feature-flags" />} />
+          <Route path="feature-flags" element={<AdminFeatureFlagsPage />} />
           <Route path="roles" element={<PlaceholderPage module="roles" />} />
           <Route path="audit-logs" element={<PlaceholderPage module="audit-logs" />} />
           <Route path="settings" element={<PlaceholderPage module="settings" />} />
