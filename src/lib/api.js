@@ -24,6 +24,9 @@ import {
   mockGetActivityLogs,
   mockReviewWaitlistApplication,
   mockCreateAccessInvite,
+  mockGetUserProfile,
+  mockUpdateUserRole,
+  mockToggleTeamAccess,
 } from './mockApi.js'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/v1'
@@ -333,4 +336,25 @@ export function getSupportTickets(params) {
 export function getActivityLogs(params) {
   if (USE_MOCK) return mockGetActivityLogs(params)
   return request('/account/activity')
+}
+
+export function getUserProfile(userId) {
+  if (USE_MOCK) return mockGetUserProfile(userId)
+  return request(`/admin/users/${userId}`)
+}
+
+export function updateUserRole(userId, role) {
+  if (USE_MOCK) return mockUpdateUserRole(userId, role)
+  return request(`/admin/users/${userId}/role`, {
+    method: 'PATCH',
+    body: JSON.stringify({ role }),
+  })
+}
+
+export function toggleTeamAccess(userId, enabled) {
+  if (USE_MOCK) return mockToggleTeamAccess(userId, enabled)
+  return request(`/admin/users/${userId}/team-access`, {
+    method: 'PATCH',
+    body: JSON.stringify({ enabled }),
+  })
 }
