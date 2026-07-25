@@ -9,6 +9,7 @@ import {
 } from '../../lib/api.js'
 import { mockAnalytics } from '../../lib/mockData.js'
 import AppStatePanel from '../../components/app/AppStatePanel.jsx'
+import AdminPageHeader from '../../components/admin/AdminPageHeader.jsx'
 import StatCard from '../../components/admin/StatCard.jsx'
 import AttentionCard from '../../components/admin/AttentionCard.jsx'
 import ActivityRow from '../../components/admin/ActivityRow.jsx'
@@ -244,34 +245,16 @@ export default function OverviewPage() {
   return (
     <div className="space-y-8">
       {/* ── Page Header ──────────────────────────────────────────────────── */}
-      <div>
-        <nav className="flex items-center gap-2 text-sm text-charcoal-mid" aria-label="Breadcrumb">
-          <Link to="/app/admin" className="hover:text-charcoal transition">Admin</Link>
-          <span className="text-charcoal-light" aria-hidden="true">/</span>
-          <span className="font-medium text-charcoal">Overview</span>
-        </nav>
-        <div className="mt-1 flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h1 className="font-serif text-3xl text-charcoal sm:text-4xl">
-              Admin Overview
-            </h1>
-            <p className="mt-2 max-w-2xl text-sm text-charcoal-mid">
-              Platform KPIs, queue health, and operational signals at a glance.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <span
-              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] ${statusCfg.cls}`}
-            >
-              <span className={`w-2 h-2 rounded-full ${statusCfg.dot}`} aria-hidden="true" />
-              {statusCfg.label}
-            </span>
-            <span className="text-[11px] uppercase tracking-[0.14em] text-charcoal-light">
-              Last updated: {lastUpdatedStr}
-            </span>
-          </div>
-        </div>
-      </div>
+      <AdminPageHeader
+        eyebrow="Admin Overview"
+        title="Platform command surface"
+        description="A live summary of queue posture, system health, waitlist pressure, and the signals that need operator attention first."
+        meta={[
+          { label: statusCfg.label },
+          { label: `Last updated ${lastUpdatedStr}` },
+          { label: 'Source: live waitlist + operational telemetry' },
+        ]}
+      />
 
       {/* ── Section 1: Platform KPIs ──────────────────────────────────────── */}
       <section>

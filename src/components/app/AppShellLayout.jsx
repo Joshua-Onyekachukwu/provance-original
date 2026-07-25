@@ -126,17 +126,17 @@ export default function AppShellLayout() {
   }, [location.pathname])
 
   return (
-    <div className="min-h-screen bg-parchment-light">
+    <div className="app-shell-surface min-h-screen bg-parchment-light">
       <div className="min-h-screen lg:grid lg:grid-cols-[320px_minmax(0,1fr)]">
         <aside className="border-b border-charcoal-soft bg-charcoal text-parchment lg:min-h-screen lg:border-b-0 lg:border-r">
           <div className="sticky top-0 p-4 sm:p-6 lg:h-screen lg:overflow-y-auto lg:p-8">
             <div className="flex items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/8 font-serif text-lg text-parchment shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/8 text-base font-semibold tracking-[-0.04em] text-parchment shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
                   P
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate font-serif text-2xl text-parchment">Provance</p>
+                  <p className="truncate text-2xl font-semibold tracking-[-0.05em] text-parchment">Provance</p>
                   <p className="text-xs uppercase tracking-[0.18em] text-parchment/55">
                     Verification Workspace
                   </p>
@@ -255,7 +255,7 @@ export default function AppShellLayout() {
                 <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-charcoal-light">
                   {pageMeta.eyebrow}
                 </p>
-                <h1 className="mt-2 font-serif text-3xl text-charcoal sm:text-4xl">
+                <h1 className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-charcoal sm:text-4xl">
                   {pageMeta.title}
                 </h1>
                 <p className="mt-3 max-w-3xl text-sm leading-relaxed text-charcoal-mid">

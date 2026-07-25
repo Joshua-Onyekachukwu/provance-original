@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import AdminPageHeader from '../../components/admin/AdminPageHeader.jsx'
 import StatCard from '../../components/admin/StatCard.jsx'
 import AdminTable from '../../components/admin/AdminTable.jsx'
 import AdminDrawer from '../../components/admin/AdminDrawer.jsx'
@@ -54,6 +55,14 @@ const STATUS_LABELS = {
   approved: 'Approved',
   deferred: 'Deferred',
   rejected: 'Rejected',
+}
+
+const STATUS_BADGE_STYLES = {
+  waitlist_submitted: 'border-slate-200 bg-slate-50 text-slate-700',
+  under_review: 'border-sky-200 bg-sky-50 text-sky-700',
+  approved: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  deferred: 'border-amber-200 bg-amber-50 text-amber-700',
+  rejected: 'border-rose-200 bg-rose-50 text-rose-700',
 }
 
 // ---------------------------------------------------------------------------
@@ -533,6 +542,26 @@ export default function WaitlistPage() {
 
   return (
     <div className="space-y-8">
+      <AdminPageHeader
+        eyebrow="Waitlist Operations"
+        title="Review inbound access applications"
+        description="Triage new applicants from the landing page, capture operator notes, and issue controlled invites only when the workspace is ready."
+        primaryAction={
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            className="rounded-2xl bg-charcoal px-5 py-3 text-sm font-medium text-parchment transition hover:bg-charcoal-soft"
+          >
+            Export waitlist CSV
+          </button>
+        }
+        meta={[
+          { label: `${summary.pendingReview} pending review` },
+          { label: `${summary.approved} approved` },
+          { label: 'Access review queue' },
+        ]}
+      />
+
       {/* --- KPI Cards (section-level loading) --- */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {kpisLoading ? (
@@ -640,14 +669,9 @@ export default function WaitlistPage() {
             )}
           </div>
 
-          {/* Export */}
-          <button
-            type="button"
-            onClick={handleExportCsv}
-            className="rounded-xl border border-stone-light px-4 py-2.5 text-sm text-charcoal transition hover:border-charcoal"
-          >
-            Export CSV
-          </button>
+          <div className="rounded-xl border border-stone-light bg-white px-4 py-2.5 text-xs uppercase tracking-[0.16em] text-charcoal-mid">
+            Live intake queue
+          </div>
         </div>
 
         {/* Table */}
@@ -681,28 +705,141 @@ export default function WaitlistPage() {
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         title={selectedApplication?.full_name || 'Applicant detail'}
+        eyebrow="Waitlist detail"
+        subtitle="Review applicant context, capture internal notes, and take a clear decision without leaving the control room."
+        meta={
+          selectedApplication ? (
+            <>
+              <span
+                className={`inline-flex rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.16em] ${
+                  STATUS_BADGE_STYLES[selectedApplication.status] || 'border-stone-light bg-parchment text-charcoal-mid'
+                }`}
+              >
+                {STATUS_LABELS[selectedApplication.status] || selectedApplication.status.replaceAll('_', ' ')}
+              </span>
+              <span className="inline-flex rounded-full border border-stone-light bg-white px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-charcoal-mid">
+                Submitted {new Date(selectedApplication.created_at).toLocaleDateString()}
+              </span>
+              {selectedApplication.company ? (
+                <span className="inline-flex rounded-full border border-stone-light bg-white px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-charcoal-mid">
+                  {selectedApplication.company}
+                </span>
+              ) : null}
+            </>
+          ) : null
+        }
       >
         {selectedApplication && (
           <div className="space-y-6">
-            {/* Applicant details */}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <StatCard label="Email" value={selectedApplication.email} detail="Primary account email." compact />
-              <StatCard label="Company" value={selectedApplication.company || 'Not provided'} detail="Organization context." compact />
-              <StatCard label="Role" value={selectedApplication.role_title || 'Not provided'} detail="Declared role." compact />
-              <StatCard label="Status" value={selectedApplication.status.replaceAll('_', ' ')} detail="Latest review outcome." compact />
+            <div className="rounded-[1.6rem] border border-stone-light bg-[linear-gradient(135deg,rgba(243,246,255,0.9),rgba(255,253,249,1))] p-5">
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                <div className="min-w-0">
+                  <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-charcoal-light">
+                    Applicant profile
+                  </p>
+                  <h3 className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-charcoal">
+                    {selectedApplication.full_name}
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-charcoal-mid">
+                    {selectedApplication.use_case}
+                  </p>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2 lg:w-[22rem]">
+                  <div className="rounded-2xl border border-white/60 bg-white/80 px-4 py-3">
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-charcoal-light">Email</p>
+                    <p className="mt-1 text-sm text-charcoal">{selectedApplication.email}</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/60 bg-white/80 px-4 py-3">
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-charcoal-light">Declared role</p>
+                    <p className="mt-1 text-sm text-charcoal">{selectedApplication.role_title || 'Not provided'}</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/60 bg-white/80 px-4 py-3">
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-charcoal-light">Company</p>
+                    <p className="mt-1 text-sm text-charcoal">{selectedApplication.company || 'Independent applicant'}</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/60 bg-white/80 px-4 py-3">
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-charcoal-light">Current status</p>
+                    <p className="mt-1 text-sm text-charcoal">
+                      {STATUS_LABELS[selectedApplication.status] || selectedApplication.status.replaceAll('_', ' ')}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            {/* Use case */}
-            <div className="rounded-2xl border border-stone-light bg-parchment p-4">
-              <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">Use case</p>
-              <p className="mt-3 text-sm leading-relaxed text-charcoal-mid">
-                {selectedApplication.use_case}
-              </p>
+            <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+              <div className="rounded-2xl border border-stone-light bg-parchment p-5">
+                <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-charcoal-light">Operational fit</p>
+                <div className="mt-4 space-y-4">
+                  <div className="rounded-2xl border border-stone-light bg-white-warm p-4">
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-charcoal-light">Use case summary</p>
+                    <p className="mt-2 text-sm leading-6 text-charcoal-mid">{selectedApplication.use_case}</p>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-2xl border border-stone-light bg-white-warm p-4">
+                      <p className="text-[10px] uppercase tracking-[0.16em] text-charcoal-light">Decision posture</p>
+                      <p className="mt-2 text-sm text-charcoal">
+                        {selectedApplication.status === 'approved'
+                          ? 'Ready for controlled access.'
+                          : selectedApplication.status === 'rejected'
+                            ? 'Not suitable for current rollout.'
+                            : 'Needs operator review before invite.'}
+                      </p>
+                    </div>
+                    <div className="rounded-2xl border border-stone-light bg-white-warm p-4">
+                      <p className="text-[10px] uppercase tracking-[0.16em] text-charcoal-light">Onboarding signal</p>
+                      <p className="mt-2 text-sm text-charcoal">
+                        {selectedApplication.company
+                          ? 'Organization-backed account with clearer team potential.'
+                          : 'Individual account, validate expected usage before issuing access.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-stone-light bg-parchment p-5">
+                <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-charcoal-light">Operator notes</p>
+                <p className="mt-2 text-sm text-charcoal-mid">
+                  Capture internal context, onboarding notes, or follow-up decisions.
+                </p>
+                <textarea
+                  value={notes}
+                  onChange={(event) => setNotes(event.target.value)}
+                  rows={9}
+                  className="mt-4 w-full rounded-2xl border border-stone-light bg-white-warm px-4 py-3 text-sm text-charcoal"
+                />
+
+                <div className="mt-4 flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleSaveNotes}
+                    disabled={notesSaveState.status === 'submitting'}
+                    className="rounded-xl bg-charcoal px-4 py-2.5 text-sm font-medium text-parchment transition hover:bg-charcoal-soft disabled:opacity-50"
+                  >
+                    {notesSaveState.status === 'submitting' ? 'Saving…' : 'Save notes'}
+                  </button>
+
+                  {notesSaveState.message && (
+                    <span
+                      aria-live="polite"
+                      className={`text-sm ${
+                        notesSaveState.status === 'error'
+                          ? 'text-rose-600'
+                          : 'text-emerald-600'
+                      }`}
+                    >
+                      {notesSaveState.message}
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* Status history timeline */}
             {selectedApplication.status_history && selectedApplication.status_history.length > 0 && (
-              <div className="rounded-2xl border border-stone-light bg-parchment p-4">
+              <div className="rounded-2xl border border-stone-light bg-parchment p-5">
                 <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-charcoal-light">
                   Status history
                 </p>
@@ -736,46 +873,6 @@ export default function WaitlistPage() {
                 </div>
               </div>
             )}
-
-            {/* Notes with explicit Save button */}
-            <div className="space-y-3">
-              <label className="block">
-                <span className="text-sm font-medium text-charcoal">Operator notes</span>
-                <span className="mt-1 block text-sm text-charcoal-mid">
-                  Capture internal context, onboarding notes, or follow-up decisions.
-                </span>
-                <textarea
-                  value={notes}
-                  onChange={(event) => setNotes(event.target.value)}
-                  rows={5}
-                  className="mt-2 w-full rounded-2xl border border-stone-light bg-parchment px-4 py-3 text-sm text-charcoal"
-                />
-              </label>
-
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={handleSaveNotes}
-                  disabled={notesSaveState.status === 'submitting'}
-                  className="rounded-xl bg-charcoal px-4 py-2.5 text-sm font-medium text-parchment transition hover:bg-charcoal-soft disabled:opacity-50"
-                >
-                  {notesSaveState.status === 'submitting' ? 'Saving…' : 'Save notes'}
-                </button>
-
-                {notesSaveState.message && (
-                  <span
-                    aria-live="polite"
-                    className={`text-sm ${
-                      notesSaveState.status === 'error'
-                        ? 'text-rose-600'
-                        : 'text-emerald-600'
-                    }`}
-                  >
-                    {notesSaveState.message}
-                  </span>
-                )}
-              </div>
-            </div>
 
             {/* Action feedback in drawer */}
             {actionState.message && (
@@ -811,42 +908,45 @@ export default function WaitlistPage() {
             )}
 
             {/* Action buttons */}
-            <div className="flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => handleReviewClick('under_review')}
-                className="rounded-xl border border-stone-light px-4 py-3 text-sm text-charcoal transition hover:border-charcoal"
-              >
-                Mark under review
-              </button>
-              <button
-                type="button"
-                onClick={() => handleReviewClick('approved')}
-                className="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-emerald-700"
-              >
-                Approve
-              </button>
-              <button
-                type="button"
-                onClick={() => handleReviewClick('deferred')}
-                className="rounded-xl bg-amber-500 px-4 py-3 text-sm font-medium text-charcoal transition hover:bg-amber-400"
-              >
-                Defer
-              </button>
-              <button
-                type="button"
-                onClick={() => handleReviewClick('rejected')}
-                className="rounded-xl bg-rose-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-rose-700"
-              >
-                Reject
-              </button>
-              <button
-                type="button"
-                onClick={handleCreateInvite}
-                className="rounded-xl bg-charcoal px-4 py-3 text-sm font-medium text-parchment transition hover:bg-charcoal-soft"
-              >
-                Create access invite
-              </button>
+            <div className="rounded-2xl border border-stone-light bg-white p-4">
+              <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-charcoal-light">Decision controls</p>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleReviewClick('under_review')}
+                  className="rounded-xl border border-stone-light px-4 py-3 text-sm text-charcoal transition hover:border-charcoal"
+                >
+                  Mark under review
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleReviewClick('approved')}
+                  className="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-emerald-700"
+                >
+                  Approve
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleReviewClick('deferred')}
+                  className="rounded-xl bg-amber-500 px-4 py-3 text-sm font-medium text-charcoal transition hover:bg-amber-400"
+                >
+                  Defer
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleReviewClick('rejected')}
+                  className="rounded-xl bg-rose-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-rose-700"
+                >
+                  Reject
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCreateInvite}
+                  className="rounded-xl bg-charcoal px-4 py-3 text-sm font-medium text-parchment transition hover:bg-charcoal-soft"
+                >
+                  Create access invite
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -868,7 +968,7 @@ export default function WaitlistPage() {
         <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-charcoal-light">
           Recent admin activity
         </p>
-        <h3 className="mt-2 font-serif text-2xl text-charcoal">Audit trail</h3>
+        <h3 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-charcoal">Audit trail</h3>
         <div className="mt-5 space-y-3">
           {recentAuditEvents.length === 0 ? (
             <p className="text-sm text-charcoal-mid">No recent admin activity recorded.</p>

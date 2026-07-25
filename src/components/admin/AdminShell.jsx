@@ -6,7 +6,7 @@ const ADMIN_MODULES = [
   {
     group: 'Overview',
     items: [
-      { label: 'Overview', href: '/app/admin/overview', icon: '◈' },
+      { label: 'Overview', href: '/app/admin', icon: '◈', exact: true },
     ],
   },
   {
@@ -40,7 +40,7 @@ const ADMIN_MODULES = [
 function getModuleLabel(pathname) {
   for (const group of ADMIN_MODULES) {
     for (const item of group.items) {
-      if (pathname.startsWith(item.href)) {
+      if ((item.exact && pathname === item.href) || (!item.exact && pathname.startsWith(item.href))) {
         return item.label
       }
     }
@@ -59,7 +59,7 @@ export default function AdminShell() {
   }, [location.pathname])
 
   return (
-    <div className="min-h-screen bg-parchment">
+    <div className="admin-shell-surface min-h-screen bg-parchment-light">
       <div className="min-h-screen lg:grid lg:grid-cols-[280px_minmax(0,1fr)]">
         {/* Sidebar */}
         <aside className="border-b border-charcoal-soft bg-charcoal text-parchment lg:min-h-screen lg:border-b-0 lg:border-r">
@@ -67,11 +67,11 @@ export default function AdminShell() {
             {/* Brand + mobile toggle */}
             <div className="flex items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-300/20 bg-amber-300/10 font-serif text-base text-amber-100">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-300/20 bg-amber-300/10 text-sm font-semibold tracking-[-0.04em] text-amber-100">
                   A
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate font-serif text-xl text-parchment">Admin</p>
+                  <p className="truncate text-xl font-semibold tracking-[-0.05em] text-parchment">Admin</p>
                   <p className="text-[10px] uppercase tracking-[0.18em] text-parchment/45">
                     Control Room
                   </p>
@@ -127,8 +127,9 @@ export default function AdminShell() {
                   </p>
                   <div className="mt-2 space-y-1">
                     {group.items.map((item) => {
-                      const isActive = location.pathname === item.href || 
-                        (item.href !== '/app/admin/overview' && location.pathname.startsWith(item.href))
+                      const isActive =
+                        (item.exact && location.pathname === item.href) ||
+                        (!item.exact && location.pathname.startsWith(item.href))
 
                       return (
                         <NavLink
@@ -191,7 +192,7 @@ export default function AdminShell() {
                   <span className="text-charcoal-light" aria-hidden="true">/</span>
                   <span className="font-medium text-charcoal">{currentModule}</span>
                 </nav>
-                <h1 className="mt-2 font-serif text-3xl text-charcoal sm:text-4xl">
+                <h1 className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-charcoal sm:text-4xl">
                   {currentModule}
                 </h1>
               </div>

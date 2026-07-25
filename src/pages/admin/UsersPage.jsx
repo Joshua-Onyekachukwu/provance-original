@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import AppStatePanel from '../../components/app/AppStatePanel.jsx'
+import AdminPageHeader from '../../components/admin/AdminPageHeader.jsx'
 import StatCard from '../../components/admin/StatCard.jsx'
 import AdminTable from '../../components/admin/AdminTable.jsx'
 import AdminDrawer from '../../components/admin/AdminDrawer.jsx'
@@ -443,6 +444,17 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-8">
+      <AdminPageHeader
+        eyebrow="User Administration"
+        title="Manage account access and roles"
+        description="Review account posture, role assignments, team access, and user-level activity without leaving the control room."
+        meta={[
+          { label: `${kpis.total} total users` },
+          { label: `${kpis.admins} admins` },
+          { label: `${kpis.teamEnabled} team-enabled accounts` },
+        ]}
+      />
+
       {/* KPI Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <StatCard

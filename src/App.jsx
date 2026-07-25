@@ -35,6 +35,8 @@ import AppAccessDeniedPage from './pages/app/AppAccessDeniedPage.jsx'
 import AdminOverviewPage from './pages/admin/OverviewPage.jsx'
 import AdminWaitlistPage from './pages/admin/WaitlistPage.jsx'
 import AdminUsersPage from './pages/admin/UsersPage.jsx'
+import AdminOrganizationsPage from './pages/admin/OrganizationsPage.jsx'
+import AdminFeatureFlagsPage from './pages/admin/FeatureFlagsPage.jsx'
 import PlaceholderPage from './pages/admin/PlaceholderPage.jsx'
 
 function PublicLayout() {
@@ -95,28 +97,6 @@ export default function App() {
         <Route path="account" element={<AppAccountPage />} />
         <Route path="access-denied" element={<AppAccessDeniedPage />} />
         <Route
-          path="admin"
-          element={
-            <ProtectedRoute requireAdmin>
-              <AdminShell />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<Navigate to="overview" replace />} />
-          <Route path="overview" element={<AdminOverviewPage />} />
-          <Route path="waitlist" element={<AdminWaitlistPage />} />
-          <Route path="users" element={<AdminUsersPage />} />
-          <Route path="organizations" element={<PlaceholderPage module="organizations" />} />
-          <Route path="jobs" element={<PlaceholderPage module="jobs" />} />
-          <Route path="reports" element={<PlaceholderPage module="reports" />} />
-          <Route path="analytics" element={<PlaceholderPage module="analytics" />} />
-          <Route path="monitoring" element={<PlaceholderPage module="monitoring" />} />
-          <Route path="feature-flags" element={<AdminFeatureFlagsPage />} />
-          <Route path="roles" element={<PlaceholderPage module="roles" />} />
-          <Route path="audit-logs" element={<PlaceholderPage module="audit-logs" />} />
-          <Route path="settings" element={<PlaceholderPage module="settings" />} />
-        </Route>
-        <Route
           path="team"
           element={
             <ProtectedRoute requireTeam>
@@ -124,6 +104,29 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+      </Route>
+
+      <Route
+        path="/app/admin"
+        element={
+          <ProtectedRoute requireAdmin>
+            <AdminShell />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<AdminOverviewPage />} />
+        <Route path="overview" element={<Navigate to="/app/admin" replace />} />
+        <Route path="waitlist" element={<AdminWaitlistPage />} />
+        <Route path="users" element={<AdminUsersPage />} />
+        <Route path="organizations" element={<AdminOrganizationsPage />} />
+        <Route path="jobs" element={<PlaceholderPage module="jobs" />} />
+        <Route path="reports" element={<PlaceholderPage module="reports" />} />
+        <Route path="analytics" element={<PlaceholderPage module="analytics" />} />
+        <Route path="monitoring" element={<PlaceholderPage module="monitoring" />} />
+        <Route path="feature-flags" element={<AdminFeatureFlagsPage />} />
+        <Route path="roles" element={<PlaceholderPage module="roles" />} />
+        <Route path="audit-logs" element={<PlaceholderPage module="audit-logs" />} />
+        <Route path="settings" element={<PlaceholderPage module="settings" />} />
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />

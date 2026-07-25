@@ -26,8 +26,8 @@ function daysAgo(days, hourOffset = 0) {
 export const mockUsers = [
   {
     id: 'usr_001',
-    email: 'james.adedapo@provance.io',
-    displayName: 'James Adedapo',
+    email: 'joshua.onyekachukwu@provance.io',
+    displayName: 'Joshua Onyekachukwu',
     role: 'super_admin',
     team_enabled: true,
     created_at: daysAgo(30, 2),

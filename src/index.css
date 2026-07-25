@@ -20,6 +20,7 @@
   --color-amber-light: #d69a42;
   --color-amber-glow: #f0bf6c;
   --color-amber-subtle: #f8ecd9;
+  --font-app: "Inter", "Manrope", system-ui, -apple-system, sans-serif;
   --font-serif: "Fraunces", Georgia, serif;
   --font-sans: "Manrope", Inter, system-ui, -apple-system, sans-serif;
   --font-mono: "IBM Plex Mono", "Fira Code", monospace;
@@ -114,6 +115,27 @@ summary {
 .content-container {
   max-width: 1240px;
   margin: 0 auto;
+}
+
+.app-shell-surface,
+.admin-shell-surface {
+  font-family: var(--font-app);
+  font-variant-numeric: tabular-nums;
+}
+
+.app-shell-surface .font-serif,
+.admin-shell-surface .font-serif {
+  font-family: var(--font-app);
+  letter-spacing: -0.04em;
+}
+
+.app-shell-surface h1,
+.app-shell-surface h2,
+.app-shell-surface h3,
+.admin-shell-surface h1,
+.admin-shell-surface h2,
+.admin-shell-surface h3 {
+  line-height: 1.05;
 }
 
 .skip-link {

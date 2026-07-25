@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { mockOrganizations, mockUsers, mockAuditEvents } from '../../lib/mockData.js'
+import AdminPageHeader from '../../components/admin/AdminPageHeader.jsx'
 import StatCard from '../../components/admin/StatCard.jsx'
 import AdminTable from '../../components/admin/AdminTable.jsx'
 import AdminDrawer from '../../components/admin/AdminDrawer.jsx'
@@ -290,6 +291,17 @@ export default function OrganizationsPage() {
   // --------------------------------------------------
   return (
     <div className="space-y-8">
+      <AdminPageHeader
+        eyebrow="Organization Management"
+        title="Inspect workspace structure and posture"
+        description="Review organization membership, storage usage, and team activity from one operational surface."
+        meta={[
+          { label: `${kpis.totalOrgs} organizations` },
+          { label: `${kpis.totalMembers} members` },
+          { label: `${formatStorage(kpis.totalStorage)} stored` },
+        ]}
+      />
+
       {/* --- KPI Cards --- */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {kpisLoading ? (

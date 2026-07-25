@@ -67,7 +67,7 @@ export async function mockGetCurrentViewer() {
     profile: {
       displayName: user.displayName,
       organization: 'Provance Internal',
-      roleTitle: 'Platform Administrator',
+      roleTitle: 'Super Admin',
       defaultWorkspace: 'individual',
       emailNotifications: true,
       accountRole: user.role,
