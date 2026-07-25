@@ -83,9 +83,28 @@ export async function mockGetCurrentViewer() {
   }
 }
 
-export async function mockGetUserProfile() {
+export async function mockGetUserProfile(userId) {
   await delay()
-  return mockUsers[0]
+  maybeError()
+  const user = findById(mockUsers, userId)
+  if (!user) throw new Error('User not found.')
+  return user
+}
+
+export async function mockUpdateUserRole(userId, role) {
+  await delay(300, 500)
+  maybeError()
+  const user = findById(mockUsers, userId)
+  if (!user) throw new Error('User not found.')
+  return { ...user, role, updated_at: new Date().toISOString() }
+}
+
+export async function mockToggleTeamAccess(userId, enabled) {
+  await delay(200, 400)
+  maybeError()
+  const user = findById(mockUsers, userId)
+  if (!user) throw new Error('User not found.')
+  return { ...user, team_enabled: enabled, updated_at: new Date().toISOString() }
 }
 
 // ---------------------------------------------------------------------------

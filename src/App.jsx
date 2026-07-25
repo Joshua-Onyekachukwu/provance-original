@@ -34,8 +34,7 @@ import AppTeamPage from './pages/app/AppTeamPage.jsx'
 import AppAccessDeniedPage from './pages/app/AppAccessDeniedPage.jsx'
 import AdminOverviewPage from './pages/admin/OverviewPage.jsx'
 import AdminWaitlistPage from './pages/admin/WaitlistPage.jsx'
-import AdminOrganizationsPage from './pages/admin/OrganizationsPage.jsx'
-import AdminFeatureFlagsPage from './pages/admin/FeatureFlagsPage.jsx'
+import AdminUsersPage from './pages/admin/UsersPage.jsx'
 import PlaceholderPage from './pages/admin/PlaceholderPage.jsx'
 
 function PublicLayout() {
@@ -106,8 +105,8 @@ export default function App() {
           <Route index element={<Navigate to="overview" replace />} />
           <Route path="overview" element={<AdminOverviewPage />} />
           <Route path="waitlist" element={<AdminWaitlistPage />} />
-          <Route path="users" element={<PlaceholderPage module="users" />} />
-          <Route path="organizations" element={<AdminOrganizationsPage />} />
+          <Route path="users" element={<AdminUsersPage />} />
+          <Route path="organizations" element={<PlaceholderPage module="organizations" />} />
           <Route path="jobs" element={<PlaceholderPage module="jobs" />} />
           <Route path="reports" element={<PlaceholderPage module="reports" />} />
           <Route path="analytics" element={<PlaceholderPage module="analytics" />} />
