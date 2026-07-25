@@ -225,6 +225,9 @@ export const mockWaitlist = [
     status: 'waitlist_submitted',
     notes: 'Referred by Amina Sow. High-priority newsroom.',
     created_at: daysAgo(18, 3),
+    status_history: [
+      { status: 'waitlist_submitted', changed_by: 'system', changed_at: daysAgo(18, 3) },
+    ],
   },
   {
     id: 'wl_002',
@@ -236,6 +239,10 @@ export const mockWaitlist = [
     status: 'under_review',
     notes: 'Large state-affiliated agency. Needs team onboarding.',
     created_at: daysAgo(15, 6),
+    status_history: [
+      { status: 'waitlist_submitted', changed_by: 'system', changed_at: daysAgo(15, 6) },
+      { status: 'under_review', changed_by: 'Amina Sow', changed_at: daysAgo(14, 3) },
+    ],
   },
   {
     id: 'wl_003',
@@ -247,6 +254,11 @@ export const mockWaitlist = [
     status: 'approved',
     notes: 'Approved for individual plan. Sent invite 2026-07-22.',
     created_at: daysAgo(12, 1),
+    status_history: [
+      { status: 'waitlist_submitted', changed_by: 'system', changed_at: daysAgo(12, 1) },
+      { status: 'under_review', changed_by: 'James Adedapo', changed_at: daysAgo(10, 4) },
+      { status: 'approved', changed_by: 'James Adedapo', changed_at: daysAgo(8, 2) },
+    ],
   },
   {
     id: 'wl_004',
@@ -258,6 +270,11 @@ export const mockWaitlist = [
     status: 'approved',
     notes: 'Approved with team plan. Invite sent, awaiting acceptance.',
     created_at: daysAgo(10, 4),
+    status_history: [
+      { status: 'waitlist_submitted', changed_by: 'system', changed_at: daysAgo(10, 4) },
+      { status: 'under_review', changed_by: 'Amina Sow', changed_at: daysAgo(8, 1) },
+      { status: 'approved', changed_by: 'Amina Sow', changed_at: daysAgo(6, 3) },
+    ],
   },
   {
     id: 'wl_005',
@@ -269,6 +286,11 @@ export const mockWaitlist = [
     status: 'deferred',
     notes: 'Defer until security review complete. Follow up in 30 days.',
     created_at: daysAgo(8, 2),
+    status_history: [
+      { status: 'waitlist_submitted', changed_by: 'system', changed_at: daysAgo(8, 2) },
+      { status: 'under_review', changed_by: 'James Adedapo', changed_at: daysAgo(6, 5) },
+      { status: 'deferred', changed_by: 'James Adedapo', changed_at: daysAgo(4, 1) },
+    ],
   },
   {
     id: 'wl_006',
@@ -280,6 +302,11 @@ export const mockWaitlist = [
     status: 'rejected',
     notes: 'Rejected — use case not aligned with current product scope.',
     created_at: daysAgo(7, 5),
+    status_history: [
+      { status: 'waitlist_submitted', changed_by: 'system', changed_at: daysAgo(7, 5) },
+      { status: 'under_review', changed_by: 'Amina Sow', changed_at: daysAgo(5, 2) },
+      { status: 'rejected', changed_by: 'Amina Sow', changed_at: daysAgo(3, 6) },
+    ],
   },
   {
     id: 'wl_007',
@@ -291,6 +318,9 @@ export const mockWaitlist = [
     status: 'waitlist_submitted',
     notes: '',
     created_at: daysAgo(6, 1),
+    status_history: [
+      { status: 'waitlist_submitted', changed_by: 'system', changed_at: daysAgo(6, 1) },
+    ],
   },
   {
     id: 'wl_008',
@@ -302,6 +332,10 @@ export const mockWaitlist = [
     status: 'under_review',
     notes: 'High-priority. Sensitive political content. Fast-track review.',
     created_at: daysAgo(5, 3),
+    status_history: [
+      { status: 'waitlist_submitted', changed_by: 'system', changed_at: daysAgo(5, 3) },
+      { status: 'under_review', changed_by: 'James Adedapo', changed_at: daysAgo(4, 7) },
+    ],
   },
   {
     id: 'wl_009',
@@ -313,6 +347,11 @@ export const mockWaitlist = [
     status: 'approved',
     notes: 'Individual plan approved. Invite sent 2026-07-20.',
     created_at: daysAgo(5, 7),
+    status_history: [
+      { status: 'waitlist_submitted', changed_by: 'system', changed_at: daysAgo(5, 7) },
+      { status: 'under_review', changed_by: 'Amina Sow', changed_at: daysAgo(4, 2) },
+      { status: 'approved', changed_by: 'Amina Sow', changed_at: daysAgo(3, 4) },
+    ],
   },
   {
     id: 'wl_010',
@@ -324,6 +363,9 @@ export const mockWaitlist = [
     status: 'waitlist_submitted',
     notes: '',
     created_at: daysAgo(4, 2),
+    status_history: [
+      { status: 'waitlist_submitted', changed_by: 'system', changed_at: daysAgo(4, 2) },
+    ],
   },
   {
     id: 'wl_011',
@@ -335,6 +377,10 @@ export const mockWaitlist = [
     status: 'under_review',
     notes: 'Election preparedness — potential for team plan upsell.',
     created_at: daysAgo(3, 5),
+    status_history: [
+      { status: 'waitlist_submitted', changed_by: 'system', changed_at: daysAgo(3, 5) },
+      { status: 'under_review', changed_by: 'James Adedapo', changed_at: daysAgo(2, 2) },
+    ],
   },
   {
     id: 'wl_012',
@@ -346,6 +392,11 @@ export const mockWaitlist = [
     status: 'deferred',
     notes: 'Requires custom integration. Defer until API v2.',
     created_at: daysAgo(3, 1),
+    status_history: [
+      { status: 'waitlist_submitted', changed_by: 'system', changed_at: daysAgo(3, 1) },
+      { status: 'under_review', changed_by: 'Amina Sow', changed_at: daysAgo(2, 5) },
+      { status: 'deferred', changed_by: 'Amina Sow', changed_at: daysAgo(1, 8) },
+    ],
   },
   {
     id: 'wl_013',
@@ -357,6 +408,11 @@ export const mockWaitlist = [
     status: 'approved',
     notes: 'Team plan. Onboarding scheduled for next week.',
     created_at: daysAgo(2, 4),
+    status_history: [
+      { status: 'waitlist_submitted', changed_by: 'system', changed_at: daysAgo(2, 4) },
+      { status: 'under_review', changed_by: 'James Adedapo', changed_at: daysAgo(1, 6) },
+      { status: 'approved', changed_by: 'James Adedapo', changed_at: daysAgo(0, 10) },
+    ],
   },
   {
     id: 'wl_014',
@@ -368,6 +424,9 @@ export const mockWaitlist = [
     status: 'waitlist_submitted',
     notes: 'Significant volume anticipated. Needs enterprise assessment.',
     created_at: daysAgo(2, 1),
+    status_history: [
+      { status: 'waitlist_submitted', changed_by: 'system', changed_at: daysAgo(2, 1) },
+    ],
   },
   {
     id: 'wl_015',
@@ -379,6 +438,10 @@ export const mockWaitlist = [
     status: 'under_review',
     notes: 'Non-profit partnership potential. Flag for BD team.',
     created_at: daysAgo(1, 6),
+    status_history: [
+      { status: 'waitlist_submitted', changed_by: 'system', changed_at: daysAgo(1, 6) },
+      { status: 'under_review', changed_by: 'Amina Sow', changed_at: daysAgo(0, 4) },
+    ],
   },
   {
     id: 'wl_016',
@@ -390,6 +453,11 @@ export const mockWaitlist = [
     status: 'rejected',
     notes: 'Rejected — duplicate application from same organization.',
     created_at: daysAgo(1, 3),
+    status_history: [
+      { status: 'waitlist_submitted', changed_by: 'system', changed_at: daysAgo(1, 3) },
+      { status: 'under_review', changed_by: 'James Adedapo', changed_at: daysAgo(0, 6) },
+      { status: 'rejected', changed_by: 'James Adedapo', changed_at: daysAgo(0, 2) },
+    ],
   },
   {
     id: 'wl_017',
@@ -401,6 +469,9 @@ export const mockWaitlist = [
     status: 'waitlist_submitted',
     notes: '',
     created_at: daysAgo(0, 8),
+    status_history: [
+      { status: 'waitlist_submitted', changed_by: 'system', changed_at: daysAgo(0, 8) },
+    ],
   },
   {
     id: 'wl_018',
@@ -412,6 +483,10 @@ export const mockWaitlist = [
     status: 'under_review',
     notes: 'Investigative journalism use case. High trust requirements.',
     created_at: daysAgo(0, 2),
+    status_history: [
+      { status: 'waitlist_submitted', changed_by: 'system', changed_at: daysAgo(0, 2) },
+      { status: 'under_review', changed_by: 'Amina Sow', changed_at: daysAgo(0, 1) },
+    ],
   },
 ]
 
