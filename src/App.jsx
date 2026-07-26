@@ -30,6 +30,7 @@ import AppUploadsPage from './pages/app/AppUploadsPage.jsx'
 import AppReportsPage from './pages/app/AppReportsPage.jsx'
 import AppReportPrintPage from './pages/app/AppReportPrintPage.jsx'
 import AppAccountPage from './pages/app/AppAccountPage.jsx'
+import AppSettingsPage from './pages/app/AppSettingsPage.jsx'
 import AppTeamPage from './pages/app/AppTeamPage.jsx'
 import AppAccessDeniedPage from './pages/app/AppAccessDeniedPage.jsx'
 import AdminOverviewPage from './pages/admin/OverviewPage.jsx'
@@ -95,6 +96,7 @@ export default function App() {
         <Route path="reports/:scanId" element={<AppReportsPage />} />
         <Route path="reports/:scanId/print" element={<AppReportPrintPage />} />
         <Route path="account" element={<AppAccountPage />} />
+        <Route path="settings" element={<AppSettingsPage />} />
         <Route path="access-denied" element={<AppAccessDeniedPage />} />
         <Route
           path="team"
