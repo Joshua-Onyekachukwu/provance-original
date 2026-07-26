@@ -8,6 +8,7 @@ function getNavItems(permissions) {
     { label: 'Uploads', href: '/app/uploads', note: 'Media intake' },
     { label: 'Reports', href: '/app/reports', note: 'Verification results' },
     { label: 'Account', href: '/app/account', note: 'Profile and settings' },
+    { label: 'Settings', href: '/app/settings', note: 'Preferences' },
     { label: 'Team', href: '/app/team', note: 'Shared workspace' },
   ]
 
@@ -48,6 +49,14 @@ function getPageMeta(pathname) {
       eyebrow: 'Identity',
       title: 'Account settings',
       detail: 'Manage profile details, workspace preferences, and session context.',
+    }
+  }
+
+  if (pathname.startsWith('/app/settings')) {
+    return {
+      eyebrow: 'Preferences',
+      title: 'Settings',
+      detail: 'Manage security, notification preferences, and appearance.',
     }
   }
 
