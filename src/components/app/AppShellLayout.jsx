@@ -2,20 +2,35 @@ import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext.jsx'
 
-function getNavItems(permissions) {
-  const items = [
-    { label: 'Dashboard', href: '/app', note: 'Operations overview' },
-    { label: 'Uploads', href: '/app/uploads', note: 'Media intake' },
-    { label: 'Reports', href: '/app/reports', note: 'Verification results' },
-    { label: 'Account', href: '/app/account', note: 'Profile and settings' },
-    { label: 'Team', href: '/app/team', note: 'Shared workspace' },
+function getNavGroups(permissions) {
+  const groups = [
+    {
+      label: 'Workspace',
+      items: [
+        { label: 'Dashboard', href: '/app', note: 'Operations overview' },
+        { label: 'Uploads', href: '/app/uploads', note: 'Media intake' },
+        { label: 'Reports', href: '/app/reports', note: 'Verification results' },
+      ],
+    },
+    {
+      label: 'Account',
+      items: [
+        { label: 'Account', href: '/app/account', note: 'Profile and settings' },
+        { label: 'Team', href: '/app/team', note: 'Shared workspace' },
+      ],
+    },
   ]
 
   if (permissions.admin) {
-    items.push({ label: 'Admin', href: '/app/admin', note: 'Internal control room' })
+    groups.push({
+      label: 'Internal',
+      items: [
+        { label: 'Admin', href: '/app/admin', note: 'Internal control room' },
+      ],
+    })
   }
 
-  return items
+  return groups
 }
 
 function getPageMeta(pathname) {
@@ -118,7 +133,7 @@ export default function AppShellLayout() {
   const { profile, user, signOut, permissions } = useAuth()
   const location = useLocation()
   const [isNavOpen, setIsNavOpen] = useState(false)
-  const navItems = getNavItems(permissions)
+  const navGroups = getNavGroups(permissions)
   const pageMeta = getPageMeta(location.pathname)
 
   useEffect(() => {
@@ -127,18 +142,18 @@ export default function AppShellLayout() {
 
   return (
     <div className="app-shell-surface min-h-screen bg-parchment-light">
-      <div className="min-h-screen lg:grid lg:grid-cols-[320px_minmax(0,1fr)]">
+      <div className="min-h-screen lg:grid lg:grid-cols-[280px_minmax(0,1fr)]">
         <aside className="border-b border-charcoal-soft bg-charcoal text-parchment lg:min-h-screen lg:border-b-0 lg:border-r">
           <div className="sticky top-0 p-4 sm:p-6 lg:h-screen lg:overflow-y-auto lg:p-8">
             <div className="flex items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/8 text-base font-semibold tracking-[-0.04em] text-parchment shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/8 text-sm font-semibold tracking-[-0.04em] text-parchment">
                   P
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate text-2xl font-semibold tracking-[-0.05em] text-parchment">Provance</p>
-                  <p className="text-xs uppercase tracking-[0.18em] text-parchment/55">
-                    Verification Workspace
+                  <p className="truncate text-xl font-semibold tracking-[-0.05em] text-parchment">Provance</p>
+                  <p className="text-[11px] text-parchment/55">
+                    Trust infrastructure
                   </p>
                 </div>
               </div>
@@ -202,40 +217,43 @@ export default function AppShellLayout() {
               </div>
             </div>
 
-            <div className={`${isNavOpen ? 'mt-8 block' : 'hidden'} lg:block`}>
-              <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-parchment/48">
-                Navigation
-              </p>
-            </div>
+            <nav className={`${isNavOpen ? 'mt-8 grid' : 'hidden'} gap-6 lg:grid`}>
+              {navGroups.map((group) => (
+                <div key={group.label}>
+                  <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-parchment/48">
+                    {group.label}
+                  </p>
+                  <div className="mt-2 grid gap-2">
+                    {group.items.map((item) => {
+                      const isLocked = item.href === '/app/team' && !permissions.team
 
-            <nav className={`${isNavOpen ? 'mt-4 grid' : 'hidden'} gap-2 lg:grid`}>
-              {navItems.map((item) => {
-                const isLocked = item.href === '/app/team' && !permissions.team
-
-                return (
-                  <NavLink
-                    key={item.href}
-                    to={item.href}
-                    className={({ isActive }) =>
-                      `flex items-start justify-between gap-3 rounded-2xl border px-4 py-3 text-sm transition ${
-                        isActive
-                          ? 'border-parchment/18 bg-parchment text-charcoal shadow-[0_18px_50px_rgba(0,0,0,0.16)]'
-                          : 'border-white/8 bg-white/4 text-parchment/78 hover:border-white/16 hover:bg-white/7'
-                      } ${isLocked ? 'opacity-70' : ''}`
-                    }
-                  >
-                    <div className="min-w-0">
-                      <p className="font-medium">{item.label}</p>
-                      <p className="mt-1 text-xs leading-relaxed opacity-75">{item.note}</p>
-                    </div>
-                    {isLocked && (
-                      <span className="pt-0.5 text-[11px] uppercase tracking-[0.18em]">
-                        Locked
-                      </span>
-                    )}
-                  </NavLink>
-                )
-              })}
+                      return (
+                        <NavLink
+                          key={item.href}
+                          to={item.href}
+                          className={({ isActive }) =>
+                            `flex items-start justify-between gap-3 rounded-2xl border px-4 py-3 text-sm transition ${
+                              isActive
+                                ? 'border-parchment/18 bg-parchment text-charcoal shadow-[0_18px_50px_rgba(0,0,0,0.16)]'
+                                : 'border-white/8 bg-white/4 text-parchment/78 hover:border-white/16 hover:bg-white/7'
+                            } ${isLocked ? 'opacity-70' : ''}`
+                          }
+                        >
+                          <div className="min-w-0">
+                            <p className="font-medium">{item.label}</p>
+                            <p className="mt-1 text-xs leading-relaxed opacity-75">{item.note}</p>
+                          </div>
+                          {isLocked && (
+                            <span className="pt-0.5 text-[11px] uppercase tracking-[0.18em]">
+                              Locked
+                            </span>
+                          )}
+                        </NavLink>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
             </nav>
 
             <button
