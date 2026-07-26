@@ -494,6 +494,243 @@ export const mockWaitlist = [
 // Scans / Jobs (25 records, varied statuses + verdicts)
 // ---------------------------------------------------------------------------
 
+// ── Rich scan result_payload builders ─────────────────────────────────────────
+
+function buildVerdictPayload(verdictClass, i) {
+  const verdicts = {
+    authentic: {
+      display_label: 'Likely Authentic',
+      plain_language_summary: 'Provance analysis found strong indicators that this media is authentic. Multiple signal checks converged on natural-origin patterns with no synthetic markers detected.',
+      class: 'likely_authentic',
+      confidence_level: 'High',
+      primary_contributing_signals: ['metadata_integrity', 'generative_fingerprint'],
+    },
+    suspicious: {
+      display_label: 'Suspicious — Synthetic Indicators Detected',
+      plain_language_summary: 'Multiple detection signals flagged anomalies consistent with synthetic generation or manipulation. Generative fingerprint analysis found model-specific artifacts, and frequency-domain checks revealed spectral irregularities.',
+      class: 'suspicious',
+      confidence_level: 'High',
+      primary_contributing_signals: ['generative_fingerprint', 'frequency_domain', 'continuity'],
+    },
+    inconclusive: {
+      display_label: 'Inconclusive',
+      plain_language_summary: 'The available signals did not produce a definitive classification. Some checks passed while others raised flags, but no single category provided enough evidence for a clear verdict.',
+      class: 'inconclusive',
+      confidence_level: 'Moderate',
+      primary_contributing_signals: ['metadata_integrity'],
+    },
+  }
+
+  const v = verdicts[verdictClass] || verdicts.inconclusive
+  const baseConfidence = verdictClass === 'authentic' ? 82 : verdictClass === 'suspicious' ? 78 : 55
+  const confidenceScore = (baseConfidence + Math.floor(Math.random() * 12) - 4) / 100
+
+  return {
+    display_label: v.display_label,
+    plain_language_summary: v.plain_language_summary,
+    class: v.class,
+    confidence_score: Math.min(0.98, Math.max(0.45, confidenceScore)),
+    confidence_level: v.confidence_level,
+    signal_count_completed: 3 + Math.floor(Math.random() * 2),
+    signal_count_total: 5,
+    primary_contributing_signals: v.primary_contributing_signals,
+    generated_at: daysAgo(Math.floor(i / 2), (i % 24) + 2),
+  }
+}
+
+function buildSignalsPayload(verdictClass) {
+  const signals = [
+    {
+      signal_id: 'sig_gen_fp_001',
+      signal_display_name: 'Generative Fingerprint Analysis',
+      signal_category: 'provenance',
+      methodology_version: 'v2.4.1',
+      status: verdictClass === 'suspicious' ? 'anomaly_detected' : 'no_anomaly',
+      status_reason: verdictClass === 'suspicious'
+        ? 'Spectral noise pattern consistent with Midjourney v6 generator signature detected in luminance channel.'
+        : 'No known generative model fingerprint matched. Natural-image noise distribution observed.',
+      score: verdictClass === 'suspicious' ? 0.72 : verdictClass === 'inconclusive' ? 0.38 : 0.12,
+      signal_weight: 0.35,
+      findings: [
+        {
+          finding_id: 'f_gen_01',
+          label: 'Noise residual analysis',
+          description: verdictClass === 'suspicious'
+            ? 'Periodic spectral spikes at 8×8 block boundaries indicate AI-generated content.'
+            : 'Noise residual follows natural sensor pattern distribution.',
+          severity: verdictClass === 'suspicious' ? 'high' : 'informational',
+        },
+        {
+          finding_id: 'f_gen_02',
+          label: 'Model signature match',
+          description: verdictClass === 'suspicious'
+            ? 'Chrominance grid patterns match Midjourney v6 / Niji model family.'
+            : 'No known model signature detected in the candidate set.',
+          severity: verdictClass === 'suspicious' ? 'high' : 'informational',
+        },
+      ],
+    },
+    {
+      signal_id: 'sig_freq_001',
+      signal_display_name: 'Frequency-Domain Analysis',
+      signal_category: 'image_analysis',
+      methodology_version: 'v1.3.0',
+      status: verdictClass === 'authentic' ? 'no_anomaly' : 'anomaly_detected',
+      status_reason: verdictClass === 'authentic'
+        ? 'Frequency spectrum consistent with optical camera capture. No splicing discontinuities found.'
+        : 'Anomalous high-frequency energy distribution detected, possibly indicating compression artifacts or re-encoding.',
+      score: verdictClass === 'suspicious' ? 0.65 : verdictClass === 'inconclusive' ? 0.42 : 0.15,
+      signal_weight: 0.25,
+      findings: [
+        {
+          finding_id: 'f_freq_01',
+          label: 'DCT coefficient analysis',
+          description: verdictClass === 'authentic'
+            ? 'DCT coefficient histogram matches single-compression camera-origin profile.'
+            : 'Double-compression artifacts detected in the DCT domain, suggesting re-encoding.',
+          severity: verdictClass === 'suspicious' ? 'medium' : 'informational',
+        },
+      ],
+    },
+    {
+      signal_id: 'sig_meta_001',
+      signal_display_name: 'Metadata Integrity Check',
+      signal_category: 'metadata',
+      methodology_version: 'v3.1.2',
+      status: verdictClass === 'suspicious' ? 'incomplete_metadata' : 'verified_metadata',
+      status_reason: verdictClass === 'suspicious'
+        ? 'EXIF metadata stripped or inconsistent with file structure. No camera make/model present.'
+        : 'Metadata chain verified. EXIF data consistent with capture device profile.',
+      score: verdictClass === 'suspicious' ? 0.58 : verdictClass === 'inconclusive' ? 0.35 : 0.08,
+      signal_weight: 0.20,
+      findings: [
+        {
+          finding_id: 'f_meta_01',
+          label: 'EXIF completeness',
+          description: verdictClass === 'suspicious'
+            ? 'Missing required EXIF tags: Make, Model, DateTimeOriginal, GPSInfo.'
+            : 'All expected EXIF tags present and internally consistent.',
+          severity: verdictClass === 'suspicious' ? 'medium' : 'informational',
+        },
+      ],
+    },
+    {
+      signal_id: 'sig_cont_001',
+      signal_display_name: 'Temporal / Frame Continuity',
+      signal_category: 'integrity',
+      methodology_version: 'v2.0.1',
+      status: 'consistent',
+      status_reason: 'Frame-to-frame pixel flow is continuous with no sudden jumps or dropped regions. Motion vectors follow natural camera trajectory.',
+      score: 0.10,
+      signal_weight: 0.10,
+      findings: [
+        {
+          finding_id: 'f_cont_01',
+          label: 'Motion vector analysis',
+          description: 'Optical flow is smooth across all frames. No evidence of object insertion or removal via temporal mismatch.',
+          severity: 'informational',
+        },
+      ],
+    },
+    {
+      signal_id: 'sig_prov_001',
+      signal_display_name: 'Cryptographic Provenance',
+      signal_category: 'provenance',
+      methodology_version: 'v1.0.3',
+      status: verdictClass === 'authentic' ? 'c2pa_present' : 'no_credentials',
+      status_reason: verdictClass === 'authentic'
+        ? 'C2PA Content Credential manifest detected and cryptographically verified against trusted issuer list.'
+        : 'No C2PA or embedded provenance credential detected. File lacks verifiable origin assertion.',
+      score: verdictClass === 'authentic' ? 0.05 : 0.45,
+      signal_weight: 0.10,
+      findings: [
+        {
+          finding_id: 'f_prov_01',
+          label: 'C2PA manifest check',
+          description: verdictClass === 'authentic'
+            ? 'Valid C2PA manifest with trusted issuer signature. Content binding verified.'
+            : 'No content credential manifest present in file header or metadata.',
+          severity: verdictClass === 'authentic' ? 'informational' : 'low',
+        },
+      ],
+    },
+  ]
+
+  return signals
+}
+
+function buildMediaPayload(mimeType, filename, fileSizeBytes) {
+  const isImage = mimeType.startsWith('image/')
+  const isVideo = mimeType.startsWith('video/')
+  const isAudio = mimeType.startsWith('audio/')
+
+  return {
+    filename,
+    mime_type: mimeType,
+    file_size_bytes: fileSizeBytes,
+    width: isImage || isVideo ? 1200 + Math.floor(Math.random() * 2800) : null,
+    height: isImage || isVideo ? 800 + Math.floor(Math.random() * 1600) : null,
+    duration_seconds: isVideo || isAudio ? Math.round(10 + Math.random() * 300) : null,
+    sha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b' + Math.random().toString(16).slice(2, 10),
+    md5: 'd41d8cd98f00b204e9800998ecf8427' + Math.random().toString(16).slice(2, 5),
+  }
+}
+
+function buildMetadataPayload(verdictClass) {
+  const recs = {
+    authentic: [
+      'No further action recommended — this media passed all verification checks.',
+      'Consider archiving this report as a verified reference for future comparison.',
+      'If this media will be used in legal or editorial contexts, retain the full printable report.',
+    ],
+    suspicious: [
+      'Treat this media as potentially synthetic. Do not rely on it for editorial or evidentiary purposes without human review.',
+      'Run a deep-scan reprocessing pass to engage additional forensic models.',
+      'Cross-reference with external provenance databases if the source claims a specific capture device.',
+      'Share the report with your team for collaborative review before any publication decision.',
+    ],
+    inconclusive: [
+      'Results are ambiguous — human review is recommended before any downstream use.',
+      'Consider uploading the original source file if this is a re-encoded or compressed copy.',
+      'Re-run verification when additional signal models become available in future pipeline updates.',
+    ],
+  }
+
+  return {
+    capture_timestamp: daysAgo(Math.floor(Math.random() * 10), Math.floor(Math.random() * 24)),
+    software: ['Adobe Photoshop 25.0', 'GIMP 2.10', 'Apple ImageIO', null][Math.floor(Math.random() * 4)],
+    make: ['Apple', 'Samsung', 'Canon', 'Sony', null][Math.floor(Math.random() * 5)],
+    model: ['iPhone 15 Pro', 'Galaxy S24 Ultra', 'EOS R5', 'α7 IV', null][Math.floor(Math.random() * 5)],
+    color_space: ['sRGB', 'Display P3', 'Adobe RGB'][Math.floor(Math.random() * 3)],
+    orientation: ['landscape', 'portrait', 'square'][Math.floor(Math.random() * 3)],
+    header_matches_mime: Math.random() > 0.15,
+    c2pa_marker_detected: verdictClass === 'authentic' ? Math.random() > 0.3 : Math.random() > 0.85,
+    recommendations: recs[verdictClass] || recs.inconclusive,
+    scan_created_at: null,
+    scan_completed_at: null,
+    total_processing_time_ms: Math.round(800 + Math.random() * 4200),
+  }
+}
+
+function buildMethodologyPayload() {
+  return {
+    version: '2.4.1-stable',
+    pipeline: 'provance-forensic-v2',
+    models_used: ['generative-fingerprint-v2', 'frequency-domain-v1', 'metadata-integrity-v3', 'continuity-v2', 'provenance-v1'],
+    processing_node: 'us-east-forensic-04',
+  }
+}
+
+function buildReportPayload(scanId) {
+  return {
+    report_id: scanId.replace('scan_', 'PRV-'),
+    generated_at: daysAgo(Math.floor(Math.random() * 5), Math.floor(Math.random() * 24)),
+    format_version: '1.2',
+  }
+}
+
+// ── Scans / Jobs (25 records, varied statuses + verdicts) ────────────────────
+
 export const mockScans = Array.from({ length: 25 }, (_, i) => {
   const statuses = ['queued', 'processing', 'completed', 'failed', 'completed', 'completed', 'completed', 'processing', 'queued', 'completed']
   const verdicts = ['authentic', 'suspicious', 'inconclusive', null, 'authentic', 'suspicious', 'authentic', null, null, 'inconclusive']
@@ -534,52 +771,57 @@ export const mockScans = Array.from({ length: 25 }, (_, i) => {
   const userIds = mockUsers.map((u) => u.id)
   const status = statuses[i % statuses.length]
   const verdict = status === 'completed' ? verdicts[i % verdicts.length] : null
+  const filename = filenames[i % filenames.length]
+  const mimeType = mimeTypes[i % mimeTypes.length]
+  const fileSizeBytes = Math.round(512 * 1024 + Math.random() * 50 * 1024 * 1024)
 
-  const resultPayload =
-    status === 'completed'
-      ? {
-          signals: [
-            {
-              model: 'generative-fingerprint-v2',
-              confidence: Math.round(40 + Math.random() * 50),
-              label: 'Generative fingerprint analysis',
-              verdict: Math.random() > 0.5 ? 'synthetic_indicators' : 'natural_origin',
-            },
-            {
-              model: 'frequency-domain-v1',
-              confidence: Math.round(30 + Math.random() * 55),
-              label: 'Frequency-domain analysis',
-              verdict: Math.random() > 0.5 ? 'anomaly_detected' : 'no_anomaly',
-            },
-            {
-              model: 'metadata-integrity-v3',
-              confidence: Math.round(50 + Math.random() * 45),
-              label: 'Metadata integrity check',
-              verdict: Math.random() > 0.5 ? 'incomplete_metadata' : 'verified_metadata',
-            },
-            {
-              model: 'continuity-v2',
-              confidence: Math.round(20 + Math.random() * 60),
-              label: 'Frame continuity analysis',
-              verdict: Math.random() > 0.5 ? 'continuity_break' : 'consistent',
-            },
-          ],
-          report_id: `PRV-202607${String(15 + Math.floor(i / 2)).padStart(2, '0')}-${String(30 + i).padStart(3, '0')}`,
-        }
-      : null
+  // Build rich result_payload for completed scans
+  let resultPayload = null
+  if (status === 'completed' && verdict) {
+    const signals = buildSignalsPayload(verdict)
+    const verdictPayload = buildVerdictPayload(verdict, i)
+    const media = buildMediaPayload(mimeType, filename, fileSizeBytes)
+    const metadata = buildMetadataPayload(verdict)
+    metadata.scan_created_at = daysAgo(Math.floor(i / 2), i % 24)
+    metadata.scan_completed_at = daysAgo(Math.floor(i / 2), (i % 24) + 2)
+    const methodology = buildMethodologyPayload()
+    const report = buildReportPayload(`scan_${String(i + 1).padStart(3, '0')}`)
+
+    resultPayload = {
+      verdict: verdictPayload,
+      signals,
+      media,
+      metadata,
+      methodology,
+      report,
+      // Keep backward-compat fields
+      report_id: report.report_id,
+    }
+  }
+
+  // Generate a deterministic but varied asset_preview_url for image files
+  let assetPreviewUrl = null
+  if (mimeType.startsWith('image/')) {
+    const hues = ['3a5fc8', 'c84a3a', '3ac87a', 'c89a3a', '8a3ac8', '3ac8c8', 'c83a8a', '5ac83a']
+    const hue = hues[i % hues.length]
+    assetPreviewUrl = `https://placehold.co/800x600/${hue}/f6f2ea?text=${encodeURIComponent(filename.replace(/\.[^.]+$/, ''))}`
+  }
 
   return {
     id: `scan_${String(i + 1).padStart(3, '0')}`,
     user_id: userIds[i % userIds.length],
-    original_filename: filenames[i % filenames.length],
-    file_size_bytes: Math.round(512 * 1024 + Math.random() * 50 * 1024 * 1024),
-    mime_type: mimeTypes[i % mimeTypes.length],
+    original_filename: filename,
+    file_size_bytes: fileSizeBytes,
+    mime_type: mimeType,
     status,
     verdict,
     result_payload: resultPayload,
     processing_mode: i % 3 === 0 ? 'deep' : i % 3 === 1 ? 'quick' : 'standard',
+    asset_preview_url: assetPreviewUrl,
+    failure_reason: status === 'failed' ? 'Processing pipeline timed out after 3 retry attempts. The worker node may have been rate-limited.' : null,
     created_at: daysAgo(Math.floor(i / 2), i % 24),
     completed_at: status === 'completed' ? daysAgo(Math.floor(i / 2), (i % 24) + 2) : null,
+    updated_at: daysAgo(Math.floor(i / 4), (i % 12)),
   }
 })
 
