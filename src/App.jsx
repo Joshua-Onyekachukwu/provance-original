@@ -27,7 +27,8 @@ import SampleReportPrintPage from './pages/SampleReportPrintPage.jsx'
 import NotFoundPage from './pages/NotFoundPage'
 import AppDashboardPage from './pages/app/AppDashboardPage.jsx'
 import AppUploadsPage from './pages/app/AppUploadsPage.jsx'
-import AppReportsPage from './pages/app/AppReportsPage.jsx'
+import AppReportsListPage from './pages/app/AppReportsListPage.jsx'
+import AppReportDetailPage from './pages/app/AppReportDetailPage.jsx'
 import AppReportPrintPage from './pages/app/AppReportPrintPage.jsx'
 import AppAccountPage from './pages/app/AppAccountPage.jsx'
 import AppTeamPage from './pages/app/AppTeamPage.jsx'
@@ -91,8 +92,8 @@ export default function App() {
       >
         <Route index element={<AppDashboardPage />} />
         <Route path="uploads" element={<AppUploadsPage />} />
-        <Route path="reports" element={<AppReportsPage />} />
-        <Route path="reports/:scanId" element={<AppReportsPage />} />
+        <Route path="reports" element={<AppReportsListPage />} />
+        <Route path="reports/:scanId" element={<AppReportDetailPage />} />
         <Route path="reports/:scanId/print" element={<AppReportPrintPage />} />
         <Route path="account" element={<AppAccountPage />} />
         <Route path="access-denied" element={<AppAccessDeniedPage />} />
