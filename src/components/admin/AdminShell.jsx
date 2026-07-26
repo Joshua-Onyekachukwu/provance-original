@@ -1,38 +1,52 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import {
+  LayoutDashboard,
+  ListOrdered,
+  Users,
+  Building2,
+  Workflow,
+  FileText,
+  BarChart3,
+  Activity,
+  Flag,
+  ScrollText,
+  Shield,
+  Settings,
+} from 'lucide-react'
 import { useAuth } from '../../context/AuthContext.jsx'
 
 const ADMIN_MODULES = [
   {
     group: 'Overview',
     items: [
-      { label: 'Overview', href: '/app/admin', icon: '◈', exact: true },
+      { label: 'Overview', href: '/app/admin', icon: LayoutDashboard, exact: true },
     ],
   },
   {
     group: 'Operations',
     items: [
-      { label: 'Waitlist', href: '/app/admin/waitlist', icon: '☰' },
-      { label: 'Users', href: '/app/admin/users', icon: '⚙' },
-      { label: 'Organizations', href: '/app/admin/organizations', icon: '◫' },
-      { label: 'Jobs', href: '/app/admin/jobs', icon: '⟳' },
-      { label: 'Reports', href: '/app/admin/reports', icon: '◉' },
+      { label: 'Waitlist', href: '/app/admin/waitlist', icon: ListOrdered },
+      { label: 'Users', href: '/app/admin/users', icon: Users },
+      { label: 'Organizations', href: '/app/admin/organizations', icon: Building2 },
+      { label: 'Jobs', href: '/app/admin/jobs', icon: Workflow },
+      { label: 'Reports', href: '/app/admin/reports', icon: FileText },
     ],
   },
   {
     group: 'System',
     items: [
-      { label: 'Analytics', href: '/app/admin/analytics', icon: '◷' },
-      { label: 'Monitoring', href: '/app/admin/monitoring', icon: '⬡' },
-      { label: 'Feature Flags', href: '/app/admin/feature-flags', icon: '⚑' },
-      { label: 'Audit Logs', href: '/app/admin/audit-logs', icon: '☰' },
+      { label: 'Analytics', href: '/app/admin/analytics', icon: BarChart3 },
+      { label: 'Monitoring', href: '/app/admin/monitoring', icon: Activity },
+      { label: 'Feature Flags', href: '/app/admin/feature-flags', icon: Flag },
+      { label: 'Audit Logs', href: '/app/admin/audit-logs', icon: ScrollText },
     ],
   },
   {
     group: 'Settings',
     items: [
-      { label: 'Roles & Permissions', href: '/app/admin/roles', icon: '🔑' },
-      { label: 'Admin Settings', href: '/app/admin/settings', icon: '⚙' },
+      { label: 'Roles & Permissions', href: '/app/admin/roles', icon: Shield },
+      { label: 'Admin Settings', href: '/app/admin/settings', icon: Settings },
     ],
   },
 ]
@@ -67,13 +81,13 @@ export default function AdminShell() {
             {/* Brand + mobile toggle */}
             <div className="flex items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-300/20 bg-amber-300/10 text-sm font-semibold tracking-[-0.04em] text-amber-100">
-                  A
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/8 text-sm font-semibold tracking-[-0.04em] text-parchment">
+                  P
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate text-xl font-semibold tracking-[-0.05em] text-parchment">Admin</p>
-                  <p className="text-[10px] uppercase tracking-[0.18em] text-parchment/45">
-                    Control Room
+                  <p className="truncate text-xl font-semibold tracking-[-0.05em] text-parchment">Provance</p>
+                  <p className="text-[11px] text-parchment/45">
+                    Trust infrastructure
                   </p>
                 </div>
               </div>
@@ -141,8 +155,8 @@ export default function AdminShell() {
                               : 'text-parchment/65 hover:bg-white/6 hover:text-parchment/85'
                           }`}
                         >
-                          <span className="flex h-6 w-6 items-center justify-center rounded-lg text-xs" aria-hidden="true">
-                            {item.icon}
+                          <span className="flex h-6 w-6 items-center justify-center rounded-lg" aria-hidden="true">
+                            <item.icon className="h-4 w-4" />
                           </span>
                           <span className="font-medium">{item.label}</span>
                           {isActive && (
@@ -171,7 +185,7 @@ export default function AdminShell() {
               <button
                 type="button"
                 onClick={signOut}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/4 px-3 py-2.5 text-sm text-parchment/70 transition hover:bg-white/8 hover:text-parchment"
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/12 bg-white/4 px-4 py-3 text-sm text-parchment/80 transition hover:border-white/24 hover:bg-white/8"
               >
                 Sign out
               </button>
