@@ -1,6 +1,6 @@
 # Provance Frontend — Master Documentation Index
 
-**Updated:** 2026-07-25  
+**Updated:** 2026-08-04  
 **Purpose:** Single entry point for all design specs, PRDs, and process docs. Portable for external teams.
 
 ---
@@ -9,12 +9,13 @@
 
 | Document | File | Status |
 |---|---|---|
-| Business Plan | (see Plan tab in cto.new) | ✅ Current |
-| Team Workflow | `WORKFLOW.md` | ✅ Current |
-| Design Direction (CEO scope) | `DESIGN_DIRECTION.md` | ✅ Current |
-| Design Audit (baseline) | `design-audit.md` | ✅ Current |
+| Team Workflow | `engineering/DEVELOPMENT_WORKFLOW_AND_RELEASE_PROCESS.md` | ✅ Current |
+| Multi-Agent Operating Model | `ai-agents/HOW_TO_RUN_THE_ORG.md` + `ai-agents/RUNTIME_MAPPING.md` | ✅ Current |
+| Engineering Standards | `engineering/ENGINEERING_STANDARDS.md` | ✅ Current |
+| PR Review Guidelines | `engineering/PR_REVIEW_GUIDELINES.md` | ✅ Current |
+| Decision Records | `decisions/001` … `decisions/004` | ✅ Current |
 | Unified Design System Master Spec | `design-specs/UNIFIED-DESIGN-SYSTEM.md` | ✅ Current |
-| Frontend Architecture (src tree) | See repo: `Joshua-Onyekachukwu/provance-original` | ✅ Current |
+| Frontend Architecture (src tree) | `project-state/overall-project-architecture.md` + `engineering/CURRENT_IMPLEMENTATION_STATUS.md` | ✅ Current |
 
 ---
 
@@ -37,21 +38,38 @@
 
 ---
 
-## User Dashboard (9 pages)
+## User Dashboard (10 pages)
 
 | # | Page | Route | Design Spec | PRD | Build |
 |---|---|---|---|---|---|
-| 1 | Dashboard Home | `/app` | `design-specs/user-dashboard-home.md` | `prds/user-dashboard-home.md` | ⏳ |
-| 2 | Upload & Verify | `/app/uploads` | — | — | — |
-| 3 | Reports Library | `/app/reports` | — | — | — |
-| 4 | Scan History | `/app/history` | — | — | — |
-| 5 | Notifications | `/app/notifications` | — | — | — |
-| 6 | Team Workspace | `/app/team` | — | — | — |
-| 7 | Profile + Settings | `/app/settings` | — | — | — |
-| 8 | Developer Portal | `/app/developers` | — | — | — |
-| 9 | Billing | `/app/billing` | — | — | — |
+| 1 | Dashboard Home | `/app` | `design-specs/user-dashboard-home.md` | `prds/user-dashboard-home.md` | ✅ Built on ui kit |
+| 2 | Upload & Verify | `/app/uploads` | — | — | ✅ Built (drag-drop, modes, queue state machine) |
+| 3 | Reports Library | `/app/reports` | — | — | ✅ |
+| 4 | Verification Queue | `/app/queue` | — | — | ✅ Built (stats + recent jobs) |
+| 5 | Scan History | `/app/history` | — | — | ✅ |
+| 6 | Notifications | `/app/notifications` | — | — | ⏳ |
+| 7 | Team Workspace | `/app/team` | — | — | ⏳ |
+| 8 | Profile + Settings | `/app/settings` | — | — | ⏳ |
+| 9 | Developer Portal | `/app/developers` | — | — | ⏳ |
+| 10 | Billing | `/app/billing` | — | — | ⏳ |
 
 ---
+
+## Phase 2 UI Primitive Kit (built, `src/components/ui/`)
+
+| Component | File | Status |
+|---|---|---|
+| Button (with router-link `to` prop) | `src/components/ui/Button.jsx` | ✅ |
+| Badge | `src/components/ui/Badge.jsx` | ✅ |
+| Card (loading/empty/error states) | `src/components/ui/Card.jsx` | ✅ |
+| StatCard | `src/components/ui/StatCard.jsx` | ✅ |
+| DataTable | `src/components/ui/DataTable.jsx` | ✅ |
+| Tabs | `src/components/ui/Tabs.jsx` | ✅ |
+| Drawer | `src/components/ui/Drawer.jsx` | ✅ |
+| Toast + useToast | `src/components/ui/Toast.jsx` + `useToast.js` | ✅ |
+| EmptyState / Skeleton / Spinner | `src/components/ui/` | ✅ |
+| Popover (origin-aware, reduced-motion safe) | `src/components/ui/Popover.jsx` + `popoverOrigin.js` | ✅ |
+| CommandPalette + CommandRegistry | `src/components/ui/CommandPalette.jsx` + `commandRegistry*.js` | ✅ |
 
 ## Shared Components (built)
 
@@ -61,7 +79,7 @@
 | AdminTable | `src/components/admin/AdminTable.jsx` | ✅ |
 | AdminDrawer | `src/components/admin/AdminDrawer.jsx` | ✅ |
 | AdminSearch | `src/components/admin/AdminSearch.jsx` | ✅ |
-| StatCard (UNIFIED) | `src/components/admin/StatCard.jsx` | ✅ |
+| StatCard (UNIFIED) | `src/components/admin/StatCard.jsx` | ✅ (legacy, migrating to ui kit) |
 | ConfirmDialog | `src/components/admin/ConfirmDialog.jsx` | ✅ |
 | AttentionCard | `src/components/admin/AttentionCard.jsx` | ✅ |
 | ActivityRow | `src/components/admin/ActivityRow.jsx` | ✅ |
@@ -71,6 +89,7 @@
 | SystemHealthPanel | `src/components/admin/SystemHealthPanel.jsx` | ✅ |
 | AppStatePanel | `src/components/app/AppStatePanel.jsx` | ✅ |
 | ScanStatusBadge | `src/components/app/ScanStatusBadge.jsx` | ✅ |
+| ForensicMediaFrame | `src/components/ForensicMediaFrame.jsx` | ✅ |
 
 ---
 
@@ -79,9 +98,11 @@
 | File | Purpose |
 |---|---|
 | `src/lib/mockData.js` | All sample data (users, orgs, waitlist, scans, reports, audit, flags, etc.) |
-| `src/lib/mockApi.js` | 19 mock API functions with delays + error injection |
+| `src/lib/mockApi.js` | Mock API functions with delays + error injection; live scan store |
 | `src/lib/useMockData.js` | React hook: `{ data, loading, error, refetch }` |
-| `src/lib/api.js` | USE_MOCK gate — toggle to switch between mock and real API |
+| `src/lib/api.js` | USE_MOCK gate — toggle to switch between mock and real API (ADR 004) |
+| `src/lib/useResource.js` | Shared per-slice loader hook (loading/error/ready + reload) |
+| `src/lib/useDemoState.js` | Dev-only `?state=` forcing for loading/empty/error review |
 
 ---
 

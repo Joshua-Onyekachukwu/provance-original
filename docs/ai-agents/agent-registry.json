@@ -1,6 +1,6 @@
 {
-  "version": "1.0.0",
-  "updated_at": "2026-07-16",
+  "version": "1.1.0",
+  "updated_at": "2026-08-04",
   "principles": [
     "one owner per task packet",
     "smallest effective context",
@@ -30,7 +30,7 @@
       "outputs": ["executive brief", "option matrix", "recommendation"],
       "decision_authority": "recommend_only",
       "escalate_if": ["one-way-door strategic commitment"],
-      "runtime_mapping": "ceo-strategy-advisor"
+      "runtime_mapping": "orchestrator + researcher-web"
     },
     {
       "agent_id": "exec.chief_of_staff",
@@ -44,7 +44,7 @@
       "outputs": ["task packets", "weekly operating review", "dependency map"],
       "decision_authority": "routing_and_process",
       "escalate_if": ["one-way-door decisions", "cross-lead conflict"],
-      "runtime_mapping": "organization-orchestrator"
+      "runtime_mapping": "orchestrator"
     },
     {
       "agent_id": "exec.cto",
@@ -58,7 +58,7 @@
       "outputs": ["architecture RFC", "technical decision memo"],
       "decision_authority": "approve_major_technical_changes",
       "escalate_if": ["pricing or legal implications", "irreversible infra change"],
-      "runtime_mapping": "technical-strategy-lead"
+      "runtime_mapping": "orchestrator"
     },
     {
       "agent_id": "exec.vp_engineering",
@@ -72,7 +72,7 @@
       "outputs": ["execution plan", "release plan", "merge plan"],
       "decision_authority": "engineering_execution",
       "escalate_if": ["architecture conflicts", "security blockers"],
-      "runtime_mapping": "engineering-delivery-lead"
+      "runtime_mapping": "orchestrator"
     },
     {
       "agent_id": "eng.frontend_lead",
@@ -86,7 +86,7 @@
       "outputs": ["PR", "validation checklist", "doc update list"],
       "decision_authority": "implementation_detail",
       "escalate_if": ["auth flow changes", "security-sensitive UI changes"],
-      "runtime_mapping": null
+      "runtime_mapping": "orchestrator + file-picker + code-searcher + preview"
     },
     {
       "agent_id": "eng.backend_lead",
@@ -100,7 +100,7 @@
       "outputs": ["PR", "test results", "release notes input"],
       "decision_authority": "implementation_detail",
       "escalate_if": ["auth transport changes", "data retention changes"],
-      "runtime_mapping": null
+      "runtime_mapping": "orchestrator + basher"
     },
     {
       "agent_id": "eng.ai_forensics_lead",
@@ -114,7 +114,7 @@
       "outputs": ["signal proposal", "validation plan"],
       "decision_authority": "recommend_and_design",
       "escalate_if": ["claim risk", "confidence model changes"],
-      "runtime_mapping": "ai-forensics-researcher"
+      "runtime_mapping": "orchestrator + researcher-web + researcher-docs"
     },
     {
       "agent_id": "eng.code_review",
@@ -128,7 +128,7 @@
       "outputs": ["review notes", "merge recommendation"],
       "decision_authority": "block_merge_recommendation",
       "escalate_if": ["unresolved critical issues"],
-      "runtime_mapping": null
+      "runtime_mapping": "code-reviewer-deepseek-flash"
     }
   ]
 }

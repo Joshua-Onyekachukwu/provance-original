@@ -1,6 +1,6 @@
 # Provance Current Implementation Status
 
-Last updated: 2026-07-24
+Last updated: 2026-08-04
 
 ## Purpose
 
@@ -22,20 +22,18 @@ The current MVP direction is:
 
 ## Current Phase
 
-Phase 2 remains in progress.
+Phase 2 (dashboard maturity) is substantially complete. The approved UNIFIED design
+direction was ratified (ADR 002) and the reusable primitive kit shipped, with the
+user dashboard, app shell, and admin pages migrated onto it. The Media Upload page
+and Verification Queue page were rebuilt on the primitives with a working
+mock-first upload-to-queue flow (ADR 004).
 
 The current immediate focus is:
 
-- documentation preservation and temporary handover readiness
-- verification of the current implementation truth before further UI work resumes
-- pause on dashboard and admin redesign work until a new approved design direction is documented
-
-The next queued implementation focus after Phase 2 approval is:
-
-- Phase 3 working MVP product completion
-- session hardening
-- deeper operational reliability
-- observability baseline
+- multi-agent operating model ratification (ADR 003) and its supporting docs
+- continuing to retire legacy per-page components in favor of the ui kit
+- Phase 3 planning: working MVP product completion, session hardening, deeper
+  operational reliability, observability baseline
 
 ## Current Architecture
 
@@ -45,6 +43,8 @@ The next queued implementation focus after Phase 2 approval is:
 - public routes plus authenticated `/app/*` routes
 - Tailwind CSS v4 styling
 - Framer Motion used selectively
+- reusable ui primitive kit in `src/components/ui/` (ADR 002: UNIFIED design system)
+- mock-first data gate `USE_MOCK` in `src/lib/api.js` (ADR 004)
 
 ### Backend
 
@@ -120,6 +120,28 @@ The next queued implementation focus after Phase 2 approval is:
 - signed media preview for image reports
 - scan-history ledger with search, sorting, pagination, and bulk selection
 
+### Phase 2 Design System And Workspace
+
+- reusable ui primitives: Button (with router-link `to` prop), Badge, Card, StatCard,
+  DataTable, Tabs, Drawer, Toast, EmptyState, Skeleton, Spinner, Popover (origin-aware,
+  reduced-motion safe), CommandPalette
+- command registry (`useRegisterCommands`) letting pages contribute page-scoped
+  commands to the palette while mounted
+- grouped app-shell information architecture (Overview / Workspace / Organization /
+  Developer / Settings / Help) with notification bell + avatar menu on the shared
+  Popover primitive
+- shared loader hook `useResource` + dev-only `?state=` demo forcing
+  (`useDemoState`) for reviewable loading/empty/error surfaces
+- public Benchmark page (`/benchmark`) rendering the V0.1 report findings
+- Media Upload page (`/app/uploads`): drag-and-drop zone with ForensicMediaFrame
+  preview, processing-mode selection (quick/standard/deep), upload-into-queue state
+  machine that auto-lands on the Verification Queue; dev-only `?demo=` affordance
+- Verification Queue page (`/app/queue`): live pipeline stats + recent-jobs ledger
+  with just-added highlight for new uploads
+- mock scan lifecycle in `src/lib/mockApi.js`: in-memory scan store (localStorage
+  persisted), `mockInitiateScan`/`mockSubmitScan`/`mockGetScan`, queue snapshot
+  derived from the live store
+
 ### Admin Operations
 
 - waitlist filtering
@@ -177,7 +199,10 @@ Recently confirmed against the current codebase and environment:
 
 - the repository contains historical documents that must be kept clearly separated from current-state implementation docs
 - Upstash Free is not suitable for always-on worker usage
-- no further dashboard or admin implementation should continue until the next approved design direction is documented
+- the multi-agent operating model (ADR 003) requires task packets, the review gate,
+  and Founder approval before any commit
+- `USE_MOCK` stays `true` through the MVP phase; it flips to `false` as part of
+  Phase 3 backend integration
 - the current documentation set is richer than its formatting consistency, so normalization remains an active documentation improvement area
 
 ## Important Files
@@ -186,8 +211,10 @@ Recently confirmed against the current codebase and environment:
 
 - `src/App.jsx`
 - `src/context/AuthContext.jsx`
-- `src/lib/api.js`
+- `src/lib/api.js` (USE_MOCK gate)
+- `src/lib/mockApi.js` + `src/lib/mockData.js` (mock layer)
 - `src/lib/supabase.js`
+- `src/components/ui/*` (primitive kit)
 - `src/components/app/AppShellLayout.jsx`
 - `src/components/auth/ProtectedRoute.jsx`
 - `src/pages/app/*`

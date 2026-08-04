@@ -339,6 +339,10 @@ Docs to update:
 
 ## Runtime Agent Mapping In This Chat Environment
 
+> **Superseded:** the practical mapping below is historical. The canonical role-to-
+> runtime mapping now lives in [RUNTIME_MAPPING.md](RUNTIME_MAPPING.md) (proposed as
+> part of ADR 003). Use that file for routing decisions.
+
 The organizational agents in this directory are documentation and operating definitions.
 
 They are not automatically turned into clickable runtime agents by writing Markdown alone.
