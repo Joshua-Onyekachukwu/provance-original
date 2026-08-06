@@ -448,6 +448,108 @@ summary {
   box-shadow: 0 0 40px rgba(183, 121, 31, 0.1), 0 0 80px rgba(183, 121, 31, 0.04);
 }
 
+/* ══════════════════════════════════════════════════════════════════════
+   App UI primitives — Phase 2 foundation (UNIFIED design system)
+   ══════════════════════════════════════════════════════════════════════ */
+
+.ui-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-charcoal-light);
+}
+
+.ui-card {
+  border-radius: 1.5rem;
+  border: 1px solid var(--color-stone-light);
+  background: var(--color-white-warm);
+  box-shadow: 0 1px 2px rgba(19, 22, 29, 0.04);
+}
+
+.ui-input {
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid var(--color-stone-light);
+  background: var(--color-parchment);
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  color: var(--color-charcoal);
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.ui-input::placeholder {
+  color: var(--color-charcoal-light);
+}
+
+.ui-input:hover {
+  background: var(--color-white-warm);
+}
+
+.ui-input:focus {
+  outline: none;
+  border-color: rgba(47, 91, 234, 0.4);
+  box-shadow: 0 0 0 3px rgba(47, 91, 234, 0.1);
+}
+
+.ui-focus-ring {
+  outline: none;
+}
+
+.ui-focus-ring:focus-visible {
+  outline: 2px solid var(--color-trust);
+  outline-offset: 2px;
+}
+
+/* Forensic media frame — animated scan band (transform/opacity only) */
+.forensic-scan-band {
+  height: 34%;
+  transform: translateY(45%);
+}
+
+/* Product showcase — signal bar resolving pulse (opacity only) */
+.demo-signal-pulse {
+  /* animation applied inside the prefers-reduced-motion: no-preference block */
+}
+
+@keyframes demo-signal-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@keyframes forensic-scan {
+  0%,
+  8% {
+    transform: translateY(-120%);
+  }
+  46%,
+  54% {
+    transform: translateY(230%);
+  }
+  92%,
+  100% {
+    transform: translateY(-120%);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .forensic-scan-band {
+    animation: forensic-scan 7s ease-in-out infinite;
+  }
+
+  .demo-signal-pulse {
+    animation: demo-signal-pulse 1.1s ease-in-out infinite;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -477,11 +579,32 @@ summary {
     color: #13161d;
   }
 
+  /* Hide the app/admin shell chrome (sidebar + header) so only the page
+     content itself prints — the print pages render inside these shells. */
+  .app-shell-surface aside,
+  .app-shell-surface header,
+  .admin-shell-surface aside,
+  .admin-shell-surface header {
+    display: none !important;
+  }
+
+  .app-shell-surface main,
+  .admin-shell-surface main {
+    padding: 0 !important;
+  }
+
   .report-paper {
     max-width: none !important;
     border: none !important;
     border-radius: 0 !important;
     box-shadow: none !important;
     overflow: visible !important;
+  }
+
+  /* Keep printable report panels intact instead of splitting mid-card. */
+  .print-sheet article,
+  .print-sheet section,
+  .print-sheet .print-sheet-card {
+    break-inside: avoid;
   }
 }

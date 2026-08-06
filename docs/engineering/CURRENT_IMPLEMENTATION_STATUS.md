@@ -22,18 +22,24 @@ The current MVP direction is:
 
 ## Current Phase
 
-Phase 2 (dashboard maturity) is substantially complete. The approved UNIFIED design
-direction was ratified (ADR 002) and the reusable primitive kit shipped, with the
-user dashboard, app shell, and admin pages migrated onto it. The Media Upload page
-and Verification Queue page were rebuilt on the primitives with a working
-mock-first upload-to-queue flow (ADR 004).
+Phase 3 (user workspace maturity) is substantially complete. The UNIFIED design
+system (ADR 002) and primitive kit are shipped, the app shell and admin pages
+migrated onto them, and the mock-first data gate (ADR 004) makes every page run
+end-to-end without a backend. Phase 3 slices shipped: Notifications, Billing
+(UI only), Security Settings, API Keys, and Help & Documentation.
 
-The current immediate focus is:
+The frontend is now fully built — the user workspace (15/15 pages) and the
+admin workspace (12/12 pages) are both complete with loading/empty/error states,
+`?state=` demo forcing, and ⌘K commands. No placeholders remain. The current
+immediate focus is:
 
-- multi-agent operating model ratification (ADR 003) and its supporting docs
-- continuing to retire legacy per-page components in favor of the ui kit
-- Phase 3 planning: working MVP product completion, session hardening, deeper
-  operational reliability, observability baseline
+- frontend completion review + backend stack approval (see
+  `docs/reports/2026-08-04-frontend-completion-review.md` and
+  `docs/reports/2026-08-05-frontend-signoff-checklist.md`)
+- backend slice planning: auth token hardening, real scan round-trip against
+  Supabase, report payload API
+- approved MVP features still open: report PDF export, scan deduplication
+- session hardening and observability baseline before broader beta
 
 ## Current Architecture
 

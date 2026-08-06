@@ -200,7 +200,7 @@ Finish the remaining MVP-critical product capabilities needed for a usable inter
 
 **Current Status**
 
-Not Started
+In Progress (frontend 100% complete: user workspace 15/15 + admin workspace 12/12 pages shipped; approved features + backend integration remain)
 
 **Priority**
 
@@ -226,6 +226,10 @@ High
 - add missing empty, loading, and failure states across app-critical flows
 - document and expose internal diagnostics needed for Founder testing
 - evaluate whether any existing template assets are worth selective reuse without adopting a full template system
+- add the approved global error boundary + crash recovery
+- add the approved report PDF export (client-side)
+- add the approved admin analytics + monitoring pages (shipped: Analytics + Monitoring pages + real `GET /admin/analytics` endpoint)
+- add the approved scan deduplication (hash-based)
 
 **Dependencies**
 
@@ -276,6 +280,7 @@ High
 - version result payload structure where needed
 - improve report usefulness without overstating confidence
 - establish benchmark methodology for speed, accuracy, and pipeline validation
+- add the approved evidence appendix (methodology + limitations) to reports
 
 **Dependencies**
 
@@ -320,12 +325,13 @@ High
 
 **Tasks**
 
-- implement session hardening strategy at the right scope for MVP
+- implement session hardening strategy at the right scope for MVP (approved: httpOnly cookies, rotation)
 - expand authorization and RLS where required
-- add Sentry and product analytics instrumentation
+- add Sentry + PostHog baseline instrumentation (approved)
 - add structured operational monitoring for backend and worker flows
 - finalize environment and service configuration guides
 - review file validation, rate limiting, bot protection, and admin protections
+- add the approved usage/entitlement enforcement hooks once billing lands
 
 **Dependencies**
 
@@ -397,32 +403,38 @@ High
 
 These are intentionally deferred until the production-ready MVP is stable:
 
-- team and organization workflows
-- billing and subscriptions
+- billing and subscriptions (UI shipped; enforcement deferred)
 - external API product
+- webhooks UI (approved 2026-08-04 for later release)
 - video and audio verification
 - deeper enterprise controls
 - multi-region and compliance-heavy infrastructure
 
+## Approved Feature Set
+
+Features recommended in the frontend completion review (`docs/reports/2026-08-04-frontend-completion-review.md`) and approved by the Founder on 2026-08-04:
+
+| Feature | Priority | Target | Status |
+| --- | --- | --- | --- |
+| Global error boundary + crash recovery | High | MVP | Approved |
+| Report PDF export (client-side) | High | MVP | Approved |
+| Scan deduplication (hash-based) | Medium | MVP | Approved |
+| Organization invites + roles | High | MVP | **Shipped** (Organization Management page) |
+| Admin analytics + monitoring pages | Medium | MVP (admin) | **Shipped** (Analytics + Monitoring pages; real `GET /admin/analytics` backend endpoint) |
+| Session hardening (httpOnly cookies) | High | Before beta | Approved |
+| Sentry + PostHog baseline | Medium | Before beta | Approved |
+| Webhooks UI | Medium | Later | Approved |
+| Usage/entitlement enforcement | Medium | Later | Approved |
+| Evidence appendix in reports | Medium | Later | Approved |
+
 ## Immediate Active Phase
 
-The current work remains in Phase 2.
+The current work is in Phase 3 (Working MVP Product Completion).
 
-Immediate focus:
+The frontend is **100% complete** — the user workspace (15/15 pages) and the
+admin workspace (12/12 pages) are both built and verified; no placeholders remain.
+The active focus is now:
 
-- documentation preservation and GitHub handover
-- verification of current implementation truth before any more UI work
-- pause on dashboard and admin redesign work pending a new approved design direction
-
-The next execution phase after approval is:
-
-**Phase 3. Working MVP Product Completion**
-
-The immediate implementation focus will be:
-
-- dashboard depth
-- admin interface maturity
-- early session hardening
-- report workflow utility
-- account and operational polish
-- system reliability required for internal and early-user testing
+- implementing the approved MVP feature set (error boundary done, PDF export + dedup next; admin analytics/monitoring done)
+- backend integration: auth token hardening, **real `/admin/analytics` endpoint (done)** → scan upload + queue round-trip against Supabase → report payload API
+- session hardening and the Sentry + PostHog baseline ahead of beta

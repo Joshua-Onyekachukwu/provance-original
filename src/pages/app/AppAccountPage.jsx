@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useRegisterCommands } from '../../components/ui'
 import AppStatePanel from '../../components/app/AppStatePanel.jsx'
 import { useAuth } from '../../context/AuthContext.jsx'
 
 export default function AppAccountPage() {
+  const navigate = useNavigate()
   const { profile, permissions, updateProfile } = useAuth()
   const [formState, setFormState] = useState({
     displayName: '',
@@ -20,6 +23,28 @@ export default function AppAccountPage() {
       setFormState(profile)
     }
   }, [profile])
+
+  useRegisterCommands(
+    [
+      {
+        id: 'account.security',
+        group: 'Account',
+        label: 'Open security settings',
+        hint: 'Password and sessions',
+        keywords: ['account', 'security', 'password', 'sessions'],
+        onSelect: () => navigate('/app/security'),
+      },
+      {
+        id: 'account.notifications',
+        group: 'Account',
+        label: 'Open notification preferences',
+        hint: 'Alerts and digests',
+        keywords: ['account', 'notifications', 'alerts', 'preferences'],
+        onSelect: () => navigate('/app/notifications'),
+      },
+    ],
+    [navigate],
+  )
 
   const handleChange = (field) => (event) => {
     const value =
@@ -65,7 +90,7 @@ export default function AppAccountPage() {
   return (
     <div className="space-y-8">
       <section className="rounded-3xl border border-stone-light bg-white-warm p-6 shadow-sm sm:p-8">
-        <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">
+        <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-charcoal-light">
           Account
         </p>
         <h2 className="mt-3 font-serif text-3xl text-charcoal sm:text-4xl">

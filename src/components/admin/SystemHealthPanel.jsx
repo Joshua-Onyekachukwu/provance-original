@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import HealthCheckRow from './HealthCheckRow.jsx'
+import { formatTimeShort } from '../app/scanPresentation.js'
 
 /**
  * SystemHealthPanel — displays service health status rows with a refresh button.
@@ -56,7 +57,7 @@ export default function SystemHealthPanel({
   ]
 
   const lastChecked = healthData.lastCheckedAt
-    ? new Date(healthData.lastCheckedAt).toLocaleTimeString()
+    ? formatTimeShort(healthData.lastCheckedAt)
     : null
 
   return (

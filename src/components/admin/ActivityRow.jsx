@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { formatRelativeTime } from '../app/scanPresentation.js'
 
 const ACTION_CONFIG = {
   created: { label: 'CREATED', badgeClass: 'bg-emerald-100 text-emerald-800' },
@@ -16,18 +17,6 @@ function getActionConfig(action) {
   // action format like "user.invited" → extract last segment "invited"
   const short = action?.split('.')?.pop() || action
   return ACTION_CONFIG[short] || { label: (action || 'ACTION').toUpperCase(), badgeClass: 'bg-stone-light/50 text-charcoal-mid' }
-}
-
-function formatRelativeTime(isoString) {
-  const now = Date.now()
-  const then = new Date(isoString).getTime()
-  const diffSec = Math.floor((now - then) / 1000)
-
-  if (diffSec < 60) return 'just now'
-  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`
-  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`
-  if (diffSec < 604800) return `${Math.floor(diffSec / 86400)}d ago`
-  return new Date(isoString).toLocaleDateString()
 }
 
 /**

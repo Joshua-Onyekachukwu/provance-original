@@ -5,13 +5,13 @@
 > This blueprint is still useful for long-range product direction, but several references are historical.
 >
 > Current implementation updates:
-> - the live product identity is `Provance`, not `VerifAI`
+> - the live product identity is `Provance`
 > - the repo now includes a real authenticated app, NestJS backend, queue-backed processing path, and deployed infrastructure
 > - image-first MVP execution is ahead of broader image-and-video platform parity
 
 ## 1. Executive Thesis
 
-Provance is building a trust infrastructure company for the AI-content era. The initial product concept, currently framed as VerifAI, is an explainable forensic verification platform that helps users determine whether images and videos are synthetic, manipulated, or authentic enough for decision-making.
+Provance is building a trust infrastructure company for the AI-content era. The product is an explainable forensic verification platform that helps users determine whether images and videos are synthetic, manipulated, or authentic enough for decision-making.
 
 The product should not be positioned as "just another AI detector." It should be positioned as a **decision-support and evidence platform** for environments where confidence, traceability, and explainability matter.
 
@@ -152,7 +152,7 @@ The concept already has a coherent signal stack, a staged architecture, and a cl
 - Security posture is partially described but incomplete
 - Product roadmap exists but is feature-led rather than outcome-led
 - Pricing direction exists but is not packaged by segment
-- Naming is unresolved between Provance and VerifAI
+- Naming is established as Provance (single company and product brand)
 
 ### Missing
 
@@ -175,7 +175,7 @@ The concept already has a coherent signal stack, a staged architecture, and a cl
 
 ### Design inconsistencies
 
-- Product identity is split between Provance and VerifAI
+- Product identity is unified under Provance
 - Consumer, legal, and enterprise UX needs are conflated
 - No formal design system or interaction model exists
 - No landing page or conversion architecture is defined

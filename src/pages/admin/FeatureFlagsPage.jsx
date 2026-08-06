@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useRegisterCommands } from '../../components/ui/index.js'
 import { mockFeatureFlags } from '../../lib/mockData.js'
 import { updateFeatureFlag } from '../../lib/api.js'
 import StatCard from '../../components/admin/StatCard.jsx'
@@ -49,6 +51,30 @@ function StatCardSkeleton() {
 // ---------------------------------------------------------------------------
 
 export default function FeatureFlagsPage() {
+  const navigate = useNavigate()
+
+  useRegisterCommands(
+    [
+      {
+        id: 'flags.go-monitoring',
+        group: 'Feature Flags',
+        label: 'Open monitoring',
+        hint: 'System health and uptime',
+        keywords: ['feature flags', 'monitoring', 'admin'],
+        onSelect: () => navigate('/app/admin/monitoring'),
+      },
+      {
+        id: 'flags.go-organizations',
+        group: 'Feature Flags',
+        label: 'Open organizations',
+        hint: 'Workspace profiles',
+        keywords: ['feature flags', 'organizations', 'admin'],
+        onSelect: () => navigate('/app/admin/organizations'),
+      },
+    ],
+    [navigate],
+  )
+
   // --------------------------------------------------
   // Data state
   // --------------------------------------------------

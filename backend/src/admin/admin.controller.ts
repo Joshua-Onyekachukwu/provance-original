@@ -1,12 +1,15 @@
 import {
   Body,
   Controller,
+  DefaultValuePipe,
   Get,
   HttpCode,
   HttpStatus,
   Param,
+  ParseIntPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
@@ -17,6 +20,7 @@ import { SupabaseAuthGuard } from '../common/guards/supabase-auth.guard';
 import { AdminService } from './admin.service';
 import { CreateInviteDto } from './dto/create-invite.dto';
 import { ReviewWaitlistDto } from './dto/review-waitlist.dto';
+import { UpdateFeatureFlagDto } from './dto/update-feature-flag.dto';
 
 @Controller('admin')
 @UseGuards(SupabaseAuthGuard, AdminGuard)
@@ -27,6 +31,50 @@ export class AdminController {
   @Get('dashboard')
   getDashboard() {
     return this.adminService.getDashboard();
+  }
+
+  @Get('users')
+  listUsers(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('pageSize', new DefaultValuePipe(20), ParseIntPipe) pageSize: number,
+  ) {
+    return this.adminService.listUsers({ page, pageSize });
+  }
+
+  @Get('organizations')
+  listOrganizations() {
+    return this.adminService.listOrganizations();
+  }
+
+  @Get('analytics')
+  getAnalytics() {
+    return this.adminService.getAnalytics();
+  }
+
+  @Get('feature-flags')
+  listFeatureFlags() {
+    return this.adminService.listFeatureFlags();
+  }
+
+  @Patch('feature-flags/:key')
+  @HttpCode(HttpStatus.OK)
+  updateFeatureFlag(
+    @Param('key') key: string,
+    @Body() dto: UpdateFeatureFlagDto,
+  ) {
+    return this.adminService.updateFeatureFlag(key, dto.enabled);
+  }
+
+  @Get('audit-logs')
+  listAuditLogs(
+    @Query('limit', new DefaultValuePipe(100), ParseIntPipe) limit: number,
+  ) {
+    return this.adminService.listAuditLogs(limit);
+  }
+
+  @Get('monitoring')
+  getMonitoring() {
+    return this.adminService.getMonitoring();
   }
 
   @Patch('waitlist/:applicationId')

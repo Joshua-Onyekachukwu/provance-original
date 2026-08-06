@@ -157,7 +157,7 @@ For developer teams who want to integrate without a dashboard:
 
 | Company | Core Product | Pricing Model | Price Point | Key Weakness (Provance advantage) |
 |---------|-------------|---------------|-------------|----------------------------------|
-| **Sensity AI** | Deepfake detection (VerifAI) | Enterprise contract only | $50K–$200K+/yr | Black-box scoring, no courtroom-ready reports |
+| **Sensity AI** | Deepfake detection platform | Enterprise contract only | $50K–$200K+/yr | Black-box scoring, no courtroom-ready reports |
 | **Hive AI** | AI-gen detection API | Per-request | ~$0.0015/img | No workflow, no PDF report, score-only |
 | **Reality Defender** | Enterprise deepfake detection | Enterprise only | $100K+/yr | Expensive entry point, no self-serve tier |
 | **Deepware** | Open-source scanner + API | Free + Enterprise | $0–$50K/yr | Limited signals, no professional report artifact |

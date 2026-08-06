@@ -8,13 +8,11 @@
 >
 > For current implementation truth, start with `README.md`, `docs/engineering/CURRENT_IMPLEMENTATION_STATUS.md`, and `docs/engineering/PHASE_TASK_LIST.md`.
 
-This repository originally drew from source strategy documents where the product concept was described as **VerifAI**. The live repo, codebase, and active product identity now use **Provance** consistently.
-
-Older references to `VerifAI` should be treated as legacy naming, not the current shipped brand.
+This repository originally drew from source strategy documents describing the product concept. The live repo, codebase, and active product identity now use **Provance** consistently.
 
 ## Source Inputs Reviewed
 
-- `VerifAI_Founder_Summary_Report.md`
+- `Provance_Founder_Summary_Report.md`
 - `Provance_Complete_Development_Guide.md`
 - `provance.pdf` (present in repository; assumed to be a presentation export related to the same concept, but not machine-extracted in this pass)
 

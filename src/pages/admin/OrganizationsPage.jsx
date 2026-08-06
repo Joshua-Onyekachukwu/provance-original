@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useRegisterCommands } from '../../components/ui/index.js'
 import { mockOrganizations, mockUsers, mockAuditEvents } from '../../lib/mockData.js'
+import {
+  formatDate,
+  formatDateLong,
+  formatStorageGb,
+} from '../../components/app/scanPresentation.js'
 import AdminPageHeader from '../../components/admin/AdminPageHeader.jsx'
 import StatCard from '../../components/admin/StatCard.jsx'
 import AdminTable from '../../components/admin/AdminTable.jsx'
@@ -32,11 +39,6 @@ function getStatusDot(lastSignIn) {
   return 'offline'
 }
 
-function formatStorage(gb) {
-  if (gb >= 1000) return `${(gb / 1000).toFixed(1)} TB`
-  return `${gb.toFixed(1)} GB`
-}
-
 // ---------------------------------------------------------------------------
 // Org table columns
 // ---------------------------------------------------------------------------
@@ -49,7 +51,7 @@ const ORG_COLUMNS = [
     key: 'storage_used_gb',
     label: 'Storage',
     sortable: true,
-    render: (row) => formatStorage(row.storage_used_gb),
+    render: (row) => formatStorageGb(row.storage_used_gb),
   },
   {
     key: 'scan_count',
@@ -61,7 +63,7 @@ const ORG_COLUMNS = [
     key: 'created_at',
     label: 'Created',
     sortable: true,
-    render: (row) => new Date(row.created_at).toLocaleDateString(),
+    render: (row) => formatDate(row.created_at),
   },
 ]
 
@@ -122,6 +124,30 @@ function StatCardSkeleton() {
 // ---------------------------------------------------------------------------
 
 export default function OrganizationsPage() {
+  const navigate = useNavigate()
+
+  useRegisterCommands(
+    [
+      {
+        id: 'orgs.go-users',
+        group: 'Organizations',
+        label: 'Open user administration',
+        hint: 'Manage accounts and roles',
+        keywords: ['organizations', 'users', 'admin'],
+        onSelect: () => navigate('/app/admin/users'),
+      },
+      {
+        id: 'orgs.go-feature-flags',
+        group: 'Organizations',
+        label: 'Open feature flags',
+        hint: 'Toggle platform capabilities',
+        keywords: ['organizations', 'feature flags', 'admin'],
+        onSelect: () => navigate('/app/admin/feature-flags'),
+      },
+    ],
+    [navigate],
+  )
+
   // --------------------------------------------------
   // Data state
   // --------------------------------------------------
@@ -298,7 +324,7 @@ export default function OrganizationsPage() {
         meta={[
           { label: `${kpis.totalOrgs} organizations` },
           { label: `${kpis.totalMembers} members` },
-          { label: `${formatStorage(kpis.totalStorage)} stored` },
+          { label: `${formatStorageGb(kpis.totalStorage)} stored` },
         ]}
       />
 
@@ -311,7 +337,7 @@ export default function OrganizationsPage() {
             <StatCard label="Total Orgs" value={String(kpis.totalOrgs)} detail="Active organizations." tone="default" compact />
             <StatCard label="Total Members" value={String(kpis.totalMembers)} detail="Across all orgs." tone="info" compact />
             <StatCard label="Total Admins" value={String(kpis.totalAdmins)} detail="Org-level admins." tone="info" compact />
-            <StatCard label="Storage Used" value={formatStorage(kpis.totalStorage)} detail="Cumulative storage." tone="warning" compact />
+            <StatCard label="Storage Used" value={formatStorageGb(kpis.totalStorage)} detail="Cumulative storage." tone="warning" compact />
             <StatCard label="Scan Volume" value={kpis.totalScans.toLocaleString()} detail="Total scans run." tone="success" compact />
           </>
         )}
@@ -419,7 +445,7 @@ export default function OrganizationsPage() {
                   </div>
                   <div className="rounded-2xl border border-stone-light bg-parchment p-4">
                     <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">Created</p>
-                    <p className="mt-2 text-sm text-charcoal">{new Date(selectedOrg.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                    <p className="mt-2 text-sm text-charcoal">{formatDateLong(selectedOrg.created_at)}</p>
                   </div>
                   <div className="rounded-2xl border border-stone-light bg-parchment p-4">
                     <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">Members</p>
@@ -435,7 +461,7 @@ export default function OrganizationsPage() {
                 <div className="rounded-2xl border border-stone-light bg-parchment p-4">
                   <div className="flex items-center justify-between">
                     <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">Storage usage</p>
-                    <p className="text-sm font-medium text-charcoal">{formatStorage(selectedOrg.storage_used_gb)}</p>
+                    <p className="text-sm font-medium text-charcoal">{formatStorageGb(selectedOrg.storage_used_gb)}</p>
                   </div>
                   <div className="mt-3 h-2 w-full rounded-full bg-stone-light">
                     <div

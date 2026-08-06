@@ -7,6 +7,10 @@ export const USE_MOCK = true
 
 import {
   mockGetCurrentViewer,
+  mockSignInWithPassword,
+  mockRequestPasswordReset,
+  mockConfirmPasswordReset,
+  mockAcceptInvite,
   mockGetAdminDashboard,
   mockGetAdminUsers,
   mockGetOrganizations,
@@ -14,14 +18,39 @@ import {
   mockUpdateFeatureFlag,
   mockListScans,
   mockGetScan,
+  mockInitiateScan,
+  mockSubmitScan,
   mockGetReports,
   mockGetAnalytics,
   mockGetSystemHealth,
+  mockGetMonitoring,
   mockGetQueueSnapshot,
   mockGetNotifications,
   mockGetAuditLogs,
   mockGetSupportTickets,
   mockGetActivityLogs,
+  mockGetAdminAuditLogs,
+  mockGetAdminJobs,
+  mockGetAdminReports,
+  mockGetAdminRoles,
+  mockGetAdminSettings,
+  mockGetBilling,
+  mockGetInvoices,
+  mockGetSecuritySettings,
+  mockChangePassword,
+  mockRevokeSession,
+  mockUpdateSecuritySetting,
+  mockGetApiKeys,
+  mockCreateApiKey,
+  mockRevokeApiKey,
+  mockRegenerateApiKey,
+  mockGetHelpContent,
+  mockGetOrganization,
+  mockInviteMember,
+  mockUpdateMemberRole,
+  mockUpdateMemberTeam,
+  mockRemoveMember,
+  mockCancelInvite,
   mockReviewWaitlistApplication,
   mockCreateAccessInvite,
   mockGetUserProfile,
@@ -65,12 +94,27 @@ async function refreshStoredSessionIfNeeded(force = false) {
   const expiresAt = storedSession?.session?.expiresAt
   const refreshThresholdMs = 60 * 1000
 
-  if (!refreshToken) {
+  // With hardened cookies the server stops returning the refresh token in the
+  // response body — it lives only in an httpOnly cookie. When there is a
+  // stored session but no refresh token, still attempt the refresh so the
+  // cookie can rotate the access token.
+  const hasSessionSignal = Boolean(
+    storedSession?.session || storedSession?.user || storedSession?.permissions,
+  )
+
+  if (!hasSessionSignal) {
+    return accessToken || null
+  }
+
+  const canAttemptRefresh = Boolean(refreshToken) || !USE_MOCK
+
+  if (!canAttemptRefresh) {
     return accessToken || null
   }
 
   if (
     !force &&
+    !(refreshToken && !accessToken) &&
     typeof expiresAt === 'number' &&
     expiresAt - Date.now() > refreshThresholdMs
   ) {
@@ -82,9 +126,10 @@ async function refreshStoredSessionIfNeeded(force = false) {
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      refreshToken,
-    }),
+    credentials: 'include',
+    body: JSON.stringify(
+      refreshToken ? { refreshToken } : {},
+    ),
   })
 
   if (!response.ok) {
@@ -139,6 +184,7 @@ async function request(path, options = {}) {
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
     headers,
+    credentials: 'include',
     ...fetchOptions,
   })
 
@@ -184,6 +230,7 @@ export function submitWaitlistApplication(form) {
 }
 
 export function signInWithPassword(credentials) {
+  if (USE_MOCK) return mockSignInWithPassword(credentials)
   return request('/auth/sign-in', {
     method: 'POST',
     body: JSON.stringify(credentials),
@@ -192,6 +239,7 @@ export function signInWithPassword(credentials) {
 }
 
 export function requestPasswordReset(payload) {
+  if (USE_MOCK) return mockRequestPasswordReset(payload)
   return request('/auth/password-reset/request', {
     method: 'POST',
     body: JSON.stringify(payload),
@@ -200,6 +248,7 @@ export function requestPasswordReset(payload) {
 }
 
 export function confirmPasswordReset(payload) {
+  if (USE_MOCK) return mockConfirmPasswordReset(payload)
   return request('/auth/password-reset/confirm', {
     method: 'POST',
     body: JSON.stringify(payload),
@@ -208,11 +257,29 @@ export function confirmPasswordReset(payload) {
 }
 
 export function acceptInvite(payload) {
+  if (USE_MOCK) return mockAcceptInvite(payload)
   return request('/auth/invites/accept', {
     method: 'POST',
     body: JSON.stringify(payload),
     skipAuthRefresh: true,
   })
+}
+
+export async function signOut() {
+  if (!USE_MOCK) {
+    try {
+      await request('/auth/sign-out', {
+        method: 'POST',
+        skipAuthRefresh: true,
+        retryOnUnauthorized: false,
+      })
+    } catch {
+      // Best-effort: always clear local state even if the server call fails.
+    }
+  }
+
+  clearStoredSession()
+  return { status: 'signed_out' }
 }
 
 export function getCurrentViewer() {
@@ -228,6 +295,7 @@ export function updateAccountProfile(payload) {
 }
 
 export function initiateScan(payload) {
+  if (USE_MOCK) return mockInitiateScan(payload)
   return request('/scans', {
     method: 'POST',
     body: JSON.stringify(payload),
@@ -235,6 +303,7 @@ export function initiateScan(payload) {
 }
 
 export function submitScan(scanId) {
+  if (USE_MOCK) return mockSubmitScan(scanId)
   return request(`/scans/${scanId}/submit`, {
     method: 'POST',
   })
@@ -303,6 +372,11 @@ export function getReports(params) {
   return request('/reports')
 }
 
+export function getReport(reportId) {
+  if (USE_MOCK) return mockGetScan(reportId)
+  return request(`/reports/${reportId}`)
+}
+
 export function getAnalytics() {
   if (USE_MOCK) return mockGetAnalytics()
   return request('/admin/analytics')
@@ -311,6 +385,11 @@ export function getAnalytics() {
 export function getSystemHealth() {
   if (USE_MOCK) return mockGetSystemHealth()
   return request('/admin/system-health')
+}
+
+export function getMonitoring() {
+  if (USE_MOCK) return mockGetMonitoring()
+  return request('/admin/monitoring')
 }
 
 export function getQueueSnapshot() {
@@ -328,6 +407,119 @@ export function getAuditLogs(params) {
   return request('/admin/audit-logs')
 }
 
+export function getBilling() {
+  if (USE_MOCK) return mockGetBilling()
+  return request('/billing')
+}
+
+export function getInvoices(params) {
+  if (USE_MOCK) return mockGetInvoices(params)
+  return request('/billing/invoices')
+}
+
+export function getSecuritySettings() {
+  if (USE_MOCK) return mockGetSecuritySettings()
+  return request('/security/settings')
+}
+
+export function changePassword(payload) {
+  if (USE_MOCK) return mockChangePassword(payload)
+  return request('/security/password', {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function revokeSession(sessionId) {
+  if (USE_MOCK) return mockRevokeSession(sessionId)
+  return request(`/security/sessions/${sessionId}`, {
+    method: 'DELETE',
+  })
+}
+
+export function updateSecuritySetting(key, value) {
+  if (USE_MOCK) return mockUpdateSecuritySetting(key, value)
+  return request('/security/settings', {
+    method: 'PATCH',
+    body: JSON.stringify({ key, value }),
+  })
+}
+
+export function getApiKeys() {
+  if (USE_MOCK) return mockGetApiKeys()
+  return request('/api-keys')
+}
+
+export function createApiKey(payload) {
+  if (USE_MOCK) return mockCreateApiKey(payload)
+  return request('/api-keys', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function revokeApiKey(keyId) {
+  if (USE_MOCK) return mockRevokeApiKey(keyId)
+  return request(`/api-keys/${keyId}`, {
+    method: 'DELETE',
+  })
+}
+
+export function regenerateApiKey(keyId) {
+  if (USE_MOCK) return mockRegenerateApiKey(keyId)
+  return request(`/api-keys/${keyId}/regenerate`, {
+    method: 'POST',
+  })
+}
+
+export function getHelpContent(params) {
+  if (USE_MOCK) return mockGetHelpContent(params)
+  return request('/help/content')
+}
+
+export function getOrganization() {
+  if (USE_MOCK) return mockGetOrganization()
+  return request('/organization')
+}
+
+export function inviteMember(payload) {
+  if (USE_MOCK) return mockInviteMember(payload)
+  return request('/organization/invites', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function updateMemberRole(memberId, role) {
+  if (USE_MOCK) return mockUpdateMemberRole(memberId, role)
+  return request(`/organization/members/${memberId}/role`, {
+    method: 'PATCH',
+    body: JSON.stringify({ role }),
+  })
+}
+
+export function updateMemberTeam(memberId, teamId) {
+  if (USE_MOCK) return mockUpdateMemberTeam(memberId, teamId)
+  return request(`/organization/members/${memberId}/team`, {
+    method: 'PATCH',
+    body: JSON.stringify({ teamId }),
+  })
+}
+
+export function removeMember(memberId) {
+  if (USE_MOCK) return mockRemoveMember(memberId)
+  return request(`/organization/members/${memberId}`, {
+    method: 'DELETE',
+  })
+}
+
+export function cancelInvite(inviteId) {
+  if (USE_MOCK) return mockCancelInvite(inviteId)
+  return request(`/organization/invites/${inviteId}`, {
+    method: 'DELETE',
+  })
+}
+
 export function getSupportTickets(params) {
   if (USE_MOCK) return mockGetSupportTickets(params)
   return request('/admin/support-tickets')
@@ -335,7 +527,42 @@ export function getSupportTickets(params) {
 
 export function getActivityLogs(params) {
   if (USE_MOCK) return mockGetActivityLogs(params)
-  return request('/account/activity')
+  const query = params
+    ? new URLSearchParams(
+        Object.entries(params).filter(([, value]) => value !== undefined && value !== null),
+      ).toString()
+    : ''
+  return request(`/account/activity${query ? `?${query}` : ''}`)
+}
+
+export function getAdminAuditLogs() {
+  if (USE_MOCK) return mockGetAdminAuditLogs()
+  return request('/admin/audit-logs')
+}
+
+export function getAdminJobs() {
+  if (USE_MOCK) return mockGetAdminJobs()
+  return request('/admin/jobs')
+}
+
+export function getAdminReports(params) {
+  if (USE_MOCK) return mockGetAdminReports(params)
+  const query = params
+    ? new URLSearchParams(
+        Object.entries(params).filter(([, value]) => value !== undefined && value !== null),
+      ).toString()
+    : ''
+  return request(`/admin/reports${query ? `?${query}` : ''}`)
+}
+
+export function getAdminRoles() {
+  if (USE_MOCK) return mockGetAdminRoles()
+  return request('/admin/roles')
+}
+
+export function getAdminSettings() {
+  if (USE_MOCK) return mockGetAdminSettings()
+  return request('/admin/settings')
 }
 
 export function getUserProfile(userId) {

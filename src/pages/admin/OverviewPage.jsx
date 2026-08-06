@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import useMockData from '../../lib/useMockData.js'
 import {
   getAdminDashboard,
@@ -8,9 +8,10 @@ import {
   getAuditLogs,
 } from '../../lib/api.js'
 import { mockAnalytics } from '../../lib/mockData.js'
+import { formatPct, formatTimeShort } from '../../components/app/scanPresentation.js'
+import { Button, StatCard, TrendChart, useRegisterCommands } from '../../components/ui/index.js'
 import AppStatePanel from '../../components/app/AppStatePanel.jsx'
 import AdminPageHeader from '../../components/admin/AdminPageHeader.jsx'
-import StatCard from '../../components/admin/StatCard.jsx'
 import AttentionCard from '../../components/admin/AttentionCard.jsx'
 import ActivityRow from '../../components/admin/ActivityRow.jsx'
 import AdminOverviewSkeleton from '../../components/admin/AdminOverviewSkeleton.jsx'
@@ -25,11 +26,6 @@ function mapHealthStatus(value, service) {
 }
 
 // Format rate as percentage string
-function formatPct(decimal) {
-  if (decimal == null) return '—'
-  return `${(decimal * 100).toFixed(1)}%`
-}
-
 // Derive worker status from queue health
 function deriveWorkerStatus(queueHealth) {
   if (queueHealth === false) return 'stopped'
@@ -37,6 +33,8 @@ function deriveWorkerStatus(queueHealth) {
 }
 
 export default function OverviewPage() {
+  const navigate = useNavigate()
+
   // ── Data fetching (parallel, independent) ──────────────────────────────────
   const {
     data: dashboardData,
@@ -121,6 +119,29 @@ export default function OverviewPage() {
     )
   }, [kpis, dashboardData])
 
+  // ── Page-scoped commands (must precede any conditional return) ──────────────
+  useRegisterCommands(
+    [
+      {
+        id: 'admin.go-waitlist',
+        group: 'Admin',
+        label: 'Open waitlist management',
+        hint: 'Review and approve applications',
+        keywords: ['admin', 'waitlist', 'approve'],
+        onSelect: () => navigate('/app/admin/waitlist'),
+      },
+      {
+        id: 'admin.go-users',
+        group: 'Admin',
+        label: 'Open user administration',
+        hint: 'Manage accounts and roles',
+        keywords: ['admin', 'users', 'roles', 'accounts'],
+        onSelect: () => navigate('/app/admin/users'),
+      },
+    ],
+    [navigate],
+  )
+
   // Needs Attention
   const needsAttention = useMemo(() => {
     const s = dashboardData?.summary || {}
@@ -183,8 +204,7 @@ export default function OverviewPage() {
   }
   const statusCfg = systemStatusConfig[systemStatus]
 
-  const now = new Date()
-  const lastUpdatedStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  const lastUpdatedStr = formatTimeShort(new Date())
 
   // ── Render: Loading ────────────────────────────────────────────────────────
   if (isAnyLoading && !dashboardData && !queueRaw && !healthRaw && !auditData) {
@@ -200,12 +220,11 @@ export default function OverviewPage() {
         description={kpisError || 'The dashboard data could not be retrieved. The API may be temporarily unavailable.'}
         variant="error"
         action={
-          <button
+          <Button
             onClick={() => { refetchKpis(); refetchQueue(); refetchHealth(); refetchAudit() }}
-            className="inline-flex rounded-xl bg-charcoal px-5 py-3 text-sm font-medium text-parchment transition hover:bg-charcoal-soft focus-visible:ring-2 focus-visible:ring-charcoal"
           >
             Retry
-          </button>
+          </Button>
         }
       />
     )
@@ -271,12 +290,14 @@ export default function OverviewPage() {
           <div className="rounded-3xl border border-rose-100 bg-white-warm p-6 shadow-sm">
             <p className="text-sm font-medium text-rose-700">KPI data unavailable</p>
             <p className="mt-1 text-sm text-charcoal-mid">{kpisError}</p>
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={refetchKpis}
-              className="mt-4 rounded-xl border border-stone-light px-4 py-2 text-sm text-charcoal hover:border-charcoal/25 transition"
+              className="mt-4"
             >
               Retry
-            </button>
+            </Button>
           </div>
         ) : (
           <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
@@ -308,21 +329,43 @@ export default function OverviewPage() {
             <StatCard
               size="sm" tone="success"
               label="Completion Rate"
-              value={formatPct(kpis.completionRate)}
+              value={formatPct(kpis.completionRate, 1)}
               detail="Of submitted scans"
               trend={{ direction: 'up', value: '1.3%' }}
             />
             <StatCard
               size="sm" tone="warning"
               label="Fail / Suspicious"
-              value={`${formatPct(kpis.failureRate)} / ${formatPct(kpis.suspiciousRate)}`}
+              value={`${formatPct(kpis.failureRate, 1)} / ${formatPct(kpis.suspiciousRate, 1)}`}
               detail="Failure and suspicious rates"
             />
           </div>
         )}
       </section>
 
-      {/* ── Section 2: Queue Snapshot + System Health ─────────────────────── */}
+      {/* ── Section 2: Scan Volume Trend ──────────────────────────────────── */}
+      <section>
+        <div className="flex items-end justify-between mb-5">
+          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-charcoal-light">
+            Scan volume trend
+          </p>
+          <Link
+            to="/app/admin/analytics"
+            className="text-xs text-charcoal-mid hover:text-charcoal transition-colors focus-visible:ring-2 focus-visible:ring-charcoal rounded"
+          >
+            Open analytics →
+          </Link>
+        </div>
+        <TrendChart
+          data={mockAnalytics?.volume_trend || []}
+          title="Scan volume trend"
+          description="Daily scan volume, completions, and failures across the platform."
+          emptyTitle="No volume data yet"
+          emptyDescription="Scan volume will populate here as verifications flow through the platform."
+        />
+      </section>
+
+      {/* ── Section 3: Queue Snapshot + System Health ─────────────────────── */}
       <div className="grid gap-6 lg:grid-cols-2">
         <QueueSnapshotPanel
           data={queueData}
@@ -337,7 +380,7 @@ export default function OverviewPage() {
         />
       </div>
 
-      {/* ── Section 3: Needs Attention ────────────────────────────────────── */}
+      {/* ── Section 4: Needs Attention ────────────────────────────────────── */}
       <section>
         <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-charcoal-light mb-5">
           Needs attention
@@ -392,7 +435,7 @@ export default function OverviewPage() {
         )}
       </section>
 
-      {/* ── Section 4: Recent Activity ────────────────────────────────────── */}
+      {/* ── Section 5: Recent Activity ────────────────────────────────────── */}
       <section className="rounded-3xl border border-stone-light bg-white-warm p-6 shadow-sm">
         <div className="flex items-end justify-between mb-5">
           <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-charcoal-light">
@@ -410,12 +453,14 @@ export default function OverviewPage() {
           <div className="py-8 text-center">
             <p className="text-sm font-medium text-rose-700">Activity feed unavailable</p>
             <p className="mt-1 text-sm text-charcoal-mid">{auditError}</p>
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={refetchAudit}
-              className="mt-4 rounded-xl border border-stone-light px-4 py-2 text-sm text-charcoal hover:border-charcoal/25 transition"
+              className="mt-4"
             >
               Retry
-            </button>
+            </Button>
           </div>
         ) : events.length === 0 ? (
           <div className="py-10 text-center">
@@ -441,13 +486,15 @@ export default function OverviewPage() {
             </ol>
 
             {hasMore && (
-              <button
+              <Button
+                variant="secondary"
+                fullWidth
                 onClick={handleShowMore}
-                className="mt-4 w-full rounded-xl border border-stone-light bg-parchment py-3 text-sm text-charcoal-mid hover:text-charcoal hover:border-charcoal/25 transition focus-visible:ring-2 focus-visible:ring-charcoal"
+                className="mt-4"
                 aria-label={`Show more activity events, ${auditData.total - events.length} remaining`}
               >
                 Show more ({auditData.total - events.length} remaining) →
-              </button>
+              </Button>
             )}
           </>
         )}

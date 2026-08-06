@@ -1,5 +1,6 @@
 import React from 'react'
 import { motion } from 'framer-motion'
+import { formatPct } from '../app/scanPresentation.js'
 import EvidenceAppendix from './EvidenceAppendix'
 import SignatureCatalog from './SignatureCatalog'
 import PDFReportMediaAudit from './PDFReportMediaAudit'
@@ -34,7 +35,7 @@ const VeracityGauge = ({ score }) => {
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-3xl font-serif text-charcoal">{percentage.toFixed(1)}</span>
+        <span className="text-3xl font-serif text-charcoal">{formatPct(score, 1)}</span>
         <span className="text-[10px] font-mono text-charcoal-light uppercase">Veracity</span>
       </div>
     </div>

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Injectable,
   ServiceUnavailableException,
   UnauthorizedException,
@@ -16,11 +17,30 @@ import { SignInDto } from './dto/sign-in.dto';
 
 @Injectable()
 export class AuthService {
+  private readonly orgsTable: string;
+  private readonly orgMembersTable: string;
+  private readonly orgInvitesTable: string;
+
   constructor(
     private readonly accountService: AccountService,
     private readonly supabaseService: SupabaseService,
     private readonly configService: ConfigService,
-  ) {}
+  ) {
+    // Org tables mirror the organization module (0005_organization.sql) so the
+    // invite-accept path joins the same roster the org endpoints manage.
+    this.orgsTable = this.configService.get<string>(
+      'SUPABASE_ORGANIZATIONS_TABLE',
+      'organizations',
+    );
+    this.orgMembersTable = this.configService.get<string>(
+      'SUPABASE_ORGANIZATION_MEMBERS_TABLE',
+      'organization_members',
+    );
+    this.orgInvitesTable = this.configService.get<string>(
+      'SUPABASE_ORGANIZATION_INVITES_TABLE',
+      'organization_invites',
+    );
+  }
 
   async getCurrentSession(user: CurrentUserPayload) {
     return this.accountService.getCurrentViewer(user);
@@ -173,6 +193,10 @@ export class AuthService {
       };
     }
 
+    if (!dto.refreshToken) {
+      throw new UnauthorizedException('No session credential was provided.');
+    }
+
     const { data, error } = await client.auth.refreshSession({
       refresh_token: dto.refreshToken,
     });
@@ -209,6 +233,37 @@ export class AuthService {
     };
   }
 
+  async signOut(refreshToken: string | null) {
+    if (refreshToken) {
+      // Burn the refresh token server-side: refresh rotation consumes the
+      // old token (Supabase invalidates it), and we discard the replacement.
+      const client = this.supabaseService.createPublicClient();
+
+      if (client) {
+        try {
+          await client.auth.refreshSession({
+            refresh_token: refreshToken,
+          });
+        } catch {
+          // The token was already invalid or expired; nothing to revoke.
+        }
+      }
+    }
+
+    await this.insertAuditEvent({
+      action: 'sign_out',
+      entity_type: 'auth_user',
+      details: {
+        refresh_token_present: Boolean(refreshToken),
+      },
+    });
+
+    return {
+      status: 'signed_out',
+      message: 'You have been signed out.',
+    };
+  }
+
   async acceptInvite(dto: AcceptInviteDto) {
     const adminClient = this.supabaseService.getAdminClient();
 
@@ -220,6 +275,30 @@ export class AuthService {
       };
     }
 
+    // ── 1. Organization invite (raw token) — joins the org roster ──────────
+    // POST /organization/invites stores a plaintext token on
+    // organization_invites.token; acceptance creates the auth user and inserts
+    // the membership row so the invitee lands on the org roster with the
+    // invited role and team.
+    const { data: orgInvite, error: orgInviteError } = await adminClient
+      .from(this.orgInvitesTable)
+      .select('id, email, role, team_id, organization_id, status, expires_at')
+      .eq('token', dto.token)
+      .eq('status', 'pending')
+      .gt('expires_at', new Date().toISOString())
+      .maybeSingle();
+
+    if (orgInviteError) {
+      throw new ServiceUnavailableException(
+        'Invite verification is temporarily unavailable.',
+      );
+    }
+
+    if (orgInvite) {
+      return this.acceptOrganizationInvite(adminClient, orgInvite, dto);
+    }
+
+    // ── 2. Waitlist access invite (hashed token) — existing flow ───────────
     const tokenHash = createHash('sha256').update(dto.token).digest('hex');
     const { data: invite, error: inviteError } = await adminClient
       .from('access_invites')
@@ -329,6 +408,142 @@ export class AuthService {
       ]);
 
       throw error instanceof ServiceUnavailableException
+        ? error
+        : new ServiceUnavailableException(
+            'Invite activation is temporarily unavailable.',
+          );
+    }
+
+    return {
+      status: 'active',
+      message: 'Invite accepted. Your account is ready to sign in.',
+      user: {
+        id: createdUser.id,
+        email: createdUser.email,
+      },
+    };
+  }
+
+  /**
+   * acceptOrganizationInvite — activates an invite issued by the organization
+   * module (POST /organization/invites). Mirrors the access_invites flow's
+   * rollback semantics: any failure after user creation deletes the user and
+   * restores the invite status, so a half-activated account never persists.
+   */
+  private async acceptOrganizationInvite(
+    adminClient: NonNullable<ReturnType<SupabaseService['getAdminClient']>>,
+    invite: {
+      id: string;
+      email: string;
+      role: string;
+      team_id: string | null;
+      organization_id: string;
+    },
+    dto: AcceptInviteDto,
+  ) {
+    const createUserResult = await adminClient.auth.admin.createUser({
+      email: invite.email,
+      password: dto.password,
+      email_confirm: true,
+      user_metadata: {
+        full_name: dto.fullName,
+      },
+    });
+
+    if (createUserResult.error || !createUserResult.data.user) {
+      throw new ServiceUnavailableException(
+        'Invite activation is temporarily unavailable.',
+      );
+    }
+
+    const createdUser = createUserResult.data.user;
+
+    try {
+      // Seat guard: invite creation seat-checks, but seats may have filled in
+      // the meantime — mirror the organization service's plan enforcement.
+      const { count, error: countError } = await adminClient
+        .from(this.orgMembersTable)
+        .select('user_id', { count: 'exact', head: true })
+        .eq('organization_id', invite.organization_id)
+        .eq('status', 'active');
+
+      if (countError) {
+        throw new ServiceUnavailableException(
+          'Failed to check workspace seats.',
+        );
+      }
+
+      const { data: org } = await adminClient
+        .from(this.orgsTable)
+        .select('seats')
+        .eq('id', invite.organization_id)
+        .maybeSingle();
+
+      if ((count ?? 0) >= (org?.seats ?? 1)) {
+        throw new BadRequestException(
+          'This workspace has no seats left on its current plan.',
+        );
+      }
+
+      const membershipInsert = await adminClient
+        .from(this.orgMembersTable)
+        .insert({
+          organization_id: invite.organization_id,
+          user_id: createdUser.id,
+          role: invite.role,
+          team_id: invite.team_id,
+          status: 'active',
+        });
+
+      if (membershipInsert.error) {
+        // PK is (organization_id, user_id) — an email added as a member
+        // between invite creation and acceptance surfaces as a unique
+        // violation, so name it rather than surfacing a generic 503.
+        if (membershipInsert.error.code === '23505') {
+          throw new BadRequestException(
+            'This email is already a member of the workspace.',
+          );
+        }
+        throw new ServiceUnavailableException(
+          'Failed to join the organization roster.',
+        );
+      }
+
+      const inviteUpdate = await adminClient
+        .from(this.orgInvitesTable)
+        .update({ status: 'accepted' })
+        .eq('id', invite.id);
+
+      if (inviteUpdate.error) {
+        throw new ServiceUnavailableException(
+          'Failed to mark the invite accepted.',
+        );
+      }
+
+      await this.insertAuditEvent(
+        {
+          actor_email: invite.email,
+          action: 'invite_accepted',
+          entity_type: 'organization_invite',
+          entity_id: invite.id,
+          details: {
+            user_id: createdUser.id,
+            organization_id: invite.organization_id,
+          },
+        },
+        true,
+      );
+    } catch (error) {
+      await Promise.allSettled([
+        adminClient.auth.admin.deleteUser(createdUser.id),
+        adminClient
+          .from(this.orgInvitesTable)
+          .update({ status: 'pending' })
+          .eq('id', invite.id),
+      ]);
+
+      throw error instanceof ServiceUnavailableException ||
+        error instanceof BadRequestException
         ? error
         : new ServiceUnavailableException(
             'Invite activation is temporarily unavailable.',

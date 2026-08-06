@@ -1,4 +1,5 @@
 import { sampleAiDetectionResults, sampleAnalysisScope, sampleAppendix, sampleChainOfCustody, sampleCrossValidationResults, sampleDisclaimer, sampleExecutiveSummary, sampleFrameAnalysis, sampleManipulationIndicators, sampleMediaInformation, sampleMetadataAnalysis, sampleMetrics, sampleModelResults, sampleRecommendedNextSteps, sampleReportCover, sampleReportMeta, sampleReportPreviewImage, sampleReviewerNotes, sampleTechnicalFindings, sampleTimeline, sampleWatermarkAndProvenance } from '../lib/sampleReportContent.js'
+import { formatDateTime } from './app/scanPresentation.js'
 
 function MetricCard({ item }) {
   const toneClasses = {
@@ -89,7 +90,7 @@ export default function SampleReportDocument({ compact = false, showPrintControl
               <div className="mt-3 space-y-2 text-sm text-charcoal">
                 <div><span className="font-medium">Report ID:</span> {sampleReportMeta.reportId}</div>
                 <div><span className="font-medium">Verification ID:</span> {sampleReportMeta.verificationId}</div>
-                <div><span className="font-medium">Generated:</span> {sampleReportMeta.analysisTimestamp}</div>
+                <div><span className="font-medium">Generated:</span> {formatDateTime(sampleReportMeta.analysisTimestampIso)}</div>
                 <div><span className="font-medium">Methodology:</span> {sampleReportMeta.methodologyVersion}</div>
               </div>
             </div>
@@ -429,7 +430,7 @@ export default function SampleReportDocument({ compact = false, showPrintControl
             </div>
             <div className="rounded-2xl border border-stone-light bg-white-warm/92 p-4">
               <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-charcoal-light">Timestamp</div>
-              <div className="mt-2 text-sm text-charcoal">{sampleReportMeta.analysisTimestamp}</div>
+              <div className="mt-2 text-sm text-charcoal">{formatDateTime(sampleReportMeta.analysisTimestampIso)}</div>
             </div>
             <div className="rounded-2xl border border-stone-light bg-white-warm/92 p-4">
               <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-charcoal-light">Version</div>

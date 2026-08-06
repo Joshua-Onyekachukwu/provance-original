@@ -147,6 +147,14 @@ export class ScansService {
       throw new BadRequestException('Scan is not ready to be submitted.');
     }
 
+    const assetExists = await this.assetExists(adminClient, scan);
+
+    if (!assetExists) {
+      throw new BadRequestException(
+        'The file has not been uploaded yet. Upload the asset before submitting the scan.',
+      );
+    }
+
     await this.updateScan(adminClient, scanId, {
       status: 'queued',
       updated_at: new Date().toISOString(),
@@ -180,7 +188,13 @@ export class ScansService {
       throw new ServiceUnavailableException('Failed to fetch scans.');
     }
 
-    return { scans: data ?? [] };
+    // `data` matches the frontend list contract; `scans` stays as a
+    // backward-compatible alias for older consumers. All rows are returned in
+    // a single page for now — pagination happens on the reports endpoint.
+    return {
+      data: data ?? [],
+      scans: data ?? [],
+    };
   }
 
   async getScan(userId: string, scanId: string) {
@@ -317,6 +331,33 @@ export class ScansService {
         updated_at: new Date().toISOString(),
       });
     }
+  }
+
+  private async assetExists(
+    adminClient: NonNullable<ReturnType<SupabaseService['getAdminClient']>>,
+    scan: ScanRow,
+  ) {
+    const storage = adminClient.storage.from(scan.storage_bucket);
+
+    if (typeof storage.info !== 'function') {
+      // Older supabase-js versions lack storage.info; proceed without the
+      // pre-flight check and let the worker surface failures instead.
+      this.logger.warn(
+        'storage.info is unavailable; skipping upload-exists validation.',
+      );
+      return true;
+    }
+
+    const { data, error } = await storage.info(scan.storage_path);
+
+    if (error || !data) {
+      this.logger.warn(
+        `Upload existence check failed for ${scan.storage_bucket}/${scan.storage_path}: ${error?.message ?? 'no object returned'}`,
+      );
+      return false;
+    }
+
+    return true;
   }
 
   private async downloadScanAsset(

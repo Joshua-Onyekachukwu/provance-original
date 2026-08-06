@@ -106,6 +106,31 @@ Important notes:
 - do not use the local admin email in production
 - keep local-only admin emails out of live Fly secrets unless intentionally needed for staging
 
+## Frontend Mock-Mode Test Accounts
+
+With `USE_MOCK = true` in `src/lib/api.js` (the frontend-first default, ADR 004), the
+sign-in flow runs entirely against the mock layer. Two known test accounts drive the
+same frontend flow the real Supabase path uses:
+
+| Account | Access | Notes |
+|---|---|---|
+| `founder.admin@provance.local` | dashboard + admin panel | `permissions.admin = true`, team enabled |
+| `founder.test@provance.local` | dashboard only | `permissions.admin = false`; admin routes render the access-denied page |
+
+Rules in mock mode:
+
+- any password of 8+ characters is accepted for a known account (reviewers never
+  need to remember a credential)
+- an unknown email or short password returns the standard "Invalid login credentials"
+  error so the error surface can be reviewed
+- password-reset request, password-reset confirm, and invite acceptance are also
+  mocked so the full auth surface is demonstrable without the backend
+- sign-out clears the persisted session (the same localStorage key the real flow
+  uses), so protected routes redirect back to `/signin`
+
+When `USE_MOCK` flips to `false`, sign-in validates against Supabase through the
+backend and admin access is governed by the `ADMIN_EMAILS` allowlist below.
+
 ## Current Admin Routes
 
 Frontend:

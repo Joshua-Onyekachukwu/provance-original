@@ -3,6 +3,44 @@ import { motion } from 'framer-motion'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 
+const TEST_ACCOUNTS = [
+  { id: 'admin', email: 'founder.admin@provance.local', label: 'Admin account' },
+  { id: 'member', email: 'founder.test@provance.local', label: 'Member account' },
+]
+const TEST_ACCOUNT_PASSWORD = 'test-password-123'
+
+/**
+ * Dev-only test-account quick fill (inert in production builds). Lets
+ * reviewers jump into either permission level with one click instead of
+ * typing credentials — matches the ?state= / ?demo= dev affordances used
+ * elsewhere in the app.
+ */
+function DevTestAccounts({ onFill }) {
+  if (!import.meta.env.DEV) return null
+  return (
+    <div className="mt-6 rounded-2xl border border-dashed border-amber/40 bg-amber/[0.04] p-4">
+      <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-charcoal-light">
+        Dev test accounts
+      </p>
+      <p className="mt-1 text-xs text-charcoal-light">
+        One click to fill a credential set. Visible only in development builds.
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {TEST_ACCOUNTS.map((account) => (
+          <button
+            key={account.id}
+            type="button"
+            onClick={() => onFill(account.email)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-amber/40 bg-amber/10 px-3 py-1.5 text-xs font-medium text-amber transition hover:border-amber hover:bg-amber/20"
+          >
+            {account.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function SignInPage() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -13,6 +51,12 @@ export default function SignInPage() {
   const [errorMessage, setErrorMessage] = useState('')
   const redirectTo =
     new URLSearchParams(location.search).get('redirect') || '/app'
+
+  const fillTestAccount = (email) => {
+    setEmail(email)
+    setPassword(TEST_ACCOUNT_PASSWORD)
+    setErrorMessage('')
+  }
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -130,6 +174,8 @@ export default function SignInPage() {
               >
                 {isSubmitting ? 'Signing in...' : 'Sign in'}
               </button>
+
+              <DevTestAccounts onFill={fillTestAccount} />
 
               <p className="mt-4 text-xs leading-relaxed text-charcoal-light">
                 Access is opened by invitation. Approved users are redirected into the

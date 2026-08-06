@@ -9,6 +9,7 @@
 
 | Document | File | Status |
 |---|---|---|
+| Frontend Completion Review + Backend Stack | `reports/2026-08-04-frontend-completion-review.md` | ✅ Current |
 | Team Workflow | `engineering/DEVELOPMENT_WORKFLOW_AND_RELEASE_PROCESS.md` | ✅ Current |
 | Multi-Agent Operating Model | `ai-agents/HOW_TO_RUN_THE_ORG.md` + `ai-agents/RUNTIME_MAPPING.md` | ✅ Current |
 | Engineering Standards | `engineering/ENGINEERING_STANDARDS.md` | ✅ Current |
@@ -38,20 +39,24 @@
 
 ---
 
-## User Dashboard (10 pages)
+## User Dashboard (13 shipped pages + placeholders)
 
 | # | Page | Route | Design Spec | PRD | Build |
 |---|---|---|---|---|---|
 | 1 | Dashboard Home | `/app` | `design-specs/user-dashboard-home.md` | `prds/user-dashboard-home.md` | ✅ Built on ui kit |
 | 2 | Upload & Verify | `/app/uploads` | — | — | ✅ Built (drag-drop, modes, queue state machine) |
-| 3 | Reports Library | `/app/reports` | — | — | ✅ |
+| 3 | Reports Library | `/app/reports` | — | — | ✅ Built (list + detail + print) |
 | 4 | Verification Queue | `/app/queue` | — | — | ✅ Built (stats + recent jobs) |
-| 5 | Scan History | `/app/history` | — | — | ✅ |
-| 6 | Notifications | `/app/notifications` | — | — | ⏳ |
-| 7 | Team Workspace | `/app/team` | — | — | ⏳ |
-| 8 | Profile + Settings | `/app/settings` | — | — | ⏳ |
-| 9 | Developer Portal | `/app/developers` | — | — | ⏳ |
-| 10 | Billing | `/app/billing` | — | — | ⏳ |
+| 5 | Scan History | `/app/history` | — | — | ✅ Built |
+| 6 | Notifications | `/app/notifications` | — | — | ✅ Built (tabs, unread, ⌘K) |
+| 7 | Team Workspace | `/app/team` | — | — | ✅ Protected route |
+| 8 | Profile | `/app/account` | — | — | ✅ Built |
+| 9 | Security | `/app/security` | — | — | ✅ Built (password, sessions, controls) |
+| 10 | API Keys | `/app/api-keys` | — | — | ✅ Built (create/reveal-once/revoke) |
+| 11 | Help & Docs | `/app/help` + `/app/docs` | — | — | ✅ Built (guides + FAQ + contact) |
+| 12 | Billing | `/app/billing` | — | — | ✅ Built (UI only) |
+| 13 | Activity Log | `/app/activity` | `AppActivityPage.jsx` | ✅ | Category tabs, search, expandable details |
+| 14 | Organization | `/app/organization` | — | — | ⏳ Placeholder |
 
 ---
 

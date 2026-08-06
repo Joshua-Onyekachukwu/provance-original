@@ -479,7 +479,7 @@ Missing reusable foundations:
 
 ### 6.1 Product Identity Inconsistency
 
-The repo alternates between `Provance` and `VerifAI`. This must be resolved immediately. The company/product naming split may be valid, but it must be intentional and consistent.
+The repo must use `Provance` consistently as the single company and product brand across all materials.
 
 ### 6.2 Scope Inconsistency
 

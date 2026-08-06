@@ -10,11 +10,17 @@ This document lists the major missing components between the current MVP and the
 
 - richer evidence timeline
 - share links
-- full PDF export workflow
-- team and organization collaboration
+- full PDF export workflow (approved 2026-08-04)
+- global error boundary (approved 2026-08-04)
+- scan deduplication (approved 2026-08-04)
+- webhooks UI (approved 2026-08-04, later)
+- usage/entitlement enforcement (approved 2026-08-04, later)
+- evidence appendix in reports (approved 2026-08-04, later)
 - enterprise API product
 - video support
 - audio support
+
+> Note: team and organization collaboration shipped as the Organization Management page in Phase 3 (approved feature #4).
 
 ## Engineering Components
 

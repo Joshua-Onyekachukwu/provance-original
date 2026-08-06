@@ -70,10 +70,15 @@ Before review:
 
 Baseline release gates:
 
+- `npm test` — frontend vitest suite (63 tests, incl. formatter edge cases)
 - `npm run build`
 - `npm run backend:build`
 - `npm run backend:test:e2e`
-- `npm run check:launch`
+- `npm run check:launch` — canonical gate: runs `npm test` first, then the
+  frontend build, backend build, and backend e2e health check
+
+CI (`.github/workflows/ci.yml`) enforces the same gate on every push/PR:
+frontend lint + test + build, and backend build + unit + e2e.
 
 Run additional targeted checks when the phase needs them.
 

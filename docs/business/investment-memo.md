@@ -6,7 +6,7 @@ Provance
 
 ## Working Product
 
-VerifAI
+Provance
 
 ## One-Line Thesis
 

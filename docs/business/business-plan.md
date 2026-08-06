@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-Provance is building a verification platform for the AI-content era. The first product, currently framed as VerifAI, helps professionals and organizations determine whether digital media is synthetic, manipulated, or likely authentic using explainable forensic analysis, attribution, and reporting workflows.
+Provance is building a verification platform for the AI-content era, helping professionals and organizations determine whether digital media is synthetic, manipulated, or likely authentic using explainable forensic analysis, attribution, and reporting workflows.
 
 The company should enter the market through high-trust use cases where evidence quality matters more than novelty or mass consumer reach.
 

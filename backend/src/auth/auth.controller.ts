@@ -5,14 +5,23 @@ import {
   HttpCode,
   HttpStatus,
   Post,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Throttle } from '@nestjs/throttler';
+import type { Response } from 'express';
 import {
   CurrentUser,
   type CurrentUserPayload,
 } from '../common/decorators/current-user.decorator';
 import { SupabaseAuthGuard } from '../common/guards/supabase-auth.guard';
+import {
+  buildCookieSessionOptions,
+  clearRefreshCookie,
+  readRefreshCookie,
+  setRefreshCookie,
+} from './cookie-session.util';
 import { AcceptInviteDto } from './dto/accept-invite.dto';
 import { AuthService } from './auth.service';
 import { ConfirmPasswordResetDto } from './dto/confirm-password-reset.dto';
@@ -20,10 +29,36 @@ import { RefreshSessionDto } from './dto/refresh-session.dto';
 import { RequestPasswordResetDto } from './dto/request-password-reset.dto';
 import { SignInDto } from './dto/sign-in.dto';
 
+type AuthSessionResponse = {
+  status: string;
+  message: string;
+  user?: Record<string, unknown>;
+  permissions?: Record<string, unknown>;
+  profile?: Record<string, unknown>;
+  session?: {
+    accessToken: string;
+    refreshToken?: string | null;
+    expiresAt?: number | null;
+    tokenType?: string;
+  };
+};
+
 @Controller('auth')
 @Throttle({ default: { limit: 5, ttl: 60_000 } })
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  private readonly cookieOptions;
+
+  constructor(
+    private readonly authService: AuthService,
+    configService: ConfigService,
+  ) {
+    this.cookieOptions = buildCookieSessionOptions({
+      enabled: configService.get<boolean>('AUTH_COOKIE_ENABLED', true),
+      sameSite: configService.get<string>('AUTH_COOKIE_SAME_SITE', 'lax'),
+      secure: configService.get<boolean>('AUTH_COOKIE_SECURE', false),
+      maxAgeDays: configService.get<number>('AUTH_COOKIE_MAX_AGE_DAYS', 30),
+    });
+  }
 
   @Get('me')
   @UseGuards(SupabaseAuthGuard)
@@ -33,8 +68,21 @@ export class AuthController {
 
   @Post('sign-in')
   @HttpCode(HttpStatus.OK)
-  signIn(@Body() dto: SignInDto) {
-    return this.authService.signIn(dto);
+  async signIn(
+    @Res({ passthrough: true }) response: Response,
+    @Body() dto: SignInDto,
+  ): Promise<AuthSessionResponse> {
+    const result = await this.authService.signIn(dto);
+
+    if (
+      this.cookieOptions.enabled &&
+      result.status === 'authenticated' &&
+      result.session?.refreshToken
+    ) {
+      setRefreshCookie(response, result.session.refreshToken, this.cookieOptions);
+    }
+
+    return stripRefreshTokenFromBody(result, this.cookieOptions.enabled);
   }
 
   @Post('password-reset/request')
@@ -51,8 +99,46 @@ export class AuthController {
 
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  refreshSession(@Body() dto: RefreshSessionDto) {
-    return this.authService.refreshSession(dto);
+  async refreshSession(
+    @Res({ passthrough: true }) response: Response,
+    @Body() dto: RefreshSessionDto,
+  ): Promise<AuthSessionResponse> {
+    const cookieRefreshToken = this.cookieOptions.enabled
+      ? readRefreshCookie(response.req)
+      : null;
+    const result = await this.authService.refreshSession({
+      refreshToken: cookieRefreshToken ?? dto.refreshToken,
+    });
+
+    if (
+      this.cookieOptions.enabled &&
+      result.status === 'authenticated' &&
+      result.session?.refreshToken
+    ) {
+      // Rotation: every refresh issues a fresh refresh token (Supabase
+      // invalidates the previous one), and the cookie carries the new value.
+      setRefreshCookie(response, result.session.refreshToken, this.cookieOptions);
+    }
+
+    return stripRefreshTokenFromBody(result, this.cookieOptions.enabled);
+  }
+
+  @Post('sign-out')
+  @HttpCode(HttpStatus.OK)
+  async signOut(
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<{ status: string; message: string }> {
+    const cookieRefreshToken = this.cookieOptions.enabled
+      ? readRefreshCookie(response.req)
+      : null;
+
+    const result = await this.authService.signOut(cookieRefreshToken);
+
+    if (this.cookieOptions.enabled) {
+      clearRefreshCookie(response, this.cookieOptions);
+    }
+
+    return result;
   }
 
   @Post('invites/accept')
@@ -60,4 +146,22 @@ export class AuthController {
   acceptInvite(@Body() dto: AcceptInviteDto) {
     return this.authService.acceptInvite(dto);
   }
+}
+
+function stripRefreshTokenFromBody(
+  result: AuthSessionResponse,
+  cookieEnabled: boolean,
+): AuthSessionResponse {
+  if (!cookieEnabled || !result.session) {
+    return result;
+  }
+
+  return {
+    ...result,
+    session: {
+      accessToken: result.session.accessToken,
+      expiresAt: result.session.expiresAt ?? null,
+      tokenType: result.session.tokenType,
+    },
+  };
 }

@@ -9,6 +9,8 @@ import { ApiThrottlerGuard } from './common/guards/api-throttler.guard';
 import { validateEnv } from './config/env.validation';
 import { HealthModule } from './health/health.module';
 import { QueueModule } from './queue/queue.module';
+import { OrganizationModule } from './organization/organization.module';
+import { ReportsModule } from './reports/reports.module';
 import { ScansModule } from './scans/scans.module';
 import { SupabaseModule } from './supabase/supabase.module';
 import { WaitlistModule } from './waitlist/waitlist.module';
@@ -37,6 +39,8 @@ import { WaitlistModule } from './waitlist/waitlist.module';
     AccountModule,
     AuthModule,
     ScansModule,
+    ReportsModule,
+    OrganizationModule,
     AdminModule,
   ],
   providers: [

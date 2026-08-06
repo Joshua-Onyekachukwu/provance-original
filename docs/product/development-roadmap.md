@@ -1,6 +1,6 @@
 # Development Roadmap
 
-> Current-state note. Updated 2026-07-07.
+> Current-state note. Updated 2026-08-04.
 >
 > This roadmap still captures the intended order of work, but several items from early phases are already complete in the repo.
 >
@@ -10,12 +10,15 @@
 > - API-backed scan creation
 > - queue-backed async processing foundation
 > - scan history, dashboard metrics, and report detail foundations
+> - the full user workspace (dashboard, uploads, queue, history, reports, account, team, notifications, security, API keys, billing, help/docs, organization, activity)
+> - Organization Management (member roster, roles, team access, invites) — approved feature #4
 >
 > Still ahead:
 > - richer evidence payloads
 > - report export
+> - the approved feature set (see below)
 > - internal admin tooling
-> - dashboard redesign
+> - backend integration
 > - video workflows
 
 ## Roadmap Principles
@@ -24,6 +27,23 @@
 - Build image workflows before heavy video infrastructure.
 - Prioritize explainability, security, and evidence handling alongside model quality.
 - Use milestone gates tied to outcomes, not just feature completion.
+
+## Approved Feature Set (2026-08-04)
+
+All ten features recommended in `docs/reports/2026-08-04-frontend-completion-review.md` were approved by the Founder:
+
+1. Global error boundary + crash recovery — High, MVP
+2. Report PDF export (client-side) — High, MVP
+3. Scan deduplication (hash-based) — Medium, MVP
+4. Organization invites + roles — High, MVP (**shipped**)
+5. Webhooks UI — Medium, Later
+6. Admin analytics + monitoring pages — Medium, MVP (admin) (**shipped**: pages + real `GET /admin/analytics` endpoint)
+7. Session hardening (httpOnly cookies) — High, Before beta
+8. Sentry + PostHog baseline — Medium, Before beta
+9. Usage/entitlement enforcement — Medium, Later
+10. Evidence appendix in reports — Medium, Later
+
+Targets are tracked in `docs/roadmap/MASTER_DEVELOPMENT_ROADMAP.md` (Approved Feature Set table) and `docs/project-state/current-feature-status.md`.
 
 ## Phase 1: Foundation
 

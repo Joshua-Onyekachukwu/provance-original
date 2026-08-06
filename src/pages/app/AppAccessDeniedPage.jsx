@@ -5,7 +5,7 @@ export default function AppAccessDeniedPage() {
   return (
     <div className="space-y-8">
       <section className="rounded-3xl border border-stone-light bg-white-warm p-8 shadow-sm">
-        <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">
+        <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-charcoal-light">
           Access control
         </p>
         <h2 className="mt-3 font-serif text-4xl text-charcoal">Team access is not enabled</h2>

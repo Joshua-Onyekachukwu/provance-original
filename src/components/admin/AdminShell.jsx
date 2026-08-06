@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import ErrorBoundary from '../app/ErrorBoundary.jsx'
+import { CommandPalette, CommandRegistryProvider } from '../ui'
 import { useAuth } from '../../context/AuthContext.jsx'
 
 const ADMIN_MODULES = [
@@ -51,6 +53,7 @@ function getModuleLabel(pathname) {
 export default function AdminShell() {
   const { profile, user, signOut } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const currentModule = getModuleLabel(location.pathname)
 
@@ -58,7 +61,40 @@ export default function AdminShell() {
     setSidebarOpen(false)
   }, [location.pathname])
 
+  const paletteItems = useMemo(
+    () => [
+      ...ADMIN_MODULES.flatMap((group) =>
+        group.items.map((item) => ({
+          id: `nav-${item.href}`,
+          group: group.group,
+          label: item.label,
+          hint: item.exact ? 'Admin overview' : item.href,
+          keywords: [item.label, 'admin'],
+          onSelect: () => navigate(item.href),
+        })),
+      ),
+      {
+        id: 'admin-back-to-workspace',
+        group: 'Actions',
+        label: 'Back to workspace',
+        hint: 'Return to the user dashboard',
+        keywords: ['admin', 'workspace', 'back', 'dashboard'],
+        onSelect: () => navigate('/app'),
+      },
+      {
+        id: 'admin-sign-out',
+        group: 'Actions',
+        label: 'Sign out',
+        hint: 'End this session',
+        keywords: ['admin', 'sign out', 'logout', 'session'],
+        onSelect: signOut,
+      },
+    ],
+    [navigate, signOut],
+  )
+
   return (
+    <CommandRegistryProvider>
     <div className="admin-shell-surface min-h-screen bg-parchment-light">
       <div className="min-h-screen lg:grid lg:grid-cols-[280px_minmax(0,1fr)]">
         {/* Sidebar */}
@@ -197,9 +233,37 @@ export default function AdminShell() {
                 </h1>
               </div>
               <div className="flex items-center gap-3">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-100 bg-sky-50 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-sky-700">
+                <span className="hidden rounded-full border border-sky-100 bg-sky-50 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-sky-700 md:inline-flex">
                   Internal Control Room
                 </span>
+                <CommandPalette
+                  items={paletteItems}
+                  trigger={({ open, triggerRef }) => (
+                    <button
+                      ref={triggerRef}
+                      type="button"
+                      onClick={open}
+                      aria-label="Search admin routes and actions"
+                      className="ui-focus-ring flex h-10 w-10 items-center justify-center gap-2 rounded-xl border border-stone-light bg-white-warm text-sm text-charcoal-mid transition hover:border-charcoal/25 hover:text-charcoal md:w-auto md:px-3"
+                    >
+                      <svg
+                        className="h-4 w-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth="2"
+                        stroke="currentColor"
+                        aria-hidden="true"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
+                        />
+                      </svg>
+                      <span className="hidden md:inline">Search…</span>
+                    </button>
+                  )}
+                />
                 <span className="hidden rounded-full border border-stone-light bg-parchment px-3 py-1.5 text-[11px] uppercase tracking-[0.14em] text-charcoal-mid sm:inline-flex">
                   {profile?.displayName || 'Admin'}
                 </span>
@@ -207,12 +271,16 @@ export default function AdminShell() {
             </div>
           </header>
 
-          {/* Page content */}
+          {/* Page content — location-keyed so the admin shell survives a
+              page crash and navigating away resets the boundary. */}
           <main className="px-6 py-8 sm:px-8 lg:px-10 lg:py-10">
-            <Outlet />
+            <ErrorBoundary key={location.pathname}>
+              <Outlet />
+            </ErrorBoundary>
           </main>
         </div>
       </div>
     </div>
+    </CommandRegistryProvider>
   )
 }

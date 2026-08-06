@@ -1,14 +1,18 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import AdminPageHeader from '../../components/admin/AdminPageHeader.jsx'
-import StatCard from '../../components/admin/StatCard.jsx'
-import AdminTable from '../../components/admin/AdminTable.jsx'
-import AdminDrawer from '../../components/admin/AdminDrawer.jsx'
 import ConfirmDialog from '../../components/admin/ConfirmDialog.jsx'
+import { Badge, Button, DataTable, Drawer, StatCard, useRegisterCommands } from '../../components/ui/index.js'
+import {
+  formatDate,
+  formatDateTime,
+} from '../../components/app/scanPresentation.js'
 import {
   createAccessInvite,
   getAdminDashboard,
   reviewWaitlistApplication,
 } from '../../lib/api.js'
+import { buildCsv as sharedBuildCsv } from '../../lib/csv.js'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -16,38 +20,18 @@ import {
 
 function buildCsv(rows) {
   const headers = ['Full name', 'Email', 'Company', 'Role', 'Status', 'Created at']
-  const lines = rows.map((row) =>
-    [
+  return sharedBuildCsv(
+    headers,
+    rows.map((row) => [
       row.full_name,
       row.email,
       row.company || '',
       row.role_title || '',
       row.status,
       row.created_at,
-    ]
-      .map((value) => `"${String(value).replaceAll('"', '""')}"`)
-      .join(','),
+    ]),
   )
-
-  return [headers.join(','), ...lines].join('\n')
 }
-
-const WAITLIST_COLUMNS = [
-  { key: 'full_name', label: 'Name', sortable: true },
-  { key: 'email', label: 'Email', sortable: true },
-  { key: 'company', label: 'Company', sortable: true },
-  { key: 'role_title', label: 'Role', sortable: true },
-  { key: 'status', label: 'Status', sortable: true,
-    render: (row) => (
-      <span className="inline-flex rounded-full bg-white-warm px-2.5 py-0.5 text-[11px] uppercase tracking-[0.14em] text-charcoal-mid">
-        {row.status.replaceAll('_', ' ')}
-      </span>
-    ),
-  },
-  { key: 'created_at', label: 'Submitted', sortable: true,
-    render: (row) => new Date(row.created_at).toLocaleDateString(),
-  },
-]
 
 const STATUS_LABELS = {
   waitlist_submitted: 'Submitted',
@@ -57,33 +41,92 @@ const STATUS_LABELS = {
   rejected: 'Rejected',
 }
 
-const STATUS_BADGE_STYLES = {
-  waitlist_submitted: 'border-slate-200 bg-slate-50 text-slate-700',
-  under_review: 'border-sky-200 bg-sky-50 text-sky-700',
-  approved: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-  deferred: 'border-amber-200 bg-amber-50 text-amber-700',
-  rejected: 'border-rose-200 bg-rose-50 text-rose-700',
+const STATUS_TONES = {
+  waitlist_submitted: 'neutral',
+  under_review: 'info',
+  approved: 'success',
+  deferred: 'warning',
+  rejected: 'danger',
 }
 
-// ---------------------------------------------------------------------------
-// Skeleton components for section-level loading
-// ---------------------------------------------------------------------------
-
-function StatCardSkeleton() {
+function StatusBadge({ status }) {
   return (
-    <div className="animate-pulse rounded-3xl border border-stone-light bg-white-warm p-4 sm:p-5 shadow-sm">
-      <div className="mb-2 h-3 w-20 rounded bg-stone-light/60" />
-      <div className="mb-2 h-7 w-14 rounded bg-stone-light/50" />
-      <div className="h-3 w-28 rounded bg-stone-light/40" />
-    </div>
+    <Badge tone={STATUS_TONES[status] || 'neutral'} size="sm">
+      {STATUS_LABELS[status] || status.replaceAll('_', ' ')}
+    </Badge>
   )
 }
+
+const WAITLIST_COLUMNS = [
+  {
+    key: 'full_name',
+    header: 'Name',
+    sortable: true,
+    sortValue: (row) => row.full_name,
+  },
+  {
+    key: 'email',
+    header: 'Email',
+    sortable: true,
+    sortValue: (row) => row.email,
+  },
+  {
+    key: 'company',
+    header: 'Company',
+    sortable: true,
+    sortValue: (row) => row.company || '',
+  },
+  {
+    key: 'role_title',
+    header: 'Role',
+    sortable: true,
+    sortValue: (row) => row.role_title || '',
+  },
+  {
+    key: 'status',
+    header: 'Status',
+    sortable: true,
+    sortValue: (row) => STATUS_LABELS[row.status] || row.status,
+    render: (row) => <StatusBadge status={row.status} />,
+  },
+  {
+    key: 'created_at',
+    header: 'Submitted',
+    sortable: true,
+    sortValue: (row) => new Date(row.created_at).getTime(),
+    render: (row) => formatDate(row.created_at),
+  },
+]
 
 // ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
 
 export default function WaitlistPage() {
+  const navigate = useNavigate()
+
+  useRegisterCommands(
+    [
+      {
+        id: 'waitlist.go-users',
+        group: 'Waitlist',
+        label: 'Open user administration',
+        hint: 'Manage activated accounts',
+        keywords: ['waitlist', 'users', 'admin'],
+        onSelect: () => navigate('/app/admin/users'),
+      },
+      {
+        id: 'waitlist.go-overview',
+        group: 'Waitlist',
+        label: 'Back to admin overview',
+        hint: 'Platform command surface',
+        keywords: ['waitlist', 'overview', 'admin'],
+        onSelect: () => navigate('/app/admin'),
+      },
+    ],
+    [navigate],
+  )
+
   // Data loading
   const [dashboardState, setDashboardState] = useState({
     status: 'loading',
@@ -103,14 +146,6 @@ export default function WaitlistPage() {
   const [filterStatus, setFilterStatus] = useState('all')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
-
-  // Sort
-  const [sortKey, setSortKey] = useState(null)
-  const [sortDir, setSortDir] = useState('asc')
-
-  // Pagination
-  const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(10)
 
   // Notes (separate from selectedApplication.notes for "Save notes" pattern)
   const [notes, setNotes] = useState('')
@@ -133,6 +168,8 @@ export default function WaitlistPage() {
   // Data loading
   // ------------------------------------------------------------------
 
+  const initialSelectionRef = useRef(false)
+
   const loadDashboard = useCallback(async () => {
     try {
       setKpisLoading(true)
@@ -146,7 +183,11 @@ export default function WaitlistPage() {
       // Simulate slight delay for table
       setTimeout(() => setTableLoading(false), 300)
 
-      if (!selectedApplicationId && data.waitlist?.length) {
+      // Auto-select the first application once; guard with a ref so selecting
+      // rows later does not re-trigger this loader (which would reload the
+      // dashboard mid-drawer and risk wiping the page on a transient error).
+      if (!initialSelectionRef.current && data.waitlist?.length) {
+        initialSelectionRef.current = true
         setSelectedApplicationId(data.waitlist[0].id)
         setNotes(data.waitlist[0].notes || '')
       }
@@ -159,7 +200,7 @@ export default function WaitlistPage() {
       setKpisLoading(false)
       setTableLoading(false)
     }
-  }, [selectedApplicationId])
+  }, [])
 
   useEffect(() => {
     void loadDashboard()
@@ -183,13 +224,10 @@ export default function WaitlistPage() {
     }
   }, [selectedApplication])
 
-  // Filter → Sort → Paginate
-  const { paginatedApplications, totalFiltered } = useMemo(() => {
+  // Filter by status + date range (search + sort + pagination handled by DataTable)
+  const filteredRows = useMemo(() => {
     const rows = dashboardState.data?.waitlist || []
-    const query = filterText.trim().toLowerCase()
-
-    // 1. Filter
-    let filtered = rows.filter((row) => {
+    return rows.filter((row) => {
       if (filterStatus !== 'all' && row.status !== filterStatus) {
         return false
       }
@@ -206,58 +244,9 @@ export default function WaitlistPage() {
         if (new Date(row.created_at) > toDate) return false
       }
 
-      if (!query) return true
-
-      return [row.full_name, row.email, row.company, row.role_title, row.use_case]
-        .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(query))
+      return true
     })
-
-    // 2. Sort
-    if (sortKey) {
-      filtered = [...filtered].sort((a, b) => {
-        const aVal = a[sortKey]
-        const bVal = b[sortKey]
-
-        let cmp = 0
-        if (sortKey === 'created_at') {
-          cmp = new Date(aVal).getTime() - new Date(bVal).getTime()
-        } else if (typeof aVal === 'string' && typeof bVal === 'string') {
-          cmp = aVal.localeCompare(bVal)
-        } else {
-          cmp = 0
-        }
-
-        return sortDir === 'asc' ? cmp : -cmp
-      })
-    }
-
-    const totalFiltered = filtered.length
-
-    // 3. Paginate
-    const start = (page - 1) * pageSize
-    const paginated = filtered.slice(start, start + pageSize)
-
-    return { paginatedApplications: paginated, totalFiltered }
-  }, [dashboardState.data, filterStatus, filterText, dateFrom, dateTo, sortKey, sortDir, page, pageSize])
-
-  // ------------------------------------------------------------------
-  // Sort handler
-  // ------------------------------------------------------------------
-
-  const handleSort = useCallback((key, dir) => {
-    setSortKey(key)
-    setSortDir(dir)
-    setPage(1)
-  }, [])
-
-  // ------------------------------------------------------------------
-  // Selection / bulk handlers
-  // ------------------------------------------------------------------
-
-  const handleSelectionChange = useCallback((ids) => {
-    setSelectedIds(ids)
-  }, [])
+  }, [dashboardState.data, filterStatus, dateFrom, dateTo])
 
   // ------------------------------------------------------------------
   // Confirmation dialog helpers
@@ -359,27 +348,27 @@ export default function WaitlistPage() {
 
   const bulkActions = selectedIds.length > 0 ? (
     <>
-      <button
-        type="button"
+      <Button
+        variant="success"
+        size="sm"
         onClick={() => handleBulkActionClick('approved')}
-        className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-emerald-700"
       >
         Approve {selectedIds.length}
-      </button>
-      <button
-        type="button"
+      </Button>
+      <Button
+        variant="warning"
+        size="sm"
         onClick={() => handleBulkActionClick('deferred')}
-        className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-medium text-charcoal transition hover:bg-amber-400"
       >
         Defer {selectedIds.length}
-      </button>
-      <button
-        type="button"
+      </Button>
+      <Button
+        variant="danger"
+        size="sm"
         onClick={() => handleBulkActionClick('rejected')}
-        className="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-rose-700"
       >
         Reject {selectedIds.length}
-      </button>
+      </Button>
     </>
   ) : null
 
@@ -439,32 +428,17 @@ export default function WaitlistPage() {
   }
 
   // ------------------------------------------------------------------
-  // CSV export
+  // CSV export (respects status + date filters + search text)
   // ------------------------------------------------------------------
 
   const handleExportCsv = () => {
-    const allFiltered = (() => {
-      const rows = dashboardState.data?.waitlist || []
-      const query = filterText.trim().toLowerCase()
-
-      return rows.filter((row) => {
-        if (filterStatus !== 'all' && row.status !== filterStatus) return false
-        if (dateFrom) {
-          const fromDate = new Date(dateFrom)
-          fromDate.setHours(0, 0, 0, 0)
-          if (new Date(row.created_at) < fromDate) return false
-        }
-        if (dateTo) {
-          const toDate = new Date(dateTo)
-          toDate.setHours(23, 59, 59, 999)
-          if (new Date(row.created_at) > toDate) return false
-        }
-        if (!query) return true
-        return [row.full_name, row.email, row.company, row.role_title, row.use_case]
-          .filter(Boolean)
-          .some((value) => String(value).toLowerCase().includes(query))
-      })
-    })()
+    const query = filterText.trim().toLowerCase()
+    const allFiltered = filteredRows.filter((row) => {
+      if (!query) return true
+      return [row.full_name, row.email, row.company, row.role_title, row.use_case]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query))
+    })
 
     const csv = buildCsv(allFiltered)
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
@@ -485,16 +459,6 @@ export default function WaitlistPage() {
     setDrawerOpen(true)
   }
 
-  // Page change resets selection
-  function handlePageChange(newPage, newPageSize) {
-    setPage(newPage)
-    if (newPageSize !== pageSize) {
-      setPageSize(newPageSize)
-      setPage(1)
-    }
-    setSelectedIds([])
-  }
-
   // ------------------------------------------------------------------
   // Error state (full-page)
   // ------------------------------------------------------------------
@@ -510,13 +474,13 @@ export default function WaitlistPage() {
           </div>
           <p className="font-serif text-2xl text-charcoal">Waitlist workspace could not be loaded</p>
           <p className="mt-2 text-sm text-charcoal-mid">{dashboardState.error}</p>
-          <button
-            type="button"
+          <Button
+            variant="secondary"
             onClick={loadDashboard}
-            className="mt-4 rounded-xl border border-stone-light px-4 py-2.5 text-sm text-charcoal transition hover:border-charcoal"
+            className="mt-4"
           >
             Try again
-          </button>
+          </Button>
         </div>
       </div>
     )
@@ -547,13 +511,9 @@ export default function WaitlistPage() {
         title="Review inbound access applications"
         description="Triage new applicants from the landing page, capture operator notes, and issue controlled invites only when the workspace is ready."
         primaryAction={
-          <button
-            type="button"
-            onClick={handleExportCsv}
-            className="rounded-2xl bg-charcoal px-5 py-3 text-sm font-medium text-parchment transition hover:bg-charcoal-soft"
-          >
+          <Button onClick={handleExportCsv}>
             Export waitlist CSV
-          </button>
+          </Button>
         }
         meta={[
           { label: `${summary.pendingReview} pending review` },
@@ -562,20 +522,26 @@ export default function WaitlistPage() {
         ]}
       />
 
-      {/* --- KPI Cards (section-level loading) --- */}
+      {/* --- KPI Cards (section-level loading via StatCard loading) --- */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        {kpisLoading ? (
-          Array.from({ length: 6 }).map((_, i) => <StatCardSkeleton key={i} />)
-        ) : (
-          <>
-            <StatCard label="Registrations" value={String(summary.totalRegistrations)} detail="All waitlist records." tone="default" compact />
-            <StatCard label="Pending" value={String(summary.pendingReview)} detail="Needs review." tone="warning" compact />
-            <StatCard label="Approved" value={String(summary.approved)} detail="Approved for access." tone="success" compact />
-            <StatCard label="Rejected" value={String(summary.rejected)} detail="Rejected." tone="danger" compact />
-            <StatCard label="Invites open" value={String(summary.invitesPending)} detail="Pending acceptance." tone="info" compact />
-            <StatCard label="Activated" value={String(summary.invitesAccepted)} detail="Accepted invites." tone="success" compact />
-          </>
-        )}
+        {[
+          { label: 'Registrations', value: String(summary.totalRegistrations), detail: 'All waitlist records.', tone: 'default' },
+          { label: 'Pending', value: String(summary.pendingReview), detail: 'Needs review.', tone: 'warning' },
+          { label: 'Approved', value: String(summary.approved), detail: 'Approved for access.', tone: 'success' },
+          { label: 'Rejected', value: String(summary.rejected), detail: 'Rejected.', tone: 'danger' },
+          { label: 'Invites open', value: String(summary.invitesPending), detail: 'Pending acceptance.', tone: 'info' },
+          { label: 'Activated', value: String(summary.invitesAccepted), detail: 'Accepted invites.', tone: 'success' },
+        ].map((card) => (
+          <StatCard
+            key={card.label}
+            size="sm"
+            tone={card.tone}
+            label={card.label}
+            value={card.value}
+            detail={card.detail}
+            loading={kpisLoading}
+          />
+        ))}
       </div>
 
       {/* --- Action feedback (aria-live) --- */}
@@ -601,7 +567,6 @@ export default function WaitlistPage() {
               value={filterStatus}
               onChange={(event) => {
                 setFilterStatus(event.target.value)
-                setPage(1)
                 setSelectedIds([])
               }}
               className="rounded-xl border border-stone-light bg-parchment px-4 py-2.5 text-sm text-charcoal"
@@ -626,7 +591,6 @@ export default function WaitlistPage() {
                 value={dateFrom}
                 onChange={(event) => {
                   setDateFrom(event.target.value)
-                  setPage(1)
                   setSelectedIds([])
                 }}
                 className="rounded-xl border border-stone-light bg-parchment px-3 py-2.5 text-sm text-charcoal"
@@ -645,7 +609,6 @@ export default function WaitlistPage() {
                 value={dateTo}
                 onChange={(event) => {
                   setDateTo(event.target.value)
-                  setPage(1)
                   setSelectedIds([])
                 }}
                 className="rounded-xl border border-stone-light bg-parchment px-3 py-2.5 text-sm text-charcoal"
@@ -655,17 +618,16 @@ export default function WaitlistPage() {
 
             {/* Clear date filters */}
             {(dateFrom || dateTo) && (
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => {
                   setDateFrom('')
                   setDateTo('')
-                  setPage(1)
                 }}
-                className="rounded-xl border border-stone-light px-3 py-2.5 text-xs text-charcoal-mid transition hover:border-charcoal"
               >
                 Clear dates
-              </button>
+              </Button>
             )}
           </div>
 
@@ -675,62 +637,88 @@ export default function WaitlistPage() {
         </div>
 
         {/* Table */}
-        <AdminTable
+        <DataTable
           columns={WAITLIST_COLUMNS}
-          data={paginatedApplications}
+          rows={filteredRows}
+          keyField="id"
           loading={tableLoading}
-          filterValue={filterText}
-          onFilterChange={(value) => {
+          searchable
+          searchValue={filterText}
+          onSearchChange={(value) => {
             setFilterText(value)
-            setPage(1)
             setSelectedIds([])
           }}
-          filterPlaceholder="Search by name, email, company, or use case"
+          searchPlaceholder="Search by name, email, company, or use case"
+          searchKeys={['full_name', 'email', 'company', 'role_title', 'use_case']}
           onRowClick={handleRowClick}
-          onSort={handleSort}
-          onSelectionChange={handleSelectionChange}
-          onPageChange={handlePageChange}
-          page={page}
-          pageSize={pageSize}
-          total={totalFiltered}
+          selectable
           selectedIds={selectedIds}
+          onSelectionChange={setSelectedIds}
           bulkActions={bulkActions}
-          emptyMessage="No waitlist applications yet."
-          filteredEmptyMessage="No applications match your current search or status filter."
+          pagination
+          pageSize={10}
+          pageSizeOptions={[10, 20, 50, 100]}
+          emptyTitle="No waitlist applications yet"
+          emptyDescription="Applications from the landing page will appear here as they arrive."
         />
       </div>
 
       {/* --- Detail Drawer --- */}
-      <AdminDrawer
+      <Drawer
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         title={selectedApplication?.full_name || 'Applicant detail'}
-        eyebrow="Waitlist detail"
-        subtitle="Review applicant context, capture internal notes, and take a clear decision without leaving the control room."
-        meta={
+        description="Review applicant context, capture internal notes, and take a clear decision."
+        size="xl"
+        footer={
           selectedApplication ? (
-            <>
-              <span
-                className={`inline-flex rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.16em] ${
-                  STATUS_BADGE_STYLES[selectedApplication.status] || 'border-stone-light bg-parchment text-charcoal-mid'
-                }`}
+            <div className="flex flex-wrap gap-3">
+              <Button
+                variant="secondary"
+                onClick={() => handleReviewClick('under_review')}
               >
-                {STATUS_LABELS[selectedApplication.status] || selectedApplication.status.replaceAll('_', ' ')}
-              </span>
-              <span className="inline-flex rounded-full border border-stone-light bg-white px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-charcoal-mid">
-                Submitted {new Date(selectedApplication.created_at).toLocaleDateString()}
-              </span>
-              {selectedApplication.company ? (
-                <span className="inline-flex rounded-full border border-stone-light bg-white px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-charcoal-mid">
-                  {selectedApplication.company}
-                </span>
-              ) : null}
-            </>
+                Mark under review
+              </Button>
+              <Button
+                variant="success"
+                onClick={() => handleReviewClick('approved')}
+              >
+                Approve
+              </Button>
+              <Button
+                variant="warning"
+                onClick={() => handleReviewClick('deferred')}
+              >
+                Defer
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => handleReviewClick('rejected')}
+              >
+                Reject
+              </Button>
+              <Button onClick={handleCreateInvite}>
+                Create access invite
+              </Button>
+            </div>
           ) : null
         }
       >
         {selectedApplication && (
           <div className="space-y-6">
+            {/* Meta chips */}
+            <div className="flex flex-wrap items-center gap-2">
+              <StatusBadge status={selectedApplication.status} />
+              <Badge tone="neutral" size="sm">
+                Submitted {formatDate(selectedApplication.created_at)}
+              </Badge>
+              {selectedApplication.company && (
+                <Badge tone="neutral" size="sm">
+                  {selectedApplication.company}
+                </Badge>
+              )}
+            </div>
+
             <div className="rounded-[1.6rem] border border-stone-light bg-[linear-gradient(135deg,rgba(243,246,255,0.9),rgba(255,253,249,1))] p-5">
               <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                 <div className="min-w-0">
@@ -812,14 +800,13 @@ export default function WaitlistPage() {
                 />
 
                 <div className="mt-4 flex items-center gap-3">
-                  <button
-                    type="button"
+                  <Button
                     onClick={handleSaveNotes}
+                    loading={notesSaveState.status === 'submitting'}
                     disabled={notesSaveState.status === 'submitting'}
-                    className="rounded-xl bg-charcoal px-4 py-2.5 text-sm font-medium text-parchment transition hover:bg-charcoal-soft disabled:opacity-50"
                   >
                     {notesSaveState.status === 'submitting' ? 'Saving…' : 'Save notes'}
-                  </button>
+                  </Button>
 
                   {notesSaveState.message && (
                     <span
@@ -864,7 +851,7 @@ export default function WaitlistPage() {
                           <p className="mt-0.5 text-xs text-charcoal-mid">
                             by {entry.changed_by === 'system' ? 'System (auto)' : entry.changed_by}
                             {' · '}
-                            {new Date(entry.changed_at).toLocaleString()}
+                            {formatDateTime(entry.changed_at)}
                           </p>
                         </div>
                       </div>
@@ -906,51 +893,9 @@ export default function WaitlistPage() {
                 )}
               </div>
             )}
-
-            {/* Action buttons */}
-            <div className="rounded-2xl border border-stone-light bg-white p-4">
-              <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-charcoal-light">Decision controls</p>
-              <div className="mt-4 flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={() => handleReviewClick('under_review')}
-                  className="rounded-xl border border-stone-light px-4 py-3 text-sm text-charcoal transition hover:border-charcoal"
-                >
-                  Mark under review
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleReviewClick('approved')}
-                  className="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-emerald-700"
-                >
-                  Approve
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleReviewClick('deferred')}
-                  className="rounded-xl bg-amber-500 px-4 py-3 text-sm font-medium text-charcoal transition hover:bg-amber-400"
-                >
-                  Defer
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleReviewClick('rejected')}
-                  className="rounded-xl bg-rose-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-rose-700"
-                >
-                  Reject
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCreateInvite}
-                  className="rounded-xl bg-charcoal px-4 py-3 text-sm font-medium text-parchment transition hover:bg-charcoal-soft"
-                >
-                  Create access invite
-                </button>
-              </div>
-            </div>
           </div>
         )}
-      </AdminDrawer>
+      </Drawer>
 
       {/* --- Confirm Dialog --- */}
       <ConfirmDialog
@@ -982,7 +927,7 @@ export default function WaitlistPage() {
                   {event.action.replaceAll('_', ' ')}
                 </p>
                 <p className="mt-1 text-xs text-charcoal-mid">
-                  {event.actor_email || 'system'} | {new Date(event.created_at).toLocaleString()}
+                  {event.actor_email || 'system'} | {formatDateTime(event.created_at)}
                 </p>
               </div>
             ))

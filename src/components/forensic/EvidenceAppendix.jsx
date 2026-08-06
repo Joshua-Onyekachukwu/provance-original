@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { formatPct } from '../app/scanPresentation.js'
 
 const signals = [
   {
@@ -124,7 +125,7 @@ export default function EvidenceAppendix() {
                     />
                   </div>
                   <span className="text-[10px] font-mono text-charcoal-mid">
-                    {(signal.confidence * 100).toFixed(1)}% Confidence
+                    {formatPct(signal.confidence, 1)} Confidence
                   </span>
                 </div>
               </div>

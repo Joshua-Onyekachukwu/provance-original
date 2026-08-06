@@ -1,10 +1,10 @@
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import InteractivePanel from '../components/InteractivePanel'
+import ForensicMediaFrame from '../components/ForensicMediaFrame'
 import PageHero from '../components/PageHero.jsx'
-
-const reportPreview =
-  'https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=close-up%20documentary%20frame%20of%20a%20speaker%20at%20a%20lectern%2C%20professional%20broadcast%20still%2C%20subtle%20newsroom%20lighting%2C%20realistic%20face%2C%20high%20detail%2C%20editorial%20photography&image_size=landscape_16_9'
+import { formatDateTime } from '../components/app/scanPresentation.js'
+import { sampleReportMeta } from '../lib/sampleReportContent.js'
 
 export default function SampleReportPage() {
   return (
@@ -36,7 +36,7 @@ export default function SampleReportPage() {
                     <p className="mt-2 text-sm text-charcoal-mid">Preview layout for image and video verification outputs.</p>
                   </div>
                   <div className="text-right">
-                    <div className="text-xs text-charcoal-light font-mono">2026-06-25 • 14:32 UTC</div>
+                    <div className="text-xs text-charcoal-light font-mono">{formatDateTime(sampleReportMeta.analysisTimestampIso)}</div>
                     <div className="text-xs text-amber font-mono mt-1">Verification Time: 1.2s</div>
                     <div className="text-xs text-charcoal-light font-mono mt-1">Hash. SHA-256 2b7f91c0b6cc...0e114d91</div>
                   </div>
@@ -56,11 +56,10 @@ export default function SampleReportPage() {
                       </span>
                     </div>
                     <div className="mt-4 overflow-hidden rounded-[1.4rem] border border-stone-light/70 bg-charcoal">
-                      <img
-                        src={reportPreview}
-                        alt="Sample uploaded media preview inside the Provance report."
-                        className="aspect-[16/9] w-full object-cover"
-                        loading="lazy"
+                      <ForensicMediaFrame
+                        label="Analyzed media"
+                        badge="Review complete"
+                        className="rounded-[1.2rem] border-0"
                       />
                     </div>
                     <div className="mt-4 grid gap-3 sm:grid-cols-3">
@@ -134,7 +133,7 @@ export default function SampleReportPage() {
                         title: 'Metadata Summary',
                         items: [
                           ['Media type', 'Video (MP4, 1920 × 1080)'],
-                          ['Analysis timestamp', '2026-06-25 • 14:32 UTC'],
+                          ['Analysis timestamp', formatDateTime(sampleReportMeta.analysisTimestampIso)],
                           ['Source information', 'Uploaded by editorial standards team'],
                         ],
                       },

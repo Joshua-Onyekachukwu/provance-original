@@ -23,6 +23,29 @@ function daysAgo(days, hourOffset = 0) {
 // Users (12 records)
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// User → team assignment (single source of truth for team scoping)
+//
+// The workspace surfaces (scan ledger, queue, reports) show each scan's
+// owning team as a badge and can filter by team. Declared before mockUsers
+// so user records can carry team_id at definition time.
+// ---------------------------------------------------------------------------
+
+export const mockUserTeamById = {
+  usr_001: 'team_legal',
+  usr_002: 'team_legal',
+  usr_003: 'team_growth',
+  usr_004: 'team_growth',
+  usr_005: 'team_product',
+  usr_006: 'team_product',
+  usr_007: 'team_product',
+  usr_008: 'team_product',
+  usr_009: 'team_growth',
+  usr_010: 'team_growth',
+  usr_011: 'team_product',
+  usr_012: 'team_growth',
+}
+
 export const mockUsers = [
   {
     id: 'usr_001',
@@ -30,6 +53,7 @@ export const mockUsers = [
     displayName: 'Joshua Onyekachukwu',
     role: 'super_admin',
     team_enabled: true,
+    team_id: mockUserTeamById.usr_001,
     created_at: daysAgo(30, 2),
     last_sign_in: daysAgo(0, -1),
     avatar_url: null,
@@ -41,6 +65,7 @@ export const mockUsers = [
     displayName: 'Amina Sow',
     role: 'admin',
     team_enabled: true,
+    team_id: mockUserTeamById.usr_002,
     created_at: daysAgo(28, 4),
     last_sign_in: daysAgo(0, -3),
     avatar_url: null,
@@ -52,6 +77,7 @@ export const mockUsers = [
     displayName: 'David Okafor',
     role: 'admin',
     team_enabled: true,
+    team_id: mockUserTeamById.usr_003,
     created_at: daysAgo(25, 6),
     last_sign_in: daysAgo(1, 2),
     avatar_url: null,
@@ -63,6 +89,7 @@ export const mockUsers = [
     displayName: 'Chioma Eze',
     role: 'member',
     team_enabled: true,
+    team_id: mockUserTeamById.usr_004,
     created_at: daysAgo(24, 1),
     last_sign_in: daysAgo(0, -5),
     avatar_url: null,
@@ -74,6 +101,7 @@ export const mockUsers = [
     displayName: 'Fatima Abubakar',
     role: 'admin',
     team_enabled: true,
+    team_id: mockUserTeamById.usr_005,
     created_at: daysAgo(20, 3),
     last_sign_in: daysAgo(1, 1),
     avatar_url: null,
@@ -85,6 +113,7 @@ export const mockUsers = [
     displayName: 'Emeka Nwosu',
     role: 'member',
     team_enabled: true,
+    team_id: mockUserTeamById.usr_006,
     created_at: daysAgo(18, 2),
     last_sign_in: daysAgo(2, 4),
     avatar_url: null,
@@ -96,6 +125,7 @@ export const mockUsers = [
     displayName: 'Grace Otieno',
     role: 'admin',
     team_enabled: true,
+    team_id: mockUserTeamById.usr_007,
     created_at: daysAgo(15, 5),
     last_sign_in: daysAgo(0, -2),
     avatar_url: null,
@@ -107,6 +137,7 @@ export const mockUsers = [
     displayName: 'Tunde Bakare',
     role: 'member',
     team_enabled: false,
+    team_id: mockUserTeamById.usr_008,
     created_at: daysAgo(14, 3),
     last_sign_in: daysAgo(3, 1),
     avatar_url: null,
@@ -118,6 +149,7 @@ export const mockUsers = [
     displayName: 'Nadia Koné',
     role: 'admin',
     team_enabled: true,
+    team_id: mockUserTeamById.usr_009,
     created_at: daysAgo(10, 4),
     last_sign_in: daysAgo(0, -6),
     avatar_url: null,
@@ -129,6 +161,7 @@ export const mockUsers = [
     displayName: 'Paul Mensah',
     role: 'member',
     team_enabled: true,
+    team_id: mockUserTeamById.usr_010,
     created_at: daysAgo(9, 2),
     last_sign_in: daysAgo(1, 5),
     avatar_url: null,
@@ -140,6 +173,7 @@ export const mockUsers = [
     displayName: 'Ngozi Ugwu',
     role: 'member',
     team_enabled: false,
+    team_id: mockUserTeamById.usr_011,
     created_at: daysAgo(5, 1),
     last_sign_in: daysAgo(4, 2),
     avatar_url: null,
@@ -151,6 +185,7 @@ export const mockUsers = [
     displayName: 'Kwame Boateng',
     role: 'member',
     team_enabled: false,
+    team_id: mockUserTeamById.usr_012,
     created_at: daysAgo(3, 6),
     last_sign_in: daysAgo(2, 3),
     avatar_url: null,
@@ -571,6 +606,7 @@ export const mockScans = Array.from({ length: 25 }, (_, i) => {
   return {
     id: `scan_${String(i + 1).padStart(3, '0')}`,
     user_id: userIds[i % userIds.length],
+    team_id: mockUserTeamById[userIds[i % userIds.length]],
     original_filename: filenames[i % filenames.length],
     file_size_bytes: Math.round(512 * 1024 + Math.random() * 50 * 1024 * 1024),
     mime_type: mimeTypes[i % mimeTypes.length],
@@ -627,6 +663,8 @@ export const mockReports = Array.from({ length: 15 }, (_, i) => {
   return {
     id: `rpt_${String(i + 1).padStart(3, '0')}`,
     scan_id: `scan_${String(i + 1).padStart(3, '0')}`,
+    status: 'completed',
+    team_id: mockUserTeamById[mockUsers[i % mockUsers.length].id],
     report_id: `PRV-202607${String(15 + Math.floor(i / 2)).padStart(2, '0')}-${String(30 + i).padStart(3, '0')}`,
     verdict,
     confidence_score: Math.round(60 + Math.random() * 35),
@@ -638,6 +676,32 @@ export const mockReports = Array.from({ length: 15 }, (_, i) => {
 // ---------------------------------------------------------------------------
 // Audit Events (30 records)
 // ---------------------------------------------------------------------------
+
+// Deterministic action → severity mapping for the audit trail (the admin
+// Audit Logs page filters and badges on it). Destructive/security actions
+// are high; reads and routine updates are low.
+const AUDIT_SEVERITY_BY_ACTION = {
+  'scan.failed': 'high',
+  'waitlist.rejected': 'high',
+  'team.member_removed': 'high',
+  'api_key.revoked': 'high',
+  'role.changed': 'high',
+  'feature_flag.toggled': 'high',
+  'user.invited': 'medium',
+  'waitlist.approved': 'medium',
+  'waitlist.deferred': 'medium',
+  'team.member_added': 'medium',
+  'api_key.created': 'medium',
+  'org.created': 'medium',
+  'invite.accepted': 'medium',
+  'scan.submitted': 'medium',
+  'user.activated': 'low',
+  'scan.completed': 'low',
+  'report.exported': 'low',
+  'report.viewed': 'low',
+  'settings.updated': 'low',
+  'waitlist.reviewed': 'low',
+}
 
 export const mockAuditEvents = Array.from({ length: 30 }, (_, i) => {
   const actions = [
@@ -652,11 +716,13 @@ export const mockAuditEvents = Array.from({ length: 30 }, (_, i) => {
     'team', 'api_key', 'feature_flag', 'role', 'organization', 'invite',
   ]
   const actorEmails = mockUsers.map((u) => u.email)
+  const action = actions[i % actions.length]
 
   return {
     id: `audit_${String(i + 1).padStart(4, '0')}`,
     actor_email: actorEmails[i % actorEmails.length],
-    action: actions[i % actions.length],
+    action,
+    severity: AUDIT_SEVERITY_BY_ACTION[action] || 'low',
     resource_type: resourceTypes[i % resourceTypes.length],
     resource_id: `${resourceTypes[i % resourceTypes.length]}_${String(i + 1).padStart(4, '0')}`,
     created_at: daysAgo(Math.floor(i / 2), i % 24),
@@ -818,6 +884,10 @@ export const mockQueueSnapshot = {
 // Analytics
 // ---------------------------------------------------------------------------
 
+// Deterministic 14-day volume trend so the analytics chart is stable across
+// reloads and screenshots (no module-load randomness).
+const VOLUME_TREND_SCANS = [26, 31, 29, 38, 44, 41, 52, 58, 54, 63, 71, 68, 79, 84]
+
 export const mockAnalytics = {
   scans_today: 47,
   scans_7d: 312,
@@ -832,6 +902,55 @@ export const mockAnalytics = {
     'audio/mpeg': 14,
     'application/pdf': 12,
   },
+  // Daily volume for the last 14 days (index 0 = oldest).
+  volume_trend: VOLUME_TREND_SCANS.map((scans, i) => {
+    const completed = Math.round(scans * (0.9 + (i % 3) * 0.02))
+    return {
+      date: daysAgo(13 - i, 8 + (i % 10)),
+      scans,
+      completed: Math.min(completed, scans),
+      failed: Math.round(scans * 0.03) + (i % 4 === 0 ? 1 : 0),
+      suspicious: Math.round(scans * (0.18 + (i % 5) * 0.02)),
+    }
+  }),
+  // Daily verdict mix for the same 14-day window — authentic/suspicious/
+  // inconclusive splits that always sum to the day's scan total.
+  verdict_trend: VOLUME_TREND_SCANS.map((scans, i) => {
+    const authentic = Math.round(scans * (0.54 + (i % 3) * 0.02))
+    const suspicious = Math.round(scans * (0.2 + (i % 4) * 0.015))
+    return {
+      date: daysAgo(13 - i, 8 + (i % 10)),
+      authentic,
+      suspicious,
+      inconclusive: Math.max(0, scans - authentic - suspicious),
+    }
+  }),
+  // Queue throughput — headline stats mirroring mockQueueSnapshot plus a
+  // deterministic 12-hour series of scans processed per hour.
+  queue_throughput: {
+    processed_last_hour: 31,
+    processed_24h: 442,
+    avg_processing_time_ms: mockQueueSnapshot.avg_processing_time_ms,
+    queue_depth: mockQueueSnapshot.queued,
+    in_flight: mockQueueSnapshot.processing,
+    failure_rate: 0.03,
+    hourly_series: [14, 18, 16, 22, 27, 24, 19, 21, 26, 31, 28, 31].map(
+      (processed, i) => ({ hour: daysAgo(0, -(11 - i)), processed }),
+    ),
+  },
+  // Top organizations by scan volume, derived from the org registry.
+  top_organizations: mockOrganizations
+    .slice()
+    .sort((a, b) => b.scan_count - a.scan_count)
+    .slice(0, 6)
+    .map((org, i) => ({
+      id: org.id,
+      name: org.name,
+      member_count: org.member_count,
+      scan_count: org.scan_count,
+      storage_used_gb: org.storage_used_gb,
+      completion_rate: 0.9 + (i % 4) * 0.015,
+    })),
 }
 
 // ---------------------------------------------------------------------------
@@ -906,7 +1025,937 @@ export const mockSupportTickets = [
 ]
 
 // ---------------------------------------------------------------------------
+// Monitoring (system health, service status, incident history)
+// ---------------------------------------------------------------------------
+
+// Status vocabulary matches HealthCheckRow: operational | unreachable |
+// degraded | not_configured. Worker is intentionally degraded so the overall
+// status reads honestly (mirrors mockSystemHealth.worker = false).
+export const mockMonitoring = {
+  overall: {
+    status: 'degraded',
+    uptime_30d: 0.99982,
+    avg_response_ms: 214,
+    open_incidents: 1,
+    checks_24h: 2880,
+  },
+  services: [
+    {
+      id: 'api',
+      name: 'API Gateway',
+      status: 'operational',
+      latency_ms: 142,
+      region: 'fly-iad',
+      uptime_30d: 0.9999,
+      last_checked_at: daysAgo(0, -1),
+    },
+    {
+      id: 'database',
+      name: 'Postgres (Neon)',
+      status: 'operational',
+      latency_ms: 86,
+      region: 'us-east-1',
+      uptime_30d: 0.99998,
+      last_checked_at: daysAgo(0, -1),
+    },
+    {
+      id: 'storage',
+      name: 'Object Storage (R2)',
+      status: 'operational',
+      latency_ms: 118,
+      region: 'us-east-1',
+      uptime_30d: 0.9997,
+      last_checked_at: daysAgo(0, -1),
+    },
+    {
+      id: 'queue',
+      name: 'Job Queue (Redis)',
+      status: 'operational',
+      latency_ms: 24,
+      region: 'us-east-1',
+      uptime_30d: 0.9999,
+      last_checked_at: daysAgo(0, -1),
+    },
+    {
+      id: 'worker',
+      name: 'Scan Worker',
+      status: 'degraded',
+      latency_ms: 460,
+      region: 'fly-iad',
+      uptime_30d: 0.9951,
+      last_checked_at: daysAgo(0, -2),
+    },
+    {
+      id: 'email',
+      name: 'Email Service',
+      status: 'not_configured',
+      latency_ms: null,
+      region: '—',
+      uptime_30d: null,
+      last_checked_at: daysAgo(2, 4),
+    },
+  ],
+  // ── Queue health ─────────────────────────────────────────────────────────
+  // Backlog, throughput, and worker cadence. Values are consistent with
+  // mockQueueSnapshot + mockAnalytics.queue_throughput so the admin monitoring
+  // and analytics surfaces never contradict each other.
+  queue_health: {
+    queued: mockQueueSnapshot.queued,
+    in_flight: mockQueueSnapshot.processing,
+    failed_24h: 14,
+    throughput_per_hour: 31,
+    avg_processing_time_ms: mockQueueSnapshot.avg_processing_time_ms,
+    failure_rate: 0.03,
+    hourly_series: [14, 18, 16, 22, 27, 24, 19, 21, 26, 31, 28, 31].map(
+      (processed, i) => ({ hour: daysAgo(0, -(11 - i)), processed }),
+    ),
+  },
+
+  // ── Storage utilization ───────────────────────────────────────────────────
+  // Bucket-level usage vs capacity. Bucket totals add up to total_used_gb.
+  storage_utilization: {
+    total_used_gb: 287.1,
+    total_capacity_gb: 500,
+    buckets: [
+      {
+        id: 'media',
+        label: 'Media uploads',
+        used_gb: 214.3,
+        capacity_gb: 320,
+        growth_30d: 0.18,
+      },
+      {
+        id: 'reports',
+        label: 'Report payloads',
+        used_gb: 38.6,
+        capacity_gb: 80,
+        growth_30d: 0.07,
+      },
+      {
+        id: 'evidence',
+        label: 'Evidence payloads',
+        used_gb: 26.9,
+        capacity_gb: 60,
+        growth_30d: 0.04,
+      },
+      {
+        id: 'backups',
+        label: 'Backups',
+        used_gb: 7.3,
+        capacity_gb: 40,
+        growth_30d: 0.02,
+      },
+    ],
+  },
+
+  // ── Database performance ──────────────────────────────────────────────────
+  db_performance: {
+    avg_query_ms: 86,
+    p95_query_ms: 142,
+    connections: { active: 42, max: 100 },
+    cache_hit_rate: 0.982,
+    slow_queries_24h: 3,
+    tables: [
+      { name: 'scans', rows: 12480, size_mb: 512, dead_tuples_pct: 0.018 },
+      { name: 'reports', rows: 8902, size_mb: 386, dead_tuples_pct: 0.012 },
+      { name: 'audit_events', rows: 34210, size_mb: 148, dead_tuples_pct: 0.024 },
+      { name: 'profiles', rows: 142, size_mb: 3, dead_tuples_pct: 0.004 },
+    ],
+  },
+
+  incidents: [
+    {
+      id: 'inc_001',
+      title: 'Scan worker partial outage',
+      severity: 'major',
+      status: 'resolved',
+      started_at: daysAgo(6, 2),
+      resolved_at: daysAgo(5, 9),
+      duration_hours: 7,
+      services: ['Scan Worker'],
+      summary:
+        'A memory leak in the fingerprint model worker stalled processing for roughly a third of the queue. A rollback to the previous model release restored throughput.',
+    },
+    {
+      id: 'inc_002',
+      title: 'Elevated API latency',
+      severity: 'minor',
+      status: 'resolved',
+      started_at: daysAgo(12, 4),
+      resolved_at: daysAgo(12, 11),
+      duration_hours: 7,
+      services: ['API Gateway'],
+      summary:
+        'Autoscaling lag under a waitlist invite burst pushed p95 latency above target for seven hours. Autoscaling thresholds were retuned.',
+    },
+    {
+      id: 'inc_003',
+      title: 'Storage upload errors',
+      severity: 'major',
+      status: 'resolved',
+      started_at: daysAgo(19, 6),
+      resolved_at: daysAgo(19, 9),
+      duration_hours: 3,
+      services: ['Object Storage (R2)'],
+      summary:
+        'Signed upload URLs expired early under load, rejecting a subset of media uploads. The signing window was extended and the worker retries added.',
+    },
+    {
+      id: 'inc_004',
+      title: 'Scan worker memory pressure',
+      severity: 'major',
+      status: 'investigating',
+      started_at: daysAgo(0, -4),
+      resolved_at: null,
+      duration_hours: null,
+      services: ['Scan Worker'],
+      summary:
+        'Resident memory on the worker pool is trending upward since the model update. Monitoring is active while a candidate fix is validated.',
+    },
+    {
+      id: 'inc_005',
+      title: 'Database connection pool exhaustion',
+      severity: 'critical',
+      status: 'resolved',
+      started_at: daysAgo(25, 3),
+      resolved_at: daysAgo(25, 5),
+      duration_hours: 2,
+      services: ['Postgres (Neon)'],
+      summary:
+        'A runaway query pattern exhausted the connection pool, causing intermittent timeouts. The query was optimized and pool limits raised.',
+    },
+  ],
+}
+
+// ---------------------------------------------------------------------------
+// Incident-derived activity events
+//
+// Resolved incidents from mockMonitoring.incidents surface in the Activity
+// Log as system events, carrying the same post-mortem summary text the
+// Monitoring page's incident accordion shows, plus the severity that drives
+// the same tone dots. Open incidents are intentionally excluded — they stay
+// visible only on the Monitoring page until resolved.
+// ---------------------------------------------------------------------------
+
+export function buildIncidentActivityEvents(incidents = mockMonitoring.incidents) {
+  return incidents
+    .filter((incident) => incident.status === 'resolved')
+    .map((incident) => ({
+      id: `incident_${incident.id}`,
+      action: 'incident.resolved',
+      actor_email: 'system',
+      resource_type: 'incident',
+      resource_id: incident.id,
+      created_at: incident.resolved_at || incident.started_at,
+      severity: incident.severity,
+      summary: incident.summary,
+    }))
+}
+
+// ---------------------------------------------------------------------------
 // Admin dashboard overview (aggregates the above)
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Billing (profile, usage, invoices, payment methods)
+// ---------------------------------------------------------------------------
+
+export const mockBillingProfile = {
+  plan: {
+    id: 'pro_monthly',
+    name: 'Pro',
+    billingCycle: 'monthly',
+    priceUsd: 49,
+    status: 'active',
+    seats: 1,
+    startedAt: daysAgo(42, 4),
+    renewsAt: daysAgo(-6, 12),
+    canChangePlan: true,
+  },
+  usage: {
+    period: 'current-month',
+    periodStart: daysAgo(11, 0),
+    periodEnd: daysAgo(-20, 0),
+    scansUsed: 312,
+    scansLimit: 500,
+    storageUsedGb: 18.4,
+    storageLimitGb: 50,
+    apiCallsUsed: 4120,
+    apiCallsLimit: 10000,
+  },
+  paymentMethods: [
+    {
+      id: 'pm_001',
+      brand: 'visa',
+      last4: '4242',
+      expMonth: 8,
+      expYear: 2028,
+      isDefault: true,
+    },
+    {
+      id: 'pm_002',
+      brand: 'mastercard',
+      last4: '1881',
+      expMonth: 2,
+      expYear: 2027,
+      isDefault: false,
+    },
+  ],
+}
+
+export const mockInvoices = Array.from({ length: 8 }, (_, i) => {
+  const ageDays = i * 30
+  const amount = 49
+  return {
+    id: `inv_${String(1000 + i)}`,
+    number: `PV-${String(2026).slice(-2)}-${String(1000 + i)}`,
+    periodStart: daysAgo(ageDays + 30, 6),
+    periodEnd: daysAgo(ageDays, 6),
+    issuedAt: daysAgo(ageDays, 6),
+    paidAt: i < 6 ? daysAgo(ageDays, 2) : null,
+    amountUsd: amount,
+    status: i < 6 ? 'paid' : 'open',
+    lineItems: [
+      { label: 'Pro plan (monthly)', quantity: 1, amountUsd: 49 },
+      { label: 'Overage scans', quantity: 0, amountUsd: 0 },
+    ],
+  }
+})
+
+// ---------------------------------------------------------------------------
+// Security settings (password, sessions, sign-in controls)
+// ---------------------------------------------------------------------------
+
+export const mockSecuritySettings = {
+  passwordPolicy: {
+    minLength: 8,
+    requireUppercase: true,
+    requireNumber: true,
+    requireSymbol: true,
+  },
+  activeSessions: [
+    {
+      id: 'sess_001',
+      device: 'Chrome on Windows',
+      location: 'Lagos, NG',
+      ipAddress: '105.112.28.41',
+      lastActiveAt: daysAgo(0, -1),
+      isCurrent: true,
+    },
+    {
+      id: 'sess_002',
+      device: 'Safari on iPhone',
+      location: 'Lagos, NG',
+      ipAddress: '105.112.30.12',
+      lastActiveAt: daysAgo(2, 9),
+      isCurrent: false,
+    },
+    {
+      id: 'sess_003',
+      device: 'Firefox on macOS',
+      location: 'Abuja, NG',
+      ipAddress: '102.89.44.7',
+      lastActiveAt: daysAgo(5, 14),
+      isCurrent: false,
+    },
+    {
+      id: 'sess_004',
+      device: 'Edge on Windows',
+      location: 'Berlin, DE',
+      ipAddress: '88.130.94.2',
+      lastActiveAt: daysAgo(9, 3),
+      isCurrent: false,
+    },
+  ],
+  signInControls: {
+    twoFactorAuth: { enabled: false, method: null, updatedAt: null },
+    emailVerification: { verified: true, verifiedAt: daysAgo(30, 5) },
+    sessionTimeoutMinutes: 60,
+    notifyOnNewDevice: true,
+    notifyOnPasswordChange: true,
+  },
+}
+
+// ---------------------------------------------------------------------------
+// API keys
+// ---------------------------------------------------------------------------
+
+export const mockApiKeys = [
+  {
+    id: 'key_001',
+    name: 'Production scanner',
+    prefix: 'pv_live_9f2K',
+    createdAt: daysAgo(21, 3),
+    lastUsedAt: daysAgo(0, -2),
+    status: 'active',
+    scopes: ['scan:create', 'report:read'],
+    requestsLast30d: 18420,
+    rateLimitRpm: 120,
+    expiresAt: daysAgo(-150, 0),
+  },
+  {
+    id: 'key_002',
+    name: 'Staging integration',
+    prefix: 'pv_test_4bXm',
+    createdAt: daysAgo(14, 6),
+    lastUsedAt: daysAgo(1, 5),
+    status: 'active',
+    scopes: ['scan:create'],
+    requestsLast30d: 312,
+    rateLimitRpm: 30,
+    expiresAt: null,
+  },
+  {
+    id: 'key_003',
+    name: 'Analytics export',
+    prefix: 'pv_live_7sQw',
+    createdAt: daysAgo(60, 2),
+    lastUsedAt: daysAgo(9, 4),
+    status: 'expired',
+    scopes: ['report:read'],
+    requestsLast30d: 0,
+    rateLimitRpm: 60,
+    expiresAt: daysAgo(3, 0),
+  },
+  {
+    id: 'key_004',
+    name: 'Legacy batch client',
+    prefix: 'pv_test_2kLp',
+    createdAt: daysAgo(90, 8),
+    lastUsedAt: daysAgo(30, 1),
+    status: 'revoked',
+    scopes: ['scan:create', 'report:read'],
+    requestsLast30d: 0,
+    rateLimitRpm: 120,
+    expiresAt: null,
+  },
+]
+
+export const API_KEY_SCOPES = [
+  { value: 'scan:create', label: 'Create scans', description: 'Submit media for verification.' },
+  { value: 'report:read', label: 'Read reports', description: 'Fetch verdicts and report payloads.' },
+  { value: 'admin:usage', label: 'Read usage', description: 'Access usage and billing metadata.' },
+]
+
+export const mockApiKeyLimits = {
+  keysPerWorkspace: 10,
+  defaultRateLimitRpm: 60,
+  maxRateLimitRpm: 600,
+  tokenLifetimeDays: 180,
+}
+
+// ---------------------------------------------------------------------------
+// Help & documentation content
+// ---------------------------------------------------------------------------
+
+export const mockDocsContent = {
+  categories: [
+    { value: 'getting-started', label: 'Getting started' },
+    { value: 'api', label: 'API reference' },
+    { value: 'integration', label: 'Integration' },
+    { value: 'verification', label: 'Verification' },
+  ],
+  guides: [
+    {
+      id: 'guide_001',
+      category: 'getting-started',
+      title: 'Create your first scan',
+      summary: 'Upload media and receive an evidence-backed verdict in under two minutes.',
+      readMinutes: 3,
+      sections: [
+        'Open the Media Upload page and choose a file.',
+        'Pick a processing mode: Quick, Standard, or Deep.',
+        'Watch the scan move through the queue until the report is ready.',
+      ],
+    },
+    {
+      id: 'guide_002',
+      category: 'getting-started',
+      title: 'Understanding verdicts and confidence',
+      summary: 'How to read Authentic, Suspicious, and Inconclusive results alongside confidence scores.',
+      readMinutes: 5,
+      sections: [
+        'Verdicts describe the balance of evidence across all signals.',
+        'Confidence reflects how strongly the signal set supports the verdict.',
+        'Treat low-confidence Suspicious results as escalation triggers, not proof.',
+      ],
+    },
+    {
+      id: 'guide_003',
+      category: 'api',
+      title: 'Authentication and API keys',
+      summary: 'Create scoped keys and authenticate requests with a bearer token.',
+      readMinutes: 4,
+      sections: [
+        'Create a key under API Keys with the scopes you need.',
+        'Send the token as a bearer header on every request.',
+        'Keys are shown once at creation, so store them in a secrets manager.',
+      ],
+    },
+    {
+      id: 'guide_004',
+      category: 'api',
+      title: 'REST endpoints overview',
+      summary: 'The core surfaces: submit scans, list scans, and fetch report payloads.',
+      readMinutes: 6,
+      sections: [
+        'POST /scans initiates a verification with an upload reference.',
+        'GET /scans lists workspace scans with status and verdict summaries.',
+        'GET /scans/:id returns the full report payload including signals.',
+      ],
+    },
+    {
+      id: 'guide_005',
+      category: 'integration',
+      title: 'Webhooks for scan completion',
+      summary: 'Get notified the moment a verification finishes without polling.',
+      readMinutes: 5,
+      sections: [
+        'Register a webhook URL to receive scan.completed events.',
+        'Payloads include the scan id, verdict, and confidence.',
+        'Retry with exponential backoff on 5xx responses.',
+      ],
+    },
+    {
+      id: 'guide_006',
+      category: 'verification',
+      title: 'Choosing a processing mode',
+      summary: 'Quick, Standard, and Deep trade speed against depth of analysis.',
+      readMinutes: 4,
+      sections: [
+        'Quick returns a triage verdict in seconds for high-volume review.',
+        'Standard runs the full signal suite for most workflows.',
+        'Deep adds extended forensics for high-stakes media.',
+      ],
+    },      { id: 'guide_007',
+      category: 'verification',
+      title: 'Exporting and sharing reports',
+      summary: 'Produce printable PDF reports and share them with stakeholders.',
+      readMinutes: 3,
+      sections: [
+        'Open the report and choose the printable view.',
+        'Reports carry the verdict, confidence, and signal evidence.',
+        'Share the print view with reviewers or export for records.',
+      ],
+    },
+  ],
+  channels: [
+    {
+      id: 'channel_email',
+      label: 'Email support',
+      description: 'For detailed questions and account issues.',
+      value: 'support@provance.app',
+      href: 'mailto:support@provance.app',
+    },
+    {
+      id: 'channel_community',
+      label: 'Community',
+      description: 'Discuss workflows and share best practices.',
+      value: 'Join the community',
+      href: '/resources',
+    },
+    {
+      id: 'channel_reference',
+      label: 'API reference',
+      description: 'The full endpoint and schema reference.',
+      value: 'Browse the reference',
+      href: '/app/docs',
+    },
+  ],
+}
+
+export const mockHelpContent = {
+  categories: [
+    { value: 'billing', label: 'Billing' },
+    { value: 'workspace', label: 'Workspace' },
+    { value: 'security', label: 'Security' },
+    { value: 'api', label: 'API & integrations' },
+  ],
+  faqs: [
+    {
+      id: 'faq_001',
+      category: 'billing',
+      question: 'How does billing work?',
+      answer:
+        'Plans are billed monthly per workspace. Usage is metered against your plan limits, and overage applies only beyond the included allowance. Billing is currently a UI preview, so no charges are processed yet.',
+    },
+    {
+      id: 'faq_002',
+      category: 'billing',
+      question: 'Can I change plans later?',
+      answer:
+        'Yes. Plan changes apply at the next billing cycle. Upgrading raises your limits immediately; downgrading takes effect at renewal.',
+    },
+    {
+      id: 'faq_003',
+      category: 'workspace',
+      question: 'How do I invite teammates?',
+      answer:
+        'Organization owners can invite members from the Organization page. Invites carry a role, and members appear in the roster once they accept.',
+    },
+    {
+      id: 'faq_004',
+      category: 'workspace',
+      question: 'Where do my scan results live?',
+      answer:
+        'Every verification appears in Scan History and the Verification Reports list. Completed scans expose a full report with verdict, confidence, and per-signal evidence.',
+    },
+    {
+      id: 'faq_005',
+      category: 'security',
+      question: 'How are my files handled?',
+      answer:
+        'Uploaded media is processed for verification and stored for the duration of your workspace retention policy. Access is scoped to your organization and audited.',
+    },
+    {
+      id: 'faq_006',
+      category: 'security',
+      question: 'What is two-factor authentication?',
+      answer:
+        'Two-factor authentication adds a verification code at sign-in. It is exposed here as a preview control and will be wired to a real provider before launch.',
+    },
+    {
+      id: 'faq_007',
+      category: 'api',
+      question: 'How do I get an API key?',
+      answer:
+        'Create one under API Keys. Choose the scopes you need, and store the token securely, since it is only shown once at creation.',
+    },
+    {
+      id: 'faq_008',
+      category: 'api',
+      question: 'What are the rate limits?',
+      answer:
+        'Keys default to 60 requests per minute and can be raised up to 600 on request. Rate limits apply per key, not per workspace.',
+    },
+  ],
+  channels: [
+    {
+      id: 'channel_email',
+      label: 'Email support',
+      description: 'For detailed questions and account issues.',
+      value: 'support@provance.app',
+      href: 'mailto:support@provance.app',
+    },
+    {
+      id: 'channel_docs',
+      label: 'Documentation',
+      description: 'API reference and integration guides.',
+      value: 'Read the docs',
+      href: '/app/docs',
+    },
+    {
+      id: 'channel_community',
+      label: 'Community',
+      description: 'Discuss workflows and share best practices.',
+      value: 'Join the community',
+      href: '/resources',
+    },
+  ],
+}
+
+// ---------------------------------------------------------------------------
+// Organization workspace (roster, invites, profile)
+// ---------------------------------------------------------------------------
+
+export const mockOrgWorkspace = {
+  profile: {
+    id: 'org_001',
+    name: 'Provance Internal',
+    plan: 'Pro',
+    seats: 4,
+    seatsUsed: 4,
+    storageUsedGb: 18.4,
+    storageLimitGb: 50,
+    scanCount: 342,
+    created_at: daysAgo(30, 0),
+  },
+  members: [
+    {
+      id: 'usr_001',
+      displayName: 'Joshua Onyekachukwu',
+      email: 'joshua.onyekachukwu@provance.io',
+      role: 'owner',
+      team: 'team_legal',
+      status: 'active',
+      last_active_at: daysAgo(0, -1),
+    },
+    {
+      id: 'usr_002',
+      displayName: 'Amina Sow',
+      email: 'amina.sow@provance.io',
+      role: 'admin',
+      team: 'team_legal',
+      status: 'active',
+      last_active_at: daysAgo(0, -3),
+    },
+    {
+      id: 'usr_011',
+      displayName: 'Ngozi Ugwu',
+      email: 'ngozi.ugwu@provance.io',
+      role: 'member',
+      team: 'team_product',
+      status: 'active',
+      last_active_at: daysAgo(4, 2),
+    },
+    {
+      id: 'usr_012',
+      displayName: 'Kwame Boateng',
+      email: 'kwame.boateng@provance.io',
+      role: 'member',
+      team: 'team_growth',
+      status: 'active',
+      last_active_at: daysAgo(2, 3),
+    },
+  ],
+  pendingInvites: [
+    {
+      id: 'inv_001',
+      email: 'tunde.balogun@provance.io',
+      role: 'member',
+      team: 'team_legal',
+      invitedAt: daysAgo(2, 5),
+      expiresAt: daysAgo(-5, 0),
+    },
+    {
+      id: 'inv_002',
+      email: 'sarah.kim@provance.io',
+      role: 'admin',
+      team: 'team_product',
+      invitedAt: daysAgo(1, 8),
+      expiresAt: daysAgo(-6, 0),
+    },
+  ],
+}
+
+// Workspace teams — members are assigned to exactly one team; the roster is the
+// source of truth for counts (kept in sync with removals), so memberIds here
+// are only a starting point.
+// ---------------------------------------------------------------------------
+// Admin verification jobs (derived from the scan store, job-view flavored)
+// ---------------------------------------------------------------------------
+
+const JOB_WORKERS = ['worker-eu-01', 'worker-eu-02', 'worker-us-01', 'worker-ap-01']
+const JOB_PRIORITIES = ['high', 'medium', 'low']
+
+export const mockAdminJobs = mockScans.map((scan, i) => {
+  const failed = scan.status === 'failed'
+  const processing = scan.status === 'processing'
+  const completed = scan.status === 'completed'
+  return {
+    id: `job_${String(i + 1).padStart(3, '0')}`,
+    scan_id: scan.id,
+    original_filename: scan.original_filename,
+    mime_type: scan.mime_type,
+    status: scan.status,
+    priority: JOB_PRIORITIES[i % JOB_PRIORITIES.length],
+    attempts: failed ? 2 + (i % 2) : processing ? 1 : 1,
+    progress: completed ? 100 : processing ? 40 + (i % 5) * 12 : failed ? 62 : 0,
+    worker: JOB_WORKERS[i % JOB_WORKERS.length],
+    processing_mode: scan.processing_mode,
+    created_at: scan.created_at,
+    started_at: scan.status === 'queued' ? null : daysAgo(Math.floor(i / 2), (i % 24) + 1),
+    completed_at: scan.completed_at,
+    error:
+      failed && i % 3 === 0
+        ? 'Worker exceeded memory limit while decoding video frames (EXIF + frame sampling).'
+        : failed && i % 3 === 1
+          ? 'Model signature endpoint returned 502 after 3 retries.'
+          : failed
+            ? 'Input file failed MIME validation: declared type did not match container.'
+            : null,
+  }
+})
+
+export const mockJobStatusCounts = mockAdminJobs.reduce(
+  (acc, job) => {
+    acc[job.status] = (acc[job.status] || 0) + 1
+    return acc
+  },
+  { queued: 0, processing: 0, completed: 0, failed: 0 },
+)
+
+// ---------------------------------------------------------------------------
+// Admin RBAC roles + permission matrix
+// ---------------------------------------------------------------------------
+
+export const mockAdminRoles = [
+  {
+    id: 'role_owner',
+    name: 'Owner',
+    description: 'Full control — billing, membership, security, and all platform configuration.',
+    member_count: 1,
+    scope_summary: 'Everything',
+    scopes: {
+      'scans.read': true,
+      'scans.create': true,
+      'scans.revoke': true,
+      'reports.read': true,
+      'reports.export': true,
+      'members.manage': true,
+      'roles.manage': true,
+      'billing.manage': true,
+      'flags.manage': true,
+      'audit.read': true,
+    },
+    editable: false,
+  },
+  {
+    id: 'role_admin',
+    name: 'Admin',
+    description: 'Operational control — members, feature flags, and verification oversight.',
+    member_count: 3,
+    scope_summary: 'Ops + members',
+    scopes: {
+      'scans.read': true,
+      'scans.create': true,
+      'scans.revoke': true,
+      'reports.read': true,
+      'reports.export': true,
+      'members.manage': true,
+      'roles.manage': false,
+      'billing.manage': false,
+      'flags.manage': true,
+      'audit.read': true,
+    },
+    editable: true,
+  },
+  {
+    id: 'role_analyst',
+    name: 'Analyst',
+    description: 'Submit and review verifications — read and export reports, no admin controls.',
+    member_count: 7,
+    scope_summary: 'Verify + export',
+    scopes: {
+      'scans.read': true,
+      'scans.create': true,
+      'scans.revoke': false,
+      'reports.read': true,
+      'reports.export': true,
+      'members.manage': false,
+      'roles.manage': false,
+      'billing.manage': false,
+      'flags.manage': false,
+      'audit.read': false,
+    },
+    editable: true,
+  },
+  {
+    id: 'role_viewer',
+    name: 'Viewer',
+    description: 'Read-only access to scans and reports for compliance and oversight.',
+    member_count: 2,
+    scope_summary: 'Read-only',
+    scopes: {
+      'scans.read': true,
+      'scans.create': false,
+      'scans.revoke': false,
+      'reports.read': true,
+      'reports.export': false,
+      'members.manage': false,
+      'roles.manage': false,
+      'billing.manage': false,
+      'flags.manage': false,
+      'audit.read': true,
+    },
+    editable: true,
+  },
+]
+
+export const mockRoleScopeMeta = [
+  { key: 'scans.read', label: 'Read scans', group: 'Verification' },
+  { key: 'scans.create', label: 'Submit verifications', group: 'Verification' },
+  { key: 'scans.revoke', label: 'Revoke scans', group: 'Verification' },
+  { key: 'reports.read', label: 'Read reports', group: 'Reports' },
+  { key: 'reports.export', label: 'Export reports', group: 'Reports' },
+  { key: 'members.manage', label: 'Manage members', group: 'Organization' },
+  { key: 'roles.manage', label: 'Manage roles', group: 'Organization' },
+  { key: 'billing.manage', label: 'Manage billing', group: 'Organization' },
+  { key: 'flags.manage', label: 'Manage feature flags', group: 'Platform' },
+  { key: 'audit.read', label: 'Read audit logs', group: 'Platform' },
+]
+
+// ---------------------------------------------------------------------------
+// Admin settings (environment + operational toggles)
+// ---------------------------------------------------------------------------
+
+export const mockAdminSettings = {
+  environment: {
+    name: 'Production',
+    region: 'eu-west-1',
+    api_version: 'v1.4.2',
+    worker_version: 'v1.3.8',
+    app_commit: 'a1b2c3d',
+    deployed_at: daysAgo(2, 4),
+  },
+  operational: [
+    {
+      key: 'maintenance_mode',
+      label: 'Maintenance mode',
+      description: 'Blocks new uploads and shows a maintenance banner across the workspace.',
+      enabled: false,
+      kind: 'toggle',
+    },
+    {
+      key: 'open_signups',
+      label: 'Open sign-ups',
+      description: 'Allow waitlist applications and new account creation without an invite.',
+      enabled: false,
+      kind: 'toggle',
+    },
+    {
+      key: 'deep_processing',
+      label: 'Deep processing mode',
+      description: 'Enables the full signal ensemble (fingerprint, frequency, metadata, continuity).',
+      enabled: true,
+      kind: 'toggle',
+    },
+    {
+      key: 'max_upload_mb',
+      label: 'Max upload size',
+      description: 'Largest accepted media file size in megabytes.',
+      value: '250',
+      kind: 'input',
+    },
+    {
+      key: 'report_retention_days',
+      label: 'Report retention',
+      description: 'How long completed reports are retained before archival.',
+      value: '365',
+      kind: 'input',
+    },
+  ],
+  security: {
+    session_timeout_minutes: 120,
+    mfa_enforced: false,
+    audit_retention_days: 730,
+    allowlist_only_signins: true,
+  },
+}
+
+export const mockOrgTeams = [
+  {
+    id: 'team_legal',
+    name: 'Legal & Compliance',
+    description: 'Evidence review and chain-of-custody workflows.',
+    memberIds: ['usr_001', 'usr_002'],
+  },
+  {
+    id: 'team_product',
+    name: 'Product & Engineering',
+    description: 'Build, QA, and release verification.',
+    memberIds: ['usr_011'],
+  },
+  {
+    id: 'team_growth',
+    name: 'Growth & Marketing',
+    description: 'Campaign integrity and content verification.',
+    memberIds: ['usr_012'],
+  },
+]
+
+// ---------------------------------------------------------------------------
+// Admin dashboard builder
 // ---------------------------------------------------------------------------
 
 export function buildAdminDashboard() {

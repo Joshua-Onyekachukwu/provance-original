@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { formatDate, formatDateTime, getTeamMeta } from '../../components/app/scanPresentation.js'
 import AppStatePanel from '../../components/app/AppStatePanel.jsx'
 import AdminPageHeader from '../../components/admin/AdminPageHeader.jsx'
-import StatCard from '../../components/admin/StatCard.jsx'
-import AdminTable from '../../components/admin/AdminTable.jsx'
-import AdminDrawer from '../../components/admin/AdminDrawer.jsx'
-import AdminSearch from '../../components/admin/AdminSearch.jsx'
 import ConfirmDialog from '../../components/admin/ConfirmDialog.jsx'
+import TeamBadge from '../../components/app/TeamBadge.jsx'
+import TeamFilter from '../../components/app/TeamFilter.jsx'
+import { Badge, Button, DataTable, Drawer, EmptyState, Spinner, StatCard, useRegisterCommands } from '../../components/ui/index.js'
 import {
   getAdminUsers,
   getUserProfile,
@@ -13,6 +14,7 @@ import {
   toggleTeamAccess,
 } from '../../lib/api.js'
 import { mockScans, mockAuditEvents, mockOrganizations, mockUsers } from '../../lib/mockData.js'
+import { useTeamFilterParam } from '../../lib/useTeamFilterParam.js'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -24,13 +26,11 @@ const ROLE_LABELS = {
   member: 'Member',
 }
 
-const ROLE_BADGE_COLORS = {
-  super_admin: 'bg-rose-50 text-rose-700 border-rose-200',
-  admin: 'bg-amber-50 text-amber-700 border-amber-200',
-  member: 'bg-sky-50 text-sky-700 border-sky-200',
+const ROLE_TONES = {
+  super_admin: 'danger',
+  admin: 'warning',
+  member: 'info',
 }
-
-const PAGE_SIZE = 10
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -41,26 +41,6 @@ function getInitials(name) {
   const parts = name.trim().split(/\s+/)
   if (parts.length === 1) return parts[0].charAt(0).toUpperCase()
   return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
-}
-
-function formatDate(dateString) {
-  if (!dateString) return '—'
-  return new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  })
-}
-
-function formatDateTime(dateString) {
-  if (!dateString) return '—'
-  return new Date(dateString).toLocaleString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
 }
 
 function getOrgName(orgId, orgs) {
@@ -102,8 +82,9 @@ function getUserAuditEvents(userId) {
 const USER_COLUMNS = [
   {
     key: 'displayName',
-    label: 'Name',
+    header: 'Name',
     sortable: true,
+    sortValue: (row) => row.displayName,
     render: (row) => (
       <div className="flex items-center gap-3">
         <div className="flex h-9 w-9 items-center justify-center rounded-full bg-charcoal/8 text-xs font-medium text-charcoal-mid">
@@ -113,47 +94,53 @@ const USER_COLUMNS = [
       </div>
     ),
   },
-  { key: 'email', label: 'Email', sortable: true },
+  {
+    key: 'email',
+    header: 'Email',
+    sortable: true,
+    sortValue: (row) => row.email,
+  },
   {
     key: 'role',
-    label: 'Role',
+    header: 'Role',
     sortable: true,
-    render: (row) => {
-      const colorClass = ROLE_BADGE_COLORS[row.role] || ROLE_BADGE_COLORS.member
-      return (
-        <span
-          className={`inline-flex rounded-full border px-2.5 py-0.5 text-[11px] uppercase tracking-[0.14em] ${colorClass}`}
-        >
-          {ROLE_LABELS[row.role] || row.role}
-        </span>
-      )
-    },
+    sortValue: (row) => ROLE_LABELS[row.role] || row.role,
+    render: (row) => (
+      <Badge tone={ROLE_TONES[row.role] || 'neutral'} size="sm">
+        {ROLE_LABELS[row.role] || row.role}
+      </Badge>
+    ),
+  },
+  {
+    key: 'team_id',
+    header: 'Team',
+    sortable: true,
+    sortValue: (row) => getTeamMeta(row.team_id).name,
+    render: (row) => <TeamBadge teamId={row.team_id} />,
   },
   {
     key: 'team_enabled',
-    label: 'Team',
+    header: 'Team Access',
     sortable: true,
+    sortValue: (row) => (row.team_enabled ? 'Enabled' : 'Disabled'),
     render: (row) => (
-      <span className="inline-flex items-center gap-1.5 text-sm text-charcoal">
-        <span
-          className={`inline-block h-2 w-2 rounded-full ${
-            row.team_enabled ? 'bg-emerald-400' : 'bg-stone-300'
-          }`}
-        />
+      <Badge tone={row.team_enabled ? 'success' : 'neutral'} dot size="sm">
         {row.team_enabled ? 'Enabled' : 'Disabled'}
-      </span>
+      </Badge>
     ),
   },
   {
     key: 'last_sign_in',
-    label: 'Last Sign-in',
+    header: 'Last Sign-in',
     sortable: true,
+    sortValue: (row) => new Date(row.last_sign_in || 0).getTime(),
     render: (row) => formatDate(row.last_sign_in),
   },
   {
     key: 'created_at',
-    label: 'Created',
+    header: 'Created',
     sortable: true,
+    sortValue: (row) => new Date(row.created_at || 0).getTime(),
     render: (row) => formatDate(row.created_at),
   },
 ]
@@ -163,6 +150,30 @@ const USER_COLUMNS = [
 // ---------------------------------------------------------------------------
 
 export default function UsersPage() {
+  const navigate = useNavigate()
+
+  useRegisterCommands(
+    [
+      {
+        id: 'users.go-waitlist',
+        group: 'Users',
+        label: 'Open waitlist management',
+        hint: 'Review pending applications',
+        keywords: ['users', 'waitlist', 'admin'],
+        onSelect: () => navigate('/app/admin/waitlist'),
+      },
+      {
+        id: 'users.go-organizations',
+        group: 'Users',
+        label: 'Open organizations',
+        hint: 'Workspace profiles and storage',
+        keywords: ['users', 'organizations', 'admin'],
+        onSelect: () => navigate('/app/admin/organizations'),
+      },
+    ],
+    [navigate],
+  )
+
   // Data state
   const [usersState, setUsersState] = useState({
     status: 'loading',
@@ -170,13 +181,12 @@ export default function UsersPage() {
     error: '',
   })
 
-  // Filter state
-  const [searchText, setSearchText] = useState('')
+  // Filter state (role / team-access pre-filter rows; text search handled by
+  // DataTable). The team-assignment filter is URL-backed (?team=) like the
+  // workspace surfaces.
   const [filterRole, setFilterRole] = useState('all')
-  const [filterTeam, setFilterTeam] = useState('all')
-
-  // Pagination
-  const [page, setPage] = useState(1)
+  const [filterTeamAccess, setFilterTeamAccess] = useState('all')
+  const [teamFilter, setTeamFilter] = useTeamFilterParam()
 
   // Drawer state
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -197,10 +207,10 @@ export default function UsersPage() {
   // Action feedback
   const [actionMessage, setActionMessage] = useState(null)
 
-  // Load all users (for KPI computation) + paginated page
-  const loadUsers = useCallback(async (currentPage = page) => {
+  // Load all users once; DataTable handles search / sort / pagination client-side
+  const loadUsers = useCallback(async () => {
     try {
-      const result = await getAdminUsers({ page: currentPage, pageSize: PAGE_SIZE })
+      const result = await getAdminUsers({ page: 1, pageSize: 200 })
       setUsersState({ status: 'ready', data: result, error: '' })
     } catch (err) {
       setUsersState({
@@ -209,11 +219,11 @@ export default function UsersPage() {
         error: err.message || 'Failed to load users.',
       })
     }
-  }, [page])
+  }, [])
 
   useEffect(() => {
-    void loadUsers(page)
-  }, [page]) // eslint-disable-line react-hooks/exhaustive-deps
+    void loadUsers()
+  }, [loadUsers])
 
   // Compute KPIs from all mock users
   const kpis = useMemo(() => {
@@ -236,26 +246,26 @@ export default function UsersPage() {
     }
   }, [])
 
-  // Client-side filtering
+  // Team-assignment counts for the filter chips (driven by the live admin feed)
+  const teamCounts = useMemo(() => {
+    const counts = {}
+    for (const row of usersState.data?.data || []) {
+      if (row.team_id) counts[row.team_id] = (counts[row.team_id] || 0) + 1
+    }
+    return counts
+  }, [usersState.data])
+
+  // Client-side role / team pre-filter (search + sort + pagination live in DataTable)
   const filteredUsers = useMemo(() => {
     const rows = usersState.data?.data || []
-    const query = searchText.trim().toLowerCase()
-
     return rows.filter((row) => {
-      // Role filter
       if (filterRole !== 'all' && row.role !== filterRole) return false
-
-      // Team filter
-      if (filterTeam === 'enabled' && !row.team_enabled) return false
-      if (filterTeam === 'disabled' && row.team_enabled) return false
-
-      // Text search
-      if (!query) return true
-      return [row.displayName, row.email, row.role]
-        .filter(Boolean)
-        .some((val) => String(val).toLowerCase().includes(query))
+      if (filterTeamAccess === 'enabled' && !row.team_enabled) return false
+      if (filterTeamAccess === 'disabled' && row.team_enabled) return false
+      if (teamFilter !== 'all' && row.team_id !== teamFilter) return false
+      return true
     })
-  }, [usersState.data, filterRole, filterTeam, searchText])
+  }, [usersState.data, filterRole, filterTeamAccess, teamFilter])
 
   // Row click → open drawer
   async function handleRowClick(row) {
@@ -263,9 +273,12 @@ export default function UsersPage() {
     setDrawerOpen(true)
     setProfileState({ status: 'loading', data: null, error: '' })
     setActionMessage(null)
+    void fetchProfile(row.id)
+  }
 
+  async function fetchProfile(userId) {
     try {
-      const profile = await getUserProfile(row.id)
+      const profile = await getUserProfile(userId)
       setProfileState({ status: 'ready', data: profile, error: '' })
     } catch (err) {
       setProfileState({
@@ -309,7 +322,7 @@ export default function UsersPage() {
         text: `Role changed to ${ROLE_LABELS[updated.role] || updated.role}.`,
       })
       // Reload users list to reflect changes
-      await loadUsers(page)
+      await loadUsers()
     } catch (err) {
       setActionMessage({ type: 'error', text: err.message || 'Role change failed.' })
       setRoleChangeDialog({ open: false, newRole: '' })
@@ -334,7 +347,7 @@ export default function UsersPage() {
     try {
       const updated = await toggleTeamAccess(profileState.data.id, newValue)
       setProfileState({ status: 'ready', data: updated, error: '' })
-      await loadUsers(page)
+      await loadUsers()
     } catch (err) {
       // Revert on failure
       setProfileState((prev) => ({
@@ -360,57 +373,6 @@ export default function UsersPage() {
   }, [selectedUserId])
 
   // -------------------------------------------------------------------
-  // Render: Loading
-  // -------------------------------------------------------------------
-  if (usersState.status === 'loading') {
-    return (
-      <div className="space-y-8">
-        {/* Skeleton KPIs */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="animate-pulse rounded-3xl border border-stone-light bg-white-warm p-5 shadow-sm">
-              <div className="mb-2 h-3 w-20 rounded bg-stone-light/60" />
-              <div className="mb-2 h-8 w-16 rounded bg-stone-light/40" />
-              <div className="h-3 w-28 rounded bg-stone-light/60" />
-            </div>
-          ))}
-        </div>
-
-        {/* Skeleton table */}
-        <div className="rounded-2xl border border-stone-light bg-white-warm">
-          <div className="border-b border-stone-light px-4 py-3">
-            <div className="h-9 w-64 animate-pulse rounded-xl bg-stone-light/60" />
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-stone-light">
-                  {USER_COLUMNS.map((col) => (
-                    <th key={col.key} className="px-4 py-3 font-mono text-[11px] uppercase tracking-[0.18em] text-charcoal-light">
-                      {col.label}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i} className="animate-pulse border-b border-stone-light">
-                    {USER_COLUMNS.map((col, j) => (
-                      <td key={j} className="px-4 py-4">
-                        <div className="h-4 rounded bg-stone-light/60" style={{ width: j === 0 ? '60%' : '80%' }} />
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // -------------------------------------------------------------------
   // Render: Error
   // -------------------------------------------------------------------
   if (usersState.status === 'error') {
@@ -421,26 +383,26 @@ export default function UsersPage() {
         description={usersState.error}
         variant="error"
         action={
-          <button
-            type="button"
+          <Button
+            variant="secondary"
             onClick={() => {
               setUsersState({ status: 'loading', data: null, error: '' })
-              void loadUsers(page)
+              void loadUsers()
             }}
-            className="rounded-xl border border-rose-200 bg-white-warm px-4 py-2.5 text-sm font-medium text-rose-700 transition hover:bg-rose-50"
           >
             Retry
-          </button>
+          </Button>
         }
       />
     )
   }
 
   // -------------------------------------------------------------------
-  // Render: Populated
+  // Render
   // -------------------------------------------------------------------
-  const totalPages = usersState.data?.totalPages || 1
-  const total = usersState.data?.total || 0
+  const isFiltered = Boolean(
+    filterRole !== 'all' || filterTeamAccess !== 'all' || teamFilter !== 'all',
+  )
 
   return (
     <div className="space-y-8">
@@ -496,19 +458,12 @@ export default function UsersPage() {
 
       {/* Filter toolbar + Table */}
       <div className="space-y-4">
-        {/* Filter toolbar */}
+        {/* Filter toolbar (role / team only — text search is DataTable's own) */}
         <div className="flex flex-wrap items-center gap-3">
-          <AdminSearch
-            placeholder="Search by name, email, or role"
-            onSearch={setSearchText}
-            className="w-full max-w-sm"
-          />
-
           <select
             value={filterRole}
             onChange={(e) => {
               setFilterRole(e.target.value)
-              setPage(1)
             }}
             className="rounded-xl border border-stone-light bg-parchment px-4 py-3 text-sm text-charcoal"
             aria-label="Filter by role"
@@ -520,10 +475,9 @@ export default function UsersPage() {
           </select>
 
           <select
-            value={filterTeam}
+            value={filterTeamAccess}
             onChange={(e) => {
-              setFilterTeam(e.target.value)
-              setPage(1)
+              setFilterTeamAccess(e.target.value)
             }}
             className="rounded-xl border border-stone-light bg-parchment px-4 py-3 text-sm text-charcoal"
             aria-label="Filter by team access"
@@ -532,53 +486,59 @@ export default function UsersPage() {
             <option value="enabled">Team Enabled</option>
             <option value="disabled">Team Disabled</option>
           </select>
+
+          <TeamFilter counts={teamCounts} value={teamFilter} onChange={setTeamFilter} label="Team" />
         </div>
 
         {/* Table */}
-        {filteredUsers.length === 0 && usersState.status === 'ready' ? (
-          <div className="rounded-2xl border border-stone-light bg-white-warm">
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-stone-light bg-parchment">
-                <svg className="h-7 w-7 text-charcoal-light" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-              <p className="font-serif text-lg text-charcoal">
-                {searchText || filterRole !== 'all' || filterTeam !== 'all'
-                  ? 'No users match your filters'
-                  : 'No user accounts found'}
-              </p>
-              <p className="mt-1 text-sm text-charcoal-mid">
-                {searchText || filterRole !== 'all' || filterTeam !== 'all'
-                  ? 'Try adjusting your search or filter criteria.'
-                  : 'User accounts will appear here as they register.'}
-              </p>
-            </div>
-          </div>
-        ) : (
-          <AdminTable
-            columns={USER_COLUMNS}
-            data={filteredUsers}
-            loading={false}
-            onRowClick={handleRowClick}
-            emptyMessage="No user accounts found."
-            filteredEmptyMessage="No users match your current search or filters."
-            page={page}
-            pageSize={PAGE_SIZE}
-            total={total}
-            onPageChange={(newPage) => setPage(newPage)}
-          />
-        )}
+        <DataTable
+          columns={USER_COLUMNS}
+          rows={filteredUsers}
+          keyField="id"
+          loading={usersState.status === 'loading'}
+          searchable
+          searchPlaceholder="Search by name, email, or role"
+          searchKeys={['displayName', 'email', 'role']}
+          onRowClick={handleRowClick}
+          pagination
+          pageSize={10}
+          pageSizeOptions={[10, 20, 50, 100]}
+          emptyTitle={isFiltered ? 'No users match your filters' : 'No user accounts found'}
+          emptyDescription={
+            isFiltered
+              ? 'Try adjusting your search or filter criteria.'
+              : 'User accounts will appear here as they register.'
+          }
+        />
       </div>
 
       {/* User Detail Drawer */}
-      <AdminDrawer
+      <Drawer
         open={drawerOpen}
         onClose={handleCloseDrawer}
         title={profileState.data?.displayName || 'User detail'}
-        loading={profileState.status === 'loading'}
-        error={profileState.status === 'error' ? profileState.error : ''}
+        description="Account posture, role, team access, and recent activity."
+        size="xl"
       >
+        {profileState.status === 'loading' && (
+          <div className="flex items-center justify-center py-20">
+            <Spinner size="lg" />
+          </div>
+        )}
+
+        {profileState.status === 'error' && (
+          <EmptyState
+            variant="error"
+            title="Could not load user profile"
+            description={profileState.error}
+            action={
+              <Button variant="secondary" size="sm" onClick={() => selectedUserId && fetchProfile(selectedUserId)}>
+                Retry
+              </Button>
+            }
+          />
+        )}
+
         {profileState.status === 'ready' && profileState.data && (() => {
           const user = profileState.data
           const orgName = getOrgName(user.org_id, mockOrganizations)
@@ -593,9 +553,18 @@ export default function UsersPage() {
                 <div className="min-w-0">
                   <h3 className="font-serif text-xl text-charcoal">{user.displayName}</h3>
                   <p className="mt-1 text-sm text-charcoal-mid">{user.email}</p>
-                  <p className="mt-1 text-xs text-charcoal-light">
-                    {orgName} · Member since {formatDate(user.created_at)}
-                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <Badge tone={ROLE_TONES[user.role] || 'neutral'} size="sm">
+                      {ROLE_LABELS[user.role] || user.role}
+                    </Badge>
+                    <Badge tone="neutral" size="sm">
+                      {orgName}
+                    </Badge>
+                    <TeamBadge teamId={user.team_id} />
+                    <Badge tone="neutral" size="sm">
+                      Member since {formatDate(user.created_at)}
+                    </Badge>
+                  </div>
                 </div>
               </div>
 
@@ -628,14 +597,13 @@ export default function UsersPage() {
                     <option value="admin">Admin</option>
                     <option value="member">Member</option>
                   </select>
-                  <button
-                    type="button"
+                  <Button
+                    variant="secondary"
                     onClick={openRoleChangeDialog}
                     disabled={!pendingRole || pendingRole === user.role}
-                    className="rounded-xl border border-stone-light bg-white-warm px-4 py-2.5 text-sm text-charcoal transition hover:border-charcoal disabled:opacity-50"
                   >
                     Change role
-                  </button>
+                  </Button>
                 </div>
                 <p className="mt-2 text-xs text-charcoal-mid">
                   Current: {ROLE_LABELS[user.role] || user.role}. Select a new role and confirm to change.
@@ -727,9 +695,9 @@ export default function UsersPage() {
                         key={event.id}
                         className="flex items-center gap-3 rounded-xl border border-stone-light bg-white-warm px-3 py-2.5"
                       >
-                        <span className="inline-flex shrink-0 rounded-full border border-stone-200 bg-stone-100 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-charcoal-mid">
+                        <Badge tone="neutral" size="sm">
                           {event.action.replaceAll('.', ' ').replaceAll('_', ' ')}
-                        </span>
+                        </Badge>
                         <span className="min-w-0 flex-1 truncate text-xs text-charcoal-mid">
                           {event.actor_email}
                         </span>
@@ -765,7 +733,7 @@ export default function UsersPage() {
             </div>
           )
         })()}
-      </AdminDrawer>
+      </Drawer>
 
       {/* Role Change Confirmation Dialog */}
       <ConfirmDialog

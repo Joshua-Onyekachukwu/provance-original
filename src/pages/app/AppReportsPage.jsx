@@ -1,13 +1,18 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import AppStatePanel from '../../components/app/AppStatePanel.jsx'
+import { useTeamFilterParam } from '../../lib/useTeamFilterParam.js'
+import { Button, EmptyState, Skeleton, useRegisterCommands, useToast } from '../../components/ui'
 import ScanStatusBadge from '../../components/app/ScanStatusBadge.jsx'
+import TeamBadge from '../../components/app/TeamBadge.jsx'
+import TeamFilter from '../../components/app/TeamFilter.jsx'
 import {
   formatFileSize,
+  formatPct,
   formatScanTimestamp,
   getVerdictLabel,
 } from '../../components/app/scanPresentation.js'
 import { getScan, listScans } from '../../lib/api.js'
+import { useResource } from '../../lib/useResource.js'
 
 function ReportMetaItem({ label, value }) {
   return (
@@ -18,111 +23,132 @@ function ReportMetaItem({ label, value }) {
   )
 }
 
+function DownloadIcon({ className = 'h-4 w-4' }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      strokeWidth="1.8"
+      stroke="currentColor"
+      aria-hidden="true"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v11m0 0 4-4m-4 4-4-4M5 19.5h14" />
+    </svg>
+  )
+}
+
+function ListSkeleton() {
+  return (
+    <div role="status" aria-label="Loading verification history" className="mt-6 space-y-4">
+      {[0, 1, 2, 3, 4].map((i) => (
+        <div key={i} className="rounded-2xl border border-stone-light bg-parchment p-4">
+          <div className="flex items-center justify-between gap-3">
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="h-5 w-20 rounded-full" />
+          </div>
+          <div className="mt-3 flex gap-4">
+            <Skeleton className="h-3 w-16" />
+            <Skeleton className="h-3 w-16" />
+            <Skeleton className="h-3 w-24" />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function AppReportsPage() {
   const { scanId } = useParams()
   const navigate = useNavigate()
-  const [scansState, setScansState] = useState({
-    status: 'loading',
-    scans: [],
-    error: '',
-  })
-  const [detailState, setDetailState] = useState({
-    status: 'idle',
-    scan: null,
-    error: '',
-  })
+  const toast = useToast()
 
-  useEffect(() => {
-    let isCancelled = false
+  const [teamFilter, setTeamFilter] = useTeamFilterParam()
 
-    async function loadScans() {
-      try {
-        const response = await listScans()
-
-        if (isCancelled) return
-        setScansState({
-          status: 'ready',
-          scans: response.scans || [],
-          error: '',
-        })
-      } catch (error) {
-        if (isCancelled) return
-        setScansState({
-          status: 'error',
-          scans: [],
-          error: error.message || 'Failed to load reports.',
-        })
-      }
-    }
-
-    void loadScans()
-
-    return () => {
-      isCancelled = true
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!scanId) {
-      setDetailState({
-        status: 'idle',
-        scan: null,
-        error: '',
-      })
-      return
-    }
-
-    let isCancelled = false
-    setDetailState({
-      status: 'loading',
-      scan: null,
-      error: '',
-    })
-
-    async function loadDetail() {
-      try {
-        const response = await getScan(scanId)
-        if (isCancelled) return
-        setDetailState({
-          status: 'ready',
-          scan: response.scan,
-          error: '',
-        })
-      } catch (error) {
-        if (isCancelled) return
-        setDetailState({
-          status: 'error',
-          scan: null,
-          error: error.message || 'Failed to load report detail.',
-        })
-      }
-    }
-
-    void loadDetail()
-
-    return () => {
-      isCancelled = true
-    }
-  }, [scanId])
+  const scans = useResource(() =>
+    listScans({ pageSize: 100 }).then((r) => r?.data || r?.scans || []),
+  )
+  const detail = useResource(
+    () => (scanId ? getScan(scanId).then((r) => r?.scan || r) : Promise.resolve(null)),
+    [scanId],
+  )
 
   const summary = useMemo(() => {
-    const scans = scansState.scans
+    const list = scans.data || []
     return {
-      total: scans.length,
-      completed: scans.filter((scan) => scan.status === 'complete').length,
-      active: scans.filter((scan) => ['queued', 'processing'].includes(scan.status)).length,
-      failed: scans.filter((scan) => scan.status === 'failed').length,
+      total: list.length,
+      completed: list.filter((scan) => scan.status === 'complete' || scan.status === 'completed').length,
+      active: list.filter((scan) => ['queued', 'processing'].includes(scan.status)).length,
+      failed: list.filter((scan) => scan.status === 'failed').length,
     }
-  }, [scansState.scans])
+  }, [scans.data])
 
-  const selectedScan = detailState.scan
+  const teamCounts = useMemo(() => {
+    const counts = {}
+    for (const scan of scans.data || []) {
+      if (scan.team_id) counts[scan.team_id] = (counts[scan.team_id] || 0) + 1
+    }
+    return counts
+  }, [scans.data])
+  const filteredList = useMemo(
+    () =>
+      teamFilter === 'all'
+        ? scans.data || []
+        : (scans.data || []).filter((scan) => scan.team_id === teamFilter),
+    [scans.data, teamFilter],
+  )
+
+  const selectedScan = detail.status === 'ready' ? detail.data : null
   const selectedVerdict = selectedScan?.result_payload?.verdict
   const selectedSignals = selectedScan?.result_payload?.signals || []
+
+  useRegisterCommands(
+    [
+      {
+        id: 'reports.upload-new',
+        group: 'Reports',
+        label: 'Upload a new verification',
+        hint: 'Start a fresh scan',
+        keywords: ['reports', 'upload', 'verify', 'new'],
+        onSelect: () => navigate('/app/uploads'),
+      },
+      {
+        id: 'reports.open-first',
+        group: 'Reports',
+        label: 'Open the latest report',
+        hint: `${(scans.data || []).length} reports`,
+        keywords: ['reports', 'report', 'open', 'latest'],
+        onSelect: () => {
+          const latest = (scans.data || []).find((s) => s.status === 'completed' || s.status === 'complete')
+          if (latest) navigate(`/app/reports/${latest.id}`)
+        },
+      },          ...(scanId && selectedScan
+        ? [
+            {
+              id: 'reports.export-pdf',
+              group: 'Reports',
+              label: 'Export current report as PDF',
+              hint: 'Printable report view',
+              keywords: ['reports', 'export', 'pdf', 'print', 'download'],
+              onSelect: () => {
+                navigate(`/app/reports/${selectedScan.id}/print`)
+                toast.info('Preparing PDF export', {
+                  description:
+                    "Opening the printable report — choose 'Save as PDF' from the print dialog to download.",
+                  duration: 8000,
+                })
+              },
+            },
+          ]
+        : []),
+    ].filter(Boolean),
+    [navigate, scans.data, scanId, selectedScan, toast],
+  )
 
   return (
     <div className="space-y-8">
       <section className="rounded-3xl border border-stone-light bg-white-warm p-6 shadow-sm sm:p-8">
-        <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">
+        <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-charcoal-light">
           Reports
         </p>
         <h2 className="mt-3 font-serif text-3xl text-charcoal sm:text-4xl">
@@ -157,32 +183,36 @@ export default function AppReportsPage() {
             </Link>
           </div>
 
-          {scansState.status === 'loading' && (
-            <div className="mt-6">
-              <AppStatePanel
-                label="Loading"
-                title="Loading verification history"
-                description="Fetching uploaded files and report-ready records."
-                variant="loading"
-              />
-            </div>
-          )}
+          <div className="mt-5">
+            <TeamFilter counts={teamCounts} value={teamFilter} onChange={setTeamFilter} />
+          </div>
 
-          {scansState.status === 'error' && (
+          {scans.status === 'loading' && <ListSkeleton />}
+
+          {scans.status === 'error' && (
             <div className="mt-6">
-              <AppStatePanel
-                label="Error"
-                title="Report list could not be loaded"
-                description={scansState.error}
+              <EmptyState
                 variant="error"
+                title="Report list could not be loaded"
+                description={scans.error}
+                action={
+                  <button
+                    type="button"
+                    onClick={scans.reload}
+                    className="ui-focus-ring inline-flex rounded-xl bg-charcoal px-5 py-3 text-sm font-medium text-parchment transition hover:bg-charcoal-soft"
+                  >
+                    Retry
+                  </button>
+                }
+                compact
               />
             </div>
           )}
 
-          {scansState.status === 'ready' && scansState.scans.length === 0 && (
+          {scans.status === 'ready' && scans.data.length === 0 && (
             <div className="mt-6">
-              <AppStatePanel
-                label="Empty"
+              <EmptyState
+                variant="empty"
                 title="No reports are available yet"
                 description="Start a verification in the upload workspace and the resulting report will appear here."
                 action={
@@ -193,13 +223,25 @@ export default function AppReportsPage() {
                     Start first scan
                   </Link>
                 }
+                compact
               />
             </div>
           )}
 
-          {scansState.status === 'ready' && scansState.scans.length > 0 && (
+          {scans.status === 'ready' && scans.data.length > 0 && filteredList.length === 0 && (
+            <div className="mt-6">
+              <EmptyState
+                variant="empty"
+                title="No scans in this team"
+                description="Try a different team — or clear the filter to see the full verification list."
+                compact
+              />
+            </div>
+          )}
+
+          {scans.status === 'ready' && scans.data.length > 0 && filteredList.length > 0 && (
             <div className="mt-6 space-y-4">
-              {scansState.scans.map((scan) => {
+              {filteredList.map((scan) => {
                 const isActive = scan.id === scanId
 
                 return (
@@ -222,9 +264,10 @@ export default function AppReportsPage() {
                       </div>
                       <ScanStatusBadge status={scan.status} />
                     </div>
-                    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs text-charcoal-mid">
+                    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-charcoal-mid">
                       <span>{formatFileSize(scan.file_size_bytes)}</span>
                       <span>{scan.mime_type}</span>
+                      <TeamBadge teamId={scan.team_id} />
                       <span>Verdict: {getVerdictLabel(scan)}</span>
                     </div>
                   </button>
@@ -235,32 +278,52 @@ export default function AppReportsPage() {
         </section>
 
         {!scanId && (
-          <AppStatePanel
-            label="Ready"
-            title="Choose a report to review"
-            description="Select an upload from the list to inspect verdict details, metadata, and the current report payload."
-          />
+          <div className="rounded-3xl border border-stone-light bg-white-warm p-6 shadow-sm">
+            <EmptyState
+              variant="empty"
+              title="Choose a report to review"
+              description="Select an upload from the list to inspect verdict details, metadata, and the current report payload."
+              compact
+            />
+          </div>
         )}
 
-        {scanId && detailState.status === 'loading' && (
-          <AppStatePanel
-            label="Loading"
-            title="Loading report detail"
-            description="Fetching the latest verification payload and status details."
-            variant="loading"
-          />
+        {scanId && detail.status === 'loading' && (
+          <div role="status" aria-label="Loading report detail" className="space-y-6">
+            {[0, 1, 2].map((i) => (
+              <section key={i} className="rounded-3xl border border-stone-light bg-white-warm p-6 shadow-sm">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="mt-4 h-8 w-2/3" />
+                <div className="mt-6 grid gap-4 md:grid-cols-2">
+                  <Skeleton className="h-16 rounded-2xl" />
+                  <Skeleton className="h-16 rounded-2xl" />
+                </div>
+              </section>
+            ))}
+          </div>
         )}
 
-        {scanId && detailState.status === 'error' && (
-          <AppStatePanel
-            label="Error"
-            title="Report detail could not be loaded"
-            description={detailState.error}
-            variant="error"
-          />
+        {scanId && detail.status === 'error' && (
+          <div className="rounded-3xl border border-stone-light bg-white-warm p-6 shadow-sm">
+            <EmptyState
+              variant="error"
+              title="Report detail could not be loaded"
+              description={detail.error}
+              action={
+                <button
+                  type="button"
+                  onClick={detail.reload}
+                  className="ui-focus-ring inline-flex rounded-xl bg-charcoal px-5 py-3 text-sm font-medium text-parchment transition hover:bg-charcoal-soft"
+                >
+                  Retry
+                </button>
+              }
+              compact
+            />
+          </div>
         )}
 
-        {scanId && detailState.status === 'ready' && selectedScan && (
+        {scanId && detail.status === 'ready' && selectedScan && (
           <div className="space-y-6">
             <section className="rounded-3xl border border-stone-light bg-white-warm p-6 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-4">
@@ -273,12 +336,20 @@ export default function AppReportsPage() {
                   </h3>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
-                  <Link
+                  <Button
                     to={`/app/reports/${selectedScan.id}/print`}
-                    className="inline-flex rounded-xl border border-stone-light px-4 py-2 text-sm font-medium text-charcoal transition hover:border-charcoal"
+                    variant="primary"
+                    iconLeft={<DownloadIcon />}
+                    onClick={() =>
+                      toast.info('Preparing PDF export', {
+                        description:
+                          "Opening the printable report — choose 'Save as PDF' from the print dialog to download.",
+                        duration: 8000,
+                      })
+                    }
                   >
-                    Printable report
-                  </Link>
+                    Export PDF
+                  </Button>
                   <ScanStatusBadge status={selectedScan.status} />
                 </div>
               </div>
@@ -310,9 +381,7 @@ export default function AppReportsPage() {
             </section>
 
             <section className="rounded-3xl border border-stone-light bg-white-warm p-6 shadow-sm">
-              <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">
-                Verdict
-              </p>
+              <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">Verdict</p>
               <h3 className="mt-3 font-serif text-3xl text-charcoal">
                 {selectedVerdict?.display_label || 'Pending'}
               </h3>
@@ -325,9 +394,7 @@ export default function AppReportsPage() {
                 <ReportMetaItem
                   label="Confidence"
                   value={
-                    Number.isFinite(selectedVerdict?.confidence_score)
-                      ? `${Math.round(selectedVerdict.confidence_score * 100)}%`
-                      : 'Pending'
+                    formatPct(selectedVerdict?.confidence_score, 0, 'Pending')
                   }
                 />
                 <ReportMetaItem
@@ -346,9 +413,7 @@ export default function AppReportsPage() {
             </section>
 
             <section className="rounded-3xl border border-stone-light bg-white-warm p-6 shadow-sm">
-              <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">
-                Signals
-              </p>
+              <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">Signals</p>
               <h3 className="mt-3 font-serif text-2xl text-charcoal">Signal analysis</h3>
               {selectedSignals.length === 0 ? (
                 <p className="mt-4 text-sm text-charcoal-mid">
@@ -385,9 +450,7 @@ export default function AppReportsPage() {
                               className="rounded-2xl border border-stone-light bg-white-warm px-4 py-3"
                             >
                               <p className="text-sm font-medium text-charcoal">{finding.label}</p>
-                              <p className="mt-1 text-sm text-charcoal-mid">
-                                {finding.description}
-                              </p>
+                              <p className="mt-1 text-sm text-charcoal-mid">{finding.description}</p>
                             </div>
                           ))}
                         </div>

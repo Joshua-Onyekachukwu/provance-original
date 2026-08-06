@@ -4,7 +4,10 @@ export const sampleReportPreviewImage =
 export const sampleReportMeta = {
   reportId: 'PRV-20260716-041',
   verificationId: 'vrf_a3f8c2d4',
-  analysisTimestamp: '2026-07-16 14:32 UTC',
+  // Canonical ISO timestamp — the single source for every surface that shows
+  // when the sample report was generated. Render via formatDateTime so the
+  // report page and print document agree with the real product's formatters.
+  analysisTimestampIso: '2026-07-16T14:32:00Z',
   processingTime: '1.24 seconds',
   methodologyVersion: 'v2.4.1-stable',
   reportEngineVersion: 'report-engine-1.2.0',

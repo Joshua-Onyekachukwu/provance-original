@@ -29,3 +29,6 @@ backend/.env.*
 *.njsproj
 *.sln
 *.sw?
+
+# Local preview tool state (sqlite db, logs, run doc)
+.freebuff/

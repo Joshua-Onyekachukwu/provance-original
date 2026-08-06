@@ -1,4 +1,4 @@
-import { IsIn, IsInt, IsString, Min } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 export class InitiateScanDto {
   @IsString()
@@ -14,4 +14,8 @@ export class InitiateScanDto {
   @IsString()
   @IsIn(['image'])
   mediaType!: 'image';
+
+  @IsOptional()
+  @IsIn(['quick', 'standard', 'deep'])
+  processingMode?: 'quick' | 'standard' | 'deep';
 }

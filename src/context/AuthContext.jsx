@@ -9,6 +9,7 @@ import {
 import {
   getCurrentViewer,
   signInWithPassword,
+  signOut as apiSignOut,
   updateAccountProfile,
 } from '../lib/api'
 
@@ -232,12 +233,18 @@ export function AuthProvider({ children }) {
   }, [])
 
   const signOut = useCallback(() => {
+    // Clear local state immediately so sign-out feels instant even if the
+    // server round-trip is slow or the API is unreachable.
     removeStorageValue(AUTH_STORAGE_KEY)
 
     setAuthState((current) => ({
       status: current.status,
       sessionData: null,
     }))
+
+    // Best-effort server-side sign-out (burns the refresh token and clears
+    // the cookie). Never blocks or fails the local sign-out.
+    void apiSignOut().catch(() => undefined)
   }, [])
 
   const updateProfile = useCallback(async (updates) => {

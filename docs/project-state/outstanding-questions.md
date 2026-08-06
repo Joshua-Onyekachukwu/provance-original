@@ -15,7 +15,8 @@ This document records the unresolved questions, blockers, and material risks tha
 
 ### Monitoring Accounts
 
-- Sentry and PostHog are intentionally deferred until the observability phase begins.
+- Sentry and PostHog were approved 2026-08-04 as part of the ten-feature set (target: before beta).
+- Account creation is still an action item ahead of the observability phase.
 - They are not current blockers, but must be created before broader beta testing.
 
 ### Email Provider
@@ -104,3 +105,4 @@ This document records the unresolved questions, blockers, and material risks tha
 ### Observability Gap
 
 - Without Sentry, analytics, and queue monitoring, diagnosing beta issues will be slower than necessary.
+- admin analytics/monitoring shipped (2026-08-05, pages + real `GET /admin/analytics` endpoint); the remaining open question is sequencing Sentry + PostHog (approved 2026-08-04) against backend integration.

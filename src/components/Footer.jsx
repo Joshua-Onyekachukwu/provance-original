@@ -16,6 +16,7 @@ const companyLinks = [
 
 const resourceLinks = [
   { label: 'Docs', href: '/docs' },
+  { label: 'Benchmark', href: '/benchmark' },
   { label: 'Security', href: '/security' },
   { label: 'Resources', href: '/resources' },
 ]

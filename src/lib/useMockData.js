@@ -40,7 +40,10 @@ export default function useMockData(mockFn, params = null) {
       }
 
       try {
-        const result = await mockFn(paramsRef.current)
+        // Pass an object even when no params were given: mock loaders use
+        // destructuring defaults like `({ page = 1 } = {})`, which only kick
+        // in for `undefined` — a bare `null` would throw mid-destructure.
+        const result = await mockFn(paramsRef.current ?? {})
 
         if (!isMountedRef.current || thisFetchId !== fetchIdRef.current) {
           return

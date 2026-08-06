@@ -1,10 +1,13 @@
 import {
   Body,
   Controller,
+  DefaultValuePipe,
   Get,
   HttpCode,
   HttpStatus,
+  ParseIntPipe,
   Patch,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
@@ -34,5 +37,15 @@ export class AccountController {
     @Body() dto: UpdateProfileDto,
   ) {
     return this.accountService.updateProfile(user, dto);
+  }
+
+  @Get('activity')
+  getActivity(
+    @CurrentUser() user: CurrentUserPayload,
+    @Query('category', new DefaultValuePipe('all')) category: string,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('pageSize', new DefaultValuePipe(20), ParseIntPipe) pageSize: number,
+  ) {
+    return this.accountService.getActivity(user, { category, page, pageSize });
   }
 }

@@ -17,7 +17,7 @@ Working product name: Provance
 
 ## Product Summary
 
-VerifAI is an explainable AI-generated media verification platform that helps organizations and professionals evaluate the authenticity of images and videos using multi-signal analysis, attribution, and evidence-focused reporting.
+Provance is an explainable AI-generated media verification platform that helps organizations and professionals evaluate the authenticity of images and videos using multi-signal analysis, attribution, and evidence-focused reporting.
 
 ## Problem Statement
 

@@ -14,7 +14,6 @@
 
 - meaning is not immediately obvious
 - can be confused with provenance, which may be helpful conceptually but not always clearly intentional
-- current source materials use VerifAI more explicitly for the product idea
 
 ### Brand Potential
 
@@ -30,12 +29,11 @@ Strong as a company brand because it is not boxed into a single use case.
 
 ## Recommendation
 
-Use a two-layer brand structure:
+Use a single unified brand:
 
-- Company brand: Provance
-- Product brand: VerifAI or a refined product name in the verification category
+- Company and product brand: Provance
 
-This preserves strategic breadth while keeping the initial product immediately legible.
+This keeps the brand consistent and immediately legible.
 
 ## Alternative Names
 
@@ -94,4 +92,4 @@ This preserves strategic breadth while keeping the initial product immediately l
 
 ## Final Recommendation
 
-Keep `Provance` as the umbrella identity unless domain or trademark issues block it. For the product, either keep `VerifAI` temporarily for clarity or select a stronger product name once positioning is finalized.
+Keep `Provance` as the single company and product brand unless domain or trademark issues block it.

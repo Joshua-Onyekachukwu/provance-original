@@ -10,7 +10,13 @@ This document tracks the areas that are active, partial, or being prepared for n
 
 The active implementation target after planning approval is the working MVP application surface.
 
-This includes:
+**Status (2026-08-05):** the frontend is 100% complete — the user workspace
+(15/15 pages) and admin workspace (12/12 pages) are both shipped and verified,
+with loading/empty/error states, `?state=` demo forcing, and ⌘K commands on every
+surface. No placeholders remain. The active work now is approved MVP features
+(PDF export, scan dedup) and backend integration.
+
+Originally this included:
 
 - dashboard maturity
 - admin workspace maturity
@@ -32,12 +38,12 @@ The following areas exist but are not yet mature:
 
 These are documented and intentionally deferred until the correct phase:
 
-- cookie-based session transport
+- cookie-based session transport (approved 2026-08-04 — session hardening)
 - broader authorization and RLS hardening
-- product analytics and fuller observability
-- billing and subscription infrastructure
+- product analytics and fuller observability (approved 2026-08-04 — Sentry + PostHog)
+- billing and subscription infrastructure (UI shipped; enforcement approved for later)
 - video and audio processing
-- organization and team workflows
+- the approved feature set: error boundary, report PDF export, scan deduplication (admin analytics + monitoring shipped), webhooks UI, evidence appendix
 - OpenAI and Anthropic integrations
 
 ## Documentation Work In Progress

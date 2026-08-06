@@ -1,15 +1,11 @@
 import { Link } from 'react-router-dom'
 import HealthCheckRow from './HealthCheckRow.jsx'
+import { formatDurationMs } from '../app/scanPresentation.js'
 
 const WORKER_CONFIG = {
   running: { dot: 'bg-emerald-500', label: 'Running', text: 'text-emerald-700' },
   degraded: { dot: 'bg-amber-500', label: 'Degraded', text: 'text-amber-700' },
   stopped: { dot: 'bg-rose-500', label: 'Stopped', text: 'text-rose-700' },
-}
-
-function formatMs(ms) {
-  if (ms < 1000) return `${ms}ms`
-  return `${(ms / 1000).toFixed(1)}s`
 }
 
 /**
@@ -79,7 +75,7 @@ export default function QueueSnapshotPanel({
         <div className="flex items-center justify-between py-3 border-b border-stone-light/50">
           <span className="text-sm text-charcoal-mid">Avg Processing</span>
           <span className="text-sm font-semibold font-mono text-charcoal">
-            {formatMs(data.avgProcessingTimeMs || data.avg_processing_time_ms || 0)}
+            {formatDurationMs(data.avgProcessingTimeMs ?? data.avg_processing_time_ms)}
           </span>
         </div>
         {/* Worker Status */}

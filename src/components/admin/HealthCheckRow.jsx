@@ -1,10 +1,4 @@
-const STATUS_CONFIG = {
-  operational: { dot: 'bg-emerald-500', label: 'Operational', text: 'text-emerald-700' },
-  unreachable: { dot: 'bg-rose-500', label: 'Unreachable', text: 'text-rose-700' },
-  degraded: { dot: 'bg-amber-500', label: 'Degraded', text: 'text-amber-700' },
-  not_configured: { dot: 'bg-stone-400', label: 'Not configured', text: 'text-charcoal-mid' },
-  checking: { dot: 'bg-sky-400 animate-pulse', label: 'Checking…', text: 'text-sky-600' },
-}
+import { STATUS_CONFIG } from './healthStatus.js'
 
 /**
  * HealthCheckRow — a single system health check row with colored status dot.

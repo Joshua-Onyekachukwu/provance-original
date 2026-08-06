@@ -1,6 +1,6 @@
 # Development Priorities
 
-Last updated: 2026-07-23
+Last updated: 2026-08-05
 
 ## Purpose
 
@@ -10,7 +10,11 @@ This document records the active development priorities in execution order.
 
 Complete the working MVP application.
 
-This means:
+**Status (2026-08-05):** the frontend is 100% complete — the user workspace
+(15/15 pages) and admin workspace (12/12 pages) are built and verified, with
+loading/empty/error states, `?state=` demo forcing, and ⌘K commands on every
+surface. No placeholders remain. The remaining work is approved MVP features
+(PDF export, scan dedup) and backend integration:
 
 - strengthen dashboard utility
 - strengthen admin utility
@@ -33,13 +37,27 @@ This means:
 
 Prepare the MVP security and observability baseline without overbuilding.
 
-This means:
+Approved 2026-08-04 as part of the feature set:
 
-- plan session hardening at the right phase
-- prepare Sentry and product analytics integration
+- session hardening (httpOnly cookies, rotation) before broader beta
+- Sentry (errors) + PostHog (product analytics) baseline before first real users
 - review admin protections, rate limits, and file-validation posture
 
 ## Priority 4
+
+Ship the remaining approved MVP features that complete core workflows.
+
+Approved 2026-08-04:
+
+- global error boundary + crash recovery
+- report PDF export (client-side)
+- scan deduplication (hash-based)
+- admin analytics + monitoring pages (**shipped** — pages + real `GET /admin/analytics` endpoint)
+- evidence appendix in reports (later release)
+- webhooks UI (later release)
+- usage/entitlement enforcement (later release)
+
+## Priority 5
 
 Keep the documentation set synchronized with the implementation and roadmap.
 
@@ -53,6 +71,7 @@ This means:
 
 - OpenAI integration
 - Anthropic integration
-- billing and subscription work
-- team and organization workflows
+- billing and subscription work (UI shipped; enforcement deferred)
 - video and audio verification
+
+> Note: team and organization workflows are no longer deferred — the Organization Management page (member roster, roles, team access, invites) shipped as part of the Phase 3 workspace build-out.

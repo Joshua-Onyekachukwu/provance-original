@@ -100,6 +100,16 @@ function validateEmailList(value: string | undefined): string {
   return [...new Set(emails)].join(',');
 }
 
+function validateSameSite(value: string | undefined): string {
+  const normalized = (value ?? 'lax').toLowerCase();
+
+  if (!['lax', 'strict', 'none'].includes(normalized)) {
+    throw new Error('AUTH_COOKIE_SAME_SITE must be lax, strict, or none.');
+  }
+
+  return normalized;
+}
+
 export function validateEnv(config: Record<string, unknown>) {
   const env = config as Record<string, string | undefined>;
   const supabaseUrl = env.SUPABASE_URL?.trim();
@@ -155,6 +165,20 @@ export function validateEnv(config: Record<string, unknown>) {
     SUPABASE_WAITLIST_TABLE: env.SUPABASE_WAITLIST_TABLE?.trim() || 'waitlist_applications',
     SUPABASE_SCANS_TABLE: env.SUPABASE_SCANS_TABLE?.trim() || 'scans',
     SUPABASE_UPLOADS_BUCKET: env.SUPABASE_UPLOADS_BUCKET?.trim() || 'provance-uploads',
+    SUPABASE_INCIDENTS_TABLE: env.SUPABASE_INCIDENTS_TABLE?.trim() || 'admin_incidents',
+    SUPABASE_AUDIT_LOGS_TABLE: env.SUPABASE_AUDIT_LOGS_TABLE?.trim() || 'audit_logs',
+    SUPABASE_ORGANIZATIONS_TABLE: env.SUPABASE_ORGANIZATIONS_TABLE?.trim() || 'organizations',
+    SUPABASE_TEAMS_TABLE: env.SUPABASE_TEAMS_TABLE?.trim() || 'teams',
+    SUPABASE_ORGANIZATION_MEMBERS_TABLE:
+      env.SUPABASE_ORGANIZATION_MEMBERS_TABLE?.trim() || 'organization_members',
+    SUPABASE_ORGANIZATION_INVITES_TABLE:
+      env.SUPABASE_ORGANIZATION_INVITES_TABLE?.trim() || 'organization_invites',
+    STORAGE_CAPACITY_GB: parsePositiveInteger(env.STORAGE_CAPACITY_GB, 500, 'STORAGE_CAPACITY_GB'),
+    DB_MAX_CONNECTIONS: parsePositiveInteger(
+      env.DB_MAX_CONNECTIONS,
+      100,
+      'DB_MAX_CONNECTIONS',
+    ),
     MAX_UPLOAD_BYTES: parsePositiveInteger(
       env.MAX_UPLOAD_BYTES,
       50 * 1024 * 1024,
@@ -163,6 +187,14 @@ export function validateEnv(config: Record<string, unknown>) {
     ALLOWED_UPLOAD_MIME_TYPES: validateUploadMimeTypes(env.ALLOWED_UPLOAD_MIME_TYPES),
     REDIS_URL: validateRedisUrl(env.REDIS_URL),
     ADMIN_EMAILS: validateEmailList(env.ADMIN_EMAILS),
+    AUTH_COOKIE_ENABLED: isTruthy(env.AUTH_COOKIE_ENABLED, true),
+    AUTH_COOKIE_SAME_SITE: validateSameSite(env.AUTH_COOKIE_SAME_SITE),
+    AUTH_COOKIE_SECURE: isTruthy(env.AUTH_COOKIE_SECURE, false),
+    AUTH_COOKIE_MAX_AGE_DAYS: parsePositiveInteger(
+      env.AUTH_COOKIE_MAX_AGE_DAYS,
+      30,
+      'AUTH_COOKIE_MAX_AGE_DAYS',
+    ),
     SCAN_PROCESSING_QUEUE_NAME:
       env.SCAN_PROCESSING_QUEUE_NAME?.trim() || 'scan-processing',
     WORKER_CONCURRENCY: parsePositiveInteger(

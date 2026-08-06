@@ -46,9 +46,18 @@ Provance uses a backend-mediated auth path:
 
 - frontend submits sign-in to the NestJS API
 - NestJS signs in against Supabase Auth
-- frontend stores the returned access and refresh tokens for the current pre-cookie flow
+- the **access token** is returned in the response body and kept in browser memory / short-lived storage
+- the **refresh token** is transported exclusively in an httpOnly cookie (`provance_refresh`)
+- every refresh rotates the cookie value (Supabase refresh tokens are single-use), and sign-out burns the token server-side before clearing the cookie
 - frontend hydrates signed-in identity, permissions, and account profile state through backend identity endpoints
-- protected routes use those tokens to authorize access and API calls
+- protected routes use the access token to authorize API calls
+
+Cookie behavior is configurable:
+
+- `AUTH_COOKIE_ENABLED` (default `true`) — set `false` to restore body-based refresh tokens for legacy/non-browser clients
+- `AUTH_COOKIE_SAME_SITE` (`lax` | `strict` | `none`) — use `none` for the cross-site Vercel → Fly deployment; `none` forces `Secure`
+- `AUTH_COOKIE_SECURE` — must be `true` in production
+- `AUTH_COOKIE_MAX_AGE_DAYS` (default 30)
 
 This means the frontend should not be switched back to a Supabase-direct auth flow unless that decision is intentionally revisited.
 
@@ -56,14 +65,20 @@ This means the frontend should not be switched back to a Supabase-direct auth fl
 
 The active auth and account surface now includes:
 
-- `POST /v1/auth/sign-in`
-- `POST /v1/auth/refresh`
+- `POST /v1/auth/sign-in` (sets the httpOnly refresh cookie)
+- `POST /v1/auth/refresh` (rotates the refresh cookie)
+- `POST /v1/auth/sign-out` (burns the refresh token and clears the cookie)
 - `GET /v1/auth/me`
 - `POST /v1/auth/password-reset/request`
 - `POST /v1/auth/password-reset/confirm`
 - `POST /v1/auth/invites/accept`
 - `GET /v1/account/profile`
 - `PATCH /v1/account/profile`
+
+The report surface is served from completed scans:
+
+- `GET /v1/reports` — paginated list of completed scans (`{ data, total, page, pageSize }`)
+- `GET /v1/reports/:id` — full report payload (`{ report: { ..., result_payload, asset_preview_url } }`)
 
 This allows the frontend to keep the session token flow it already uses while moving profile and permission state onto the backend.
 
@@ -148,12 +163,19 @@ Reference:
 
 ## Deployment Checklist
 
-Run before shipping backend changes:
+Run before shipping backend changes. `npm run check:launch` is the single
+pre-ship gate: it runs the **frontend vitest suite first** (`npm test`, 63
+tests), then the frontend build, backend build, and backend e2e health check —
+so a formatter or component regression fails fast before any deploy.
 
-1. `npm run build`
-2. `npm run backend:build`
-3. `npm run backend:test:e2e`
-4. `npm run check:launch`
+1. `npm test` — frontend vitest suite (63 tests: formatters + edge cases)
+2. `npm run build` — frontend production build
+3. `npm run backend:build` — backend production build
+4. `npm run backend:test:e2e` — backend in-memory e2e health check
+5. `npm run check:launch` — runs steps 1–4 in sequence (canonical gate)
+
+CI (`.github/workflows/ci.yml`) enforces the same gate on every push/PR:
+frontend lint + test + build, and backend build + unit + e2e.
 
 Then deploy:
 
@@ -165,6 +187,6 @@ Then deploy:
 ## Next Strategy Work
 
 - validate the live end-to-end upload and queue flow through the deployed frontend
-- harden auth storage and session handling before broader production rollout
-- transition from browser-stored tokens to hardened cookie transport in the later security-hardening phase
+- enforce usage/entitlement limits on the scan endpoints once metering is in place
 - introduce internal admin tooling for waitlist approval and invite issuance
+- wire error monitoring (Sentry) and product analytics (PostHog) as approved in the Phase 3 feature set

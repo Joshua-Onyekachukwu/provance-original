@@ -1,8 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import AppStatePanel from '../../components/app/AppStatePanel.jsx'
-import { getScan } from '../../lib/api.js'
-import { formatFileSize, formatScanTimestamp } from '../../components/app/scanPresentation.js'
+import { getReport } from '../../lib/api.js'
+import { useToast } from '../../components/ui'
+import {
+  formatDateTime,
+  formatFileSize,
+  formatPct,
+} from '../../components/app/scanPresentation.js'
 
 function ReportMetric({ label, value, detail, accent = 'default' }) {
   const accentClasses = {
@@ -28,14 +33,6 @@ function ReportDataCard({ label, value }) {
       <p className="mt-2 text-sm leading-relaxed text-charcoal">{value}</p>
     </div>
   )
-}
-
-function formatPercent(value) {
-  return Number.isFinite(value) ? `${Math.round(value * 100)}%` : 'Pending'
-}
-
-function formatDateTime(value) {
-  return value ? formatScanTimestamp(value) : 'Not available'
 }
 
 function getRiskLevel(verdictClass, suspicionScore) {
@@ -172,8 +169,24 @@ function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value))
 }
 
+function DownloadIcon({ className = 'h-4 w-4' }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      strokeWidth="1.8"
+      stroke="currentColor"
+      aria-hidden="true"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v11m0 0 4-4m-4 4-4-4M5 19.5h14" />
+    </svg>
+  )
+}
+
 export default function AppReportPrintPage() {
   const { scanId } = useParams()
+  const toast = useToast()
   const [state, setState] = useState({
     status: 'loading',
     scan: null,
@@ -185,13 +198,15 @@ export default function AppReportPrintPage() {
 
     async function loadScan() {
       try {
-        const response = await getScan(scanId)
+        const response = await getReport(scanId)
 
         if (isCancelled) return
 
         setState({
           status: 'ready',
-          scan: response.scan,
+          // mockGetScan returns the bare scan while the real API wraps it —
+          // accept all three shapes (same tolerant pattern as AppReportsPage).
+          scan: response?.report || response?.scan || response,
           error: '',
         })
       } catch (error) {
@@ -227,6 +242,27 @@ export default function AppReportPrintPage() {
   const riskLevel = getRiskLevel(verdict.class, suspicionScore || 0)
   const { aiSignals, manipulationSignals } = useMemo(() => splitSignals(signals), [signals])
 
+  // Give the browser a descriptive title so 'Save as PDF' suggests a
+  // sensible filename (e.g. 'Provance report PV-…'). Restore on unmount.
+  useEffect(() => {
+    const previousTitle = document.title
+    document.title = `Provance report ${report.report_id || scanId}`
+    return () => {
+      document.title = previousTitle
+    }
+  }, [report.report_id, scanId])
+
+  function handleExportPdf() {
+    toast.info('Opening print dialog', {
+      description:
+        "Choose 'Save as PDF' as the destination to export this report.",
+      duration: 8000,
+    })
+    // Defer the blocking print call so React flushes the toast first —
+    // window.print() otherwise freezes the main thread mid-handler.
+    window.setTimeout(() => window.print(), 0)
+  }
+
   if (state.status === 'loading') {
     return (
       <AppStatePanel
@@ -251,7 +287,7 @@ export default function AppReportPrintPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
         <Link
           to={`/app/reports/${scanId}`}
           className="rounded-xl border border-stone-light px-4 py-2 text-sm text-charcoal transition hover:border-charcoal"
@@ -260,14 +296,15 @@ export default function AppReportPrintPage() {
         </Link>
         <button
           type="button"
-          onClick={() => window.print()}
-          className="rounded-xl bg-charcoal px-4 py-2 text-sm font-medium text-parchment transition hover:bg-charcoal-soft"
+          onClick={handleExportPdf}
+          className="ui-focus-ring inline-flex items-center gap-2 rounded-xl bg-charcoal px-4 py-2 text-sm font-medium text-parchment transition-all duration-150 hover:bg-charcoal-soft active:scale-[0.97]"
         >
-          Print report
+          <DownloadIcon />
+          Export PDF
         </button>
       </div>
 
-      <article className="rounded-[2rem] border border-stone-light bg-white-warm p-8 shadow-sm sm:p-10">
+      <article className="print-sheet rounded-[2rem] border border-stone-light bg-white-warm p-8 shadow-sm sm:p-10">
         <div className="flex flex-col gap-6 border-b border-stone-light pb-8 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">
@@ -283,7 +320,7 @@ export default function AppReportPrintPage() {
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <ReportDataCard label="Verification ID" value={state.scan.id} />
-            <ReportDataCard label="Analysis timestamp" value={formatDateTime(report.generated_at)} />
+            <ReportDataCard label="Analysis timestamp" value={formatDateTime(report.generated_at, 'Not available')} />
           </div>
         </div>
 
@@ -296,13 +333,13 @@ export default function AppReportPrintPage() {
           />
           <ReportMetric
             label="Authenticity score"
-            value={formatPercent(authenticityScore)}
+            value={formatPct(authenticityScore, 0, 'Pending')}
             detail="Higher values indicate stronger signs of authenticity."
             accent="success"
           />
           <ReportMetric
             label="Confidence score"
-            value={formatPercent(verdict.confidence_score)}
+            value={formatPct(verdict.confidence_score, 0, 'Pending')}
             detail={verdict.confidence_level || 'Pending'}
             accent="neutral"
           />
@@ -396,7 +433,7 @@ export default function AppReportPrintPage() {
               Metadata summary
             </p>
             <div className="mt-4 grid gap-4 md:grid-cols-2">
-              <ReportDataCard label="Capture timestamp" value={formatDateTime(metadata.capture_timestamp)} />
+              <ReportDataCard label="Capture timestamp" value={formatDateTime(metadata.capture_timestamp, 'Not available')} />
               <ReportDataCard label="Software tag" value={metadata.software || 'Not available'} />
               <ReportDataCard label="Camera make" value={metadata.make || 'Not available'} />
               <ReportDataCard label="Camera model" value={metadata.model || 'Not available'} />
@@ -410,8 +447,8 @@ export default function AppReportPrintPage() {
               Processing timeline
             </p>
             <div className="mt-4 grid gap-4">
-              <ReportDataCard label="Uploaded" value={formatDateTime(metadata.scan_created_at || state.scan.created_at)} />
-              <ReportDataCard label="Completed" value={formatDateTime(metadata.scan_completed_at || report.generated_at)} />
+              <ReportDataCard label="Uploaded" value={formatDateTime(metadata.scan_created_at || state.scan.created_at, 'Not available')} />
+              <ReportDataCard label="Completed" value={formatDateTime(metadata.scan_completed_at || report.generated_at, 'Not available')} />
               <ReportDataCard
                 label="Processing time"
                 value={
@@ -448,7 +485,7 @@ export default function AppReportPrintPage() {
                         </p>
                         <p className="mt-1 text-xs text-charcoal-mid">{signal.status}</p>
                       </div>
-                      <p className="text-sm font-medium text-charcoal">{formatPercent(signal.score)}</p>
+                      <p className="text-sm font-medium text-charcoal">{formatPct(signal.score, 0, 'Pending')}</p>
                     </div>
                     <p className="mt-3 text-sm text-charcoal-mid">
                       {signal.status_reason || 'No summary available.'}
@@ -486,7 +523,7 @@ export default function AppReportPrintPage() {
                         </p>
                         <p className="mt-1 text-xs text-charcoal-mid">{signal.status}</p>
                       </div>
-                      <p className="text-sm font-medium text-charcoal">{formatPercent(signal.score)}</p>
+                      <p className="text-sm font-medium text-charcoal">{formatPct(signal.score, 0, 'Pending')}</p>
                     </div>
                     <p className="mt-3 text-sm text-charcoal-mid">
                       {signal.status_reason || 'No summary available.'}
@@ -552,9 +589,9 @@ export default function AppReportPrintPage() {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-medium text-charcoal">{formatPercent(signal.score)}</p>
+                    <p className="text-sm font-medium text-charcoal">{formatPct(signal.score, 0, 'Pending')}</p>
                     <p className="mt-1 text-xs text-charcoal-mid">
-                      Weight {formatPercent(signal.signal_weight)}
+                      Weight {formatPct(signal.signal_weight, 0, 'Pending')}
                     </p>
                   </div>
                 </div>

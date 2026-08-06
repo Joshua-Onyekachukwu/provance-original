@@ -1,6 +1,8 @@
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import InteractivePanel from './InteractivePanel'
+import { formatDateTime } from './app/scanPresentation.js'
+import { sampleReportMeta } from '../lib/sampleReportContent.js'
 
 const reportPreview =
   'https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=close-up%20documentary%20frame%20of%20a%20speaker%20at%20a%20lectern%2C%20professional%20broadcast%20still%2C%20subtle%20newsroom%20lighting%2C%20realistic%20face%2C%20high%20detail%2C%20editorial%20photography&image_size=landscape_16_9'
@@ -61,7 +63,7 @@ export default function SampleReport() {
                   <p className="mt-2 text-sm text-charcoal-mid">Generated for broadcast image and video verification.</p>
                 </div>
                 <div className="grid gap-2 text-left md:text-right">
-                  <div className="text-xs font-mono text-charcoal-light">2026-06-25 • 14:32 UTC</div>
+                  <div className="text-xs font-mono text-charcoal-light">{formatDateTime(sampleReportMeta.analysisTimestampIso)}</div>
                   <div className="text-xs font-mono text-amber">Analysis timestamp. 1.2s total verification time</div>
                   <div className="text-xs font-mono text-charcoal-light">Hash. SHA-256 2b7f91c0b6cc...0e114d91</div>
                 </div>

@@ -1,4 +1,5 @@
-import { Routes, Route, Outlet, Navigate } from 'react-router-dom'
+import { Routes, Route, Outlet, Navigate, useLocation } from 'react-router-dom'
+import { MotionConfig } from 'framer-motion'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import ScrollToTop from './components/ScrollToTop'
@@ -11,6 +12,7 @@ import MethodologyPage from './pages/MethodologyPage'
 import PricingPage from './pages/PricingPage'
 import SecurityPage from './pages/SecurityPage'
 import SampleReportPage from './pages/SampleReportPage'
+import BenchmarkPage from './pages/BenchmarkPage.jsx'
 import DocsPage from './pages/DocsPage'
 import AboutPage from './pages/AboutPage'
 import ContactPage from './pages/ContactPage'
@@ -28,18 +30,37 @@ import NotFoundPage from './pages/NotFoundPage'
 import AppDashboardPage from './pages/app/AppDashboardPage.jsx'
 import AppUploadsPage from './pages/app/AppUploadsPage.jsx'
 import AppReportsPage from './pages/app/AppReportsPage.jsx'
+import AppQueuePage from './pages/app/AppQueuePage.jsx'
+import AppHistoryPage from './pages/app/AppHistoryPage.jsx'
+import AppNotificationsPage from './pages/app/AppNotificationsPage.jsx'
+import AppBillingPage from './pages/app/AppBillingPage.jsx'
+import AppSecurityPage from './pages/app/AppSecurityPage.jsx'
+import AppApiKeysPage from './pages/app/AppApiKeysPage.jsx'
+import AppHelpDocsPage from './pages/app/AppHelpDocsPage.jsx'
+import AppOrganizationPage from './pages/app/AppOrganizationPage.jsx'
 import AppReportPrintPage from './pages/app/AppReportPrintPage.jsx'
 import AppAccountPage from './pages/app/AppAccountPage.jsx'
 import AppTeamPage from './pages/app/AppTeamPage.jsx'
+import AppActivityPage from './pages/app/AppActivityPage.jsx'
 import AppAccessDeniedPage from './pages/app/AppAccessDeniedPage.jsx'
 import AdminOverviewPage from './pages/admin/OverviewPage.jsx'
 import AdminWaitlistPage from './pages/admin/WaitlistPage.jsx'
 import AdminUsersPage from './pages/admin/UsersPage.jsx'
 import AdminOrganizationsPage from './pages/admin/OrganizationsPage.jsx'
 import AdminFeatureFlagsPage from './pages/admin/FeatureFlagsPage.jsx'
-import PlaceholderPage from './pages/admin/PlaceholderPage.jsx'
+import AdminAnalyticsPage from './pages/admin/AnalyticsPage.jsx'
+import AdminMonitoringPage from './pages/admin/MonitoringPage.jsx'
+import AdminAuditLogsPage from './pages/admin/AuditLogsPage.jsx'
+import AdminJobsPage from './pages/admin/JobsPage.jsx'
+import AdminReportsPage from './pages/admin/ReportsPage.jsx'
+import AdminRolesPage from './pages/admin/RolesPage.jsx'
+import AdminSettingsPage from './pages/admin/SettingsPage.jsx'
+import UiKitPage from './pages/UiKitPage.jsx'
+import ErrorBoundary from './components/app/ErrorBoundary.jsx'
+import { ToastProvider } from './components/ui/Toast.jsx'
 
 function PublicLayout() {
+  const location = useLocation()
   return (
     <div className="min-h-screen bg-parchment">
       <ScrollToTop />
@@ -48,7 +69,11 @@ function PublicLayout() {
       </a>
       <Navbar />
       <main id="main-content">
-        <Outlet />
+        {/* Location-keyed so navigating away resets a crashed page while the
+            layout (nav + footer) stays intact. */}
+        <ErrorBoundary key={location.pathname}>
+          <Outlet />
+        </ErrorBoundary>
       </main>
       <Footer />
     </div>
@@ -57,7 +82,10 @@ function PublicLayout() {
 
 export default function App() {
   return (
-    <Routes>
+    <ToastProvider>
+      <MotionConfig reducedMotion="user">
+      <ErrorBoundary>
+      <Routes>
       <Route path="/sample-report/print" element={<SampleReportPrintPage />} />
 
       <Route element={<PublicLayout />}>
@@ -69,6 +97,7 @@ export default function App() {
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/security" element={<SecurityPage />} />
           <Route path="/sample-report" element={<SampleReportPage />} />
+          <Route path="/benchmark" element={<BenchmarkPage />} />
           <Route path="/docs" element={<DocsPage />} />
           <Route path="/resources" element={<ResourcesPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
@@ -95,6 +124,16 @@ export default function App() {
         <Route path="reports/:scanId" element={<AppReportsPage />} />
         <Route path="reports/:scanId/print" element={<AppReportPrintPage />} />
         <Route path="account" element={<AppAccountPage />} />
+        <Route path="activity" element={<AppActivityPage />} />
+        <Route path="queue" element={<AppQueuePage />} />
+        <Route path="history" element={<AppHistoryPage />} />
+        <Route path="organization" element={<AppOrganizationPage />} />
+        <Route path="billing" element={<AppBillingPage />} />
+        <Route path="api-keys" element={<AppApiKeysPage />} />
+        <Route path="docs" element={<AppHelpDocsPage module="docs" />} />
+        <Route path="security" element={<AppSecurityPage />} />
+        <Route path="notifications" element={<AppNotificationsPage />} />
+        <Route path="help" element={<AppHelpDocsPage module="help" />} />
         <Route path="access-denied" element={<AppAccessDeniedPage />} />
         <Route
           path="team"
@@ -119,17 +158,21 @@ export default function App() {
         <Route path="waitlist" element={<AdminWaitlistPage />} />
         <Route path="users" element={<AdminUsersPage />} />
         <Route path="organizations" element={<AdminOrganizationsPage />} />
-        <Route path="jobs" element={<PlaceholderPage module="jobs" />} />
-        <Route path="reports" element={<PlaceholderPage module="reports" />} />
-        <Route path="analytics" element={<PlaceholderPage module="analytics" />} />
-        <Route path="monitoring" element={<PlaceholderPage module="monitoring" />} />
+        <Route path="jobs" element={<AdminJobsPage />} />
+        <Route path="reports" element={<AdminReportsPage />} />
+        <Route path="analytics" element={<AdminAnalyticsPage />} />
+        <Route path="monitoring" element={<AdminMonitoringPage />} />
         <Route path="feature-flags" element={<AdminFeatureFlagsPage />} />
-        <Route path="roles" element={<PlaceholderPage module="roles" />} />
-        <Route path="audit-logs" element={<PlaceholderPage module="audit-logs" />} />
-        <Route path="settings" element={<PlaceholderPage module="settings" />} />
+        <Route path="roles" element={<AdminRolesPage />} />
+        <Route path="audit-logs" element={<AdminAuditLogsPage />} />
+        <Route path="settings" element={<AdminSettingsPage />} />
       </Route>
 
+      <Route path="/ui-kit" element={<UiKitPage />} />
       <Route path="*" element={<NotFoundPage />} />
-    </Routes>
+      </Routes>
+      </ErrorBoundary>
+      </MotionConfig>
+    </ToastProvider>
   )
 }

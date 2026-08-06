@@ -1,6 +1,6 @@
 # Product Roadmap
 
-Last updated: 2026-07-23
+Last updated: 2026-08-04
 
 ## Purpose
 
@@ -24,10 +24,26 @@ Deliver a working MVP application that users and internal operators can actually
 - add operational diagnostics that support internal validation
 - prepare a trustworthy beta-ready product experience
 
+### Approved Feature Set (2026-08-04)
+
+These features were recommended in the frontend completion review and approved by the Founder for inclusion:
+
+| Feature | Priority | Target |
+| --- | --- | --- |
+| Global error boundary + crash recovery | High | MVP |
+| Report PDF export (client-side) | High | MVP |
+| Scan deduplication (hash-based) | Medium | MVP |
+| Organization invites + roles | High | MVP (shipped) |
+| Admin analytics + monitoring pages | Medium | MVP (admin) (**shipped**) |
+| Session hardening (httpOnly cookies) | High | Before beta |
+| Sentry + PostHog baseline | Medium | Before beta |
+| Webhooks UI | Medium | Later |
+| Usage/entitlement enforcement | Medium | Later |
+| Evidence appendix in reports | Medium | Later |
+
 ## Deferred Product Priorities
 
-- billing and subscriptions
-- team and organization workflows
+- billing and subscriptions (UI shipped; enforcement deferred until Stripe)
 - API product
 - video verification
 - audio verification

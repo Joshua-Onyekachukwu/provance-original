@@ -4,6 +4,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { auditSeverity } from '../common/audit-severity';
 import type { CurrentUserPayload } from '../common/decorators/current-user.decorator';
 import { SupabaseService } from '../supabase/supabase.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -22,12 +23,57 @@ type ProfileRow = {
   updated_at: string;
 };
 
+type ActivityRow = {
+  id: string;
+  actor_email: string | null;
+  action: string;
+  entity_type: string;
+  entity_id: string | null;
+  created_at: string;
+};
+
+// Category → action matching, mirroring the frontend Activity page tabs
+// (src/pages/app/AppActivityPage.jsx CATEGORIES) so real-mode filtering
+// behaves identically to the client-side tabs.
+type ActivityCategory = 'all' | 'scans' | 'exports' | 'account' | 'team' | 'system';
+
+const ACTIVITY_CATEGORY_ACTIONS: Record<
+  Exclude<ActivityCategory, 'all' | 'scans' | 'exports'>,
+  string[]
+> = {
+  account: [
+    'user.invited',
+    'user.activated',
+    'settings.updated',
+    'api_key.created',
+    'api_key.revoked',
+    'invite.accepted',
+    // Real services write the underscore form (see audit-severity.ts).
+    'invite_created',
+  ],
+  team: ['team.member_added', 'team.member_removed', 'role.changed', 'org.created'],
+  system: [
+    'waitlist.reviewed',
+    'waitlist.approved',
+    'waitlist.rejected',
+    'waitlist.deferred',
+    'feature_flag.toggled',
+    // Real services write the underscore form (see audit-severity.ts).
+    'waitlist_reviewed',
+  ],
+};
+
 @Injectable()
 export class AccountService {
+  private readonly auditTable: string;
+
   constructor(
     private readonly supabaseService: SupabaseService,
     private readonly configService: ConfigService,
-  ) {}
+  ) {
+    this.auditTable =
+      this.configService.get<string>('SUPABASE_AUDIT_EVENTS_TABLE') || 'auth_audit_events';
+  }
 
   async getCurrentViewer(user: CurrentUserPayload) {
     const profile = await this.ensureProfile(user);
@@ -104,6 +150,118 @@ export class AccountService {
       profile: this.serializeProfile(profile),
       permissions: this.buildPermissions(profile),
     };
+  }
+
+  /**
+   * getActivity — the user's account activity feed, scoped by actor email.
+   *
+   * auth_audit_events has no user_id column, so events are matched by
+   * actor_email (the identity the backend writes when the user acts).
+   * Supports the same category semantics as the Activity page tabs and a
+   * pagination envelope matching mockGetActivityLogs.
+   */
+  async getActivity(
+    user: CurrentUserPayload,
+    input: {
+      category?: ActivityCategory | string;
+      page?: number;
+      pageSize?: number;
+    } = {},
+  ) {
+    const adminClient = this.supabaseService.getAdminClient();
+
+    if (!adminClient) {
+      throw new ServiceUnavailableException('Supabase is not configured.');
+    }
+
+    const email = user.email?.trim().toLowerCase();
+    if (!email) {
+      throw new BadRequestException('An account email is required to load activity.');
+    }
+
+    const safePage = Math.max(1, input.page ?? 1);
+    const safePageSize = Math.min(200, Math.max(1, input.pageSize ?? 20));
+    const from = (safePage - 1) * safePageSize;
+    const to = from + safePageSize - 1;
+
+    const category: ActivityCategory = this.isActivityCategory(input.category)
+      ? input.category
+      : 'all';
+
+    // ── Scoped query (filters applied to both data + count) ─────────────────
+    // Resolved once, then applied to both builders below — mirrors the
+    // conditional chaining pattern in admin.service.ts countMembers().
+    const categoryFilter = (() => {
+      if (category === 'scans') {
+        return { type: 'like' as const, column: 'action' as const, value: 'scan.%' };
+      }
+      if (category === 'exports') {
+        return { type: 'like' as const, column: 'action' as const, value: 'report.%' };
+      }
+      const actions = category === 'all' ? undefined : ACTIVITY_CATEGORY_ACTIONS[category];
+      return actions
+        ? { type: 'in' as const, column: 'action' as const, values: actions }
+        : null;
+    })();
+
+    let dataQuery = adminClient
+      .from(this.auditTable)
+      .select('id,actor_email,action,entity_type,entity_id,created_at')
+      .eq('actor_email', email)
+      .order('created_at', { ascending: false })
+      .range(from, to);
+
+    let countQuery = adminClient
+      .from(this.auditTable)
+      .select('id', { count: 'exact', head: true })
+      .eq('actor_email', email);
+
+    if (categoryFilter?.type === 'like') {
+      dataQuery = dataQuery.like(categoryFilter.column, categoryFilter.value);
+      countQuery = countQuery.like(categoryFilter.column, categoryFilter.value);
+    } else if (categoryFilter?.type === 'in') {
+      dataQuery = dataQuery.in(categoryFilter.column, categoryFilter.values);
+      countQuery = countQuery.in(categoryFilter.column, categoryFilter.values);
+    }
+
+    const [{ data, error }, { count, error: countError }] = await Promise.all([
+      dataQuery,
+      countQuery,
+    ]);
+
+    if (error || countError) {
+      throw new ServiceUnavailableException('Failed to load account activity.');
+    }
+
+    const rows = (data ?? []) as ActivityRow[];
+    const total = count ?? rows.length;
+
+    return {
+      data: rows.map((row) => ({
+        id: row.id,
+        actor_email: row.actor_email || 'system',
+        action: row.action,
+        severity: auditSeverity(row.action),
+        resource_type: row.entity_type,
+        resource_id: row.entity_id,
+        created_at: row.created_at,
+      })),
+      page: safePage,
+      pageSize: safePageSize,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / safePageSize)),
+    };
+  }
+
+  private isActivityCategory(value: string | undefined): value is ActivityCategory {
+    return (
+      value === 'all' ||
+      value === 'scans' ||
+      value === 'exports' ||
+      value === 'account' ||
+      value === 'team' ||
+      value === 'system'
+    );
   }
 
   async ensureProfile(user: CurrentUserPayload): Promise<ProfileRow> {

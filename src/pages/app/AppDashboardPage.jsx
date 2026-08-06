@@ -1,23 +1,36 @@
-import { Link } from 'react-router-dom'
-import { useEffect, useMemo, useState } from 'react'
-import AppStatePanel from '../../components/app/AppStatePanel.jsx'
+import { useMemo, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useTeamFilterParam } from '../../lib/useTeamFilterParam.js'
+import { Badge, Button, Card, DataTable, EmptyState, Skeleton, StatCard, Tabs, TrendChart, useRegisterCommands, useToast } from '../../components/ui'
 import ScanStatusBadge from '../../components/app/ScanStatusBadge.jsx'
-import StatCard from '../../components/admin/StatCard.jsx'
+import TeamBadge from '../../components/app/TeamBadge.jsx'
+import TeamFilter from '../../components/app/TeamFilter.jsx'
 import {
+  VERDICT_META,
+  formatDurationMs,
   formatFileSize,
+  formatPct,
+  formatRelativeTime,
   formatScanTimestamp,
-  getVerdictLabel,
+  getTeamMeta,
+  getVerdictMeta,
 } from '../../components/app/scanPresentation.js'
 import { useAuth } from '../../context/AuthContext.jsx'
-import { listScans } from '../../lib/api.js'
 import {
-  mockReports,
-  mockNotifications,
-  mockQueueSnapshot,
-  mockSystemHealth,
-} from '../../lib/mockData.js'
+  getActivityLogs,
+  getAnalytics,
+  getNotifications,
+  getQueueSnapshot,
+  getReports,
+  getSystemHealth,
+  listScans,
+} from '../../lib/api.js'
+import { useDemoState, withDemoOverride } from '../../lib/useDemoState.js'
+import { useResource } from '../../lib/useResource.js'
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 function getTimeOfDayGreeting() {
   const hour = new Date().getHours()
@@ -26,94 +39,70 @@ function getTimeOfDayGreeting() {
   return 'Good evening'
 }
 
-function formatRelativeTime(isoString) {
-  if (!isoString) return ''
-  const now = Date.now()
-  const then = new Date(isoString).getTime()
-  const diffSec = Math.floor((now - then) / 1000)
-  if (diffSec < 60) return 'just now'
-  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`
-  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`
-  if (diffSec < 604800) return `${Math.floor(diffSec / 86400)}d ago`
-  return new Date(isoString).toLocaleDateString()
-}
+// ---------------------------------------------------------------------------
+// Dev-only demo state banner — switch loading / empty / error without the URL
+// ---------------------------------------------------------------------------
 
-// ── Sub-components ───────────────────────────────────────────────────────────
+function DemoStateBanner({ demoState, onSelect }) {
+  if (!import.meta.env.DEV) return null
 
-function VerificationRow({ scan, index }) {
+  const options = [
+    { value: null, label: 'Live' },
+    { value: 'loading', label: 'Loading' },
+    { value: 'empty', label: 'Empty' },
+    { value: 'error', label: 'Error' },
+  ]
+
   return (
-    <Link
-      to={`/app/reports/${scan.id}`}
-      className="grid gap-4 rounded-3xl border border-stone-light bg-white-warm px-5 py-5 transition hover:border-charcoal/25 hover:shadow-sm lg:grid-cols-[64px_minmax(0,1.3fr)_160px_160px_180px]"
+    <div
+      role="group"
+      aria-label="Demo state controls"
+      className="fixed bottom-4 right-4 z-50 flex items-center gap-1 rounded-full border border-charcoal/15 bg-charcoal/95 py-1.5 pl-4 pr-1.5 text-parchment shadow-[0_16px_40px_rgba(26,26,26,0.35)] backdrop-blur"
     >
-      <div className="flex items-center gap-4 lg:block">
-        <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-charcoal-light">
-          Item
-        </p>
-        <p className="mt-1 font-serif text-3xl text-charcoal lg:mt-3">
-          {String(index + 1).padStart(2, '0')}
-        </p>
-      </div>
-      <div className="min-w-0">
-        <p className="truncate text-sm font-medium text-charcoal">{scan.original_filename}</p>
-        <p className="mt-1 text-sm text-charcoal-mid">
-          {formatFileSize(scan.file_size_bytes)}. Created {formatScanTimestamp(scan.created_at)}
-        </p>
-      </div>
-      <div>
-        <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-charcoal-light">
-          Verdict
-        </p>
-        <p className="mt-2 text-sm font-medium text-charcoal">{getVerdictLabel(scan)}</p>
-      </div>
-      <div>
-        <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-charcoal-light">
-          Report ID
-        </p>
-        <p className="mt-2 text-sm font-medium text-charcoal">
-          {scan.result_payload?.report?.report_id || 'Pending'}
-        </p>
-      </div>
-      <div className="flex items-start justify-between gap-4 lg:block">
-        <div>
-          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-charcoal-light">
-            Status
-          </p>
-          <div className="mt-2">
-            <ScanStatusBadge status={scan.status} />
-          </div>
-        </div>
-        <p className="text-xs text-charcoal-mid lg:mt-3">
-          Updated {formatScanTimestamp(scan.updated_at)}
-        </p>
-      </div>
-    </Link>
+      <span className="pr-2 font-mono text-[10px] uppercase tracking-[0.18em] text-parchment/50">
+        Demo state
+      </span>
+      {options.map((option) => {
+        const active = demoState === option.value
+        return (
+          <button
+            key={option.label}
+            type="button"
+            aria-pressed={active}
+            onClick={() => onSelect(option.value)}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition focus-visible:ring-2 focus-visible:ring-parchment/40 ${
+              active
+                ? 'bg-parchment text-charcoal'
+                : 'text-parchment/60 hover:bg-white/10 hover:text-parchment'
+            }`}
+          >
+            {option.label}
+          </button>
+        )
+      })}
+    </div>
   )
 }
 
-function QuickActionCard({ icon, label, description, iconColor, to }) {
-  return (
-    <Link
-      to={to}
-      className="group flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/6 p-4 backdrop-blur-sm transition hover:border-white/20 hover:bg-white/10 hover:shadow-[0_12px_40px_rgba(0,0,0,0.15)]"
-    >
-      <div
-        className={`flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-lg transition group-hover:scale-110 ${iconColor}`}
-      >
-        {icon}
-      </div>
-      <div>
-        <p className="text-sm font-medium text-parchment">{label}</p>
-        <p className="mt-1 text-xs leading-relaxed text-parchment/58">{description}</p>
-      </div>
-    </Link>
-  )
+function formatAction(action) {
+  return String(action || '')
+    .replaceAll('.', ' ')
+    .replaceAll('_', ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
-function MiniConfidenceBar({ score }) {
+// ---------------------------------------------------------------------------
+// Small shared pieces
+// ---------------------------------------------------------------------------
+
+function VerdictBadge({ scan }) {
+  const { label, tone } = getVerdictMeta(scan)
+  return <Badge tone={tone}>{label}</Badge>
+}
+
+function ConfidenceBar({ score }) {
   const pct = Math.max(0, Math.min(100, score))
-  const color =
-    pct >= 80 ? 'bg-emerald-400' : pct >= 50 ? 'bg-amber-400' : 'bg-rose-400'
+  const color = pct >= 80 ? 'bg-emerald-400' : pct >= 50 ? 'bg-amber-400' : 'bg-rose-400'
 
   return (
     <div className="flex items-center gap-2">
@@ -128,246 +117,867 @@ function MiniConfidenceBar({ score }) {
   )
 }
 
-function ReportCard({ report }) {
-  const verdictMeta = {
-    authentic: { badge: 'bg-emerald-50 text-emerald-700', label: 'Authentic' },
-    suspicious: { badge: 'bg-amber-50 text-amber-700', label: 'Suspicious' },
-    inconclusive: { badge: 'bg-sky-50 text-sky-700', label: 'Inconclusive' },
+function MiniStat({ label, value, tone = 'default' }) {
+  const accent = {
+    default: 'border-l-stone-light',
+    info: 'border-l-sky-400',
+    success: 'border-l-emerald-400',
+    warning: 'border-l-amber-400',
+    danger: 'border-l-rose-400',
   }
-  const meta = verdictMeta[report.verdict] || verdictMeta.inconclusive
-
   return (
-    <Link
-      to={`/app/reports/${report.id}`}
-      className="block rounded-2xl border border-stone-light bg-parchment p-4 transition hover:border-charcoal/25 hover:shadow-sm"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-charcoal">{report.report_id}</p>
-          <p className="mt-0.5 text-xs text-charcoal-mid">
-            {report.signals?.length || 0} signals analyzed
-          </p>
-        </div>
-        <span
-          className={`inline-flex flex-shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.12em] ${meta.badge}`}
-        >
-          {meta.label}
-        </span>
-      </div>
-      <div className="mt-3">
-        <p className="text-[10px] uppercase tracking-[0.14em] text-charcoal-light">Confidence</p>
-        <div className="mt-1.5">
-          <MiniConfidenceBar score={report.confidence_score} />
-        </div>
-      </div>
-      <p className="mt-3 text-xs text-charcoal-light">
-        {formatRelativeTime(report.created_at)}
-      </p>
-    </Link>
-  )
-}
-
-function NotificationPreviewRow({ notification }) {
-  const categoryColors = {
-    scan: 'bg-sky-400',
-    system: 'bg-charcoal-mid',
-    team: 'bg-emerald-400',
-    billing: 'bg-amber-400',
-    security: 'bg-rose-400',
-  }
-  const dotColor = categoryColors[notification.category] || 'bg-stone'
-
-  return (
-    <div className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
-      <div className="relative flex-shrink-0 pt-1.5">
-        {!notification.read && (
-          <span className={`block h-2 w-2 rounded-full ${dotColor}`} />
-        )}
-        {notification.read && <span className="block h-2 w-2 rounded-full bg-stone-light" />}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-charcoal">{notification.title}</p>
-        <p className="mt-0.5 text-xs text-charcoal-mid line-clamp-1">
-          {notification.description}
-        </p>
-      </div>
-      <time className="flex-shrink-0 pt-0.5 text-xs text-charcoal-light tabular-nums whitespace-nowrap">
-        {formatRelativeTime(notification.created_at)}
-      </time>
-    </div>
-  )
-}
-
-function StorageUsageBar({ usedGB = 3.2, limitGB = 10 }) {
-  const pct = Math.min(100, Math.round((usedGB / limitGB) * 100))
-  const barColor =
-    pct >= 80 ? 'bg-rose-400' : pct >= 60 ? 'bg-amber-400' : 'bg-charcoal'
-
-  return (
-    <div>
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-charcoal-mid">
-          {usedGB.toFixed(1)} GB of {limitGB} GB used
-        </p>
-        <p className="text-xs font-medium tabular-nums text-charcoal">{pct}%</p>
-      </div>
-      <div className="mt-2 h-2 overflow-hidden rounded-full bg-stone-light">
-        <div
-          className={`h-full rounded-full transition-all ${barColor}`}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
+    <div className={`rounded-2xl border border-stone-light bg-parchment px-4 py-4 border-l-[3px] ${accent[tone]}`}>
+      <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-charcoal-light">{label}</p>
+      <p className="mt-1.5 font-serif text-3xl tabular-nums text-charcoal">{value}</p>
     </div>
   )
 }
 
 function SystemStatusDot({ label, operational }) {
   return (
-    <div className="flex items-center gap-2">
-      <span
-        className={`block h-1.5 w-1.5 rounded-full ${
-          operational ? 'bg-emerald-400' : 'bg-rose-400'
-        }`}
-      />
-      <span className="text-xs text-charcoal-mid">{label}</span>
+    <div className="flex items-center gap-2.5">
+      <span className={`h-2 w-2 rounded-full ${operational ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+      <span className="text-sm text-charcoal-mid">{label}</span>
+      <span className={`ml-auto text-xs font-medium ${operational ? 'text-emerald-600' : 'text-rose-600'}`}>
+        {operational ? 'Operational' : 'Degraded'}
+      </span>
     </div>
   )
 }
 
-// ── Dashboard page skeleton ──────────────────────────────────────────────────
+function NotificationPreviewRow({ notification }) {
+  const categoryColors = {
+    scan: 'bg-sky-500',
+    system: 'bg-stone-400',
+    team: 'bg-emerald-500',
+    billing: 'bg-amber-500',
+    security: 'bg-rose-500',
+  }
+  const dotColor = categoryColors[notification.category] || 'bg-stone-400'
 
-function DashboardSkeleton() {
   return (
-    <div className="space-y-8">
-      {/* Hero skeleton */}
-      <section className="rounded-[2rem] bg-charcoal px-6 py-6 sm:px-8 sm:py-7">
-        <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-          <div className="space-y-4">
-            <div className="h-4 w-32 animate-pulse rounded-xl bg-white/10" />
-            <div className="h-10 w-72 animate-pulse rounded-xl bg-white/8 sm:h-14 sm:w-96" />
-            <div className="h-4 w-80 animate-pulse rounded-xl bg-white/6" />
-            <div className="mt-6 grid gap-4 sm:grid-cols-3">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-28 animate-pulse rounded-2xl bg-white/6" />
-              ))}
+    <div className="flex items-start gap-3 py-3.5 first:pt-0 last:pb-0">
+      <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${dotColor}`} aria-hidden="true" />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-charcoal">{notification.title}</p>
+        <p className="mt-0.5 line-clamp-1 text-xs text-charcoal-mid">{notification.description}</p>
+      </div>
+      <time className="shrink-0 pt-0.5 text-xs tabular-nums whitespace-nowrap text-charcoal-light">
+        {formatRelativeTime(notification.created_at)}
+      </time>
+    </div>
+  )
+}
+
+const ACTIVITY_TYPE_COLORS = {
+  scan: 'bg-emerald-500',
+  user: 'bg-sky-500',
+  waitlist_application: 'bg-amber-500',
+  report: 'bg-violet-500',
+  settings: 'bg-stone-400',
+  team: 'bg-cyan-500',
+  api_key: 'bg-rose-500',
+  feature_flag: 'bg-amber-500',
+  role: 'bg-sky-500',
+  organization: 'bg-violet-500',
+  invite: 'bg-emerald-500',
+}
+
+function ActivityFeedRow({ event }) {
+  const dotColor = ACTIVITY_TYPE_COLORS[event.resource_type] || 'bg-stone-400'
+  return (
+    <div className="flex items-start gap-3 py-3.5 first:pt-0 last:pb-0">
+      <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${dotColor}`} aria-hidden="true" />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-charcoal">{formatAction(event.action)}</p>
+        <p className="mt-0.5 truncate text-xs text-charcoal-mid">{event.actor_email}</p>
+      </div>
+      <time className="shrink-0 pt-0.5 text-xs tabular-nums whitespace-nowrap text-charcoal-light">
+        {formatRelativeTime(event.created_at)}
+      </time>
+    </div>
+  )
+}
+
+/**
+ * FeedState — per-tab loading / error / empty presentation for the tabbed
+ * workspace activity section (loading skeleton, retryable error, empty state).
+ */
+function FeedState({ status, error, onRetry, empty, emptyTitle, emptyDescription }) {
+  if (status === 'loading') {
+    return (
+      <div role="status" aria-label="Loading feed" className="space-y-4 py-2">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="flex items-center gap-3">
+            <Skeleton className="h-2 w-2 rounded-full" />
+            <div className="flex-1 space-y-1.5">
+              <Skeleton className="h-3.5 w-2/3" />
+              <Skeleton className="h-3 w-1/3" />
             </div>
           </div>
-          <div className="h-48 animate-pulse rounded-[1.75rem] bg-white/5" />
-        </div>
-      </section>
-
-      {/* StatCards skeleton */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="h-28 animate-pulse rounded-3xl bg-white-warm border border-stone-light" />
         ))}
       </div>
+    )
+  }
+  if (status === 'error') {
+    return (
+      <EmptyState
+        variant="error"
+        title="Could not load feed"
+        description={error}
+        action={
+          onRetry ? (
+            <Button variant="secondary" size="sm" onClick={onRetry}>
+              Retry
+            </Button>
+          ) : null
+        }
+        compact
+      />
+    )
+  }
+  if (empty) {
+    return (
+      <EmptyState variant="empty" title={emptyTitle} description={emptyDescription} compact />
+    )
+  }
+  return null
+}
 
-      {/* Main content skeleton */}
-      <div className="grid gap-6 2xl:grid-cols-[1.25fr_0.75fr]">
-        <div className="space-y-4">
-          <div className="h-6 w-48 animate-pulse rounded-xl bg-stone-light/50" />
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="h-20 animate-pulse rounded-3xl bg-white-warm border border-stone-light" />
-          ))}
+// ---------------------------------------------------------------------------
+// Hero — greeting header (signature dark surface, primitives inside)
+// ---------------------------------------------------------------------------
+
+function DashboardHero({ profile, isTeam, greeting, lastActivity, reading, readingState, healthState, healthData, onRetry }) {
+  return (
+    <section className="overflow-hidden rounded-[2rem] border border-charcoal/8 bg-charcoal text-parchment shadow-[0_30px_90px_rgba(26,26,26,0.12)]">
+      <div className="grid gap-8 p-6 sm:p-8 xl:grid-cols-[1.2fr_0.8fr]">
+        <div>
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-parchment/48">
+              Workspace overview
+            </p>
+            <Badge tone={isTeam ? 'success' : 'info'} dot>
+              {isTeam ? 'Team workspace' : 'Individual workspace'}
+            </Badge>
+          </div>
+
+          <h2 className="mt-4 font-serif text-4xl leading-tight text-parchment sm:text-[3.5rem]">
+            {greeting}, {profile?.displayName || 'Provance User'}.
+          </h2>
+          <p className="mt-4 max-w-3xl text-base leading-relaxed text-parchment/72">
+            Track active processing, completed reports, and risk signals before you move into
+            uploads, reports, or admin operations.
+          </p>
+          {lastActivity && (
+            <p className="mt-3 text-xs text-parchment/40">Last activity — {lastActivity}</p>
+          )}
+
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Button
+              variant="secondary"
+              to="/app/uploads"
+              iconLeft={
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="1.8" stroke="currentColor" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 15V4m0 0 3.5 3.5M12 4 8.5 7.5M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15" />
+                </svg>
+              }
+            >
+              Start verification
+            </Button>
+            <Button
+              variant="secondary"
+              to="/app/reports"
+              iconLeft={
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="1.8" stroke="currentColor" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.5 3.5h8L19 8v11.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 19.5V5a1.5 1.5 0 0 1 1.5-1.5z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M14.5 3.5V8H19M9 12.5h6M9 16h4" />
+                </svg>
+              }
+            >
+              View reports
+            </Button>
+            <Button
+              variant="secondary"
+              to="/app/history"
+              iconLeft={
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="1.8" stroke="currentColor" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 7.5V12l3 2M3 12a9 9 0 1 0 3-6.7L3 8M3 4v4h4" />
+                </svg>
+              }
+            >
+              Scan history
+            </Button>
+          </div>
         </div>
-        <div className="space-y-6">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-36 animate-pulse rounded-[2rem] bg-white-warm border border-stone-light" />
-          ))}
+
+        <div className="rounded-[1.75rem] border border-white/10 bg-white/6 p-6 backdrop-blur-sm">
+          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-parchment/48">
+            System reading
+          </p>
+          <div className="mt-5 space-y-4">
+            {readingState === 'loading' && (
+              <div className="space-y-4" role="status" aria-label="Loading system reading">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="animate-pulse rounded-2xl border border-white/8 bg-white/5 px-4 py-4">
+                    <div className="h-3 w-28 rounded bg-white/10" />
+                    <div className="mt-3 h-3 w-48 rounded bg-white/8" />
+                  </div>
+                ))}
+              </div>
+            )}
+            {readingState === 'error' && (
+              <div className="rounded-2xl border border-rose-400/30 bg-rose-500/10 px-4 py-4">
+                <p className="text-sm font-medium text-rose-200">Feed unavailable</p>
+                <p className="mt-2 text-sm leading-relaxed text-parchment/66">
+                  The activity feed could not be reached. You can still use uploads and reports.
+                </p>
+                <button
+                  type="button"
+                  onClick={onRetry}
+                  className="ui-focus-ring mt-3 rounded-lg border border-white/15 bg-white/8 px-3 py-1.5 text-xs font-medium text-parchment transition hover:bg-white/12"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+            {readingState === 'ready' &&
+              reading.map((item) => (
+                <div key={item.label} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm text-parchment/70">{item.label}</p>
+                    <p className="text-sm font-medium text-parchment">{item.value}</p>
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-parchment/66">{item.detail}</p>
+                </div>
+              ))}
+          </div>
+          <div className="mt-4 flex items-center gap-4 border-t border-white/8 pt-4">
+            <div className="flex items-center gap-1.5">
+              <span className={`h-1.5 w-1.5 rounded-full ${healthState === 'ready' && healthData?.api ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+              <span className="text-xs text-parchment/50">API</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className={`h-1.5 w-1.5 rounded-full ${healthState === 'ready' && healthData?.queue ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+              <span className="text-xs text-parchment/50">Queue</span>
+            </div>
+          </div>
         </div>
       </div>
-
-      {/* Bottom row skeleton */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="space-y-4">
-          <div className="h-6 w-36 animate-pulse rounded-xl bg-stone-light/50" />
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-24 animate-pulse rounded-3xl bg-white-warm border border-stone-light" />
-          ))}
-        </div>
-        <div className="space-y-4">
-          <div className="h-6 w-44 animate-pulse rounded-xl bg-stone-light/50" />
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-12 animate-pulse rounded-2xl bg-white-warm border border-stone-light" />
-          ))}
-        </div>
-      </div>
-    </div>
+    </section>
   )
 }
 
-// ── Main page component ──────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
+// Verification ledger
+// ---------------------------------------------------------------------------
+
+const LEDGER_COLUMNS = [
+  {
+    key: 'original_filename',
+    header: 'File',
+    sortable: true,
+    width: '34%',
+    render: (scan) => (
+      <div className="min-w-0">
+        <p className="truncate font-medium text-charcoal">{scan.original_filename}</p>
+        <p className="mt-0.5 text-xs text-charcoal-light">
+          {formatFileSize(scan.file_size_bytes)} · {scan.processing_mode}
+        </p>
+      </div>
+    ),
+  },
+  {
+    key: 'status',
+    header: 'Status',
+    sortable: true,
+    sortValue: (scan) => scan.status,
+    render: (scan) => <ScanStatusBadge status={scan.status} />,
+  },
+  {
+    key: 'verdict',
+    header: 'Verdict',
+    render: (scan) => <VerdictBadge scan={scan} />,
+  },
+  {
+    key: 'team_id',
+    header: 'Team',
+    render: (scan) => <TeamBadge teamId={scan.team_id} />,
+  },
+  {
+    key: 'report_id',
+    header: 'Report',
+    render: (scan) => scan.result_payload?.report_id || '—',
+  },
+  {
+    key: 'created_at',
+    header: 'Updated',
+    align: 'right',
+    sortable: true,
+    sortValue: (scan) => new Date(scan.completed_at || scan.created_at).getTime(),
+    render: (scan) => formatScanTimestamp(scan.completed_at || scan.created_at),
+  },
+]
+
+function LedgerPanel({ scans, onRetry, navigate, pageSize = 5, teamFilter, onTeamFilterChange, teamCounts }) {
+  const filtered = useMemo(
+    () =>
+      teamFilter === 'all'
+        ? scans.data || []
+        : (scans.data || []).filter((scan) => scan.team_id === teamFilter),
+    [scans.data, teamFilter],
+  )
+  const hasActiveFilter = teamFilter !== 'all'
+
+  return (
+    <Card
+      eyebrow="Verification ledger"
+      title="Latest verification activity"
+      description="Your newest uploads — filename, status, verdict, team, and report ID before opening the full report."
+      actions={
+        <Button variant="ghost" size="sm" onClick={() => navigate('/app/reports')}>
+          View all reports
+        </Button>
+      }
+    >
+      <TeamFilter counts={teamCounts} value={teamFilter} onChange={onTeamFilterChange} />
+      <div className="mt-4">
+        <DataTable
+          columns={LEDGER_COLUMNS}
+          rows={filtered}
+          keyField="id"
+          loading={scans.status === 'loading'}
+          error={scans.status === 'error' ? scans.error : null}
+          onRetry={onRetry}
+          searchable
+          searchPlaceholder="Search files…"
+          searchKeys={['original_filename']}
+          pagination
+          pageSize={pageSize}
+          onRowClick={(scan) => navigate(`/app/reports/${scan.id}`)}
+          emptyTitle={hasActiveFilter ? 'No scans in this team' : 'No verifications yet'}
+          emptyDescription={
+            hasActiveFilter
+              ? 'Try a different team — or clear the filter to see everything.'
+              : 'Upload a media file to start the verification pipeline — results will appear here.'
+          }
+        />
+      </div>
+    </Card>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Right column: queue, risk, system status
+// ---------------------------------------------------------------------------
+
+function QueuePosturePanel({ queue, teamFilter, teamQueue, onRetry }) {
+  const data = queue.data
+  // When a team filter is active the queue counts are recomputed from the
+  // team-scoped scan list; otherwise the live queue snapshot is used.
+  const isTeamScoped = Boolean(teamFilter && teamFilter !== 'all' && teamQueue)
+  const queued = isTeamScoped ? teamQueue.queued : data?.queued ?? 0
+  const processing = isTeamScoped ? teamQueue.processing : data?.processing ?? 0
+  const failed = isTeamScoped ? teamQueue.failed : data?.failed ?? 0
+  const avgDuration = isTeamScoped
+    ? '—'
+    : data
+      ? formatDurationMs(data.avg_processing_time_ms)
+      : '—'
+  const backlog = queued > 5
+
+  return (
+    <Card
+      eyebrow="Queue posture"
+      title={isTeamScoped ? `Live queue · ${getTeamMeta(teamFilter).short}` : 'Live queue'}
+      state={queue.status === 'loading' ? 'loading' : queue.status === 'error' ? 'error' : 'default'}
+      loadingRows={4}
+      errorDescription={queue.error}
+      onRetry={onRetry}
+    >
+      <div className="grid grid-cols-3 gap-3">
+        <MiniStat label="Queued" value={queued} tone="info" />
+        <MiniStat label="Processing" value={processing} tone="info" />
+        <MiniStat label="Failed" value={failed} tone={failed > 0 ? 'danger' : 'default'} />
+      </div>
+      {isTeamScoped ? (
+        <p className="mt-4 text-xs text-charcoal-light">
+          Queue counts scoped to the {getTeamMeta(teamFilter).name} team from the scan ledger.
+        </p>
+      ) : backlog ? (
+        <p className="mt-4 rounded-xl border border-amber-100 bg-amber-50/60 px-4 py-3 text-xs text-amber-800">
+          Backlog forming — {queued} items queued. Average processing time {avgDuration} per item.
+        </p>
+      ) : (
+        <p className="mt-4 text-xs text-charcoal-light">
+          Queue is healthy — average processing time {avgDuration} per item.
+        </p>
+      )}
+    </Card>
+  )
+}
+
+function RiskWatchPanel({ scans, onRetry, navigate }) {
+  const flagged = useMemo(
+    () =>
+      (scans.data || []).filter(
+        (scan) => scan.status === 'completed' && scan.verdict === 'suspicious',
+      ),
+    [scans.data],
+  )
+  const isEmpty = scans.status === 'ready' && flagged.length === 0
+
+  return (
+    <Card
+      eyebrow="Risk watch"
+      title="Flagged uploads"
+      state={
+        scans.status === 'loading' ? 'loading' : scans.status === 'error' ? 'error' : isEmpty ? 'empty' : 'default'
+      }
+      loadingRows={3}
+      errorDescription={scans.error}
+      onRetry={onRetry}
+      emptyTitle="No flagged uploads"
+      emptyDescription="Uploads with elevated risk will appear here for review before you share results."
+    >
+      <div className="space-y-3">
+        {flagged.slice(0, 4).map((scan) => (
+          <Link
+            key={scan.id}
+            to={`/app/reports/${scan.id}`}
+            className="ui-focus-ring block rounded-2xl border border-amber-100 bg-amber-50/50 px-4 py-3.5 transition hover:border-amber-200 hover:bg-amber-50"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <p className="min-w-0 truncate text-sm font-medium text-charcoal">{scan.original_filename}</p>
+              <VerdictBadge scan={scan} />
+            </div>
+            <p className="mt-1.5 text-xs text-charcoal-mid">
+              {scan.result_payload?.report_id || 'Report pending'} · {formatScanTimestamp(scan.created_at)}
+            </p>
+          </Link>
+        ))}
+        {flagged.length > 4 && (
+          <button
+            type="button"
+            onClick={() => navigate('/app/reports')}
+            className="ui-focus-ring w-full rounded-xl px-4 py-2 text-xs font-medium text-charcoal-mid transition hover:bg-parchment hover:text-charcoal"
+          >
+            View all {flagged.length} flagged uploads
+          </button>
+        )}
+      </div>
+    </Card>
+  )
+}
+
+function SystemStatusPanel({ health, onRetry }) {
+  const rows = health.data
+    ? [
+        { label: 'API', operational: health.data.api },
+        { label: 'Database', operational: health.data.database },
+        { label: 'Storage', operational: health.data.storage },
+        { label: 'Queue', operational: health.data.queue },
+        { label: 'Worker', operational: health.data.worker },
+        { label: 'Email', operational: health.data.email },
+      ]
+    : []
+
+  return (
+    <Card
+      eyebrow="System status"
+      title="Infrastructure"
+      state={health.status === 'loading' ? 'loading' : health.status === 'error' ? 'error' : 'default'}
+      loadingRows={4}
+      errorDescription={health.error}
+      onRetry={onRetry}
+    >
+      {rows.length > 0 && (
+        <div className="space-y-3">
+          {rows.map((row) => (
+            <SystemStatusDot key={row.label} label={row.label} operational={row.operational} />
+          ))}
+        </div>
+      )}
+    </Card>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Workspace tabs — Triage vs History
+// ---------------------------------------------------------------------------
+
+/**
+ * WorkspaceTabs — the primary workspace surface. Triage shows the Card-based
+ * state panels (queue posture, risk watch, system status) for attention;
+ * History shows the full scan ledger DataTable. Built on the Tabs primitive
+ * with the same per-panel loading / error / empty behavior.
+ */
+function WorkspaceTabs({ scans, queue, health, navigate, teamFilter, onTeamFilterChange, teamCounts, teamQueue }) {
+  const [activeTab, setActiveTab] = useState('triage')
+
+  const items = [
+    { value: 'triage', label: 'Triage' },
+    { value: 'history', label: 'History' },
+  ]
+
+  return (
+    <section className="space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-charcoal-light">
+            Workspace view
+          </p>
+          <h2 className="mt-2 font-serif text-2xl text-charcoal sm:text-3xl">
+            Triage and history
+          </h2>
+        </div>
+        <Tabs
+          items={items}
+          value={activeTab}
+          onChange={setActiveTab}
+          variant="pill"
+          ariaLabel="Workspace view"
+          id="workspace-triage-history"
+        />
+      </div>
+
+      <div
+        role="tabpanel"
+        id="workspace-triage-history-panel-triage"
+        aria-labelledby="workspace-triage-history-tab-triage"
+        hidden={activeTab !== 'triage'}
+      >
+        <div className="grid gap-6 lg:grid-cols-2">
+          <RiskWatchPanel scans={scans} onRetry={scans.reload} navigate={navigate} />
+          <div className="space-y-6">
+            <QueuePosturePanel
+              queue={queue}
+              teamFilter={teamFilter}
+              teamQueue={teamQueue}
+              onRetry={queue.reload}
+            />
+            <SystemStatusPanel health={health} onRetry={health.reload} />
+          </div>
+        </div>
+      </div>
+
+      <div
+        role="tabpanel"
+        id="workspace-triage-history-panel-history"
+        aria-labelledby="workspace-triage-history-tab-history"
+        hidden={activeTab !== 'history'}
+      >
+        <LedgerPanel
+          scans={scans}
+          onRetry={scans.reload}
+          navigate={navigate}
+          pageSize={8}
+          teamFilter={teamFilter}
+          onTeamFilterChange={onTeamFilterChange}
+          teamCounts={teamCounts}
+        />
+      </div>
+    </section>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Reports feed body (used inside the activity Tabs)
+// ---------------------------------------------------------------------------
+
+function ReportsFeedBody({ reports, onRetry }) {
+  const list = reports.data || []
+
+  return (
+    <>
+      <FeedState
+        status={reports.status}
+        error={reports.error}
+        onRetry={onRetry}
+        empty={reports.status === 'ready' && list.length === 0}
+        emptyTitle="No reports yet"
+        emptyDescription="Completed verifications will appear here as report packages ready to review or export."
+      />
+      {reports.status === 'ready' && list.length > 0 && (
+        <div className="grid gap-4">
+          {list.slice(0, 3).map((report) => (
+            <Link
+              key={report.id}
+              to={`/app/reports/${report.scan_id}`}
+              className="ui-focus-ring block rounded-2xl border border-stone-light bg-parchment p-4 transition hover:border-charcoal/25 hover:shadow-sm"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-charcoal">{report.report_id}</p>
+                  <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-charcoal-mid">
+                    <span>{report.signals?.length || 0} signals analyzed</span>
+                    <TeamBadge teamId={report.team_id} />
+                    <span>{formatRelativeTime(report.created_at)}</span>
+                  </p>
+                </div>
+                <Badge tone={VERDICT_META[report.verdict]?.tone || 'neutral'}>
+                  {VERDICT_META[report.verdict]?.label || 'Inconclusive'}
+                </Badge>
+              </div>
+              <div className="mt-3">
+                <p className="text-[10px] uppercase tracking-[0.14em] text-charcoal-light">Confidence</p>
+                <div className="mt-1.5">
+                  <ConfidenceBar score={report.confidence_score} />
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+    </>
+  )
+}
+
+function NotificationsFeedBody({ notifications, onRetry }) {
+  const unread = (notifications.data || []).filter((n) => !n.read)
+
+  return (
+    <>
+      <FeedState
+        status={notifications.status}
+        error={notifications.error}
+        onRetry={onRetry}
+        empty={notifications.status === 'ready' && unread.length === 0}
+        emptyTitle="All caught up"
+        emptyDescription="Scan completions, team activity, billing, and security alerts will appear here."
+      />
+      {notifications.status === 'ready' && unread.length > 0 && (
+        <div className="divide-y divide-stone-light">
+          {unread.slice(0, 4).map((notification) => (
+            <NotificationPreviewRow key={notification.id} notification={notification} />
+          ))}
+        </div>
+      )}
+    </>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Activity feed body (Tabs: Activity / Reports / Notifications)
+// ---------------------------------------------------------------------------
+
+function ActivityFeedBody({ activity, onRetry }) {
+  const events = activity.data || []
+
+  return (
+    <>
+      <FeedState
+        status={activity.status}
+        error={activity.error}
+        onRetry={onRetry}
+        empty={activity.status === 'ready' && events.length === 0}
+        emptyTitle="No activity yet"
+        emptyDescription="Scan submissions, report views, and workspace events will appear here."
+      />
+      {activity.status === 'ready' && events.length > 0 && (
+        <div className="divide-y divide-stone-light">
+          {events.slice(0, 6).map((event) => (
+            <ActivityFeedRow key={event.id} event={event} />
+          ))}
+        </div>
+      )}
+    </>
+  )
+}
+
+/**
+ * ActivityTabsPanel — the tabbed workspace activity surface. Switches between
+ * the live activity feed, recent reports, and notifications via the Tabs
+ * primitive; each tab manages its own loading / error / empty state.
+ */
+function ActivityTabsPanel({ activity, reports, notifications, onRetryActivity, onRetryReports, onRetryNotifications }) {
+  const [activeTab, setActiveTab] = useState('activity')
+
+  const unreadCount = (notifications.data || []).filter((n) => !n.read).length
+
+  const items = [
+    { value: 'activity', label: 'Activity' },
+    { value: 'reports', label: 'Recent reports' },
+    {
+      value: 'notifications',
+      label: 'Notifications',
+      badge: notifications.status === 'ready' && unreadCount > 0 ? unreadCount : undefined,
+    },
+  ]
+
+  return (
+    <Card
+      eyebrow="Workspace activity"
+      title="Live feed"
+      description="Verification events, report outcomes, and alerts — switch tabs to focus a stream."
+    >
+      <Tabs
+        items={items}
+        value={activeTab}
+        onChange={setActiveTab}
+        variant="pill"
+        ariaLabel="Workspace activity"
+        id="workspace-activity"
+      />
+      <div className="mt-6">
+        <div
+          role="tabpanel"
+          id="workspace-activity-panel-activity"
+          aria-labelledby="workspace-activity-tab-activity"
+          hidden={activeTab !== 'activity'}
+        >
+          <ActivityFeedBody activity={activity} onRetry={onRetryActivity} />
+        </div>
+        <div
+          role="tabpanel"
+          id="workspace-activity-panel-reports"
+          aria-labelledby="workspace-activity-tab-reports"
+          hidden={activeTab !== 'reports'}
+        >
+          <ReportsFeedBody reports={reports} onRetry={onRetryReports} />
+        </div>
+        <div
+          role="tabpanel"
+          id="workspace-activity-panel-notifications"
+          aria-labelledby="workspace-activity-tab-notifications"
+          hidden={activeTab !== 'notifications'}
+        >
+          <NotificationsFeedBody notifications={notifications} onRetry={onRetryNotifications} />
+        </div>
+      </div>
+    </Card>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Main page
+// ---------------------------------------------------------------------------
 
 export default function AppDashboardPage() {
-  const { profile, permissions, workspaceContext } = useAuth()
-  const [scanState, setScanState] = useState({
-    status: 'loading',
-    scans: [],
-    error: '',
+  const { profile, permissions, workspaceContext, setWorkspaceContext } = useAuth()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const demoState = useDemoState()
+  const toast = useToast()
+
+  const scans = withDemoOverride(
+    useResource(() => listScans({ pageSize: 100 }).then((r) => r.data || [])),
+    demoState,
+    { emptyData: [] },
+  )
+  const reports = withDemoOverride(
+    useResource(() => getReports({ pageSize: 100 }).then((r) => r.data || [])),
+    demoState,
+    { emptyData: [] },
+  )
+  const notifications = withDemoOverride(
+    useResource(() => getNotifications({ pageSize: 100 }).then((r) => r.data || [])),
+    demoState,
+    { emptyData: [] },
+  )
+  const queue = withDemoOverride(useResource(() => getQueueSnapshot()), demoState, {
+    emptyData: { queued: 0, processing: 0, failed: 0, avg_processing_time_ms: 0 },
   })
-  useEffect(() => {
-    let isCancelled = false
+  const health = withDemoOverride(useResource(() => getSystemHealth()), demoState, {
+    emptyData: { api: true, database: true, storage: true, queue: true, worker: true, email: true },
+  })
+  const analytics = withDemoOverride(useResource(() => getAnalytics()), demoState, {
+    emptyData: { scans_today: 0, scans_7d: 0, completion_rate: 0, suspicious_rate: 0 },
+  })
+  const activity = withDemoOverride(
+    useResource(() => getActivityLogs({ pageSize: 50 }).then((r) => r.data || [])),
+    demoState,
+    { emptyData: [] },
+  )
 
-    async function loadScans() {
-      try {
-        const response = await listScans()
+  const selectDemoState = (value) => {
+    const params = new URLSearchParams(location.search)
+    if (value) params.set('state', value)
+    else params.delete('state')
+    const search = params.toString()
+    navigate(`${location.pathname}${search ? `?${search}` : ''}`, { replace: true })
+  }
 
-        if (isCancelled) return
-        setScanState({
-          status: 'ready',
-          scans: response.scans || [],
-          error: '',
-        })
-      } catch (error) {
-        if (isCancelled) return
-        setScanState({
-          status: 'error',
-          scans: [],
-          error: error.message || 'Failed to load dashboard activity.',
-        })
-      }
+  // ── Team scoping ───────────────────────────────────────────────────────
+  // One shared filter drives the KPI row, queue posture, and ledger so a
+  // team-scoped dashboard recomputes every metric from the scan ledger. The
+  // selection is persisted to ?team= so it survives navigation and is
+  // shareable, mirroring the ?state= demo-param pattern.
+  const [teamFilter, setTeamFilter] = useTeamFilterParam()
+
+  const teamName = teamFilter === 'all' ? null : getTeamMeta(teamFilter).name
+
+  const teamCounts = useMemo(() => {
+    const counts = {}
+    for (const scan of scans.data || []) {
+      if (scan.team_id) counts[scan.team_id] = (counts[scan.team_id] || 0) + 1
     }
+    return counts
+  }, [scans.data])
 
-    void loadScans()
+  const teamScans = useMemo(
+    () =>
+      teamFilter === 'all'
+        ? []
+        : (scans.data || []).filter((scan) => scan.team_id === teamFilter),
+    [scans.data, teamFilter],
+  )
 
-    return () => {
-      isCancelled = true
-    }
-  }, [])
-
-  // ── Derived stats ────────────────────────────────────────────────────────
-  const stats = useMemo(() => {
-    const scans = scanState.scans
-    const failed = scans.filter((scan) => scan.status === 'failed').length
-    const queued = scans.filter((scan) => scan.status === 'queued').length
-    const processing = scans.filter((scan) => scan.status === 'processing').length
-    const suspicious = scans.filter((scan) => getVerdictLabel(scan) === 'Suspicious').length
+  // Analytics-shaped KPIs recomputed for the active team. Mirrors the mock
+  // analytics envelope (scans_today / scans_7d / completion_rate /
+  // suspicious_rate) plus queue posture counts so the same surfaces render
+  // either global or team-scoped values.
+  const teamKpis = useMemo(() => {
+    if (teamFilter === 'all' || teamScans.length === 0) return null
+    const dayMs = 24 * 60 * 60 * 1000
+    const now = Date.now()
+    const scansToday = teamScans.filter(
+      (scan) => now - new Date(scan.created_at).getTime() <= dayMs,
+    ).length
+    const scans7d = teamScans.filter(
+      (scan) => now - new Date(scan.created_at).getTime() <= 7 * dayMs,
+    ).length
+    const completed = teamScans.filter((scan) => scan.status === 'completed').length
+    const suspicious = teamScans.filter(
+      (scan) => scan.status === 'completed' && scan.verdict === 'suspicious',
+    ).length
     return {
-      total: scans.length,
-      active: scans.filter((scan) => ['queued', 'processing'].includes(scan.status)).length,
-      complete: scans.filter((scan) => scan.status === 'complete').length,
-      failed,
-      queued,
-      processing,
-      suspicious,
-      latest: scans[0] || null,
+      scans_today: scansToday,
+      scans_7d: scans7d,
+      completion_rate: teamScans.length ? completed / teamScans.length : 0,
+      suspicious_rate: teamScans.length ? suspicious / teamScans.length : 0,
+      queued: teamScans.filter((scan) => scan.status === 'queued').length,
+      processing: teamScans.filter((scan) => scan.status === 'processing').length,
+      failed: teamScans.filter((scan) => scan.status === 'failed').length,
     }
-  }, [scanState.scans])
+  }, [teamFilter, teamScans])
 
-  // ── System reading rows ──────────────────────────────────────────────────
-  const readiness = useMemo(() => {
-    if (scanState.status !== 'ready') {
-      return []
+  const kpi = teamKpis || analytics.data
+  // When a team filter is active the KPI values derive from the scan ledger,
+  // so their loading/error state tracks scans (not the analytics endpoint).
+  const kpiLoading = teamFilter !== 'all' ? scans.status === 'loading' : analytics.status === 'loading'
+  const kpiError = teamFilter !== 'all' ? scans.status === 'error' : analytics.status === 'error'
+
+  const stats = useMemo(() => {
+    const list = scans.data || []
+    return {
+      total: list.length,
+      queued: list.filter((scan) => scan.status === 'queued').length,
+      processing: list.filter((scan) => scan.status === 'processing').length,
+      active: list.filter((scan) => ['queued', 'processing'].includes(scan.status)).length,
+      complete: list.filter((scan) => scan.status === 'completed').length,
+      failed: list.filter((scan) => scan.status === 'failed').length,
+      suspicious: list.filter((scan) => scan.status === 'completed' && scan.verdict === 'suspicious').length,
+      latest: list[0] || null,
     }
+  }, [scans.data])
 
+  const heroReading = useMemo(() => {
+    if (scans.status !== 'ready') return []
     return [
       {
         label: 'Queue posture',
-        value:
-          stats.active === 0
-            ? 'Clear'
-            : `${stats.active} active job${stats.active === 1 ? '' : 's'}`,
+        value: stats.active === 0 ? 'Clear' : `${stats.active} active job${stats.active === 1 ? '' : 's'}`,
         detail:
           stats.active === 0
             ? 'No files are currently waiting in the live queue.'
@@ -386,609 +996,236 @@ export default function AppDashboardPage() {
         value: stats.suspicious > 0 ? `${stats.suspicious} flagged` : 'Stable',
         detail:
           stats.suspicious > 0
-            ? 'Uploads with elevated risk should be reviewed before you share results.'
-            : 'No elevated-risk uploads are currently surfaced in the latest results.',
+            ? 'Uploads with elevated risk should be reviewed before sharing results.'
+            : 'No elevated-risk uploads are currently surfaced.',
       },
     ]
-  }, [scanState.status, stats])
+  }, [scans.status, stats])
 
-  // ── Static mock data for new sections ────────────────────────────────────
-  const recentReports = useMemo(() => mockReports.slice(0, 3), [])
-  const recentNotifications = useMemo(
+  const isTeam = workspaceContext === 'team' || permissions?.team
+  const lastActivity = stats.latest
+    ? formatScanTimestamp(stats.latest.completed_at || stats.latest.created_at)
+    : null
+
+  // ── Page-scoped commands: appear in ⌘K while the dashboard is mounted ──
+  const latestCompletedScan = useMemo(
     () =>
-      mockNotifications
-        .filter((n) => !n.read)
-        .slice(0, 3),
-    [],
+      (scans.data || []).find(
+        (scan) => scan.status === 'completed' && scan.result_payload?.report_id,
+      ) || null,
+    [scans.data],
   )
 
-  // ── Hero panel data ──────────────────────────────────────────────────────
-  const heroPanel = (() => {
-    if (scanState.status === 'loading') {
-      return {
-        label: 'System reading',
-        rows: [
-          {
-            label: 'Queue posture',
-            value: 'Loading',
-            detail: 'The dashboard is loading the latest verification activity and queue state now.',
-          },
-          {
-            label: 'Report coverage',
-            value: 'Loading',
-            detail: 'Completed report coverage will appear here as soon as the feed responds.',
-          },
-        ],
-      }
+  const dashboardCommands = useMemo(() => {
+    const exportPdf = {
+      id: 'dashboard-export-report',
+      group: 'Dashboard',
+      label: 'Export report PDF',
+      hint: latestCompletedScan
+        ? `Latest report — ${latestCompletedScan.original_filename}`
+        : 'No completed report yet',
+      keywords: ['pdf', 'export', 'download', 'report', 'print'],
+      icon: (
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="1.8" stroke="currentColor" aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 15V4m0 0 3.5 3.5M12 4 8.5 7.5M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15" />
+        </svg>
+      ),
+      onSelect: () => {
+        if (latestCompletedScan) {
+          navigate(`/app/reports/${latestCompletedScan.id}/print`)
+        } else {
+          toast.info('No report to export', {
+            description: 'Complete a verification to generate a printable report.',
+          })
+        }
+      },
     }
 
-    if (scanState.status === 'error') {
-      return {
-        label: 'System reading',
-        rows: [
-          {
-            label: 'Feed status',
-            value: 'Offline',
-            detail: scanState.error,
-          },
-          {
-            label: 'Next action',
-            value: 'Use uploads',
-            detail:
-              'You can continue in the upload workspace while the dashboard feed recovers.',
-          },
-        ],
-      }
+    const toggleWorkspace = {
+      id: 'action-workspace', // overrides the shell's same-id action while on the dashboard
+      group: 'Dashboard',
+      label:
+        workspaceContext === 'team' ? 'Switch to individual workspace' : 'Switch to team workspace',
+      hint: permissions.team ? 'Workspace context' : 'Requires team access',
+      keywords: ['workspace', 'team', 'individual', 'context', 'toggle'],
+      icon: (
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="1.8" stroke="currentColor" aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 8.5v7M8.5 12h7" />
+        </svg>
+      ),
+      onSelect: () => {
+        if (!permissions.team) {
+          toast.info('Team access required', {
+            description: 'Your account needs team access to switch workspaces.',
+          })
+          return
+        }
+        const next = workspaceContext === 'team' ? 'individual' : 'team'
+        setWorkspaceContext(next)
+        toast.info(next === 'team' ? 'Team workspace' : 'Individual workspace', {
+          description:
+            next === 'team'
+              ? 'Switched to the shared team workspace.'
+              : 'Switched to your individual workspace.',
+        })
+      },
     }
 
-    return {
-      label: 'System reading',
-      rows: readiness,
-    }
-  })()
+    return [exportPdf, toggleWorkspace]
+  }, [
+    latestCompletedScan,
+    workspaceContext,
+    permissions.team,
+    setWorkspaceContext,
+    navigate,
+    toast,
+  ])
 
-  const greeting = getTimeOfDayGreeting()
-  const displayName = profile?.displayName || 'Provance User'
-  const isTeam = workspaceContext === 'team' || permissions?.team
-  const lastActivity =
-    stats.latest?.updated_at
-      ? `${formatScanTimestamp(stats.latest.updated_at)}`
-      : null
+  useRegisterCommands(dashboardCommands, [dashboardCommands])
 
-  // ── Loading state ────────────────────────────────────────────────────────
-  if (scanState.status === 'loading') {
-    return <DashboardSkeleton />
-  }
-
-  // ── Full error state ─────────────────────────────────────────────────────
-  if (scanState.status === 'error' && scanState.scans.length === 0) {
-    return (
-      <div className="space-y-8">
-        {/* Hero still visible in error state */}
-        <section className="rounded-[2rem] border border-charcoal/8 bg-charcoal px-6 py-6 text-parchment shadow-[0_30px_90px_rgba(26,26,26,0.12)] sm:px-8 sm:py-7">
-          <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-            <div>
-              <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-parchment/48">
-                Workspace overview
-              </p>
-              <h2 className="mt-4 max-w-4xl font-serif text-4xl leading-tight text-parchment sm:text-[3.75rem]">
-                {greeting}, {displayName}.
-              </h2>
-              <p className="mt-4 max-w-3xl text-base leading-relaxed text-parchment/72">
-                Your verification workspace is ready, but we couldn&apos;t load the latest
-                activity. Open the upload workspace to start a new scan while the feed recovers.
-              </p>
-              <div className="mt-6">
-                <Link
-                  to="/app/uploads"
-                  className="inline-flex items-center gap-2 rounded-xl bg-parchment px-5 py-3 text-sm font-medium text-charcoal transition hover:bg-white-warm"
-                >
-                  Start verification
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg>
-                </Link>
-              </div>
-            </div>
-            <div className="rounded-[1.75rem] border border-white/10 bg-white/6 p-6 backdrop-blur-sm">
-              <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-parchment/48">
-                {heroPanel.label}
-              </p>
-              <div className="mt-5 space-y-4">
-                {heroPanel.rows.map((item) => (
-                  <div
-                    key={item.label}
-                    className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm text-parchment/70">{item.label}</p>
-                      <p className="text-sm font-medium text-parchment">{item.value}</p>
-                    </div>
-                    <p className="mt-2 text-sm leading-relaxed text-parchment/66">
-                      {item.detail}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <AppStatePanel
-          label="Error"
-          title="Dashboard activity could not be loaded"
-          description={scanState.error}
-          variant="error"
-          action={
-            <button
-              type="button"
-              onClick={() => window.location.reload()}
-              className="inline-flex rounded-xl bg-charcoal px-5 py-3 text-sm font-medium text-parchment transition hover:bg-charcoal-soft"
-            >
-              Retry
-            </button>
-          }
-        />
-      </div>
-    )
-  }
-
-  // ── Empty state ──────────────────────────────────────────────────────────
-  const isEmpty = scanState.status === 'ready' && scanState.scans.length === 0
-
-  if (isEmpty) {
-    return (
-      <div className="space-y-8">
-        {/* Hero with empty context */}
-        <section className="rounded-[2rem] border border-charcoal/8 bg-charcoal px-6 py-6 text-parchment shadow-[0_30px_90px_rgba(26,26,26,0.12)] sm:px-8 sm:py-7">
-          <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-            <div>
-              <div className="flex flex-wrap items-center gap-3">
-                <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-parchment/48">
-                  Workspace overview
-                </p>
-                <span className="inline-flex items-center gap-1 rounded-full border border-parchment/15 bg-parchment/8 px-3 py-1 text-[11px] font-medium text-parchment/70">
-                  {isTeam ? 'Team workspace' : 'Individual workspace'}
-                </span>
-              </div>
-              <h2 className="mt-4 max-w-4xl font-serif text-4xl leading-tight text-parchment sm:text-[3.75rem]">
-                {greeting}, {displayName}.
-              </h2>
-              <p className="mt-4 max-w-3xl text-base leading-relaxed text-parchment/72">
-                Your verification workspace is live and ready. Upload your first media file
-                to start the verification pipeline and unlock the full dashboard experience.
-              </p>
-
-              {/* Quick action cards */}
-              <div className="mt-6 grid gap-4 sm:grid-cols-3">
-                <QuickActionCard
-                  icon={
-                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M6.75 19.5a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.233-2.33 3 3 0 0 1 3.758 3.848A3.752 3.752 0 0 1 18 19.5H6.75Z" />
-                    </svg>
-                  }
-                  label="Start verification"
-                  description="Upload media and begin a new authenticity scan"
-                  iconColor="text-emerald-300"
-                  to="/app/uploads"
-                />
-                <QuickActionCard
-                  icon={
-                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-                    </svg>
-                  }
-                  label="View reports"
-                  description="Access your report library and results"
-                  iconColor="text-sky-300"
-                  to="/app/reports"
-                />
-                <QuickActionCard
-                  icon={
-                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                    </svg>
-                  }
-                  label="View history"
-                  description="Review past scans and activity timeline"
-                  iconColor="text-amber-300"
-                  to="/app/reports"
-                />
-              </div>
-            </div>
-
-            {/* System Reading panel */}
-            <div className="rounded-[1.75rem] border border-white/10 bg-white/6 p-6 backdrop-blur-sm">
-              <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-parchment/48">
-                System reading
-              </p>
-              <div className="mt-5 space-y-4">
-                {[
-                  { label: 'Queue posture', value: 'Clear', detail: 'No files queued — ready for intake.' },
-                  { label: 'Report coverage', value: '0/0', detail: 'Completed reports will appear after first scan.' },
-                  { label: 'Risk watch', value: 'Stable', detail: 'No suspicious activity detected.' },
-                ].map((item) => (
-                  <div
-                    key={item.label}
-                    className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm text-parchment/70">{item.label}</p>
-                      <p className="text-sm font-medium text-parchment">{item.value}</p>
-                    </div>
-                    <p className="mt-2 text-sm leading-relaxed text-parchment/66">
-                      {item.detail}
-                    </p>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-4 flex items-center gap-4 border-t border-white/8 pt-4">
-                <div className="flex items-center gap-1.5">
-                  <span className="block h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                  <span className="text-xs text-parchment/50">API</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="block h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                  <span className="text-xs text-parchment/50">Queue</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <AppStatePanel
-          label="Empty"
-          title="Start your first verification"
-          description="Upload a media file to begin the verification pipeline. Once processing completes, your dashboard will surface queue activity, report outcomes, and workspace stats."
-          variant="empty"
-          action={
-            <Link
-              to="/app/uploads"
-              className="inline-flex rounded-xl bg-charcoal px-5 py-3 text-sm font-medium text-parchment transition hover:bg-charcoal-soft"
-            >
-              Start first scan
-            </Link>
-          }
-        />
-      </div>
-    )
-  }
-
-  // ── Full populated dashboard ─────────────────────────────────────────────
   return (
     <div className="space-y-8">
-      {/* ── 1. Hero Panel ────────────────────────────────────────────────── */}
-      <section className="rounded-[2rem] border border-charcoal/8 bg-charcoal px-6 py-6 text-parchment shadow-[0_30px_90px_rgba(26,26,26,0.12)] sm:px-8 sm:py-7">
-        <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+      {/* ── 1. Greeting header ─────────────────────────────────────────── */}
+      <DashboardHero
+        profile={profile}
+        isTeam={isTeam}
+        greeting={getTimeOfDayGreeting()}
+        lastActivity={lastActivity}
+        reading={heroReading}
+        readingState={scans.status}
+        healthState={health.status}
+        healthData={health.data}
+        onRetry={scans.reload}
+      />
+
+      {/* ── 2. KPI StatCards (mockAnalytics-driven; team-scoped when filtered) ── */}
+      <section className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <TeamFilter counts={teamCounts} value={teamFilter} onChange={setTeamFilter} />
+          {teamFilter !== 'all' && (
+            <Badge tone="info">Showing {teamName} data</Badge>
+          )}
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            label="Scans Today"
+            value={kpi ? String(kpi.scans_today ?? 0) : '—'}
+            detail={
+              teamFilter !== 'all'
+                ? `Submitted in the last 24h · ${teamName}`
+                : 'Submitted in the last 24h'
+            }
+            tone="info"
+            loading={kpiLoading}
+            error={kpiError}
+          />
+          <StatCard
+            label="7-Day Volume"
+            value={kpi ? String(kpi.scans_7d ?? 0) : '—'}
+            detail={
+              teamFilter !== 'all'
+                ? `Total scans over the trailing week · ${teamName}`
+                : 'Total scans over the trailing week'
+            }
+            tone="default"
+            loading={kpiLoading}
+            error={kpiError}
+          />
+          <StatCard
+            label="Completion Rate"
+            value={formatPct(kpi?.completion_rate)}
+            detail={teamFilter !== 'all' ? `Of ${teamName} scans` : 'Of submitted scans'}
+            tone="success"
+            loading={kpiLoading}
+            error={kpiError}
+          />
+          <StatCard
+            label="Suspicious Rate"
+            value={formatPct(kpi?.suspicious_rate)}
+            detail={
+              teamFilter !== 'all'
+                ? `Elevated-risk share of ${teamName} scans`
+                : 'Elevated-risk share of scans'
+            }
+            tone="warning"
+            loading={kpiLoading}
+            error={kpiError}
+          />
+        </div>
+      </section>
+
+      {/* ── 3. Scan volume trend ──────────────────────────────────────── */}
+      <section className="space-y-4">
+        <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            {/* Eyebrow + context pill */}
-            <div className="flex flex-wrap items-center gap-3">
-              <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-parchment/48">
-                Workspace overview
-              </p>
-              <span className="inline-flex items-center gap-1 rounded-full border border-parchment/15 bg-parchment/8 px-3 py-1 text-[11px] font-medium text-parchment/70">
-                {isTeam ? 'Team workspace' : 'Individual workspace'}
-              </span>
-            </div>
-
-            {/* Greeting with trust mark */}
-            <div className="mt-3 flex items-start gap-4">
-              <h2 className="max-w-4xl font-serif text-4xl leading-tight text-parchment sm:text-[3.75rem]">
-                {greeting}, {displayName}.
-              </h2>
-              {/* Trust mark SVG — subtle geometric emblem */}
-              <svg
-                className="mt-2 hidden h-8 w-8 flex-shrink-0 text-parchment/20 sm:block"
-                viewBox="0 0 32 32"
-                fill="none"
-              >
-                <circle cx="16" cy="16" r="14" stroke="currentColor" strokeWidth="1" />
-                <path
-                  d="M10 16.5L14 20.5L22 12"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <circle cx="16" cy="16" r="7" stroke="currentColor" strokeWidth="0.5" strokeDasharray="2 2" />
-              </svg>
-            </div>
-
-            <p className="mt-4 max-w-3xl text-base leading-relaxed text-parchment/72">
-              Track active processing, completed reports, and recent verification outcomes
-              before you move into uploads, reports, or admin operations.
+            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-charcoal-light">
+              Scan volume trend
             </p>
-
-            {/* Last activity timestamp */}
-            {lastActivity && (
-              <p className="mt-3 text-xs text-parchment/40">
-                Last activity &mdash; {lastActivity}
-              </p>
-            )}
-
-            {/* Quick action cards */}
-            <div className="mt-6 grid gap-4 sm:grid-cols-3">
-              <QuickActionCard
-                icon={
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M6.75 19.5a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.233-2.33 3 3 0 0 1 3.758 3.848A3.752 3.752 0 0 1 18 19.5H6.75Z" />
-                  </svg>
-                }
-                label="Start verification"
-                description="Upload media and begin a new scan"
-                iconColor="text-emerald-300"
-                to="/app/uploads"
-              />
-              <QuickActionCard
-                icon={
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-                  </svg>
-                }
-                label="View reports"
-                description="Open your report library"
-                iconColor="text-sky-300"
-                to="/app/reports"
-              />
-              <QuickActionCard
-                icon={
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                  </svg>
-                }
-                label="View history"
-                description="Review past activity"
-                iconColor="text-amber-300"
-                to="/app/reports"
-              />
-            </div>
+            <h2 className="mt-2 font-serif text-2xl text-charcoal sm:text-3xl">
+              Verification volume
+            </h2>
           </div>
-
-          {/* System Reading panel (glass-morphism) */}
-          <div className="rounded-[1.75rem] border border-white/10 bg-white/6 p-6 backdrop-blur-sm">
-            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-parchment/48">
-              {heroPanel.label}
-            </p>
-            <div className="mt-5 space-y-4">
-              {heroPanel.rows.map((item) => (
-                <div
-                  key={item.label}
-                  className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm text-parchment/70">{item.label}</p>
-                    <p className="text-sm font-medium text-parchment">{item.value}</p>
-                  </div>
-                  <p className="mt-2 text-sm leading-relaxed text-parchment/66">
-                    {item.detail}
-                  </p>
-                </div>
-              ))}
-            </div>
-            {/* API + Queue status dots */}
-            <div className="mt-4 flex items-center gap-4 border-t border-white/8 pt-4">
-              <div className="flex items-center gap-1.5">
-                <span className="block h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                <span className="text-xs text-parchment/50">API</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="block h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                <span className="text-xs text-parchment/50">Queue</span>
-              </div>
-            </div>
-          </div>
+          <Link
+            to="/app/history"
+            className="text-xs text-charcoal-mid hover:text-charcoal transition-colors focus-visible:ring-2 focus-visible:ring-charcoal rounded"
+          >
+            View scan history →
+          </Link>
         </div>
-      </section>
 
-      {/* ── 2. StatCard Grid ──────────────────────────────────────────────── */}
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          label="Workspace"
-          value={isTeam ? 'Team' : 'Individual'}
-          detail="Current working context for this session"
-          tone="default"
-        />
-        <StatCard
-          label="Queue"
-          value={String(stats.active)}
-          detail={`${stats.queued} queued, ${stats.processing} processing`}
-          tone="info"
-        />
-        <StatCard
-          label="Completed"
-          value={String(stats.complete)}
-          detail="Reports ready to review or export"
-          tone="success"
-        />
-        <StatCard
-          label="Flagged"
-          value={String(stats.suspicious)}
-          detail="Uploads that merit closer review"
-          tone="warning"
-        />
-      </section>
-
-      {/* ── 3 + 6. Recent Scans + Right Column ────────────────────────────── */}
-      <section className="grid gap-6 2xl:grid-cols-[1.25fr_0.75fr]">
-        {/* ── 3. Recent Scans (Verification Ledger) ──────────────────────── */}
-        <section className="rounded-[2rem] border border-stone-light bg-parchment p-6 shadow-sm">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-charcoal-light">
-                Verification ledger
-              </p>
-              <h3 className="mt-3 font-serif text-3xl text-charcoal">
-                Latest verification activity
-              </h3>
-              <p className="mt-3 max-w-3xl text-sm leading-relaxed text-charcoal-mid">
-                Condensed view of your newest uploads — filename, verdict, report ID, and
-                queue status before opening the full report.
-              </p>
-            </div>
-            <Link
-              to="/app/reports"
-              className="inline-flex rounded-xl border border-stone-light bg-white-warm px-4 py-3 text-sm font-medium text-charcoal transition hover:border-charcoal/35"
+        {analytics.status === 'loading' ? (
+          <div className="animate-pulse rounded-3xl border border-stone-light bg-white-warm p-6 shadow-sm">
+            <div className="mb-5 h-3 w-32 rounded bg-stone-light/60" />
+            <div className="h-48 rounded-xl bg-stone-light/30" />
+          </div>
+        ) : analytics.status === 'error' ? (
+          <div className="rounded-3xl border border-rose-100 bg-white-warm p-6 text-center shadow-sm">
+            <p className="font-serif text-lg text-charcoal">Volume data unavailable</p>
+            <p className="mt-1 text-sm text-charcoal-mid">{analytics.error}</p>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={analytics.reload}
+              className="mt-4"
             >
-              View all reports
-            </Link>
+              Retry
+            </Button>
           </div>
-          <div className="mt-6 space-y-4">
-            {scanState.scans.slice(0, 5).map((scan, index) => (
-              <VerificationRow key={scan.id} scan={scan} index={index} />
-            ))}
-          </div>
-        </section>
-
-        {/* ── 6. Right Column Stack ──────────────────────────────────────── */}
-        <div className="space-y-6">
-          {/* Workspace Notes */}
-          <section className="rounded-[2rem] border border-stone-light bg-white-warm p-6 shadow-sm">
-            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-charcoal-light">
-              Workspace notes
-            </p>
-            <h3 className="mt-3 font-serif text-3xl text-charcoal">
-              Current platform status
-            </h3>
-            <div className="mt-5 space-y-4">
-              <div className="rounded-2xl border border-stone-light bg-parchment px-4 py-4">
-                <p className="text-sm font-medium text-charcoal">Authenticated access</p>
-                <p className="mt-2 text-sm leading-relaxed text-charcoal-mid">
-                  Session refresh is active. Protected routes reflect the current user
-                  permission model without forcing repeated sign-in loops.
-                </p>
-              </div>
-              <div className="rounded-2xl border border-stone-light bg-parchment px-4 py-4">
-                <p className="text-sm font-medium text-charcoal">Collaboration status</p>
-                <p className="mt-2 text-sm leading-relaxed text-charcoal-mid">
-                  {permissions.team
-                    ? 'Team access is available for this account. Shared review workflows remain the next major expansion.'
-                    : 'This workspace stays individual-first until the organization layer is opened.'}
-                </p>
-              </div>
-              <div className="rounded-2xl border border-stone-light bg-parchment px-4 py-4">
-                <p className="text-sm font-medium text-charcoal">Latest activity</p>
-                <p className="mt-2 text-sm leading-relaxed text-charcoal-mid">
-                  {stats.latest
-                    ? `${stats.latest.original_filename} last changed ${formatScanTimestamp(stats.latest.updated_at)}.`
-                    : 'No recent upload activity is available yet.'}
-                </p>
-              </div>
-            </div>
-          </section>
-
-          {/* Queue Posture */}
-          <section className="rounded-[2rem] border border-stone-light bg-white-warm p-6 shadow-sm">
-            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-charcoal-light">
-              Queue posture
-            </p>
-            <h3 className="mt-3 font-serif text-2xl text-charcoal">Live queue</h3>
-            <div className="mt-5 grid grid-cols-2 gap-4">
-              <div className="rounded-2xl border border-sky-100 bg-sky-50/72 px-4 py-4">
-                <p className="text-xs text-charcoal-mid">Queued</p>
-                <p className="mt-1 font-serif text-2xl text-charcoal">{mockQueueSnapshot.queued}</p>
-              </div>
-              <div className="rounded-2xl border border-sky-100 bg-sky-50/72 px-4 py-4">
-                <p className="text-xs text-charcoal-mid">Processing</p>
-                <p className="mt-1 font-serif text-2xl text-charcoal">{mockQueueSnapshot.processing}</p>
-              </div>
-            </div>
-            {mockQueueSnapshot.queued > 5 && (
-              <p className="mt-4 rounded-xl border border-amber-100 bg-amber-50/60 px-4 py-3 text-xs text-amber-800">
-                Backlog forming — {mockQueueSnapshot.queued} items queued. Average processing time:{' '}
-                {(mockQueueSnapshot.avg_processing_time_ms / 1000).toFixed(1)}s per item.
-              </p>
-            )}
-            {mockQueueSnapshot.queued <= 5 && (
-              <p className="mt-4 text-xs text-charcoal-light">
-                Queue is healthy — average processing time{' '}
-                {(mockQueueSnapshot.avg_processing_time_ms / 1000).toFixed(1)}s per item.
-              </p>
-            )}
-          </section>
-
-          {/* Storage Usage */}
-          <section className="rounded-[2rem] border border-stone-light bg-white-warm p-6 shadow-sm">
-            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-charcoal-light">
-              Storage
-            </p>
-            <h3 className="mt-3 font-serif text-2xl text-charcoal">Usage</h3>
-            <div className="mt-5">
-              <StorageUsageBar usedGB={3.2} limitGB={10} />
-            </div>
-            <p className="mt-3 text-xs text-charcoal-light">
-              Free tier includes 10 GB storage. Contact support about plan upgrades.
-            </p>
-          </section>
-
-          {/* System Status */}
-          <section className="rounded-[2rem] border border-stone-light bg-white-warm p-6 shadow-sm">
-            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-charcoal-light">
-              System status
-            </p>
-            <h3 className="mt-3 font-serif text-2xl text-charcoal">Infrastructure</h3>
-            <div className="mt-5 space-y-3">
-              <SystemStatusDot label="API" operational={mockSystemHealth.api} />
-              <SystemStatusDot label="Database" operational={mockSystemHealth.database} />
-              <SystemStatusDot label="Storage" operational={mockSystemHealth.storage} />
-              <SystemStatusDot label="Queue" operational={mockSystemHealth.queue} />
-              <SystemStatusDot label="Worker" operational={mockSystemHealth.worker} />
-              <SystemStatusDot label="Email" operational={mockSystemHealth.email} />
-            </div>
-          </section>
-        </div>
+        ) : (
+          <TrendChart
+            data={analytics.data?.volume_trend || []}
+            title="Scan volume trend"
+            description="Daily scan volume, completions, and failures across your workspace."
+            emptyTitle="No volume data yet"
+            emptyDescription="Upload a media file to start the verification pipeline — volume will build here."
+          />
+        )}
       </section>
 
-      {/* ── 7 + 8. Recent Reports + Notifications Preview ─────────────────── */}
-      <section className="grid gap-6 lg:grid-cols-2">
-        {/* ── 7. Recent Reports ──────────────────────────────────────────── */}
-        <section className="rounded-[2rem] border border-stone-light bg-parchment p-6 shadow-sm">
-          <div className="flex items-end justify-between">
-            <div>
-              <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-charcoal-light">
-                Recent reports
-              </p>
-              <h3 className="mt-3 font-serif text-2xl text-charcoal">Latest outcomes</h3>
-            </div>
-            <Link
-              to="/app/reports"
-              className="text-sm font-medium text-charcoal transition hover:text-charcoal-soft"
-            >
-              View all &rarr;
-            </Link>
-          </div>
-          <div className="mt-5 grid gap-4">
-            {recentReports.map((report) => (
-              <ReportCard key={report.id} report={report} />
-            ))}
-          </div>
-        </section>
+      {/* ── 4. Workspace tabs: Triage vs History ──────────────────────── */}
+      <WorkspaceTabs
+        scans={scans}
+        queue={queue}
+        health={health}
+        navigate={navigate}
+        teamFilter={teamFilter}
+        onTeamFilterChange={setTeamFilter}
+        teamCounts={teamCounts}
+        teamQueue={teamKpis}
+      />
 
-        {/* ── 8. Notifications Preview ───────────────────────────────────── */}
-        <section className="rounded-[2rem] border border-stone-light bg-parchment p-6 shadow-sm">
-          <div className="flex items-end justify-between">
-            <div>
-              <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-charcoal-light">
-                Notifications
-              </p>
-              <h3 className="mt-3 font-serif text-2xl text-charcoal">Recent alerts</h3>
-            </div>
-            <div className="flex items-center gap-2">
-              {recentNotifications.length > 0 && (
-                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-charcoal text-[10px] font-medium text-parchment">
-                  {recentNotifications.length}
-                </span>
-              )}
-            </div>
-          </div>
-          <div className="mt-5 divide-y divide-stone-light">
-            {recentNotifications.length > 0 ? (
-              recentNotifications.map((n) => (
-                <NotificationPreviewRow key={n.id} notification={n} />
-              ))
-            ) : (
-              <p className="py-4 text-sm text-charcoal-mid">All caught up — no unread notifications.</p>
-            )}
-          </div>
-        </section>
-      </section>
+      {/* ── 5. Workspace activity (Tabs: Activity / Reports / Notifications) ── */}
+      <ActivityTabsPanel
+        activity={activity}
+        reports={reports}
+        notifications={notifications}
+        onRetryActivity={activity.reload}
+        onRetryReports={reports.reload}
+        onRetryNotifications={notifications.reload}
+      />
+
+      {/* Dev-only: force loading / empty / error for review & screenshots */}
+      <DemoStateBanner demoState={demoState} onSelect={selectDemoState} />
     </div>
   )
 }

@@ -80,6 +80,16 @@ Status tags:
 
 ## 2. Application
 
+### Shared Foundation And Polish
+
+- [x] Complete: global error boundary with recoverable fallback (approved feature #1, shipped 2026-08-05)
+- [x] Complete: formatter consolidation — all date/number/duration/storage formatters unified into `src/components/app/scanPresentation.js` (formatCount, formatDate, formatDateTime, formatScanTimestamp, formatShortDate, formatDateLong, formatTimeShort, formatHourShort, formatRelativeTime, formatPct, percentOf, formatCurrency, formatDurationMs, formatStorageGb, formatFileSize)
+- [x] Complete: formatter locale pinned to en-US (formatDate + formatRelativeTime fallback were locale-default `toLocaleDateString(undefined, …)`; now `Intl.DateTimeFormat('en-US', …)` so output never shifts with the browser locale)
+- [x] Complete: sample-report timestamp standardization — single canonical `analysisTimestampIso` in `sampleReportContent.js` rendered via `formatDateTime` on the landing, page, document, and print surfaces (was hardcoded and divergent: `2026-06-25` vs `2026-07-16`)
+- [x] Complete: formatter test suite — **63 vitest tests** covering edge cases (nulls, NaN, zero, sub-second, invalid input, rounding and unit boundaries)
+- [x] Complete: formatter sign-off sweep — final grep for hand-rolled formatting (numbers/percents/dates) across forensic components and Sample Report surfaces; stragglers migrated (`AppBillingPage` → `formatStorageGb`, forensic `VeracityGauge` → `formatPct`); `scanPresentation.js` confirmed as the single source of truth for presentation formatting (2026-08-05)
+- [ ] Not Started: sweep the two legacy admin pages (Organizations, Feature Flags) onto the ui kit primitives
+
 ### App Shell And Navigation
 
 - [x] Complete: protected `/app/*` route group
@@ -125,7 +135,7 @@ Status tags:
 - [x] Complete: denser triage UX for repeated review
 - [x] Complete: better evidence navigation and section scanning
 - [ ] Not Started: share links
-- [ ] Not Started: dedicated PDF export pipeline
+- [ ] Approved 2026-08-04: dedicated PDF export pipeline (client-side)
 - [ ] Deferred: video and audio report support
 
 ### Account Workspace
@@ -214,11 +224,17 @@ Status tags:
 ### Observability And Operations
 
 - [x] Complete: health endpoint
-- [ ] Not Started: Sentry integration
-- [ ] Not Started: product analytics integration
+- [ ] Approved 2026-08-04: Sentry integration (errors)
+- [ ] Approved 2026-08-04: product analytics integration (PostHog)
 - [ ] Not Started: queue metrics and backlog monitoring
 - [ ] Not Started: worker error alerting
 - [ ] Not Started: founder-friendly operational diagnostics surface
+- [x] Complete: admin analytics + monitoring pages (Analytics + Monitoring pages, real `GET /admin/analytics` endpoint)
+- [ ] Approved 2026-08-04: global error boundary + crash recovery
+- [ ] Approved 2026-08-04: scan deduplication (hash-based)
+- [ ] Approved 2026-08-04: webhooks UI (later release)
+- [ ] Approved 2026-08-04: usage/entitlement enforcement (later release)
+- [ ] Approved 2026-08-04: evidence appendix in reports (later release)
 
 ## 4. Infrastructure And Setup
 
@@ -230,8 +246,8 @@ Status tags:
 - [x] Complete: Vercel deployment path present
 - [ ] In Progress: decide queue strategy for dev and shared environments
 - [ ] Not Started: Cloudflare account and domain strategy confirmation
-- [ ] Not Started: Sentry setup
-- [ ] Not Started: PostHog setup
+- [ ] Approved 2026-08-04: Sentry setup
+- [ ] Approved 2026-08-04: PostHog setup
 - [ ] Not Started: transactional email provider selection
 
 ### Explicitly Deferred
