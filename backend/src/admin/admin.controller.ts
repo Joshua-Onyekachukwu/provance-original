@@ -19,6 +19,7 @@ import { AdminGuard } from '../common/guards/admin.guard';
 import { SupabaseAuthGuard } from '../common/guards/supabase-auth.guard';
 import { AdminService } from './admin.service';
 import { CreateInviteDto } from './dto/create-invite.dto';
+import { FailJobDto } from './dto/fail-job.dto';
 import { ReviewWaitlistDto } from './dto/review-waitlist.dto';
 import { UpdateFeatureFlagDto } from './dto/update-feature-flag.dto';
 
@@ -27,6 +28,42 @@ import { UpdateFeatureFlagDto } from './dto/update-feature-flag.dto';
 @Throttle({ default: { limit: 30, ttl: 60_000 } })
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
+
+  @Get('jobs')
+  listJobs() {
+    return this.adminService.listJobs();
+  }
+
+  @Post('jobs/:id/retry')
+  @HttpCode(HttpStatus.OK)
+  retryJob(@Param('id') id: string) {
+    return this.adminService.retryJob(id);
+  }
+
+  @Post('jobs/:id/fail')
+  @HttpCode(HttpStatus.OK)
+  failJob(@Param('id') id: string, @Body() dto: FailJobDto) {
+    return this.adminService.failJob(id, dto.reason);
+  }
+
+  @Get('reports')
+  listAdminReports(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('pageSize', new DefaultValuePipe(20), ParseIntPipe) pageSize: number,
+    @Query('team') team?: string,
+  ) {
+    return this.adminService.listAdminReports({ page, pageSize, team });
+  }
+
+  @Get('roles')
+  getRoles() {
+    return this.adminService.getRoles();
+  }
+
+  @Get('settings')
+  getSettings() {
+    return this.adminService.getSettings();
+  }
 
   @Get('dashboard')
   getDashboard() {
@@ -37,8 +74,9 @@ export class AdminController {
   listUsers(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('pageSize', new DefaultValuePipe(20), ParseIntPipe) pageSize: number,
+    @Query('team') team?: string,
   ) {
-    return this.adminService.listUsers({ page, pageSize });
+    return this.adminService.listUsers({ page, pageSize, team });
   }
 
   @Get('organizations')
@@ -47,8 +85,8 @@ export class AdminController {
   }
 
   @Get('analytics')
-  getAnalytics() {
-    return this.adminService.getAnalytics();
+  getAnalytics(@Query('team') team?: string) {
+    return this.adminService.getAnalytics({ team });
   }
 
   @Get('feature-flags')
@@ -67,9 +105,23 @@ export class AdminController {
 
   @Get('audit-logs')
   listAuditLogs(
-    @Query('limit', new DefaultValuePipe(100), ParseIntPipe) limit: number,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('pageSize', new DefaultValuePipe(100), ParseIntPipe) pageSize: number,
+    @Query('severity') severity?: string,
+    @Query('actor') actor?: string,
+    @Query('action') action?: string,
+    @Query('resourceType') resourceType?: string,
+    @Query('search') search?: string,
   ) {
-    return this.adminService.listAuditLogs(limit);
+    return this.adminService.listAuditLogs({
+      page,
+      pageSize,
+      severity,
+      actor,
+      action,
+      resourceType,
+      search,
+    });
   }
 
   @Get('monitoring')
@@ -84,7 +136,11 @@ export class AdminController {
     @Param('applicationId') applicationId: string,
     @Body() dto: ReviewWaitlistDto,
   ) {
-    return this.adminService.reviewWaitlistApplication(applicationId, user, dto);
+    return this.adminService.reviewWaitlistApplication(
+      applicationId,
+      user,
+      dto,
+    );
   }
 
   @Post('waitlist/:applicationId/invite')
