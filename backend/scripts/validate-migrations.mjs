@@ -39,6 +39,13 @@ if (!SUPABASE_URL || !SERVICE_KEY) {
   process.exit(1);
 }
 
+// Project identity for the header banner — the one-command project/env
+// mismatch diagnostic. Compare the ref below with the project id in the SQL
+// Editor's browser URL bar; if they differ, the migrations you pasted went to
+// a different project than the one this env probes.
+const PROJECT_REF = SUPABASE_URL.replace(/^https?:\/\//, '').split('.')[0];
+const DASHBOARD_URL = `https://supabase.com/dashboard/project/${PROJECT_REF}/sql/new`;
+
 let MIGRATION_PROBES;
 try {
   ({ MIGRATION_PROBES } = await import('../dist/health/migration-health.service.js'));
@@ -100,6 +107,7 @@ for (const probe of MIGRATION_PROBES) {
 
 // ── Output ─────────────────────────────────────────────────────────────────
 console.log('Migration schema check (probe list = readiness checks.migrations)');
+console.log(`project : ${PROJECT_REF}   (dashboard: ${DASHBOARD_URL})`);
 console.log('─'.repeat(92));
 console.log('migration  status   file                        detail');
 console.log('─'.repeat(92));
@@ -123,6 +131,14 @@ if (missing.length > 0) {
     .map((m) => `${m.migration} (${m.file})`)
     .join(', ');
   console.log(`\nMISSING MIGRATIONS: ${list}`);
+  console.log(
+    '\nPROJECT/ENV MISMATCH CHECK: this env probes project ' +
+      `${PROJECT_REF}. If you applied migrations in the dashboard but they do` +
+      '\nnot appear here, compare that ref with the project id in your SQL Editor\n' +
+      `browser URL bar (it must read project/${PROJECT_REF}) — you may have pasted\n` +
+      'into a different Supabase project. The dashboard link above opens the SQL\n' +
+      'editor for exactly the project this env probes.',
+  );
 }
 if (errored.length > 0) {
   const list = errored

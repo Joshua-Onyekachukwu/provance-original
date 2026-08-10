@@ -1,5 +1,14 @@
 # Provance — Changelog
 
+## [2026-08-10] - Schema-state check now diagnoses project/env mismatch in one command
+
+### Added
+- **`backend/scripts/validate-migrations.mjs` — project banner + mismatch check.** The one-command gate now prints the Supabase project ref this env probes plus a direct SQL-editor link (`https://supabase.com/dashboard/project/<ref>/sql/new`), and on failure appends a `PROJECT/ENV MISMATCH CHECK` that tells the operator to compare the printed ref with the project id in the SQL Editor's URL bar — closing the gap where migrations pasted into the dashboard "didn't take" because they went to a different project than `backend/.env.local` points at. The applied set doubles as the fingerprint (this project: 0001–0004, 0006).
+- **`docs/engineering/MIGRATION_RUNBOOK.md`** — §3 documents the mismatch-diagnosis flow (banner ref vs URL-bar ref; dashboard link opens exactly the probed project's editor), and Troubleshooting gains a row for "applied in dashboard but still missing" → project/env mismatch → compare refs / re-paste into the ref the command names.
+
+### Verified
+- Live run against the current project: banner prints `dmhrwdcuwtgscwlaagsa` + dashboard link, 5 applied · 14 missing · 1 skipped, mismatch check rendered. No behavior change to the probe list or exit codes.
+
 ## [2026-08-10] - Production worker hardening: BullMQ retries actually retry
 
 ### Fixed

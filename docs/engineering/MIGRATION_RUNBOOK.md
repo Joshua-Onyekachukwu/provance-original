@@ -267,11 +267,23 @@ endpoint can never disagree:
 cd backend && npm run build && npm run validate:migrations
 ```
 
-Prints every migration's status (`OK`/`MISSING`/`SKIP`), an applied/missing
-summary, and — on failure — the exact `MISSING MIGRATIONS: <n> (<file>), …`
-list, exiting non-zero. A `42703` (column missing) or `PGRST205` (table
+Prints a **project banner** (the Supabase project ref this env probes, plus a
+direct SQL-editor link), every migration's status (`OK`/`MISSING`/`SKIP`), an
+applied/missing summary, and — on failure — the exact
+`MISSING MIGRATIONS: <n> (<file>), …` list plus a **project/env mismatch
+check**, exiting non-zero. A `42703` (column missing) or `PGRST205` (table
 missing) pinpoints which migration is still outstanding. Equivalent to the
 service-role REST probes below, minus the SQL editor.
+
+**Using it to diagnose a project/env mismatch before any live walk:** the
+banner names the project this env actually probes. When migrations were
+applied in the dashboard but the check still reports them missing, compare
+that ref with the project id in the SQL Editor's browser URL bar — they must
+match. If they don't, the paste went to a different project than
+`backend/.env.local` points at (the banner's dashboard link opens the SQL
+editor for exactly the probed project). The applied set is the fingerprint:
+this project shows `0001, 0002, 0003, 0004, 0006` applied, so a dashboard
+project with a different applied set is not the one the env probes.
 
 ---
 
@@ -285,6 +297,7 @@ service-role REST probes below, minus the SQL editor.
 | SQL editor error on 0004/0005 | missing `set_updated_at()` (0001) or ran out of order | apply 0001 first, then re-run |
 | SQL editor error on 0009 | `public.scans` missing (0002 not applied) | apply 0002 first |
 | Migration applied but a *value* looks off (0 rows in a seeded table) | `on conflict do nothing` + an earlier partial run | re-run the file; seeds are upsert-style |
+| Applied migrations in the dashboard SQL editor, but `npm run validate:migrations` still reports them missing | **project/env mismatch** — the paste went to a different Supabase project than the one `backend/.env.local` probes | run `cd backend && npm run build && npm run validate:migrations` and compare the printed project ref with the project id in your SQL Editor URL bar (`supabase.com/dashboard/project/<ref>/…`); re-paste the combined block into the ref the command names (the banner prints a direct editor link) |
 
 Notes:
 

@@ -117,3 +117,7 @@ Status values: `Open` · `In Progress` · `Done` · `Deferred` · `Declined`
 | 2026-08-10 | Worker retry hardening | Once migrations land and the queue is live, prove the retry/backoff in production: enqueue a scan whose asset download fails, watch BullMQ log attempt 1-3 with exponential backoff, and confirm the row lands failed with the reason after the final attempt (the e2e locks the semantics; this is the live confirmation) | Open |
 | 2026-08-10 | Worker retry hardening | Write a scan_failed event to audit_logs from markScanFailed so worker-side terminal failures show up in the Admin Audit Logs page (currently only admin retry/fail actions are audited) | Open |
 | 2026-08-10 | Worker retry hardening | Consider surfacing attemptsMade/failedReason from the BullMQ job in the admin Jobs page payload so operators can see how many retries a failing scan burned | Open |
+
+
+| 2026-08-10 | Schema-state mismatch check | Live run confirms the diagnostic works — project banner names dmhrwdcuwtgscwlaagsa. Once the user pastes the combined block into THAT project, this same command is the re-check: expect all-OK + exit 0, and the mismatch hint disappears | Open |
+| 2026-08-10 | Schema-state mismatch check | Consider adding a --ref-only flag (or a validate:project npm script) that prints just the probed ref + dashboard link for CI scripts that need the project identity without the full table | Open |
