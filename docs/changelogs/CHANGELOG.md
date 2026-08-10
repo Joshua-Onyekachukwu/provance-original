@@ -1,5 +1,18 @@
 # Provance — Changelog
 
+## [2026-08-10] - Session lifecycle validation: access-token kill confirmed + `session_id` claim bug fix
+
+### Live validation (backend :4100, real Supabase)
+- **Direct Supabase REST probe proved migration 0010 is NOT applied** — `GET /rest/v1/user_sessions?limit=1` returns `PGRST205` (relation does not exist) while the `profiles` probe works, ruling out a stale PostgREST cache. The app-level ledger surface (`GET /v1/security/sessions`) cannot run live yet.
+- **Empirical answer: revoking a session kills the access token.** Since admin session deletion is unavailable on this project (see below), revoked a real session via GoTrue `logout?scope=local` (server-side session delete — same lifecycle the admin revoke drives): after revocation the session's refresh token returns `400 refresh_token_not_found` **and** its still-unexpired access token is rejected with `401` on a guarded backend route. Control session B unaffected (refresh 200, access 200).
+- **GoTrue admin session-deletion gap**: the backend's `revokeAuthSession` URL (`DELETE /auth/v1/admin/sessions/{id}`) 404s on this project's GoTrue (v2.195.0), and `/admin/v1/sessions` 403s with the service key — the DELETE leg of the ledger needs a GoTrue-version-aware endpoint.
+
+### Bug fix
+- **`decodeJwtPayloadSid` read `payload.sid`, but real GoTrue access tokens carry `session_id`** — the ledger would never record a session and `isCurrent` would never match, so the whole session surface was dead even after 0010 lands. Fixed to read `session_id` first with `sid` fallback (keeps the e2e fakes green); new `jwt-sid.util.spec.ts` (6 tests) locks the claim parsing.
+
+### Gates
+- Backend jest **360/360** (23 suites, +6), `nest build` clean.
+
 ## [2026-08-10] - Follow-up log audit: statuses reconciled against git history
 
 ### Docs (project state)
