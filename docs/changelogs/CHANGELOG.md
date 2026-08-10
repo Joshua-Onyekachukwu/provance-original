@@ -1,5 +1,16 @@
 # Provance — Changelog
 
+## [2026-08-10] - Scan round-trip live validation script (validate-scan-roundtrip.mjs)
+
+### New script
+- **`backend/scripts/validate-scan-roundtrip.mjs`** — live e2e walk mirroring `validate-session-lifecycle.mjs`: throwaway GoTrue user → sign-in → `POST /v1/scans` (signed-upload contract) → idempotency-key replay check → signed-URL upload via the same `supabase.storage.uploadToSignedUrl` call AppUploadsPage makes → submit (202, queued) → poll `GET /v1/scans/:id` on the frontend's 5s cadence until `completed`/`failed` (observed transition chain recorded) → `GET /v1/reports/:id` signal payload → `GET /v1/reports/:id/pdf` artifact → queue-snapshot counters. Always cleans up the throwaway user + uploaded storage object.
+
+### Live run against the real project (backend :4100)
+- Script verified working: user create / sign-in / token / cleanup legs **PASS**; initiate correctly fails with an actionable 503 — the live scans table is missing the `idempotency_key` column (**migration 0019_scan_idempotency.sql not applied**). The exact blocker surfaced, same pattern as the session walk.
+
+### Notes
+- `PORT` now honors the shell override (`process.env.PORT`) before the env file, matching how the backend is booted (the reference session script reads the env file only).
+
 ## [2026-08-10] - Session lifecycle validation: access-token kill confirmed + `session_id` claim bug fix
 
 ### Live validation (backend :4100, real Supabase)
