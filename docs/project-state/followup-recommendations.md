@@ -112,3 +112,8 @@ Status values: `Open` · `In Progress` · `Done` · `Deferred` · `Declined`
 | 2026-08-10 | validate:migrations script | Add a --json flag to validate-migrations.mjs so CI can gate on the missing list without parsing the table output | Open |
 
 | 2026-08-10 | Full live walk (queue live) | Queue side verified live: BullMQ worker ready on scan-processing (concurrency 4, Upstash REDIS_URL); backend :4200 + worker left running. The ONLY remaining gate is the schema: validate:migrations still reports 14 missing (0005, 0007-0016, 0018-0020). Paste .freebuff/combined-0005-0020.sql in the SQL Editor, then run PORT=4200 node backend/scripts/validate-scan-roundtrip.mjs | Open |
+
+
+| 2026-08-10 | Worker retry hardening | Once migrations land and the queue is live, prove the retry/backoff in production: enqueue a scan whose asset download fails, watch BullMQ log attempt 1-3 with exponential backoff, and confirm the row lands failed with the reason after the final attempt (the e2e locks the semantics; this is the live confirmation) | Open |
+| 2026-08-10 | Worker retry hardening | Write a scan_failed event to audit_logs from markScanFailed so worker-side terminal failures show up in the Admin Audit Logs page (currently only admin retry/fail actions are audited) | Open |
+| 2026-08-10 | Worker retry hardening | Consider surfacing attemptsMade/failedReason from the BullMQ job in the admin Jobs page payload so operators can see how many retries a failing scan burned | Open |

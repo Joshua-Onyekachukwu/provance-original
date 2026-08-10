@@ -1,5 +1,18 @@
 # Provance — Changelog
 
+## [2026-08-10] - Production worker hardening: BullMQ retries actually retry
+
+### Fixed
+- **`backend/src/scans/scans.service.ts` — the retry config was dead.** `runScanProcessing`'s catch swallowed every error and marked the row `failed` on the first failure, so BullMQ's `attempts: 3` + exponential backoff never fired (the job "completed" on attempt 1, and a retried attempt would have been skipped by the status guard anyway). The catch now logs and **rethrows** — the row stays in `processing` so a retry passes the guard — and the terminal `failed` state is written only when retries are exhausted.
+
+### Added
+- **`ScansService.markScanFailed(scanId, reason)`** — the terminal-state writer, invoked by the worker's `failed` event on the final attempt and by the inline path's error handler. Idempotent and race-safe: a scan already `complete` (e.g. a concurrent dedup hit) is never downgraded to `failed`.
+- **`backend/src/worker.ts`** — the `failed` event now distinguishes retryable failures from the final one (`job.attemptsMade >= job.opts.attempts`): intermediate attempts log `attempt N of 3`, only the last lands `markScanFailed` (best-effort).
+- **`backend/test/scans-flow.e2e-spec.ts` (+2, BullMQ block)** — first-failure rejects so BullMQ can retry (row stays `processing`, no reason/payload), a retried attempt with storage back up completes, then `markScanFailed` lands the terminal state; and a `markScanFailed` no-op guard test proving a late failure notification never downgrades a completed scan. The pre-existing inline-failure test now exercises the new `.catch` → `markScanFailed` path and still passes.
+
+### Verified
+- Backend jest **403/403** (26 suites), `nest build` clean, e2e **68/70** — the only 2 failures remain the pre-existing live-DB invite-accept pair (migration 0005 not applied), no regressions.
+
 ## [2026-08-10] - One-command migration verification: validate:migrations
 
 ### Added

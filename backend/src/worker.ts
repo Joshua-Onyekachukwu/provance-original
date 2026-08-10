@@ -55,7 +55,27 @@ async function bootstrapWorker() {
   });
 
   worker.on('failed', (job, error) => {
-    logger.error(`Scan job ${job?.id ?? 'unknown'} failed: ${error.message}`);
+    const scanId = typeof job?.data?.scanId === 'string' ? job.data.scanId : null;
+    const attempts = job?.opts?.attempts ?? 1;
+    const isFinalAttempt = (job?.attemptsMade ?? 0) >= attempts;
+
+    if (scanId && isFinalAttempt) {
+      // Retries (attempts: 3 + exponential backoff) are exhausted — land the
+      // scan in its terminal failed state. Best-effort: the row may already
+      // be failed/complete (e.g. a concurrent inline path), which
+      // markScanFailed treats as a no-op.
+      void scansService
+        .markScanFailed(scanId, error.message)
+        .catch((markError) =>
+          logger.error(
+            `Failed to persist failed status for scan ${scanId}: ${markError instanceof Error ? markError.message : 'unknown error'}`,
+          ),
+        );
+    }
+
+    logger.error(
+      `Scan job ${job?.id ?? 'unknown'} failed (attempt ${job?.attemptsMade ?? '?'} of ${attempts}): ${error.message}`,
+    );
   });
 
   const shutdown = async () => {

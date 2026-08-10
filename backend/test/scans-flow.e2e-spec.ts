@@ -474,6 +474,7 @@ describe('Scan flow with BullMQ enqueue (e2e)', () => {
     enqueueScanProcessing: jest.Mock;
   };
   let scansService: ScansService;
+  let storage: ReturnType<typeof createStatefulAdminClient>['storage'];
 
   beforeEach(async () => {
     const setup = await createTestApp(true);
@@ -482,6 +483,7 @@ describe('Scan flow with BullMQ enqueue (e2e)', () => {
     scans = setup.scans;
     queueOverride = setup.queueOverride;
     scansService = app.get(ScansService);
+    storage = setup.storage;
   });
 
   afterEach(async () => {
@@ -537,5 +539,61 @@ describe('Scan flow with BullMQ enqueue (e2e)', () => {
       expect.any(Number),
     );
     expect(payload.report.report_id).toMatch(/^PRV-/);
+  });
+
+  it('processQueuedScan rejects on the first failure so BullMQ can retry, then markScanFailed lands the terminal state', async () => {
+    const initiate = await http.post('/v1/scans').send(initiateBody()).expect(201);
+    const scanId = initiate.body.scanId as string;
+    await http.post(`/v1/scans/${scanId}/submit`).expect(202);
+
+    // First worker attempt: the asset download fails. The service must
+    // REJECT so BullMQ backs off and retries (attempts: 3, exponential), and
+    // the row must stay non-failed so the retry passes the status guard.
+    storage.download.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'Object not found.' },
+    });
+
+    await expect(scansService.processQueuedScan(scanId)).rejects.toThrow(
+      'Failed to download the uploaded asset.',
+    );
+    expect(scans.get(scanId)?.status).toBe('processing');
+    expect(scans.get(scanId)?.failure_reason).toBeFalsy();
+    expect(scans.get(scanId)?.result_payload).toBeFalsy();
+
+    // A retried attempt with the storage back up succeeds.
+    await scansService.processQueuedScan(scanId);
+    expect(scans.get(scanId)?.status).toBe('complete');
+
+    // Final-attempt semantics (the worker's 'failed' event on the last of 3):
+    // markScanFailed writes the terminal state with the failure reason.
+    const second = await http.post('/v1/scans').send(initiateBody()).expect(201);
+    const secondId = second.body.scanId as string;
+    await http.post(`/v1/scans/${secondId}/submit`).expect(202);
+    storage.download.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'Storage outage.' },
+    });
+    await expect(scansService.processQueuedScan(secondId)).rejects.toThrow();
+    await scansService.markScanFailed(secondId, 'Storage outage.');
+
+    const failed = await waitForScanStatus(http, secondId, 'failed');
+    expect(failed.body.scan.failure_reason).toContain('Storage outage.');
+  });
+
+  it('markScanFailed never downgrades a scan that already completed', async () => {
+    const initiate = await http.post('/v1/scans').send(initiateBody()).expect(201);
+    const scanId = initiate.body.scanId as string;
+    await http.post(`/v1/scans/${scanId}/submit`).expect(202);
+
+    await scansService.processQueuedScan(scanId);
+    await waitForScanStatus(http, scanId, 'completed');
+
+    // A late failure notification (e.g. a delayed worker 'failed' event for a
+    // job that actually completed) must not downgrade the completed row.
+    await scansService.markScanFailed(scanId, 'late failure');
+
+    expect(scans.get(scanId)?.status).toBe('complete');
+    expect(scans.get(scanId)?.failure_reason).toBeFalsy();
   });
 });

@@ -297,7 +297,18 @@ export class ScansService {
     if (this.queueService.isConfigured()) {
       await this.queueService.enqueueScanProcessing(scanId);
     } else {
-      void this.runScanProcessing(adminClient, scan);
+      // Inline path (no Redis): runScanProcessing rethrows on failure, so this
+      // catch marks the row failed. Best-effort — if persisting the failure
+      // itself fails (Supabase down), log and move on; there is no retry tier
+      // in inline mode.
+      void this.runScanProcessing(adminClient, scan).catch((error) => {
+        const reason = error instanceof Error ? error.message : 'Unknown error.';
+        void this.markScanFailed(scan.id, reason).catch((markError) => {
+          this.logger.error(
+            `Failed to persist failed status for scan ${scan.id}: ${markError instanceof Error ? markError.message : 'unknown error'}`,
+          );
+        });
+      });
     }
 
     return { scanId, status: 'queued' as const };
@@ -661,13 +672,48 @@ export class ScansService {
         updated_at: new Date().toISOString(),
       });
     } catch (error) {
+      // Rethrow so BullMQ retries the job (attempts: 3 + exponential backoff
+      // configured on enqueue). The row is intentionally left in 'processing'
+      // — NOT marked failed — so a retried attempt still passes the status
+      // guard above. The terminal 'failed' state is written only when retries
+      // are exhausted: the worker's 'failed' event calls markScanFailed (BullMQ
+      // path), and the inline path's error handler does the same.
       const reason = error instanceof Error ? error.message : 'Unknown error.';
-      await this.updateScan(adminClient, scan.id, {
-        status: 'failed',
-        failure_reason: reason,
-        updated_at: new Date().toISOString(),
-      });
+      this.logger.error(
+        `Scan ${scan.id} processing failed (will retry): ${reason}`,
+      );
+      throw error;
     }
+  }
+
+  /**
+   * markScanFailed — terminal-state writer invoked when BullMQ retries are
+   * exhausted (the worker's 'failed' event) or from the inline path's error
+   * handler. Idempotent and race-safe: a scan already 'complete' (e.g. a
+   * concurrent dedup hit) is never downgraded to 'failed'.
+   */
+  async markScanFailed(scanId: string, reason: string) {
+    const adminClient = this.supabaseService.getAdminClient();
+
+    if (!adminClient) {
+      throw new ServiceUnavailableException('Supabase is not configured.');
+    }
+
+    const scan = await this.getScanByIdOrThrow(adminClient, scanId);
+
+    if (!['queued', 'awaiting_upload', 'processing'].includes(scan.status)) {
+      this.logger.warn(
+        `Not marking scan ${scanId} failed — it is already ${scan.status}.`,
+      );
+      return;
+    }
+
+    await this.updateScan(adminClient, scanId, {
+      status: 'failed',
+      failure_reason: reason,
+      updated_at: new Date().toISOString(),
+    });
+    this.logger.warn(`Scan ${scanId} marked failed after retries: ${reason}`);
   }
 
   /**
