@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { SkipThrottle } from '@nestjs/throttler';
 import { QueueService } from '../queue/queue.service';
 import { SupabaseService } from '../supabase/supabase.service';
+import { MigrationHealthService } from './migration-health.service';
 
 /**
  * Columns migration 0009 adds to the scans table. The scan flow (initiate →
@@ -17,6 +18,7 @@ export class HealthController {
     private readonly supabaseService: SupabaseService,
     private readonly queueService: QueueService,
     private readonly configService: ConfigService,
+    private readonly migrationHealth: MigrationHealthService,
   ) {}
 
   @Get()
@@ -141,7 +143,45 @@ export class HealthController {
           detail: 'REDIS_URL unset — scans process inline (BullMQ worker not used)',
         };
 
-    const ready = supabase && scansSchema && sessionsSchema;
+    // 5. Migration diff — every supabase/migrations/ file probed against the
+    //    live schema, so a half-migrated deployment is surfaced here (and at
+    //    startup via MigrationHealthService.onModuleInit) instead of failing
+    //    later with a confusing 503. Same never-throw discipline as above.
+    let migrationsReady = false;
+    let migrationsDetail = 'unchecked';
+
+    try {
+      const migrationDiff = await this.migrationHealth.check();
+
+      if (migrationDiff.unavailable) {
+        migrationsDetail =
+          `migration diff unavailable (${migrationDiff.unavailableReason ?? 'unknown reason'}) — ` +
+          'schema state unverified';
+      } else if (migrationDiff.missing.length > 0) {
+        const missingList = migrationDiff.missing
+          .map((missing) => `${missing.migration} (${missing.file})`)
+          .join(', ');
+        const filesList = migrationDiff.missing
+          .map((missing) => `supabase/migrations/${missing.file}`)
+          .join(', ');
+        migrationsDetail = `missing migrations: ${missingList} — apply ${filesList}`;
+      } else if (migrationDiff.errored.length > 0) {
+        migrationsDetail =
+          'migration probes errored: ' +
+          migrationDiff.errored
+            .map((errored) => `${errored.migration} (${errored.file})`)
+            .join(', ');
+      } else {
+        migrationsReady = true;
+        migrationsDetail = `all ${migrationDiff.checked} migrations applied`;
+      }
+    } catch (error) {
+      migrationsDetail =
+        `migration diff threw: ${error instanceof Error ? error.message : 'unknown error'}`;
+    }
+    checks.migrations = { ready: migrationsReady, detail: migrationsDetail };
+
+    const ready = supabase && scansSchema && sessionsSchema && migrationsReady;
 
     return {
       status: ready ? 'ready' : 'degraded',

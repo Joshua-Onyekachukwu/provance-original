@@ -255,6 +255,9 @@ export function validateEnv(config: Record<string, unknown>) {
     SUPABASE_USER_SECURITY_SETTINGS_TABLE:
       env.SUPABASE_USER_SECURITY_SETTINGS_TABLE?.trim() || 'user_security_settings',
     SUPABASE_API_USAGE_TABLE: env.SUPABASE_API_USAGE_TABLE?.trim() || 'api_usage',
+    // Path to the repo migrations dir for the migration-diff health check.
+    // Defaults to <repo root>/supabase/migrations (resolved from __dirname).
+    MIGRATIONS_DIR: env.MIGRATIONS_DIR?.trim() || undefined,
     PASSWORD_MIN_LENGTH: parsePositiveInteger(
       env.PASSWORD_MIN_LENGTH,
       8,

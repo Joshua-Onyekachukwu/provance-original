@@ -1,5 +1,21 @@
 # Provance — Changelog
 
+## [2026-08-10] - MigrationHealthService: startup diff + readiness gate
+
+### Backend
+- **`MigrationHealthService`** (new, `backend/src/health/migration-health.service.ts`) — diffs `supabase/migrations/` against the live Supabase schema with one non-head probe per migration (`MIGRATION_PROBES` manifest: 19 probeable + 0017 seed-only). Non-head selects so PostgREST error bodies parse (`PGRST205`/`42703`) — the probe caveat that earlier masked the 0005+ gap. Probes run in parallel; `MIGRATIONS_DIR` env override with a repo-relative default.
+- **Startup warning** — `onModuleInit` logs one warning per missing migration with the exact file to apply (e.g. `Migration 0005 NOT applied (0005_organization.sql) — probe: PGRST205: …`), a warning for unprobeable/unknown files (self-enforcing manifest), and a clean `Schema check: all N migrations applied` when healthy. Never throws.
+- **Readiness gate** — `GET /v1/health/readiness` gains `checks.migrations` (`ready` + detail listing missing migrations and files to apply) and `ready` now requires it, so a half-migrated deployment is surfaced with one request instead of a later confusing 503.
+- `MIGRATIONS_DIR` added to `env.validation.ts` + `.env.example`.
+
+### Tests
+- `migration-health.service.spec.ts` (new, 8 tests) — applied/missing/skipped classification from a fixture dir + table-aware admin mock, unavailable paths (missing dir / missing admin client), non-schema probe errors → `errored`, and startup-log behavior (warn per missing, clean bill, never throws).
+- `health.controller.spec.ts` +3 — readiness renders `checks.migrations` ready/degraded/unavailable with the exact files.
+- `app.e2e-spec.ts` overrides `MigrationHealthService` to keep the health e2e hermetic. Backend jest **346/346**, `nest build` clean, e2e 57/59 (2 pre-existing live-DB failures).
+
+### Verified live
+- Booted the fresh build on :4100 against the real project: startup log lists all 14 missing migrations; `checks.migrations` reports `missing migrations: 0005 (…), 0007 (…), …` and status `degraded`. The check also corrected the applied-set record: **0001, 0002, 0003, 0004, 0006 applied; 0005, 0007, 0008, 0009, 0010–0016, 0018–0020 missing**.
+
 ## [2026-08-10] - BullMQ e2e variant + live migration-state correction
 
 ### Tests
