@@ -98,3 +98,6 @@ Status values: `Open` · `In Progress` · `Done` · `Deferred` · `Declined`
 
 | 2026-08-10 | ParseIntStrictPipe sweep | Verify the frontend never sends garbage page/pageSize params that would now 400 — grep the api.js real-path callers for templated query strings that could produce NaN | Done |
 | 2026-08-10 | ParseIntStrictPipe sweep | Consider ParseFloatStrictPipe analog for any future decimal query params, and note the strict-int contract in API_DESIGN_STANDARDS.md (garbage page values are 400s, not defaults) | Open |
+
+| 2026-08-10 | SecurityController HTTP spec | Decide whether PATCH /security/settings should reject unknown keys with 400 (currently a silent no-op — controls unchanged, still 200) so client typos surface instead of silently doing nothing | Open |
+| 2026-08-10 | SecurityController HTTP spec | The stateful in-memory Supabase mock is now duplicated between backend/test/security.e2e-spec.ts and this controller spec — extract it into a shared test helper module so the two cannot drift | Open |

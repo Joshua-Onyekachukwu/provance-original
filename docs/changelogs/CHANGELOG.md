@@ -1,5 +1,15 @@
 # Provance — Changelog
 
+## [2026-08-10] - SecurityController HTTP-layer spec (real service + stateful Supabase mock)
+
+### Tests
+- **`backend/src/security/security.controller.spec.ts`** (+14, supertest): real `SecurityController` + real `SecurityService` over the stateful in-memory Supabase mock (per-chain query state — the `Promise.all`-safe convention from the e2e suite), real `SupabaseAuthGuard` (sid decoded from a well-formed fake bearer JWT, so `isCurrent` is driven by the token) + `ApiThrottlerGuard`.
+- Covers: route order/metadata (settings GET → sessions GET → sessions/:id DELETE → settings PATCH → password PATCH); sessions list newest-first with `isCurrent` from the sid + empty-ledger; revoke happy path (GoTrue admin DELETE URL asserted, ledger row dropped, `session_revoked` audit); 400 current-session, 404 unknown id, 503 on GoTrue network failure; settings get with persisted controls + defaults fallback; settings patch persist + audit; guard 401s (no header, invalid token); 30/60s throttle with exactly 30 real-service calls.
+- **Contract fact locked**: an unknown settings key is a silent no-op (value validation only — controls unchanged, still 200). Flagged as a follow-up decision.
+
+### Gates
+- Backend jest **403/403** (26 suites, +14), `nest build` clean.
+
 ## [2026-08-10] - Kill the page=abc silent-default quirk: ParseIntStrictPipe across the API
 
 ### Fix
