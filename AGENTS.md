@@ -19,6 +19,21 @@ how small:
 The follow-up log is the single source of truth the Founder uses to direct
 the next round of work. Missing rows = lost work. When in doubt, append.
 
+**The two rules that make this airtight:**
+
+1. **The `suggest_prompts` cards rendered at the end of the turn are the
+   log rows.** Every suggestion you show the user at the end of a task MUST
+   be appended to the log as a row in the same turn — same idea, one row
+   per suggestion. If you end a turn without rendering suggestions, log the
+   next steps / blockers you identified anyway.
+2. **Turn-start self-check.** At the start of each new task, before writing
+   any code, verify the log contains the rows for the *previous* task's
+   suggestions. If they're missing, append them first and say so. This
+   converts "I'll remember" into a mechanical check.
+
+When a later task completes a logged recommendation, flip that row to
+`Done` (keep the row, mark it) in the same turn that completes it.
+
 ## 2. Commit and push actively — after every task
 
 - Commit + push at the end of each task once the gates pass (backend jest,
