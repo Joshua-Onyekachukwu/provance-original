@@ -89,3 +89,6 @@ Status values: `Open` · `In Progress` · `Done` · `Deferred` · `Declined`
 
 | 2026-08-10 | Scan round-trip validation script | Apply the combined migration block INCLUDING 0019 (idempotency_key column) to the live project, then run PORT=4100 node backend/scripts/validate-scan-roundtrip.mjs — initiate currently 503s with the exact missing-migration hint | Open |
 | 2026-08-10 | Scan round-trip validation script | The readiness scansSchema probe reports 0009 columns but the first failing insert is idempotency_key (0019) — have the probe check the idempotency_key column too so the health signal matches the first failing query | Open |
+
+| 2026-08-10 | Refresh-cookie validation | Apply migration 0008 (audit_logs) so the walk FINAL check (reuse rows with reuse_suspected) reads live instead of noting the missing table — replays already 401, the audit trail is the only unreadable leg | Open |
+| 2026-08-10 | Refresh-cookie validation | GoTrue reuse grace interval measured ~20s on v2.195.0 (replays inside return 200) — consider surfacing the reuse-interval constant in the deploy contract doc so ops know a stolen-token replay window exists by design | Open |

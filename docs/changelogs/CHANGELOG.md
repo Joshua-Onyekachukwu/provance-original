@@ -1,5 +1,19 @@
 # Provance — Changelog
 
+## [2026-08-10] - httpOnly refresh-cookie verification: rotation confirmed + GoTrue v2.195.0 replay-signature fix
+
+### Live verification (backend :4200 fresh build, real Supabase)
+- **New script `backend/scripts/validate-refresh-cookie.mjs`** (mirrors the session-lifecycle walk): throwaway user → sign-in → Set-Cookie attribute assertions (HttpOnly / SameSite=Lax / Path=/ / Max-Age=30d / body refreshToken stripped) → two refresh rotations (each cookie value changes, each new access token validates on a guarded route) → replays of the rotated cookies → 401. **17/17 checks pass.**
+- **GoTrue reuse grace interval, probed live**: a replayed rotated token returns 200 within the grace window (GoTrue re-rotates — race tolerance), then 400 `refresh_token_already_used` / "Invalid Refresh Token: Already Used" past it (~20s observed on v2.195.0). The walk sleeps 25s before replaying so the replays land in the rejection window.
+- **Theft response observed**: the flagged replay past the interval kills the WHOLE session — the never-replayed latest token stops refreshing afterwards.
+
+### Code fix (drift the live walk exposed)
+- `recordRejectedRefresh` only flagged `reuse_suspected` on the legacy GoTrue message "Refresh Token Not Found"; v2.195.0 emits "Invalid Refresh Token: Already Used" (error_code `refresh_token_already_used`), so real theft replays were never flagged. Now matches both signatures (`/already used/i` added); new `auth.service.spec.ts` case locks it (6 tests green).
+- Walk's audit read initially targeted `auth_audit_events`; `recordRejectedRefresh` writes `audit_logs` — corrected, with resilient fallbacks (severity column / missing table notes).
+
+### Gates
+- Backend jest **361/361** (23 suites, +1), `nest build` clean.
+
 ## [2026-08-10] - Scan round-trip live validation script (validate-scan-roundtrip.mjs)
 
 ### New script

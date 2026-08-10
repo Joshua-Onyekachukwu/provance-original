@@ -327,6 +327,42 @@ describe('AuthService', () => {
     expect(row.details.ip_address).toBe('10.0.0.1');
   });
 
+  it('flags reuse_suspected for the current GoTrue replay signature (Already Used)', async () => {
+    // Verified live against this project's GoTrue v2.195.0: a rotated token
+    // replayed past the reuse grace interval is rejected with error_code
+    // refresh_token_already_used / message "Invalid Refresh Token: Already
+    // Used" — not the legacy "Refresh Token Not Found".
+    const insertAuditEvent = jest.fn().mockResolvedValue({ error: null });
+    const createPublicClient = jest.fn().mockReturnValue({
+      auth: {
+        refreshSession: jest.fn().mockResolvedValue({
+          data: { session: null, user: null },
+          error: {
+            message: 'Invalid Refresh Token: Already Used',
+            status: 400,
+          },
+        }),
+      },
+    });
+    const getAdminClient = jest.fn().mockReturnValue({
+      from: jest.fn().mockReturnValue({ insert: insertAuditEvent }),
+    });
+    const service = new AuthService(
+      mockAccountService as any,
+      { createPublicClient, getAdminClient } as any,
+      mockConfigService,
+      mockSecurityService as any,
+    );
+
+    await expect(
+      service.refreshSession({ refreshToken: 'rotated-stale-token' }, undefined, 'cookie'),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+
+    const row = insertAuditEvent.mock.calls[0][0];
+    expect(row.details.reuse_suspected).toBe(true);
+    expect(row.details.error).toContain('Already Used');
+  });
+
   it('never lets a failing audit insert block the refresh rejection (best-effort)', async () => {
     const createPublicClient = jest.fn().mockReturnValue({
       auth: {

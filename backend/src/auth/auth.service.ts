@@ -677,9 +677,13 @@ export class AuthService {
     }
 
     const message = supabaseError.message ?? '';
-    // The known replay/revoked-family signature from GoTrue — flagged in the
-    // details so the admin can distinguish it from a plain expiry.
-    const reuseSuspected = message.includes('Refresh Token Not Found');
+    // Known replay signatures from GoTrue — flagged so the admin can
+    // distinguish theft from a plain expiry. The message changed across
+    // GoTrue versions: the legacy "Refresh Token Not Found" vs v2.195.0's
+    // "Invalid Refresh Token: Already Used" (error_code
+    // refresh_token_already_used), verified live on this project.
+    const reuseSuspected =
+      message.includes('Refresh Token Not Found') || /already used/i.test(message);
 
     const { error } = await adminClient.from(this.auditTable).insert({
       actor_email: 'system',
