@@ -1,5 +1,14 @@
 # Provance — Changelog
 
+## [2026-08-10] - Follow-up log audit: statuses reconciled against git history
+
+### Docs (project state)
+- **Audit of `followup-recommendations.md`** — every row cross-checked against the last 10+ tasks' git history. Three rows were complete-but-unmarked or imprecise; all moved `Open → In Progress` with precise remaining-gap text:
+  - **Backend /admin sweep** — jobs/reports/settings are built; the real gap is `/admin/roles` (no controller route; `getAdminRoles` → `/admin/roles` 404s in real mode).
+  - **Refresh-token reuse detection** — the `session_revoked` audit recording shipped (security.service.ts + e2e assertion); the missing half is severity-map parity (`session_revoked: 'high'` in backend `audit-severity.ts` + frontend `AUDIT_SEVERITY_BY_ACTION`).
+  - **MigrationHealthService** — the stale-`:4000` restart part is done (deploy check `4a8de1c` + live walks); only the CI readiness smoke step remains.
+- Verified genuinely-open rows stayed Open (Uploads quota chip, ProductShowcase fate, live-indicator extension, API-call counting, CI gates, migration applies, decision gates). Final tally: **50 Open · 4 In Progress · 1 Done · 2 Deferred**.
+
 ## [2026-08-10] - Session-ledger round-trip e2e (sign in → list → revoke)
 
 ### Backend (tests)
