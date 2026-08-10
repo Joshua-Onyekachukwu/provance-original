@@ -411,7 +411,31 @@ const LEDGER_COLUMNS = [
   },
 ]
 
-function LedgerPanel({ scans, onRetry, navigate, pageSize = 5, teamFilter, onTeamFilterChange, teamCounts }) {
+// ---------------------------------------------------------------------------
+// Live polling indicator — pulsing dot + "auto-refreshing" label. Rendered
+// only while the 5s poll loop is active (queued / processing scans exist),
+// so users can see the page is tracking worker progress.
+// ---------------------------------------------------------------------------
+
+function LivePollIndicator() {
+  return (
+    <span
+      role="status"
+      aria-label="Auto-refreshing — tracking worker progress"
+      className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50/80 px-2.5 py-1"
+    >
+      <span className="relative flex h-2 w-2">
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-70" />
+        <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+      </span>
+      <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-emerald-700">
+        auto-refreshing
+      </span>
+    </span>
+  )
+}
+
+function LedgerPanel({ scans, onRetry, navigate, pageSize = 5, teamFilter, onTeamFilterChange, teamCounts, live }) {
   const filtered = useMemo(
     () =>
       teamFilter === 'all'
@@ -427,9 +451,12 @@ function LedgerPanel({ scans, onRetry, navigate, pageSize = 5, teamFilter, onTea
       title="Latest verification activity"
       description="Your newest uploads — filename, status, verdict, team, and report ID before opening the full report."
       actions={
-        <Button variant="ghost" size="sm" onClick={() => navigate('/app/reports')}>
-          View all reports
-        </Button>
+        <>
+          {live && <LivePollIndicator />}
+          <Button variant="ghost" size="sm" onClick={() => navigate('/app/reports')}>
+            View all reports
+          </Button>
+        </>
       }
     >
       <TeamFilter counts={teamCounts} value={teamFilter} onChange={onTeamFilterChange} />
@@ -463,7 +490,7 @@ function LedgerPanel({ scans, onRetry, navigate, pageSize = 5, teamFilter, onTea
 // Right column: queue, risk, system status
 // ---------------------------------------------------------------------------
 
-function QueuePosturePanel({ queue, teamFilter, teamQueue, onRetry }) {
+function QueuePosturePanel({ queue, teamFilter, teamQueue, onRetry, live }) {
   const data = queue.data
   // When a team filter is active the queue counts are recomputed from the
   // team-scoped scan list; otherwise the live queue snapshot is used.
@@ -486,6 +513,7 @@ function QueuePosturePanel({ queue, teamFilter, teamQueue, onRetry }) {
       loadingRows={4}
       errorDescription={queue.error}
       onRetry={onRetry}
+      actions={live ? <LivePollIndicator /> : null}
     >
       <div className="grid grid-cols-3 gap-3">
         <MiniStat label="Queued" value={queued} tone="info" />
@@ -606,6 +634,10 @@ function SystemStatusPanel({ health, onRetry }) {
  */
 function WorkspaceTabs({ scans, queue, health, navigate, teamFilter, onTeamFilterChange, teamCounts, teamQueue }) {
   const [activeTab, setActiveTab] = useState('triage')
+  // True while any scan is queued or processing — exactly the condition the
+  // 5s poll loop gates on, so the live indicators appear only while polling
+  // is actually active (worker progress is being tracked).
+  const live = hasActiveScanWork(scans.data)
 
   const items = [
     { value: 'triage', label: 'Triage' },
@@ -647,6 +679,7 @@ function WorkspaceTabs({ scans, queue, health, navigate, teamFilter, onTeamFilte
               teamFilter={teamFilter}
               teamQueue={teamQueue}
               onRetry={queue.reload}
+              live={live}
             />
             <SystemStatusPanel health={health} onRetry={health.reload} />
           </div>
@@ -667,6 +700,7 @@ function WorkspaceTabs({ scans, queue, health, navigate, teamFilter, onTeamFilte
           teamFilter={teamFilter}
           onTeamFilterChange={onTeamFilterChange}
           teamCounts={teamCounts}
+          live={live}
         />
       </div>
     </section>

@@ -1,5 +1,13 @@
 # Provance — Changelog
 
+## [2026-08-10] - Dashboard live-refresh indicator
+
+### Frontend
+- **`LivePollIndicator`** (`AppDashboardPage.jsx`) — pulsing emerald dot (Tailwind `animate-ping`) + mono `auto-refreshing` label rendered in the Card header `actions` slot of both the **Queue posture** card and the **Verification ledger** card. Shown only while the 5s poll loop is actually active — gated on `hasActiveScanWork(scans.data)` (any scan queued or processing), the exact predicate the scans/queue resources poll on, so the indicator tracks worker progress truthfully and vanishes the moment the queue drains. `role="status"` with an `aria-label` for screen readers; verified live: visible with 5 queued + 5 processing, absent under `?state=empty`.
+
+### Tests
+- Frontend vitest **476/476**, `npm run build` clean.
+
 ## [2026-08-10] - Mobile-first grid guard: every responsive grid needs a base grid-cols-1
 
 ### Guard
