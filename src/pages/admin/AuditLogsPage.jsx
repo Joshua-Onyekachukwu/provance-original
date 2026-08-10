@@ -44,6 +44,7 @@ const SHORT_ACTION_TONES = {
   toggled: 'warning',
   changed: 'info',
   accepted: 'success',
+  retried: 'info',
   failed: 'danger',
   'invite created': 'success',
   'waitlist reviewed': 'neutral',
@@ -139,7 +140,7 @@ function AuditRow({ event, open, onToggle }) {
           aria-label={`Details for ${event.action}`}
           className="mx-5 mb-4 rounded-2xl border border-stone-light bg-parchment/60 px-5 py-4"
         >
-          <dl className="grid gap-x-8 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+          <dl className="grid grid-cols-1 gap-x-8 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
             <div>
               <dt className="text-[11px] uppercase tracking-[0.18em] text-charcoal-light">Event</dt>
               <dd className="mt-1 font-mono text-xs text-charcoal">{event.action}</dd>
@@ -174,9 +175,11 @@ export default function AuditLogsPage() {
   const { toast } = useToast()
   const demoState = useDemoState()
 
-  const resource = useResource(() => getAdminAuditLogs().then((r) => r.data || []))
-  const logs = withDemoOverride(resource, demoState, { emptyData: [] })
-
+  // Active filter state is pushed to the API (real path GET /admin/audit-logs
+  // applies the same severity/actor/action/resourceType/search filters
+  // server-side, mirroring the account activity pattern); the page keeps its
+  // client-side pass so dropdown options and the CSV export always reflect
+  // the current view. A generous pageSize keeps the facet derivation working.
   const [severity, setSeverity] = useState('all')
   const [actor, setActor] = useState('all')
   const [action, setAction] = useState('all')
@@ -184,6 +187,21 @@ export default function AuditLogsPage() {
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(1)
   const [expanded, setExpanded] = useState({})
+
+  const resource = useResource(
+    () =>
+      getAdminAuditLogs({
+        page: 1,
+        pageSize: 500,
+        severity,
+        actor,
+        action,
+        resourceType,
+        search: query.trim() || undefined,
+      }).then((r) => r.data || []),
+    [severity, actor, action, resourceType, query],
+  )
+  const logs = withDemoOverride(resource, demoState, { emptyData: [] })
 
   const status = logs.status
   const loading = status === 'loading'

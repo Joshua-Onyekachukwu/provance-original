@@ -114,7 +114,7 @@ export default function SettingsPage() {
         loadingRows={2}
       >
         {!isLoading && !hasError && (
-          <dl className="grid gap-x-8 gap-y-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
+          <dl className="grid grid-cols-1 gap-x-8 gap-y-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
             {[
               ['Environment', environment.name || '—'],
               ['Region', environment.region || '—'],
@@ -202,7 +202,7 @@ export default function SettingsPage() {
       {/* ── Security posture ──────────────────────────────────────────────── */}
       {!isLoading && !hasError && settings.security && (
         <Card eyebrow="Security" title="Security posture" description="Current security configuration for the platform.">
-          <dl className="grid gap-x-8 gap-y-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+          <dl className="grid grid-cols-1 gap-x-8 gap-y-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
             {[
               ['Session timeout', `${settings.security.session_timeout_minutes ?? '—'} min`],
               ['MFA enforced', settings.security.mfa_enforced ? 'Required' : 'Optional'],

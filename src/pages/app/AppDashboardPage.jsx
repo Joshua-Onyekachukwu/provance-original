@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { useTeamFilterParam } from '../../lib/useTeamFilterParam.js'
-import { Badge, Button, Card, DataTable, EmptyState, Skeleton, StatCard, Tabs, TrendChart, useRegisterCommands, useToast } from '../../components/ui'
+import { Link, useNavigate } from 'react-router-dom'
+import { useTeamScoping } from '../../lib/useTeamScoping.js'
+import { Badge, Button, Card, DataTable, EmptyState, Skeleton, StackedBarChart, StatCard, Tabs, TrendChart, useRegisterCommands, useToast } from '../../components/ui'
+import DemoStateBanner from '../../components/app/DemoStateBanner.jsx'
 import ScanStatusBadge from '../../components/app/ScanStatusBadge.jsx'
 import TeamBadge from '../../components/app/TeamBadge.jsx'
 import TeamFilter from '../../components/app/TeamFilter.jsx'
 import {
+  VERDICT_CHART_SEGMENTS,
   VERDICT_META,
   formatDurationMs,
   formatFileSize,
@@ -14,6 +16,8 @@ import {
   formatScanTimestamp,
   getTeamMeta,
   getVerdictMeta,
+  hasActiveScanWork,
+  queueNeedsPolling,
 } from '../../components/app/scanPresentation.js'
 import { useAuth } from '../../context/AuthContext.jsx'
 import {
@@ -25,7 +29,7 @@ import {
   getSystemHealth,
   listScans,
 } from '../../lib/api.js'
-import { useDemoState, withDemoOverride } from '../../lib/useDemoState.js'
+import { useDemoStateControl, withDemoOverride } from '../../lib/useDemoState.js'
 import { useResource } from '../../lib/useResource.js'
 
 // ---------------------------------------------------------------------------
@@ -37,51 +41,6 @@ function getTimeOfDayGreeting() {
   if (hour < 12) return 'Good morning'
   if (hour < 17) return 'Good afternoon'
   return 'Good evening'
-}
-
-// ---------------------------------------------------------------------------
-// Dev-only demo state banner — switch loading / empty / error without the URL
-// ---------------------------------------------------------------------------
-
-function DemoStateBanner({ demoState, onSelect }) {
-  if (!import.meta.env.DEV) return null
-
-  const options = [
-    { value: null, label: 'Live' },
-    { value: 'loading', label: 'Loading' },
-    { value: 'empty', label: 'Empty' },
-    { value: 'error', label: 'Error' },
-  ]
-
-  return (
-    <div
-      role="group"
-      aria-label="Demo state controls"
-      className="fixed bottom-4 right-4 z-50 flex items-center gap-1 rounded-full border border-charcoal/15 bg-charcoal/95 py-1.5 pl-4 pr-1.5 text-parchment shadow-[0_16px_40px_rgba(26,26,26,0.35)] backdrop-blur"
-    >
-      <span className="pr-2 font-mono text-[10px] uppercase tracking-[0.18em] text-parchment/50">
-        Demo state
-      </span>
-      {options.map((option) => {
-        const active = demoState === option.value
-        return (
-          <button
-            key={option.label}
-            type="button"
-            aria-pressed={active}
-            onClick={() => onSelect(option.value)}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition focus-visible:ring-2 focus-visible:ring-parchment/40 ${
-              active
-                ? 'bg-parchment text-charcoal'
-                : 'text-parchment/60 hover:bg-white/10 hover:text-parchment'
-            }`}
-          >
-            {option.label}
-          </button>
-        )
-      })}
-    </div>
-  )
 }
 
 function formatAction(action) {
@@ -251,7 +210,7 @@ function FeedState({ status, error, onRetry, empty, emptyTitle, emptyDescription
 function DashboardHero({ profile, isTeam, greeting, lastActivity, reading, readingState, healthState, healthData, onRetry }) {
   return (
     <section className="overflow-hidden rounded-[2rem] border border-charcoal/8 bg-charcoal text-parchment shadow-[0_30px_90px_rgba(26,26,26,0.12)]">
-      <div className="grid gap-8 p-6 sm:p-8 xl:grid-cols-[1.2fr_0.8fr]">
+      <div className="grid grid-cols-1 gap-8 p-6 sm:p-8 xl:grid-cols-[1.2fr_0.8fr]">
         <div>
           <div className="flex flex-wrap items-center gap-3">
             <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-parchment/48">
@@ -647,7 +606,7 @@ function WorkspaceTabs({ scans, queue, health, navigate, teamFilter, onTeamFilte
         aria-labelledby="workspace-triage-history-tab-triage"
         hidden={activeTab !== 'triage'}
       >
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <RiskWatchPanel scans={scans} onRetry={scans.reload} navigate={navigate} />
           <div className="space-y-6">
             <QueuePosturePanel
@@ -856,12 +815,22 @@ function ActivityTabsPanel({ activity, reports, notifications, onRetryActivity, 
 export default function AppDashboardPage() {
   const { profile, permissions, workspaceContext, setWorkspaceContext } = useAuth()
   const navigate = useNavigate()
-  const location = useLocation()
-  const demoState = useDemoState()
+  const { demoState, selectDemoState } = useDemoStateControl()
   const toast = useToast()
 
+  // Live status polling: the scans ledger and queue posture refresh every 5s
+  // while work is in flight (queued / processing), so worker-driven
+  // queued → processing → complete transitions land without a reload. Polling
+  // idles once the queue drains — see hasActiveScanWork / queueNeedsPolling.
   const scans = withDemoOverride(
-    useResource(() => listScans({ pageSize: 100 }).then((r) => r.data || [])),
+    useResource(
+      () => listScans({ pageSize: 100 }).then((r) => r.data || []),
+      [],
+      {
+        pollMs: 5000,
+        pollWhen: (state) => hasActiveScanWork(state.data),
+      },
+    ),
     demoState,
     { emptyData: [] },
   )
@@ -875,9 +844,18 @@ export default function AppDashboardPage() {
     demoState,
     { emptyData: [] },
   )
-  const queue = withDemoOverride(useResource(() => getQueueSnapshot()), demoState, {
-    emptyData: { queued: 0, processing: 0, failed: 0, avg_processing_time_ms: 0 },
-  })
+  const queue = withDemoOverride(
+    useResource(
+      () => getQueueSnapshot(),
+      [],
+      {
+        pollMs: 5000,
+        pollWhen: (state) => queueNeedsPolling(state.data),
+      },
+    ),
+    demoState,
+    { emptyData: { queued: 0, processing: 0, failed: 0, avg_processing_time_ms: 0 } },
+  )
   const health = withDemoOverride(useResource(() => getSystemHealth()), demoState, {
     emptyData: { api: true, database: true, storage: true, queue: true, worker: true, email: true },
   })
@@ -890,73 +868,28 @@ export default function AppDashboardPage() {
     { emptyData: [] },
   )
 
-  const selectDemoState = (value) => {
-    const params = new URLSearchParams(location.search)
-    if (value) params.set('state', value)
-    else params.delete('state')
-    const search = params.toString()
-    navigate(`${location.pathname}${search ? `?${search}` : ''}`, { replace: true })
-  }
-
   // ── Team scoping ───────────────────────────────────────────────────────
   // One shared filter drives the KPI row, queue posture, and ledger so a
   // team-scoped dashboard recomputes every metric from the scan ledger. The
-  // selection is persisted to ?team= so it survives navigation and is
-  // shareable, mirroring the ?state= demo-param pattern.
-  const [teamFilter, setTeamFilter] = useTeamFilterParam()
+  // selection is persisted to ?team= (URL-backed) so it survives navigation
+  // and is shareable — see useTeamScoping.
+  const {
+    teamFilter,
+    setTeamFilter,
+    teamName,
+    isTeamScoped,
+    teamCounts,
+    teamKpis,
+    volumeTrend,
+    kpi,
+    kpiLoading,
+    kpiError,
+  } = useTeamScoping({ scans, analytics })
 
-  const teamName = teamFilter === 'all' ? null : getTeamMeta(teamFilter).name
-
-  const teamCounts = useMemo(() => {
-    const counts = {}
-    for (const scan of scans.data || []) {
-      if (scan.team_id) counts[scan.team_id] = (counts[scan.team_id] || 0) + 1
-    }
-    return counts
-  }, [scans.data])
-
-  const teamScans = useMemo(
-    () =>
-      teamFilter === 'all'
-        ? []
-        : (scans.data || []).filter((scan) => scan.team_id === teamFilter),
-    [scans.data, teamFilter],
-  )
-
-  // Analytics-shaped KPIs recomputed for the active team. Mirrors the mock
-  // analytics envelope (scans_today / scans_7d / completion_rate /
-  // suspicious_rate) plus queue posture counts so the same surfaces render
-  // either global or team-scoped values.
-  const teamKpis = useMemo(() => {
-    if (teamFilter === 'all' || teamScans.length === 0) return null
-    const dayMs = 24 * 60 * 60 * 1000
-    const now = Date.now()
-    const scansToday = teamScans.filter(
-      (scan) => now - new Date(scan.created_at).getTime() <= dayMs,
-    ).length
-    const scans7d = teamScans.filter(
-      (scan) => now - new Date(scan.created_at).getTime() <= 7 * dayMs,
-    ).length
-    const completed = teamScans.filter((scan) => scan.status === 'completed').length
-    const suspicious = teamScans.filter(
-      (scan) => scan.status === 'completed' && scan.verdict === 'suspicious',
-    ).length
-    return {
-      scans_today: scansToday,
-      scans_7d: scans7d,
-      completion_rate: teamScans.length ? completed / teamScans.length : 0,
-      suspicious_rate: teamScans.length ? suspicious / teamScans.length : 0,
-      queued: teamScans.filter((scan) => scan.status === 'queued').length,
-      processing: teamScans.filter((scan) => scan.status === 'processing').length,
-      failed: teamScans.filter((scan) => scan.status === 'failed').length,
-    }
-  }, [teamFilter, teamScans])
-
-  const kpi = teamKpis || analytics.data
-  // When a team filter is active the KPI values derive from the scan ledger,
-  // so their loading/error state tracks scans (not the analytics endpoint).
-  const kpiLoading = teamFilter !== 'all' ? scans.status === 'loading' : analytics.status === 'loading'
-  const kpiError = teamFilter !== 'all' ? scans.status === 'error' : analytics.status === 'error'
+  // The volume trend chart is team-aware too: when a team filter is active
+  // the 14-day series is recomputed from the ledger (useTeamScoping), and its
+  // loading/error state tracks scans rather than the analytics endpoint.
+  const trendData = isTeamScoped ? volumeTrend : analytics.data?.volume_trend || []
 
   const stats = useMemo(() => {
     const list = scans.data || []
@@ -1106,7 +1039,7 @@ export default function AppDashboardPage() {
             <Badge tone="info">Showing {teamName} data</Badge>
           )}
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             label="Scans Today"
             value={kpi ? String(kpi.scans_today ?? 0) : '—'}
@@ -1165,40 +1098,63 @@ export default function AppDashboardPage() {
               Verification volume
             </h2>
           </div>
-          <Link
-            to="/app/history"
-            className="text-xs text-charcoal-mid hover:text-charcoal transition-colors focus-visible:ring-2 focus-visible:ring-charcoal rounded"
-          >
-            View scan history →
-          </Link>
+          <div className="flex flex-wrap items-center gap-3">
+            {isTeamScoped && teamName && <Badge tone="info">Team-scoped · {teamName}</Badge>}
+            <Link
+              to="/app/history"
+              className="text-xs text-charcoal-mid hover:text-charcoal transition-colors focus-visible:ring-2 focus-visible:ring-charcoal rounded"
+            >
+              View scan history →
+            </Link>
+          </div>
         </div>
 
-        {analytics.status === 'loading' ? (
+        {kpiLoading ? (
           <div className="animate-pulse rounded-3xl border border-stone-light bg-white-warm p-6 shadow-sm">
             <div className="mb-5 h-3 w-32 rounded bg-stone-light/60" />
             <div className="h-48 rounded-xl bg-stone-light/30" />
           </div>
-        ) : analytics.status === 'error' ? (
+        ) : kpiError ? (
           <div className="rounded-3xl border border-rose-100 bg-white-warm p-6 text-center shadow-sm">
             <p className="font-serif text-lg text-charcoal">Volume data unavailable</p>
-            <p className="mt-1 text-sm text-charcoal-mid">{analytics.error}</p>
+            <p className="mt-1 text-sm text-charcoal-mid">
+              {isTeamScoped ? scans.error : analytics.error}
+            </p>
             <Button
               variant="secondary"
               size="sm"
-              onClick={analytics.reload}
+              onClick={isTeamScoped ? scans.reload : analytics.reload}
               className="mt-4"
             >
               Retry
             </Button>
           </div>
         ) : (
-          <TrendChart
-            data={analytics.data?.volume_trend || []}
-            title="Scan volume trend"
-            description="Daily scan volume, completions, and failures across your workspace."
-            emptyTitle="No volume data yet"
-            emptyDescription="Upload a media file to start the verification pipeline — volume will build here."
-          />
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+            <TrendChart
+              data={trendData}
+              title="Scan volume trend"
+              description={
+                isTeamScoped && teamName
+                  ? `Daily scan volume, completions, and failures across the ${teamName} team.`
+                  : 'Daily scan volume, completions, and failures across your workspace.'
+              }
+              emptyTitle="No volume data yet"
+              // NOTE: when a team is scoped the series is zero-filled (14
+              // points), so the chart renders honest zeros instead of this
+              // empty branch — the text below only applies to the global view.
+              emptyDescription="Upload a media file to start the verification pipeline — volume will build here."
+            />
+            <StackedBarChart
+              data={analytics.data?.verdict_trend || []}
+              segments={VERDICT_CHART_SEGMENTS}
+              title="Verdict mix"
+              description="Completed scans split by outcome — authentic, suspicious, and inconclusive."
+              ariaLabel="Daily verdict mix over the last 14 days"
+              emptyTitle="No verdict data yet"
+              emptyDescription="Completed verifications will split by verdict here as they land."
+            />
+          </div>
         )}
       </section>
 
@@ -1224,8 +1180,8 @@ export default function AppDashboardPage() {
         onRetryNotifications={notifications.reload}
       />
 
-      {/* Dev-only: force loading / empty / error for review & screenshots */}
-      <DemoStateBanner demoState={demoState} onSelect={selectDemoState} />
+      // Dev-only: force loading / empty / error for review & screenshots
+  <DemoStateBanner demoState={demoState} onSelect={selectDemoState} />
     </div>
   )
 }

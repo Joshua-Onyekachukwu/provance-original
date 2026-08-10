@@ -47,7 +47,7 @@ export default function TrustBar() {
           viewport={{ once: true, margin: '-60px' }}
           className="rounded-[2rem] border border-stone-light bg-white-warm/85 px-6 py-8 shadow-[0_24px_60px_rgba(19,22,29,0.06)] backdrop-blur-xl sm:px-8 lg:px-10"
         >
-          <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
             <motion.div variants={fadeUp} custom={0}>
               <span className="eyebrow">Open Benchmark · Published</span>
               <h2 className="mt-5 font-serif text-3xl text-balance text-charcoal sm:text-4xl">
@@ -77,7 +77,7 @@ export default function TrustBar() {
               </div>
             </motion.div>
 
-            <div className="grid gap-px overflow-hidden rounded-[1.5rem] border border-stone-light bg-stone-light/70 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-px overflow-hidden rounded-[1.5rem] border border-stone-light bg-stone-light/70 sm:grid-cols-2">
               {stats.map((stat, i) => (
                 <motion.div
                   key={stat.label}

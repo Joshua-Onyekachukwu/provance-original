@@ -58,7 +58,7 @@ export default function PageHero({
           </motion.nav>
         ) : null}
 
-        <div className={`grid gap-8 ${heroLayoutClass}`}>
+        <div className={`grid grid-cols-1 gap-8 ${heroLayoutClass}`}>
           <motion.div
             initial="hidden"
             animate="visible"

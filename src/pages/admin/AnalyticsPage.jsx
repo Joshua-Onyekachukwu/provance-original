@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import useMockData from '../../lib/useMockData.js'
 import { useDemoState } from '../../lib/useDemoState.js'
@@ -6,29 +6,26 @@ import { getAnalytics } from '../../lib/api.js'
 import TeamFilter from '../../components/app/TeamFilter.jsx'
 import { useTeamFilterParam } from '../../lib/useTeamFilterParam.js'
 import {
+  VERDICT_CHART_SEGMENTS,
   formatDurationMs,
-  formatHourShort,
   formatPct,
   formatShortDate,
   formatStorageGb,
   getTeamMeta,
 } from '../../components/app/scanPresentation.js'
-import { mockOrganizations, mockScans, mockUsers } from '../../lib/mockData.js'
 import {
   Button,
-  CHART_H,
-  CHART_W,
-  PAD,
+  DataTable,
+  DonutChart,
+  HourlyBarChart,
+  StackedBarChart,
   StatCard,
   TrendChart,
-  pctOfViewBoxX,
-  pctOfViewBoxY,
   useRegisterCommands,
   useToast,
 } from '../../components/ui/index.js'
 import AppStatePanel from '../../components/app/AppStatePanel.jsx'
 import AdminPageHeader from '../../components/admin/AdminPageHeader.jsx'
-import AdminTable from '../../components/admin/AdminTable.jsx'
 
 // ---------------------------------------------------------------------------
 // Media-type labels + palette
@@ -45,15 +42,17 @@ const MEDIA_LABELS = {
   'application/pdf': 'PDF Document',
 }
 
-const MEDIA_COLORS = {
-  'video/mp4': 'bg-indigo-400',
-  'image/jpeg': 'bg-emerald-400',
-  'image/png': 'bg-sky-400',
-  'image/webp': 'bg-teal-400',
-  'image/gif': 'bg-violet-400',
-  'audio/wav': 'bg-amber-400',
-  'audio/mpeg': 'bg-orange-400',
-  'application/pdf': 'bg-rose-400',
+// Hex palette for the DonutChart arcs + legend dots (the old bg- classes only
+// worked on the removed percentage-bar rows).
+const MEDIA_HEX = {
+  'video/mp4': '#818cf8',
+  'image/jpeg': '#34d399',
+  'image/png': '#38bdf8',
+  'image/webp': '#2dd4bf',
+  'image/gif': '#a78bfa',
+  'audio/wav': '#fbbf24',
+  'audio/mpeg': '#fb923c',
+  'application/pdf': '#fb7185',
 }
 
 // ---------------------------------------------------------------------------
@@ -71,6 +70,7 @@ const EMPTY_ANALYTICS = {
   verdict_trend: [],
   queue_throughput: null,
   top_organizations: [],
+  team_breakdown: [],
 }
 
 // ---------------------------------------------------------------------------
@@ -133,263 +133,15 @@ function RateMeter({ label, value, tone, detail }) {
 }
 
 // ---------------------------------------------------------------------------
-// Media-type distribution bar
-// ---------------------------------------------------------------------------
-
-function MediaTypeBar({ mimeType, count, total, max }) {
-  const label = MEDIA_LABELS[mimeType] || mimeType
-  const share = total > 0 ? count / total : 0
-  const width = max > 0 ? Math.max((count / max) * 100, 2) : 0
-
-  return (
-    <div className="flex items-center gap-3">
-      <span className="w-28 shrink-0 truncate text-sm text-charcoal">{label}</span>
-      <div className="relative h-6 flex-1 overflow-hidden rounded-lg bg-stone-light/60">
-        <div
-          className="absolute inset-y-0 left-0 rounded-lg transition-all duration-500"
-          style={{ width: `${width}%`, backgroundColor: 'currentColor' }}
-        />
-        <div className="relative flex h-full items-center justify-between px-2.5">
-          <span className="font-mono text-[11px] font-semibold text-charcoal">{count.toLocaleString()}</span>
-          <span className="font-mono text-[11px] text-charcoal-light">{formatPct(share, 1)}</span>
-        </div>
-      </div>
-      <span className="sr-only">{label}: {count} scans ({formatPct(share, 1)})</span>
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Scan volume by verdict (self-hosted SVG stacked bars)
-// ---------------------------------------------------------------------------
-
-const VERDICT_SEGMENTS = [
-  { key: 'authentic', label: 'Authentic', color: '#10b981' },
-  { key: 'suspicious', label: 'Suspicious', color: '#f59e0b' },
-  { key: 'inconclusive', label: 'Inconclusive', color: '#38bdf8' },
-]
-
-function buildVerdictGeometry(points) {
-  const plotW = CHART_W - PAD.left - PAD.right
-  const plotH = CHART_H - PAD.top - PAD.bottom
-  const maxTotal = Math.max(
-    1,
-    ...points.map((p) => (p.authentic || 0) + (p.suspicious || 0) + (p.inconclusive || 0)),
-  )
-  const yMax = Math.ceil((maxTotal * 1.2) / 10) * 10
-  const groupW = plotW / points.length
-  const barW = Math.max(6, groupW * 0.62)
-
-  const x = (i) => PAD.left + groupW * i + (groupW - barW) / 2
-  const y = (value) => PAD.top + plotH - (value / yMax) * plotH
-
-  const gridLines = Array.from({ length: 5 }, (_, i) => {
-    const value = (yMax / 4) * i
-    return { value, y: y(value) }
-  })
-
-  return { yMax, x, y, gridLines, barW, groupW, plotH }
-}
-
-function VerdictVolumeChart({ trend }) {
-  const [hoverIndex, setHoverIndex] = useState(null)
-
-  const points = useMemo(() => trend.slice(-14), [trend])
-  const geometry = useMemo(() => buildVerdictGeometry(points), [points])
-
-  const totals = useMemo(() => {
-    const acc = { authentic: 0, suspicious: 0, inconclusive: 0 }
-    points.forEach((p) => {
-      acc.authentic += p.authentic || 0
-      acc.suspicious += p.suspicious || 0
-      acc.inconclusive += p.inconclusive || 0
-    })
-    return acc
-  }, [points])
-
-  const grandTotal = totals.authentic + totals.suspicious + totals.inconclusive
-  const hovered = hoverIndex !== null ? points[hoverIndex] : null
-
-  // Stacked segment bounds per bar, bottom → top: authentic, suspicious, inconclusive.
-  const stackBounds = (p) => {
-    const a = p.authentic || 0
-    const s = p.suspicious || 0
-    const i0 = p.inconclusive || 0
-    const bottom = geometry.y(0)
-    return {
-      yInconclusive: geometry.y(a + s + i0),
-      ySuspicious: geometry.y(a + s),
-      yAuthentic: geometry.y(a),
-      bottom,
-    }
-  }
-
-  return (
-    <div className="rounded-3xl border border-stone-light bg-white-warm p-6 shadow-sm">
-      <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
-        <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-charcoal-light">
-          Scan volume by verdict
-        </p>
-        <span className="rounded-full bg-stone-light/50 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.16em] text-charcoal-mid">
-          {points.length} days · {grandTotal.toLocaleString()} scans
-        </span>
-      </div>
-
-      {/* Hover readout */}
-      <div className="mb-3 flex h-6 items-center gap-2 font-mono text-xs text-charcoal-mid" aria-live="polite">
-        {hovered ? (
-          <>
-            <span className="font-semibold text-charcoal">{formatShortDate(hovered.date)}</span>
-            <span className="text-charcoal-light">·</span>
-            <span className="text-emerald-600">{hovered.authentic} authentic</span>
-            <span className="text-amber-600">{hovered.suspicious} suspicious</span>
-            <span className="text-sky-600">{hovered.inconclusive} inconclusive</span>
-          </>
-        ) : (
-          <span className="text-charcoal-light">Hover a bar for the daily verdict split</span>
-        )}
-      </div>
-
-      <div className="relative">
-        <svg
-          viewBox={`0 0 ${CHART_W} ${CHART_H}`}
-          className="h-48 w-full sm:h-52"
-          role="img"
-          aria-label="Daily scan volume split by verdict over the last 14 days"
-          preserveAspectRatio="none"
-        >
-          {/* Grid lines (HTML labels below stay crisp at any width) */}
-          {geometry.gridLines.map((line) => (
-            <line
-              key={line.y}
-              x1={PAD.left}
-              y1={line.y}
-              x2={CHART_W - PAD.right}
-              y2={line.y}
-              stroke="#e7e4dc"
-              strokeWidth="1"
-            />
-          ))}
-
-          {/* Stacked bars — inconclusive on top, authentic at the base */}
-          {points.map((p, i) => {
-            const { yInconclusive, ySuspicious, yAuthentic, bottom } = stackBounds(p)
-            return (
-              <g key={p.date}>
-                <rect
-                  x={geometry.x(i)}
-                  y={yInconclusive}
-                  width={geometry.barW}
-                  height={Math.max(0, ySuspicious - yInconclusive)}
-                  fill={VERDICT_SEGMENTS[2].color}
-                />
-                <rect
-                  x={geometry.x(i)}
-                  y={ySuspicious}
-                  width={geometry.barW}
-                  height={Math.max(0, yAuthentic - ySuspicious)}
-                  fill={VERDICT_SEGMENTS[1].color}
-                />
-                <rect
-                  x={geometry.x(i)}
-                  y={yAuthentic}
-                  width={geometry.barW}
-                  height={Math.max(0, bottom - yAuthentic)}
-                  fill={VERDICT_SEGMENTS[0].color}
-                />
-              </g>
-            )
-          })}
-
-          {/* Hover guide + outlined bar */}
-          {hoverIndex !== null && hovered ? (
-            <>
-              <line
-                x1={geometry.x(hoverIndex) + geometry.barW / 2}
-                y1={PAD.top}
-                x2={geometry.x(hoverIndex) + geometry.barW / 2}
-                y2={PAD.top + geometry.plotH}
-                stroke="#1f2937"
-                strokeWidth="1"
-                strokeDasharray="3 3"
-                opacity="0.4"
-              />
-              <rect
-                x={geometry.x(hoverIndex)}
-                y={stackBounds(hovered).yInconclusive}
-                width={geometry.barW}
-                height={Math.max(0, stackBounds(hovered).bottom - stackBounds(hovered).yInconclusive)}
-                fill="none"
-                stroke="#1f2937"
-                strokeWidth="1.5"
-                rx="2"
-              />
-            </>
-          ) : null}
-
-          {/* Transparent hover hit-areas — one full cell per bar so no bar
-              (including the first) falls in a dead zone */}
-          {points.map((p, i) => (
-            <rect
-              key={`hit-${i}`}
-              x={PAD.left + i * geometry.groupW}
-              y={PAD.top}
-              width={geometry.groupW}
-              height={geometry.plotH}
-              fill="transparent"
-              onMouseEnter={() => setHoverIndex(i)}
-              onMouseLeave={() => setHoverIndex(null)}
-            />
-          ))}
-        </svg>
-
-        {/* HTML axis labels */}
-        <div aria-hidden="true" className="pointer-events-none absolute inset-0">
-          {geometry.gridLines.map((line) => (
-            <span
-              key={`yl-${line.y}`}
-              className="absolute -translate-y-1/2 pr-1 text-right font-mono text-[10px] text-charcoal-light/70"
-              style={{ top: pctOfViewBoxY(line.y), left: 0, width: `${PAD.left - 4}px` }}
-            >
-              {Math.round(line.value)}
-            </span>
-          ))}
-          {points.map((p, i) =>
-            i % 2 === 0 || i === points.length - 1 ? (
-              <span
-                key={`xl-${i}`}
-                className="absolute -translate-x-1/2 font-mono text-[10px] text-charcoal-light/70"
-                style={{ left: pctOfViewBoxX(geometry.x(i) + geometry.barW / 2), bottom: 2 }}
-              >
-                {formatShortDate(p.date)}
-              </span>
-            ) : null,
-          )}
-        </div>
-      </div>
-
-      {/* Legend with totals + shares */}
-      <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2">
-        {VERDICT_SEGMENTS.map((segment) => (
-          <span key={segment.key} className="inline-flex items-center gap-2 text-xs text-charcoal-mid">
-            <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: segment.color }} />
-            {segment.label} ({totals[segment.key].toLocaleString()} ·{' '}
-            {formatPct(grandTotal > 0 ? totals[segment.key] / grandTotal : 0, 0)})
-          </span>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Queue throughput (headline stats + self-hosted SVG hourly bars)
+// Queue throughput (headline stats + shared HourlyBarChart primitive)
 // ---------------------------------------------------------------------------
 
 function QueueThroughputPanel({ throughput }) {
   const hourly = useMemo(() => throughput?.hourly_series || [], [
     throughput?.hourly_series,
   ])
+  // Series max — kept here only to gate the chart block below (the
+  // HourlyBarChart primitive recomputes it internally).
   const hourlyMax = useMemo(
     () => hourly.reduce((max, p) => Math.max(max, p.processed || 0), 0),
     [hourly],
@@ -398,9 +150,6 @@ function QueueThroughputPanel({ throughput }) {
   if (!throughput) return null
 
   const lastHour = hourly[hourly.length - 1] || null
-
-  const barAreaH = 64
-  const barBaseY = CHART_H - 20
 
   return (
     <div className="rounded-3xl border border-stone-light bg-white-warm p-6 shadow-sm">
@@ -441,35 +190,12 @@ function QueueThroughputPanel({ throughput }) {
 
       {hourly.length > 0 && hourlyMax > 0 && (
         <div className="mt-5">
-          <svg
-            viewBox={`0 0 ${CHART_W} ${CHART_H}`}
-            className="h-24 w-full"
-            role="img"
-            aria-label="Scans processed per hour over the last 12 hours"
-            preserveAspectRatio="none"
-          >
-            {hourly.map((p, i) => {
-              const slotW = (CHART_W - PAD.left - PAD.right) / hourly.length
-              const barW = slotW * 0.64
-              const barH = ((p.processed || 0) / hourlyMax) * barAreaH
-              return (
-                <rect
-                  key={p.hour}
-                  x={PAD.left + slotW * i + (slotW - barW) / 2}
-                  y={barBaseY - barH}
-                  width={barW}
-                  height={barH}
-                  rx="2"
-                  fill={i === hourly.length - 1 ? '#1f2937' : '#c7c3b8'}
-                />
-              )
-            })}
-          </svg>
-          <div className="mt-1 flex justify-between font-mono text-[10px] text-charcoal-light/70">
-            <span>{formatHourShort(hourly[0].hour)}</span>
-            <span>{formatHourShort(hourly[Math.floor(hourly.length / 2)].hour)}</span>
-            <span>{formatHourShort(lastHour.hour)}</span>
-          </div>
+          {/* Shared HourlyBarChart primitive — bars, hover readout/guide,
+              hit cells, and axis labels all live in the ui kit now */}
+          <HourlyBarChart
+            points={hourly}
+            ariaLabel="Scans processed per hour over the last 12 hours"
+          />
         </div>
       )}
 
@@ -490,23 +216,23 @@ function QueueThroughputPanel({ throughput }) {
 // ---------------------------------------------------------------------------
 
 const TOP_ORG_COLUMNS = [
-  { key: 'name', label: 'Organization', sortable: true },
-  { key: 'member_count', label: 'Members', sortable: true },
+  { key: 'name', header: 'Organization', sortable: true },
+  { key: 'member_count', header: 'Members', sortable: true },
   {
     key: 'scan_count',
-    label: 'Scans',
+    header: 'Scans',
     sortable: true,
     render: (row) => row.scan_count.toLocaleString(),
   },
   {
     key: 'completion_rate',
-    label: 'Completion',
+    header: 'Completion',
     sortable: true,
     render: (row) => formatPct(row.completion_rate, 0),
   },
   {
     key: 'storage_used_gb',
-    label: 'Storage',
+    header: 'Storage',
     sortable: true,
     render: (row) => formatStorageGb(row.storage_used_gb),
   },
@@ -521,7 +247,28 @@ export default function AnalyticsPage() {
   const { toast } = useToast()
   const demoState = useDemoState()
 
-  const { data: rawAnalytics, loading, error, refetch } = useMockData(getAnalytics)
+  // URL-backed (?team=) like the workspace surfaces. The team filter drives a
+  // real query: getAnalytics forwards ?team= to the backend (or the mock
+  // recomputes the top-org split from the ledger), so the top-orgs table and
+  // chip counts reflect that team's actual usage instead of a client-side
+  // mock join.
+  const [teamFilter, setTeamFilter] = useTeamFilterParam()
+
+  const { data: rawAnalytics, loading, error, refetch } = useMockData(
+    getAnalytics,
+    teamFilter !== 'all' ? { team: teamFilter } : null,
+  )
+
+  // Refetch when the team filter changes — useMockData reads its params from a
+  // ref at call time, so switching teams needs an explicit reload (skipped on
+  // first mount, where the hook already fires its initial load).
+  const prevTeamRef = useRef(teamFilter)
+  useEffect(() => {
+    if (prevTeamRef.current !== teamFilter) {
+      prevTeamRef.current = teamFilter
+      refetch()
+    }
+  }, [teamFilter, refetch])
 
   // ── Demo-state forcing (dev-only, ?state=loading|empty|error) ─────────────
   const analytics = useMemo(() => {
@@ -542,10 +289,6 @@ export default function AnalyticsPage() {
 
   const mediaTotal = useMemo(
     () => mediaEntries.reduce((sum, entry) => sum + entry.count, 0),
-    [mediaEntries],
-  )
-  const mediaMax = useMemo(
-    () => mediaEntries.reduce((max, entry) => Math.max(max, entry.count), 0),
     [mediaEntries],
   )
 
@@ -596,81 +339,23 @@ export default function AnalyticsPage() {
     ? { direction: trendDeltas.completion >= 0 ? 'up' : 'down', value: `${Math.abs(trendDeltas.completion)}%` }
     : null
 
-  // ── Top-org sort state ──────────────────────────────────────────────────────
-  // ── Team scoping (top-orgs panel) ────────────────────────────────────────
-  // URL-backed (?team=) like the workspace surfaces. When a team is active the
-  // top-orgs table recomputes from the scan ledger: scans carry team_id, and
-  // each scan's user resolves to an org via the user registry, so the org
-  // rows show that team's actual usage split.
-  const [teamFilter, setTeamFilter] = useTeamFilterParam()
-
+  // ── Team filter chips ──────────────────────────────────────────────────────
+  // Counts come from the analytics payload's team_breakdown (real scans in
+  // real mode, ledger-derived in mock mode) so the chips reflect live volume.
   const teamCounts = useMemo(() => {
     const counts = {}
-    for (const scan of mockScans) {
-      if (scan.team_id) counts[scan.team_id] = (counts[scan.team_id] || 0) + 1
+    for (const entry of analytics?.team_breakdown || []) {
+      if (entry.team_id) counts[entry.team_id] = entry.scans
     }
     return counts
-  }, [])
+  }, [analytics])
 
-  const userOrgByTeam = useMemo(() => {
-    const orgByUser = new Map(mockUsers.map((u) => [u.id, u.org_id]))
-    const byTeam = {}
-    for (const scan of mockScans) {
-      if (!scan.team_id) continue
-      const orgId = orgByUser.get(scan.user_id)
-      if (!orgId) continue
-      const key = `${scan.team_id}::${orgId}`
-      const entry = (byTeam[key] ||= { scans: 0, completed: 0 })
-      entry.scans += 1
-      if (scan.status === 'completed') entry.completed += 1
-    }
-    return byTeam
-  }, [])
-
-  const teamScopedTopOrgs = useMemo(() => {
-    if (teamFilter === 'all') return null
-    const orgNameById = new Map(mockOrganizations.map((o) => [o.id, o.name]))
-    const storageByOrg = new Map(
-      mockOrganizations.map((o) => [o.id, { member_count: o.member_count, storage_used_gb: o.storage_used_gb }]),
-    )
-    const prefix = `${teamFilter}::`
-    return Object.entries(userOrgByTeam)
-      .filter(([key]) => key.startsWith(prefix))
-      .map(([key, stats]) => {
-        const orgId = key.slice(prefix.length)
-        const meta = storageByOrg.get(orgId) || { member_count: 0, storage_used_gb: 0 }
-        return {
-          id: orgId,
-          name: orgNameById.get(orgId) || orgId,
-          member_count: meta.member_count,
-          scan_count: stats.scans,
-          storage_used_gb: meta.storage_used_gb,
-          completion_rate: stats.scans > 0 ? stats.completed / stats.scans : 0,
-        }
-      })
-      .sort((a, b) => b.scan_count - a.scan_count)
-  }, [teamFilter, userOrgByTeam])
-
-  const [orgSort, setOrgSort] = useState({ key: null, dir: 'asc' })
-
-  const sortedTopOrgs = useMemo(() => {
-    const source = teamScopedTopOrgs || topOrgs
-    if (!orgSort.key) return source
-
-    return [...source].sort((a, b) => {
-      const aVal = a[orgSort.key]
-      const bVal = b[orgSort.key]
-      const comparison =
-        typeof aVal === 'string' && typeof bVal === 'string'
-          ? aVal.localeCompare(bVal)
-          : (Number(aVal) || 0) - (Number(bVal) || 0)
-      return orgSort.dir === 'asc' ? comparison : -comparison
-    })
-  }, [teamScopedTopOrgs, topOrgs, orgSort])
-
-  const handleOrgSort = useCallback((key, dir) => {
-    setOrgSort({ key, dir })
-  }, [])
+  // Sorting is handled by the DataTable primitive itself (per-column
+  // sortable + internal sort state), so the top-orgs rows are passed
+  // through in their natural order and the table owns the sort UI. When a
+  // team is active, top_organizations is already scoped server-side (or by
+  // the mock), so the page renders it directly.
+  const topOrgRows = topOrgs
 
   const isEmpty =
     demoState === 'empty' ||
@@ -730,12 +415,12 @@ export default function AnalyticsPage() {
           <div className="mt-3 h-8 w-72 max-w-full rounded bg-stone-light/50" />
           <div className="mt-3 h-3 w-96 max-w-full rounded bg-stone-light/40" />
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {Array.from({ length: 5 }).map((_, i) => (
             <StatCardSkeleton key={i} />
           ))}
         </div>
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <ChartSkeleton />
           </div>
@@ -809,7 +494,7 @@ export default function AnalyticsPage() {
       />
 
       {/* ── KPI row ────────────────────────────────────────────────────────── */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <StatCard
           size="sm"
           tone="info"
@@ -851,7 +536,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* ── Trend + rates ──────────────────────────────────────────────────── */}
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <TrendChart
             data={trend}
@@ -888,61 +573,39 @@ export default function AnalyticsPage() {
       </div>
 
       {/* ── Verdict mix + queue throughput ─────────────────────────────────── */}
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          {verdictTrend.length === 0 ? (
-            <div className="rounded-3xl border border-stone-light bg-white-warm p-8 text-center shadow-sm">
-              <p className="font-serif text-lg text-charcoal">No verdict data in range</p>
-              <p className="mt-1 text-sm text-charcoal-mid">
-                Completed scans will split by verdict here as they land.
-              </p>
-            </div>
-          ) : (
-            <VerdictVolumeChart trend={verdictTrend} />
-          )}
+          <StackedBarChart
+            data={verdictTrend}
+            segments={VERDICT_CHART_SEGMENTS}
+            title="Scan volume by verdict"
+            ariaLabel="Daily scan volume split by verdict over the last 14 days"
+            emptyTitle="No verdict data in range"
+            emptyDescription="Completed scans will split by verdict here as they land."
+          />
         </div>
         <QueueThroughputPanel throughput={queueThroughput} />
       </div>
 
       {/* ── Media mix + top orgs ───────────────────────────────────────────── */}
-      {/* min-w-0 lets the AdminTable scroll internally instead of stretching the grid track */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="min-w-0 rounded-3xl border border-stone-light bg-white-warm p-6 shadow-sm">
-          <div className="mb-6 flex items-end justify-between gap-3">
-            <div>
-              <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-charcoal-light">
-                Media-type distribution
-              </p>
-              <p className="mt-1 text-sm text-charcoal-mid">
-                {mediaTotal.toLocaleString()} total uploads in range
-              </p>
-            </div>
-            <span className="rounded-full bg-stone-light/50 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.16em] text-charcoal-mid">
-              {mediaEntries.length} types
-            </span>
-          </div>
-
-          {mediaEntries.length === 0 ? (
-            <p className="py-8 text-center text-sm text-charcoal-mid">No media types recorded yet.</p>
-          ) : (
-            <div className="space-y-3">
-              {mediaEntries.map((entry) => (
-                <div
-                  key={entry.mimeType}
-                  className="flex items-center gap-3 text-charcoal"
-                  style={{ color: MEDIA_COLORS[entry.mimeType] || '#1f2937' }}
-                >
-                  <MediaTypeBar
-                    mimeType={entry.mimeType}
-                    count={entry.count}
-                    total={mediaTotal}
-                    max={mediaMax}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+      {/* min-w-0 lets the DataTable scroll internally instead of stretching the grid track */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <DonutChart
+          segments={mediaEntries.map((entry) => ({
+            key: entry.mimeType,
+            label: MEDIA_LABELS[entry.mimeType] || entry.mimeType,
+            value: entry.count,
+            color: MEDIA_HEX[entry.mimeType] || '#1f2937',
+          }))}
+          title="Media-type distribution"
+          description={`${mediaTotal.toLocaleString()} total uploads in range`}
+          badge={`${mediaEntries.length} types`}
+          ariaLabel="Media-type distribution by upload count"
+          centerHint="uploads"
+          emptyTitle="No media types recorded yet"
+          emptyDescription="Uploads will be broken down by media type here as they land."
+          className="min-w-0"
+        />
 
         <div className="min-w-0 space-y-0">
           <div className="mb-3 flex items-center justify-between px-1">
@@ -956,22 +619,18 @@ export default function AnalyticsPage() {
             </span>
           </div>
           <TeamFilter counts={teamCounts} value={teamFilter} onChange={setTeamFilter} label="Team" />
-          {teamFilter !== 'all' && teamScopedTopOrgs.length === 0 && (
+          {teamFilter !== 'all' && topOrgs.length === 0 && (
             <p className="mt-3 rounded-xl border border-stone-light bg-white-warm px-4 py-3 text-xs text-charcoal-mid">
               No organization usage recorded for the {getTeamMeta(teamFilter).name} team yet.
             </p>
           )}
           <div className="mt-3">
-            <AdminTable
+            <DataTable
               columns={TOP_ORG_COLUMNS}
-              data={sortedTopOrgs}
-              loading={false}
-              onSort={handleOrgSort}
-              page={1}
-              pageSize={sortedTopOrgs.length || 10}
-              total={sortedTopOrgs.length}
-              emptyMessage="No organization usage recorded yet."
-              filteredEmptyMessage="No organizations match your search."
+              rows={topOrgRows}
+              keyField="id"
+              emptyTitle="No organization usage recorded yet."
+              emptyDescription="Organizations appear here as scans flow through the platform."
             />
           </div>
         </div>

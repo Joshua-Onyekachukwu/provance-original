@@ -88,7 +88,7 @@ export default function PricingPage() {
       {/* ── Pricing Tiers ── */}
       <section className="section-padding bg-parchment-light relative overflow-hidden">
         <div className="content-container">
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 max-w-6xl mx-auto">
             {tiers.map((tier, i) => (
               <motion.div
                 key={tier.name}

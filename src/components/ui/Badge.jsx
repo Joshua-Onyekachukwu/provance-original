@@ -6,11 +6,16 @@ const TONES = {
   danger: 'bg-rose-50 text-rose-700 border-rose-200/70',
 }
 
+// The status dot is the tone's color accent, so the verdict-mapped tones
+// reference the palette CSS vars (VERDICT_PALETTE / applyVerdictPalette in
+// scanPresentation.js) — the dot matches the exact chart hex, not a
+// re-declared Tailwind shade. The pastel chip bg/border/text stay on the
+// Tailwind scale for readable contrast on tiny text.
 const DOT_COLORS = {
   neutral: 'bg-charcoal-light',
-  success: 'bg-emerald-500',
-  info: 'bg-sky-500',
-  warning: 'bg-amber-500',
+  success: 'bg-(--color-tone-success)',
+  info: 'bg-(--color-tone-info)',
+  warning: 'bg-(--color-tone-warning)',
   danger: 'bg-rose-500',
 }
 

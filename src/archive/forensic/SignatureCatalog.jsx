@@ -115,7 +115,7 @@ const SignatureCatalog = () => {
         <span className="text-[10px] font-mono text-charcoal-light uppercase tracking-widest bg-stone-light/30 px-2 py-1 rounded">Forensic Catalog v1.1</span>
       </div>
       
-      <div className="grid sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <SignatureCard 
           name="Sora" 
           version="OpenAI-DiT" 

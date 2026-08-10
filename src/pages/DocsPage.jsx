@@ -27,7 +27,7 @@ export default function DocsPage() {
               </motion.h2>
             </motion.div>
 
-            <div className="grid md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {[
                 { title: 'Register Interest', desc: 'Share your API use case, expected volume, and integration environment through the waitlist or contact flow.', icon: '01' },
                 { title: 'Map The Workflow', desc: 'Plan around authenticated submission, status tracking, and structured result retrieval.', icon: '02' },
@@ -167,7 +167,7 @@ export default function DocsPage() {
               </motion.p>
             </motion.div>
 
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {[
                 {
                   title: 'Configurable Callbacks',

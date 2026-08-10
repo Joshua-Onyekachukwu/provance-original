@@ -19,7 +19,7 @@ const TransparencyFooter = ({ methodology, reportId, hash, node, c2paStatus = 'm
         </div>
         <div className="hidden lg:flex items-center gap-2">
           <span className="text-charcoal-light uppercase">SHA256:</span>
-          <span className="text-parchment/40 select-all truncate max-w-[150px]">{hash || '7f83b1c2a4e5d6f7890123456789abcdef0123456789abcdef'}</span>
+          <span className="text-parchment/40 select-all truncate max-w-[150px]">{hash || 'UNAVAILABLE'}</span>
         </div>
       </div>
       

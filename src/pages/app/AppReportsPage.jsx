@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { useTeamFilterParam } from '../../lib/useTeamFilterParam.js'
+import { useTeamScoping } from '../../lib/useTeamScoping.js'
 import { Button, EmptyState, Skeleton, useRegisterCommands, useToast } from '../../components/ui'
 import ScanStatusBadge from '../../components/app/ScanStatusBadge.jsx'
 import TeamBadge from '../../components/app/TeamBadge.jsx'
@@ -10,8 +10,12 @@ import {
   formatPct,
   formatScanTimestamp,
   getVerdictLabel,
+  hasActiveScanWork,
+  scanNeedsPolling,
 } from '../../components/app/scanPresentation.js'
-import { getScan, listScans } from '../../lib/api.js'
+import { getScan, listScans, USE_MOCK } from '../../lib/api.js'
+import { downloadReportPdf } from '../../lib/reportPdfDownload.js'
+import { useDemoState, withDemoOverride } from '../../lib/useDemoState.js'
 import { useResource } from '../../lib/useResource.js'
 
 function ReportMetaItem({ label, value }) {
@@ -63,15 +67,37 @@ export default function AppReportsPage() {
   const navigate = useNavigate()
   const toast = useToast()
 
-  const [teamFilter, setTeamFilter] = useTeamFilterParam()
-
-  const scans = useResource(() =>
-    listScans({ pageSize: 100 }).then((r) => r?.data || r?.scans || []),
+  // The list is the page's primary data surface — ?state= forcing covers its
+  // loading / empty / error branches. The detail pane keeps its own
+  // per-scan loading / error rendering.
+  const demoState = useDemoState()
+  // Live status polling: the list and the open detail both refresh every 5s
+  // while work is in flight (queued / processing), so a report that is still
+  // processing flips to completed live without a reload — same pattern as the
+  // dashboard. Polling idles once the queue drains.
+  const scans = withDemoOverride(
+    useResource(
+      () => listScans({ pageSize: 100 }).then((r) => r?.data || r?.scans || []),
+      [],
+      {
+        pollMs: 5000,
+        pollWhen: (state) => hasActiveScanWork(state.data),
+      },
+    ),
+    demoState,
+    { emptyData: [] },
   )
   const detail = useResource(
     () => (scanId ? getScan(scanId).then((r) => r?.scan || r) : Promise.resolve(null)),
     [scanId],
+    {
+      pollMs: 5000,
+      pollWhen: (state) => scanNeedsPolling(state.data?.scan || state.data),
+    },
   )
+
+  // Team scoping — shared with the dashboard/history/queue via ?team=.
+  const { teamFilter, setTeamFilter, teamCounts, filteredScans } = useTeamScoping({ scans })
 
   const summary = useMemo(() => {
     const list = scans.data || []
@@ -83,24 +109,40 @@ export default function AppReportsPage() {
     }
   }, [scans.data])
 
-  const teamCounts = useMemo(() => {
-    const counts = {}
-    for (const scan of scans.data || []) {
-      if (scan.team_id) counts[scan.team_id] = (counts[scan.team_id] || 0) + 1
-    }
-    return counts
-  }, [scans.data])
-  const filteredList = useMemo(
-    () =>
-      teamFilter === 'all'
-        ? scans.data || []
-        : (scans.data || []).filter((scan) => scan.team_id === teamFilter),
-    [scans.data, teamFilter],
-  )
 
   const selectedScan = detail.status === 'ready' ? detail.data : null
   const selectedVerdict = selectedScan?.result_payload?.verdict
   const selectedSignals = selectedScan?.result_payload?.signals || []
+
+  // Export PDF action. Mock mode keeps the printable view + browser print
+  // dialog; real mode downloads the server-generated PDF (GET /reports/:id/pdf)
+  // directly, so the report never has to go through the print dialog.
+  function handleExportPdf(scanId) {
+    if (USE_MOCK) {
+      navigate(`/app/reports/${scanId}/print`)
+      toast.info('Preparing PDF export', {
+        description:
+          "Opening the printable report — choose 'Save as PDF' from the print dialog to download.",
+        duration: 8000,
+      })
+      return
+    }
+
+    downloadReportPdf(scanId)
+      .then(({ filename }) =>
+        toast.success('PDF downloaded', {
+          description: `${filename} saved to your downloads.`,
+          duration: 6000,
+        }),
+      )
+      .catch(() =>
+        toast.error('PDF export failed', {
+          description:
+            'The server could not generate the PDF. Please try again.',
+          duration: 6000,
+        }),
+      )
+  }
 
   useRegisterCommands(
     [
@@ -130,14 +172,7 @@ export default function AppReportsPage() {
               label: 'Export current report as PDF',
               hint: 'Printable report view',
               keywords: ['reports', 'export', 'pdf', 'print', 'download'],
-              onSelect: () => {
-                navigate(`/app/reports/${selectedScan.id}/print`)
-                toast.info('Preparing PDF export', {
-                  description:
-                    "Opening the printable report — choose 'Save as PDF' from the print dialog to download.",
-                  duration: 8000,
-                })
-              },
+              onSelect: () => handleExportPdf(selectedScan.id),
             },
           ]
         : []),
@@ -166,7 +201,7 @@ export default function AppReportsPage() {
         </div>
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[0.9fr_1.1fr]">
         <section className="rounded-3xl border border-stone-light bg-white-warm p-6 shadow-sm">
           <div className="flex items-center justify-between gap-4">
             <div>
@@ -228,7 +263,7 @@ export default function AppReportsPage() {
             </div>
           )}
 
-          {scans.status === 'ready' && scans.data.length > 0 && filteredList.length === 0 && (
+          {scans.status === 'ready' && scans.data.length > 0 && filteredScans.length === 0 && (
             <div className="mt-6">
               <EmptyState
                 variant="empty"
@@ -239,9 +274,9 @@ export default function AppReportsPage() {
             </div>
           )}
 
-          {scans.status === 'ready' && scans.data.length > 0 && filteredList.length > 0 && (
+          {scans.status === 'ready' && scans.data.length > 0 && filteredScans.length > 0 && (
             <div className="mt-6 space-y-4">
-              {filteredList.map((scan) => {
+              {filteredScans.map((scan) => {
                 const isActive = scan.id === scanId
 
                 return (
@@ -337,16 +372,12 @@ export default function AppReportsPage() {
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                   <Button
-                    to={`/app/reports/${selectedScan.id}/print`}
+                    {...(USE_MOCK
+                      ? { to: `/app/reports/${selectedScan.id}/print` }
+                      : {})}
                     variant="primary"
                     iconLeft={<DownloadIcon />}
-                    onClick={() =>
-                      toast.info('Preparing PDF export', {
-                        description:
-                          "Opening the printable report — choose 'Save as PDF' from the print dialog to download.",
-                        duration: 8000,
-                      })
-                    }
+                    onClick={() => handleExportPdf(selectedScan.id)}
                   >
                     Export PDF
                   </Button>
@@ -366,6 +397,41 @@ export default function AppReportsPage() {
                   value={`${formatFileSize(selectedScan.file_size_bytes)}. ${selectedScan.mime_type}`}
                 />
               </div>
+              {selectedScan.result_payload?.deduplicated_from && (
+                <div className="mt-6 rounded-2xl border border-sky-200 bg-sky-50/60 px-4 py-3.5">
+                  <p className="flex items-center gap-2 text-sm font-medium text-charcoal">
+                    <svg
+                      className="h-4 w-4 shrink-0 text-sky-600"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth="1.8"
+                      stroke="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
+                      />
+                    </svg>
+                    Reused from a prior verification
+                  </p>
+                  <p className="mt-1.5 text-xs leading-relaxed text-charcoal-mid">
+                    This file is byte-identical to an earlier upload — the evidence payload from scan{' '}
+                    <span className="font-mono font-medium text-charcoal">
+                      {selectedScan.result_payload.deduplicated_from.source_scan_id}
+                    </span>{' '}
+                    (report{' '}
+                    <span className="font-mono font-medium text-charcoal">
+                      {selectedScan.result_payload.deduplicated_from.source_report_id || '—'}
+                    </span>
+                    ) was reused instead of reprocessing the media.{' '}
+                    {selectedScan.result_payload.deduplicated_from.reused_at
+                      ? `Reused at ${formatScanTimestamp(selectedScan.result_payload.deduplicated_from.reused_at)}.`
+                      : ''}
+                  </p>
+                </div>
+              )}
               {selectedScan.asset_preview_url && (
                 <div className="mt-6 rounded-2xl border border-stone-light bg-parchment p-4">
                   <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">
@@ -423,7 +489,12 @@ export default function AppReportsPage() {
                 <div className="mt-5 space-y-4">
                   {selectedSignals.map((signal) => (
                     <div
-                      key={signal.signal_id}
+                      key={
+                        signal.signal_id ||
+                        signal.model ||
+                        signal.label ||
+                        signal.signal_category
+                      }
                       className="rounded-2xl border border-stone-light bg-parchment px-4 py-4"
                     >
                       <div className="flex flex-wrap items-center justify-between gap-3">

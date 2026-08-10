@@ -15,6 +15,7 @@ import {
   regenerateApiKey,
   revokeApiKey,
 } from '../../lib/api.js'
+import { copyText } from '../../lib/clipboard.js'
 import { useDemoState, withDemoOverride } from '../../lib/useDemoState.js'
 import { useResource } from '../../lib/useResource.js'
 
@@ -196,7 +197,7 @@ export default function AppApiKeysPage() {
       </section>
 
       {/* ── 1. Summary stats ────────────────────────────────────────────── */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
           <div key={stat.label} className="rounded-3xl border border-stone-light bg-white-warm p-5 shadow-sm">
             <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-charcoal-light">
@@ -220,22 +221,12 @@ export default function AppApiKeysPage() {
               iconLeft={<CopyIcon />}
               onClick={async () => {
                 if (!revealedToken.token) return
-                try {
-                  await navigator.clipboard.writeText(revealedToken.token)
-                  toast.success('Token copied to clipboard')
-                } catch {
-                  // Clipboard unavailable (non-secure context, permissions) —
-                  // fall back to selecting the token so the user can copy it.
-                  const code = document.querySelector('[data-token-code]')
-                  if (code) {
-                    const range = document.createRange()
-                    range.selectNodeContents(code)
-                    const selection = window.getSelection()
-                    selection?.removeAllRanges()
-                    selection?.addRange(range)
-                  }
-                  toast.info('Select the token text to copy it manually')
-                }
+                // Shared clipboard helper: Clipboard API with a hidden-textarea
+                // fallback for non-secure contexts (better than asking the user
+                // to select the token manually).
+                const ok = await copyText(revealedToken.token)
+                if (ok) toast.success('Token copied to clipboard')
+                else toast.error('Could not copy the token')
               }}
             >
               Copy
@@ -375,7 +366,7 @@ export default function AppApiKeysPage() {
         loadingRows={2}
       >
         {!loading && !failed && limits && (
-          <div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[0.8fr_1.2fr]">
             <div className="space-y-4">
               <div className="rounded-2xl border border-stone-light bg-parchment px-4 py-4">
                 <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">

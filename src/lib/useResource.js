@@ -24,16 +24,45 @@
  * Note: deps go straight into the effect dependency array, so pass only
  * stable/primitive values (strings, numbers, booleans). An inline object or
  * array literal would change identity every render and trigger refetch loops.
+ *
+ * Polling — pass a third `options` argument to turn the resource into a live
+ * surface:
+ *
+ *   useResource(loader, [], { pollMs: 5000, pollWhen: (state) => busy(state.data) })
+ *
+ * - `pollMs` (> 0): silent background refresh interval. Unlike reload(), a
+ *   poll never flashes the loading state — it swaps in fresh data in place,
+ *   and keeps the last-known-good data (status stays 'ready') if a poll
+ *   fails, so a transient network blip can't blank a live panel.
+ * - `pollWhen` (optional): a predicate over the current resource state. When
+ *   it returns false the poll loop idles, so surfaces can stop polling once
+ *   the work they track finishes (e.g. only poll while scans are queued or
+ *   processing). Defaults to always-on when pollMs is set.
+ * - Polls are skipped while one is already in flight, and the loop pauses
+ *   while the tab is hidden (a visibilitychange tick catches up on return).
+ *
+ * Note: the gate evaluates the resource's internal state, so dev-only demo
+ * forcing (?state=empty|error via withDemoOverride) does not idle the polls
+ * — they continue underneath while the forced display wins. Inert in
+ * production builds, where ?state= is not read.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-export function useResource(loader, deps = []) {
+export function useResource(loader, deps = [], options = {}) {
   const loaderRef = useRef(loader)
   loaderRef.current = loader
 
   const [state, setState] = useState({ status: 'loading', data: null, error: '' })
   const [attempt, setAttempt] = useState(0)
+
+  // Refs keep the poll loop on the latest loader / gate / state without
+  // restarting the interval every render.
+  const stateRef = useRef(state)
+  stateRef.current = state
+  const pollWhenRef = useRef(options.pollWhen)
+  pollWhenRef.current = options.pollWhen
+  const pollMs = options.pollMs || 0
 
   useEffect(() => {
     let cancelled = false
@@ -59,6 +88,61 @@ export function useResource(loader, deps = []) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attempt, ...deps])
+
+  // ── Silent background polling ────────────────────────────────────────────
+  // Restarts alongside the core effect (attempt/deps), so a manual reload
+  // also re-syncs the poll cadence.
+  useEffect(() => {
+    if (!pollMs || pollMs <= 0) return undefined
+
+    let cancelled = false
+    let inFlight = false
+
+    const tick = async () => {
+      if (cancelled || inFlight) return
+      inFlight = true
+      try {
+        // Gate checked inside the try so a throwing predicate is caught (and
+        // logged) instead of surfacing as an unhandled rejection.
+        const gate = pollWhenRef.current
+        if (gate && !gate(stateRef.current)) return
+
+        const data = await loaderRef.current()
+        if (!cancelled) {
+          setState((prev) =>
+            // Never clobber an in-progress manual load with a poll result.
+            prev.status === 'loading' ? prev : { status: 'ready', data, error: '' },
+          )
+        }
+      } catch (error) {
+        // Keep the last-known-good data — a transient poll failure should not
+        // flip a live panel to its error state.
+        if (!cancelled && import.meta.env.DEV) {
+          // eslint-disable-next-line no-console
+          console.warn(
+            '[useResource] background poll failed; keeping last-known-good data:',
+            error?.message || error,
+          )
+        }
+      } finally {
+        inFlight = false
+      }
+    }
+
+    const interval = window.setInterval(tick, pollMs)
+    // Catch up immediately when the tab becomes visible again.
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') tick()
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+
+    return () => {
+      cancelled = true
+      window.clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pollMs, attempt, ...deps])
 
   const reload = useCallback(() => setAttempt((n) => n + 1), [])
   return { ...state, reload }

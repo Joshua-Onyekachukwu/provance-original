@@ -2,9 +2,13 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Badge, Button, Card, EmptyState, useRegisterCommands } from '../../components/ui/index.js'
 import AdminPageHeader from '../../components/admin/AdminPageHeader.jsx'
+import TeamBadge from '../../components/app/TeamBadge.jsx'
+import TeamFilter from '../../components/app/TeamFilter.jsx'
 import { formatDateTime, getTeamMeta, getVerdictMeta } from '../../components/app/scanPresentation.js'
 import { getAdminReports } from '../../lib/api.js'
+import { mockOrganizations } from '../../lib/mockData.js'
 import { useDemoState } from '../../lib/useDemoState.js'
+import { useTeamFilterParam } from '../../lib/useTeamFilterParam.js'
 import useMockData from '../../lib/useMockData.js'
 
 // ---------------------------------------------------------------------------
@@ -26,6 +30,14 @@ function signalTone(finding) {
 // ---------------------------------------------------------------------------
 // Report detail drawer content
 // ---------------------------------------------------------------------------
+
+function orgNameById(report) {
+  // Real mode carries the resolved org name in the payload (org_name); mock
+  // mode falls back to the org registry so both modes render honestly.
+  if (report.org_name) return report.org_name
+  const org = mockOrganizations.find((o) => o.id === report.org_id)
+  return org ? org.name : 'Unknown'
+}
 
 function ReportDetail({ report }) {
   const verdict = getVerdictMeta(report)
@@ -53,7 +65,7 @@ function ReportDetail({ report }) {
         </div>
       </div>
 
-      <dl className="grid gap-x-8 gap-y-3 text-sm sm:grid-cols-2">
+      <dl className="grid grid-cols-1 gap-x-8 gap-y-3 text-sm sm:grid-cols-2">
         <div>
           <dt className="text-[11px] uppercase tracking-[0.18em] text-charcoal-light">Report</dt>
           <dd className="mt-1 font-mono text-xs text-charcoal">{report.report_id}</dd>
@@ -65,6 +77,10 @@ function ReportDetail({ report }) {
         <div>
           <dt className="text-[11px] uppercase tracking-[0.18em] text-charcoal-light">Team</dt>
           <dd className="mt-1 text-charcoal">{team.name}</dd>
+        </div>
+        <div>
+          <dt className="text-[11px] uppercase tracking-[0.18em] text-charcoal-light">Organization</dt>
+          <dd className="mt-1 text-charcoal">{orgNameById(report)}</dd>
         </div>
         <div>
           <dt className="text-[11px] uppercase tracking-[0.18em] text-charcoal-light">Generated</dt>
@@ -120,7 +136,13 @@ export default function ReportsPage() {
   const navigate = useNavigate()
   const demoState = useDemoState()
 
-  const { data: rawData, loading, error, refetch } = useMockData(getAdminReports, {})
+  // Fetch the full ledger once (pageSize 200, matching UsersPage) so the
+  // client-side team/verdict filters + pagination see every report, not just
+  // the first API page.
+  const { data: rawData, loading, error, refetch } = useMockData(getAdminReports, {
+    page: 1,
+    pageSize: 200,
+  })
   const EMPTY_REPORTS = useMemo(() => ({ data: [], total: 0 }), [])
   const data = demoState === 'empty' ? EMPTY_REPORTS : rawData
 
@@ -133,6 +155,10 @@ export default function ReportsPage() {
   const [page, setPage] = useState(1)
   const [selectedReport, setSelectedReport] = useState(null)
 
+  // URL-backed (?team=) team scoping, same pattern as the workspace surfaces
+  // and the admin Users/Organizations/Analytics views.
+  const [teamFilter, setTeamFilter] = useTeamFilterParam()
+
   const verdictCounts = useMemo(() => {
     const counts = { authentic: 0, suspicious: 0, inconclusive: 0 }
     reports.forEach((report) => {
@@ -141,9 +167,19 @@ export default function ReportsPage() {
     return counts
   }, [reports])
 
+  // Per-team report counts for the TeamFilter chips (full feed, not scoped).
+  const teamCounts = useMemo(() => {
+    const counts = {}
+    for (const report of reports) {
+      if (report.team_id) counts[report.team_id] = (counts[report.team_id] || 0) + 1
+    }
+    return counts
+  }, [reports])
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     return reports.filter((report) => {
+      if (teamFilter !== 'all' && report.team_id !== teamFilter) return false
       if (verdict !== 'all' && report.verdict !== verdict) return false
       if (!q) return true
       return (
@@ -151,9 +187,9 @@ export default function ReportsPage() {
         (report.scan_id || '').toLowerCase().includes(q)
       )
     })
-  }, [reports, verdict, query])
+  }, [reports, verdict, query, teamFilter])
 
-  const hasActiveFilters = verdict !== 'all' || query.trim() !== ''
+  const hasActiveFilters = verdict !== 'all' || query.trim() !== '' || teamFilter !== 'all'
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const safePage = Math.min(page, pageCount)
   const visible = useMemo(
@@ -168,6 +204,7 @@ export default function ReportsPage() {
   function clearFilters() {
     setVerdict('all')
     setQuery('')
+    setTeamFilter('all')
     resetPage()
   }
 
@@ -219,6 +256,9 @@ export default function ReportsPage() {
           { label: `${verdictCounts.authentic || 0} authentic` },
           { label: `${verdictCounts.suspicious || 0} suspicious` },
           { label: `${verdictCounts.inconclusive || 0} inconclusive` },
+          ...(teamFilter !== 'all'
+            ? [{ label: `${getTeamMeta(teamFilter).name} scoped` }]
+            : []),
         ]}
       />
 
@@ -234,6 +274,10 @@ export default function ReportsPage() {
         {!isLoading && !hasError && (
           <>
             <div className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <TeamFilter counts={teamCounts} value={teamFilter} onChange={setTeamFilter} label="Team" />
+              </div>
+
               <div className="flex flex-wrap items-center gap-2">
                 <span className="mr-1 text-[11px] font-medium uppercase tracking-[0.14em] text-charcoal-light">
                   Verdict
@@ -328,6 +372,9 @@ export default function ReportsPage() {
                         Team
                       </th>
                       <th className="px-4 py-3 text-left font-mono text-[11px] font-medium uppercase tracking-[0.16em] text-charcoal-light">
+                        Organization
+                      </th>
+                      <th className="px-4 py-3 text-left font-mono text-[11px] font-medium uppercase tracking-[0.16em] text-charcoal-light">
                         Generated
                       </th>
                       <th className="px-4 py-3 text-right font-mono text-[11px] font-medium uppercase tracking-[0.16em] text-charcoal-light">
@@ -338,7 +385,6 @@ export default function ReportsPage() {
                   <tbody className="divide-y divide-stone-light/70">
                     {visible.map((report) => {
                       const verdictMeta = getVerdictMeta(report)
-                      const team = getTeamMeta(report.team_id)
                       return (
                         <tr
                           key={report.id}
@@ -372,9 +418,12 @@ export default function ReportsPage() {
                             </span>
                           </td>
                           <td className="px-4 py-3.5 align-middle">
-                            <Badge tone={team.tone} size="sm">
-                              {team.short}
-                            </Badge>
+                            <TeamBadge teamId={report.team_id} />
+                          </td>
+                          <td className="px-4 py-3.5 align-middle">
+                            <span className="text-xs text-charcoal-mid">
+                              {orgNameById(report)}
+                            </span>
                           </td>
                           <td className="px-4 py-3.5 align-middle">
                             <time dateTime={report.created_at} className="text-xs text-charcoal-light tabular-nums">

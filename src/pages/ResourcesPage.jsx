@@ -92,7 +92,7 @@ export default function ResourcesPage() {
             </h2>
           </div>
 
-          <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.1fr_0.9fr]">
             <Link
               to={featuredResources[0].href}
               className="surface-card group relative overflow-hidden p-0 transition hover:-translate-y-1"
@@ -134,7 +134,7 @@ export default function ResourcesPage() {
             </h2>
           </div>
 
-          <div className="grid gap-5 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
             {knowledgeAreas.map((area) => (
               <div key={area.title} className="surface-card-dark p-6">
                 <h3 className="font-serif text-xl text-parchment">{area.title}</h3>
@@ -199,7 +199,7 @@ export default function ResourcesPage() {
             </h2>
           </div>
 
-          <div className="grid gap-5 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             {roadmapResources.map((item) => (
               <div key={item.title} className="surface-card p-6">
                 <div className="flex items-center justify-between gap-4">

@@ -62,7 +62,7 @@ export default function AboutPage() {
             </div>
 
             <div className="surface-card p-8">
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
                 <div>
                   <p className="font-mono text-xs uppercase tracking-[0.2em] text-charcoal-light">Mission</p>
                   <p className="mt-4 text-base leading-relaxed text-charcoal">
@@ -115,7 +115,7 @@ export default function AboutPage() {
             </div>
 
             <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.05] p-8">
-              <div className="grid gap-4 sm:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 {[
                   ['Explainable outputs', 'Not just a score'],
                   ['Audit-ready artifacts', 'Reports that travel'],
@@ -167,7 +167,7 @@ export default function AboutPage() {
             </h2>
           </div>
 
-          <div className="grid gap-5 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
             {coreValues.map((item) => (
               <div key={item.title} className="surface-card p-6">
                 <h3 className="font-serif text-xl text-charcoal">{item.title}</h3>

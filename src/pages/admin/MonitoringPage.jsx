@@ -9,10 +9,15 @@ import {
   formatDate,
   formatTimeShort,
   formatStorageGb,
-  formatHourShort,
   percentOf,
 } from '../../components/app/scanPresentation.js'
-import { Button, StatCard, useRegisterCommands } from '../../components/ui/index.js'
+import {
+  Button,
+  HourlyBarChart,
+  StatCard,
+  TrendChart,
+  useRegisterCommands,
+} from '../../components/ui/index.js'
 import AppStatePanel from '../../components/app/AppStatePanel.jsx'
 import AdminPageHeader from '../../components/admin/AdminPageHeader.jsx'
 import SystemHealthPanel from '../../components/admin/SystemHealthPanel.jsx'
@@ -81,25 +86,32 @@ function PanelSkeleton({ rows = 4 }) {
 }
 
 // ---------------------------------------------------------------------------
-// Queue health (headline stats + self-hosted hourly bars)
+// Queue health (headline stats + shared HourlyBarChart primitive)
 // ---------------------------------------------------------------------------
-
-const QUEUE_CHART_W = 720
-const QUEUE_CHART_H = 120
-const QUEUE_PAD = { left: 8, right: 8 }
 
 function QueueHealthPanel({ queue }) {
   const hourly = useMemo(() => queue?.hourly_series || [], [queue?.hourly_series])
+  // Series max — kept here only to gate the chart block below (the
+  // HourlyBarChart primitive recomputes it internally).
   const hourlyMax = useMemo(
     () => hourly.reduce((max, p) => Math.max(max, p.processed || 0), 0),
     [hourly],
   )
+  // Daily trend — TrendChart expects { date, scans, completed, failed }; map
+  // the queue series (processed / completed / failed per day) onto it and
+  // relabel via the `labels` prop so the legend reads in queue vocabulary.
+  const daily = useMemo(
+    () =>
+      (queue?.daily_series || []).map((p) => ({
+        date: p.date,
+        scans: p.processed || 0,
+        completed: p.completed || 0,
+        failed: p.failed || 0,
+      })),
+    [queue?.daily_series],
+  )
 
   if (!queue) return null
-
-  const lastHour = hourly[hourly.length - 1] || null
-  const barAreaH = 92
-  const barBaseY = QUEUE_CHART_H - 16
 
   return (
     <div className="rounded-3xl border border-stone-light bg-white-warm p-6 shadow-sm">
@@ -148,37 +160,37 @@ function QueueHealthPanel({ queue }) {
 
       {hourly.length > 0 && hourlyMax > 0 && (
         <div className="mt-5">
-          <svg
-            viewBox={`0 0 ${QUEUE_CHART_W} ${QUEUE_CHART_H}`}
-            className="h-20 w-full"
-            role="img"
-            aria-label="Scans processed per hour over the last 12 hours"
-            preserveAspectRatio="none"
-          >
-            {hourly.map((p, i) => {
-              const slotW = (QUEUE_CHART_W - QUEUE_PAD.left - QUEUE_PAD.right) / hourly.length
-              const barW = slotW * 0.64
-              const barH = ((p.processed || 0) / hourlyMax) * barAreaH
-              return (
-                <rect
-                  key={p.hour}
-                  x={QUEUE_PAD.left + slotW * i + (slotW - barW) / 2}
-                  y={barBaseY - barH}
-                  width={barW}
-                  height={barH}
-                  rx="2"
-                  fill={i === hourly.length - 1 ? '#1f2937' : '#c7c3b8'}
-                />
-              )
-            })}
-          </svg>
-          <div className="mt-1 flex justify-between font-mono text-[10px] text-charcoal-light/70">
-            <span>{formatHourShort(hourly[0].hour)}</span>
-            <span>{formatHourShort(hourly[Math.floor(hourly.length / 2)].hour)}</span>
-            <span>{formatHourShort(lastHour.hour)}</span>
-          </div>
+          {/* Shared HourlyBarChart primitive — bars, hover readout/guide,
+              hit cells, and axis labels all live in the ui kit now. This
+              panel keeps its custom viewBox (720×120, 8-unit pads, taller
+              bars) via the geometry props. */}
+          <HourlyBarChart
+            points={hourly}
+            ariaLabel="Scans processed per hour over the last 12 hours"
+            chartW={720}
+            chartH={120}
+            pad={{ left: 8, right: 8 }}
+            barAreaH={92}
+            barBaseY={104}
+            guideTop={0}
+            svgClassName="h-20 w-full"
+          />
         </div>
       )}
+
+      {/* 14-day throughput trend — reuses the TrendChart primitive with queue
+          vocabulary via the `labels` prop */}
+      <div className="mt-5 border-t border-stone-light pt-5">
+        <TrendChart
+          data={daily}
+          title="Daily throughput"
+          description="Jobs processed, completed, and failed per day over the last 14 days."
+          ariaLabel="Daily scan jobs processed over the last 14 days"
+          labels={{ scans: 'Processed', completed: 'Completed', failed: 'Failed' }}
+          emptyTitle="No daily throughput yet"
+          emptyDescription="Worker activity will trend here as scans flow through the queue."
+        />
+      </div>
 
       <p className="mt-4 flex items-center justify-between border-t border-stone-light pt-4 text-xs text-charcoal-light">
         <span>Failed 24h: {queue.failed_24h ?? '—'}</span>
@@ -240,7 +252,7 @@ function StorageUtilizationPanel({ storage }) {
       {buckets.length === 0 ? (
         <p className="py-6 text-center text-sm text-charcoal-mid">No storage buckets recorded yet.</p>
       ) : (
-        <div className="grid gap-x-8 gap-y-5 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-x-8 gap-y-5 md:grid-cols-2">
           {buckets.map((bucket) => {
             const bucketPct = percentOf(bucket.used_gb, bucket.capacity_gb)
             const share = storage.total_used_gb > 0 ? bucket.used_gb / storage.total_used_gb : 0
@@ -467,7 +479,7 @@ function IncidentRow({ incident, open, onToggle }) {
           aria-label={`Details for ${incident.title}`}
           className="mx-5 mb-4 rounded-2xl border border-stone-light bg-parchment/60 px-5 py-4"
         >
-          <dl className="grid gap-x-8 gap-y-3 text-sm sm:grid-cols-3">
+          <dl className="grid grid-cols-1 gap-x-8 gap-y-3 text-sm sm:grid-cols-3">
             <div>
               <dt className="text-[11px] uppercase tracking-[0.18em] text-charcoal-light">Started</dt>
               <dd className="mt-1 text-xs text-charcoal">{formatTimeShort(incident.started_at)}</dd>
@@ -595,18 +607,18 @@ export default function MonitoringPage() {
           <div className="mt-3 h-8 w-72 max-w-full rounded bg-stone-light/50" />
           <div className="mt-3 h-3 w-96 max-w-full rounded bg-stone-light/40" />
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <StatCardSkeleton key={i} />
           ))}
         </div>
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <PanelSkeleton rows={5} />
           <div className="lg:col-span-2">
             <PanelSkeleton rows={6} />
           </div>
         </div>
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <PanelSkeleton rows={6} />
           <PanelSkeleton rows={6} />
         </div>
@@ -660,7 +672,7 @@ export default function MonitoringPage() {
       />
 
       {/* ── KPI row ─────────────────────────────────────────────────────────── */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           size="sm"
           tone={overall.uptime_30d >= 0.999 ? 'success' : 'warning'}
@@ -692,7 +704,7 @@ export default function MonitoringPage() {
       </div>
 
       {/* ── Health panel + service list ────────────────────────────────────── */}
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <SystemHealthPanel healthData={healthData} onRefresh={refetch} />
 
         <div className="min-w-0 rounded-3xl border border-stone-light bg-white-warm p-6 shadow-sm lg:col-span-2">
@@ -715,7 +727,7 @@ export default function MonitoringPage() {
       </div>
 
       {/* ── Queue health + database performance ────────────────────────────── */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <QueueHealthPanel queue={queueHealth} />
         <DBPerformancePanel db={dbPerformance} />
       </div>

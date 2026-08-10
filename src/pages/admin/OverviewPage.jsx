@@ -1,12 +1,13 @@
 import { useCallback, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import useMockData from '../../lib/useMockData.js'
 import {
   getAdminDashboard,
   getQueueSnapshot,
   getSystemHealth,
   getAuditLogs,
 } from '../../lib/api.js'
+import { useDemoState, withDemoOverride } from '../../lib/useDemoState.js'
+import { useResource } from '../../lib/useResource.js'
 import { mockAnalytics } from '../../lib/mockData.js'
 import { formatPct, formatTimeShort } from '../../components/app/scanPresentation.js'
 import { Button, StatCard, TrendChart, useRegisterCommands } from '../../components/ui/index.js'
@@ -36,33 +37,49 @@ export default function OverviewPage() {
   const navigate = useNavigate()
 
   // ── Data fetching (parallel, independent) ──────────────────────────────────
+  // Migrated from useMockData onto the shared useResource hook so ?state=
+  // demo forcing (useDemoState/withDemoOverride) can drive the aggregate
+  // loading / error / empty branches like every other workspace page.
+  const demoState = useDemoState()
+
+  const dashboard = withDemoOverride(
+    useResource(() => getAdminDashboard()),
+    demoState,
+    { emptyData: { kpis: {}, summary: {} } },
+  )
+  const queue = withDemoOverride(
+    useResource(() => getQueueSnapshot()),
+    demoState,
+    { emptyData: { queued: 0, processing: 0, failed: 0, avg_processing_time_ms: 0 } },
+  )
+  const health = withDemoOverride(
+    useResource(() => getSystemHealth()),
+    demoState,
+    {
+      emptyData: {
+        api: true,
+        database: true,
+        storage: true,
+        queue: true,
+        worker: true,
+        email: true,
+      },
+    },
+  )
+  const audit = withDemoOverride(
+    useResource(() => getAuditLogs({ page: 1, pageSize: 20 })),
+    demoState,
+    { emptyData: { data: [], total: 0 } },
+  )
+
   const {
     data: dashboardData,
-    loading: kpisLoading,
     error: kpisError,
-    refetch: refetchKpis,
-  } = useMockData(getAdminDashboard)
-
-  const {
-    data: queueRaw,
-    loading: queueLoading,
-    error: queueError,
-    refetch: refetchQueue,
-  } = useMockData(getQueueSnapshot)
-
-  const {
-    data: healthRaw,
-    loading: healthLoading,
-    error: healthError,
-    refetch: refetchHealth,
-  } = useMockData(getSystemHealth)
-
-  const {
-    data: auditData,
-    loading: auditLoading,
-    error: auditError,
-    refetch: refetchAudit,
-  } = useMockData(() => getAuditLogs({ page: 1, pageSize: 20 }))
+    reload: refetchKpis,
+  } = dashboard
+  const { data: queueRaw, error: queueError, reload: refetchQueue } = queue
+  const { data: healthRaw, error: healthError, reload: refetchHealth } = health
+  const { data: auditData, error: auditError, reload: refetchAudit } = audit
 
   // ── Activity pagination ──────────────────────────────────────────────────
   const [activityPage, setActivityPage] = useState(1)
@@ -90,9 +107,28 @@ export default function OverviewPage() {
   }, [activityPage, events])
 
   // ── Derived data ──────────────────────────────────────────────────────────
-  const isAnyLoading = kpisLoading || queueLoading || healthLoading || auditLoading
-  const allFailed = kpisError && queueError && healthError && auditError
-  const allLoaded = !isAnyLoading && dashboardData && queueRaw && healthRaw && auditData
+  const isAnyLoading =
+    dashboard.status === 'loading' ||
+    queue.status === 'loading' ||
+    health.status === 'loading' ||
+    audit.status === 'loading'
+  const allFailed =
+    dashboard.status === 'error' &&
+    queue.status === 'error' &&
+    health.status === 'error' &&
+    audit.status === 'error'
+  const allLoaded =
+    dashboard.status === 'ready' &&
+    queue.status === 'ready' &&
+    health.status === 'ready' &&
+    audit.status === 'ready'
+  // Forced loading must show the skeleton even when prior data is present
+  // (the aggregate branch below only shows it when nothing has loaded yet).
+  const forceLoading = demoState === 'loading'
+  // Forced empty drives the empty panel directly: the isEmpty derivation
+  // reads scansLast7Days from the static mockAnalytics import, so it could
+  // never resolve true for a resource-backed empty payload.
+  const forceEmpty = demoState === 'empty'
 
   // KPI values
   const kpis = useMemo(() => {
@@ -207,7 +243,7 @@ export default function OverviewPage() {
   const lastUpdatedStr = formatTimeShort(new Date())
 
   // ── Render: Loading ────────────────────────────────────────────────────────
-  if (isAnyLoading && !dashboardData && !queueRaw && !healthRaw && !auditData) {
+  if (forceLoading || (isAnyLoading && !dashboardData && !queueRaw && !healthRaw && !auditData)) {
     return <AdminOverviewSkeleton />
   }
 
@@ -231,7 +267,7 @@ export default function OverviewPage() {
   }
 
   // ── Render: Empty ──────────────────────────────────────────────────────────
-  if (isEmpty && allLoaded) {
+  if (forceEmpty || (isEmpty && allLoaded)) {
     return (
       <AppStatePanel
         label="Ready"
@@ -366,7 +402,7 @@ export default function OverviewPage() {
       </section>
 
       {/* ── Section 3: Queue Snapshot + System Health ─────────────────────── */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <QueueSnapshotPanel
           data={queueData}
           error={queueError}

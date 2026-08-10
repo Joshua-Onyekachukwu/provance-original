@@ -37,6 +37,14 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Smoke test built app (vite preview + route curls)
+        run: npm run check:smoke
+        # Boots `vite preview` against dist/ and curls /, /benchmark, /app,
+        # /app/admin — fails the build on non-200 responses, an empty SPA
+        # shell, a missing #root mount, or a missing hashed JS bundle.
+        # Client-side rendering can't be asserted via curl; this gate catches
+        # the shell/asset regressions that produce blank pages.
+
   backend:
     name: Backend (build · unit · e2e)
     runs-on: ubuntu-latest

@@ -9,17 +9,23 @@
     "lint": "oxlint",
     "test": "vitest run",
     "test:watch": "vitest",
+    "check:test": "npm run lint && npm test",
+    "check:test:watch": "npm run lint && npm run test:watch",
+    "check:smoke": "bash scripts/smoke.sh",
+    "trello": "node scripts/trello.mjs",
     "preview": "vite preview",
     "backend:install": "npx pnpm@9 install --dir backend",
     "backend:dev": "npm --prefix backend run start:dev",
     "backend:build": "npm --prefix backend run build",
     "backend:start": "npm --prefix backend run start:prod",
+    "backend:seed:org": "npm --prefix backend run seed:org",
     "backend:test:e2e": "npm --prefix backend run test:e2e -- --runInBand",
-    "check:launch": "npm test && npm run build && npm run backend:build && npm run backend:test:e2e"
+    "check:launch": "npm run check:test && npm run build && npm run backend:build && npm run backend:test:e2e"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.54.0",
     "@tailwindcss/vite": "^4.3.1",
+    "better-auth": "1.6.26",
     "framer-motion": "^12.41.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
@@ -27,9 +33,14 @@
     "tailwindcss": "^4.3.1"
   },
   "devDependencies": {
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^7.0.0",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.3",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.2",
+    "jsdom": "^30.0.1",
     "oxlint": "^1.69.0",
     "vite": "^8.1.0",
     "vitest": "^4.1.10"

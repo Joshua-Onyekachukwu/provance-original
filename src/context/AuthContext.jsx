@@ -7,10 +7,16 @@ import {
   useState,
 } from 'react'
 import {
+  clearMemorySession,
+  ensureSession,
   getCurrentViewer,
+  getMemorySession,
+  setMemorySession,
   signInWithPassword,
   signOut as apiSignOut,
   updateAccountProfile,
+  USE_BETTER_AUTH,
+  USE_MOCK,
 } from '../lib/api'
 
 const AUTH_STORAGE_KEY = 'provance.auth.session.v1'
@@ -163,55 +169,111 @@ export function AuthProvider({ children }) {
   })
 
   useEffect(() => {
-    const restoredSession = restoreStoredSession()
-
-    if (!restoredSession) {
-      setAuthState({
-        status: 'ready',
-        sessionData: null,
-      })
-      return
-    }
-
-    setAuthState({
-      status: 'hydrating',
-      sessionData: restoredSession,
-    })
-
     let isCancelled = false
 
-    async function hydrateViewerState() {
+    // Better Auth mode: the session cookie lives on the backend origin
+    // (httpOnly) and there is no GoTrue refresh-token dance — getSession() IS
+    // the check. getCurrentViewer() throws when no cookie exists.
+    async function hydrateBetterSession() {
       try {
         const viewer = await getCurrentViewer()
-        const nextSession = normalizeAuthState(
-          viewer,
-          restoredSession.session,
-          restoredSession.workspaceContext,
-        )
+        const nextSession = normalizeAuthState(viewer, null)
 
         if (isCancelled) {
           return
         }
 
-        writeStoredSession(nextSession)
-        setAuthState({
-          status: 'ready',
-          sessionData: nextSession,
-        })
+        setMemorySession(nextSession.session)
+        setAuthState({ status: 'ready', sessionData: nextSession })
       } catch {
         if (isCancelled) {
           return
         }
 
-        removeStorageValue(AUTH_STORAGE_KEY)
-        setAuthState({
-          status: 'ready',
-          sessionData: null,
-        })
+        clearMemorySession()
+        setAuthState({ status: 'ready', sessionData: null })
       }
     }
 
-    void hydrateViewerState()
+    // Real mode (USE_MOCK = false): nothing is persisted — the access token
+    // lives in module memory and the refresh token in the backend's httpOnly
+    // cookie. On boot we attempt a silent cookie refresh; if the cookie is
+    // present the backend rotates it and hands back a fresh access token, then
+    // the viewer payload rebuilds the full auth state.
+    async function hydrateRealSession() {
+      const accessToken = await ensureSession()
+
+      if (isCancelled) {
+        return
+      }
+
+      if (!accessToken) {
+        setAuthState({ status: 'ready', sessionData: null })
+        return
+      }
+
+      try {
+        const viewer = await getCurrentViewer()
+        // /auth/me returns viewer state without a session block, so the
+        // access token + expiry come from the memory session the cookie
+        // refresh just minted (normalizeSessionPayload falls back to it).
+        const nextSession = normalizeAuthState(viewer, getMemorySession())
+
+        if (isCancelled) {
+          return
+        }
+
+        setMemorySession(nextSession.session)
+        setAuthState({ status: 'ready', sessionData: nextSession })
+      } catch {
+        if (isCancelled) {
+          return
+        }
+
+        clearMemorySession()
+        setAuthState({ status: 'ready', sessionData: null })
+      }
+    }
+
+    if (USE_BETTER_AUTH) {
+      void hydrateBetterSession()
+    } else if (USE_MOCK) {
+      const restoredSession = restoreStoredSession()
+
+      if (!restoredSession) {
+        setAuthState({ status: 'ready', sessionData: null })
+        return
+      }
+
+      setAuthState({ status: 'hydrating', sessionData: restoredSession })
+
+      void (async () => {
+        try {
+          const viewer = await getCurrentViewer()
+          const nextSession = normalizeAuthState(
+            viewer,
+            restoredSession.session,
+            restoredSession.workspaceContext,
+          )
+
+          if (isCancelled) {
+            return
+          }
+
+          writeStoredSession(nextSession)
+          setAuthState({ status: 'ready', sessionData: nextSession })
+        } catch {
+          if (isCancelled) {
+            return
+          }
+
+          removeStorageValue(AUTH_STORAGE_KEY)
+          setAuthState({ status: 'ready', sessionData: null })
+        }
+      })()
+    } else {
+      void hydrateRealSession()
+    }
 
     return () => {
       isCancelled = true
@@ -222,7 +284,15 @@ export function AuthProvider({ children }) {
     const response = await signInWithPassword(credentials)
     const nextSession = normalizeAuthState(response)
 
-    writeStoredSession(nextSession)
+    // Real mode: the refresh token arrives in the httpOnly cookie (the
+    // response body is stripped of it), so only the access token is cached in
+    // memory — never localStorage. Mock mode keeps the persisted session so
+    // demos survive reloads.
+    setMemorySession(nextSession.session)
+
+    if (USE_MOCK) {
+      writeStoredSession(nextSession)
+    }
 
     setAuthState({
       status: 'ready',
@@ -234,8 +304,13 @@ export function AuthProvider({ children }) {
 
   const signOut = useCallback(() => {
     // Clear local state immediately so sign-out feels instant even if the
-    // server round-trip is slow or the API is unreachable.
-    removeStorageValue(AUTH_STORAGE_KEY)
+    // server round-trip is slow or the API is unreachable. Real mode drops
+    // the in-memory access token; mock mode also clears the persisted session.
+    clearMemorySession()
+
+    if (USE_MOCK) {
+      removeStorageValue(AUTH_STORAGE_KEY)
+    }
 
     setAuthState((current) => ({
       status: current.status,
@@ -271,7 +346,9 @@ export function AuthProvider({ children }) {
         workspaceContext: nextWorkspace,
       }
 
-      writeStoredSession(nextSessionData)
+      if (USE_MOCK) {
+        writeStoredSession(nextSessionData)
+      }
 
       return {
         ...current,
@@ -297,7 +374,9 @@ export function AuthProvider({ children }) {
         workspaceContext,
       }
 
-      writeStoredSession(nextSessionData)
+      if (USE_MOCK) {
+        writeStoredSession(nextSessionData)
+      }
 
       return {
         ...current,
@@ -313,7 +392,13 @@ export function AuthProvider({ children }) {
         : null
 
     if (!sessionData && authState.sessionData) {
-      removeStorageValue(AUTH_STORAGE_KEY)
+      // Expired or missing token — drop the in-memory copy; clear persisted
+      // storage only in mock mode (real mode never writes it).
+      clearMemorySession()
+
+      if (USE_MOCK) {
+        removeStorageValue(AUTH_STORAGE_KEY)
+      }
     }
 
     return {

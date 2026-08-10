@@ -1,11 +1,23 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+// telemetry.js imports the single submitCrashReports API function for its
+// flush seam — mock it here so flush tests are deterministic and never hit
+// the network (or the mock API layer).
+vi.mock('./api.js', () => ({
+  submitCrashReports: vi.fn(),
+}))
+
+import { submitCrashReports } from './api.js'
 import {
   buildCrashRecord,
   captureError,
   clearBufferedErrors,
   flushErrors,
   getBufferedErrors,
+  initGlobalErrorListeners,
 } from './telemetry.js'
+
+const mockedSubmit = vi.mocked(submitCrashReports)
 
 // Same literal the module reads — mirrors AuthContext's persisted session key.
 const AUTH_STORAGE_KEY = 'provance.auth.session.v1'
@@ -44,6 +56,8 @@ function throwingStorage() {
 let storage
 
 beforeEach(() => {
+  mockedSubmit.mockReset()
+  mockedSubmit.mockResolvedValue({ accepted: 0 })
   storage = createFakeStorage()
   globalThis.localStorage = storage
   // node's navigator/location are getter-only globals — stub via vi so the
@@ -98,6 +112,13 @@ describe('buildCrashRecord', () => {
     })
     expect(record.route).toBe('/app/admin')
     expect(record.meta).toEqual({ boundary: 'shell' })
+  })
+
+  it('defaults to render_error but honors an explicit type', () => {
+    expect(buildCrashRecord(new Error('a')).type).toBe('render_error')
+    expect(buildCrashRecord(new Error('b'), { type: 'unhandled_error' }).type).toBe(
+      'unhandled_error',
+    )
   })
 })
 
@@ -167,16 +188,150 @@ describe('buffer helpers', () => {
     expect(getBufferedErrors()).toHaveLength(0)
   })
 
-  it('flushErrors resolves with the buffered records (backend flush seam)', async () => {
+  it('flushErrors ships the buffer to the API and clears it on success', async () => {
     captureError(new Error('one'))
     captureError(new Error('two'))
+    mockedSubmit.mockResolvedValue({ accepted: 2 })
 
     const flushed = await flushErrors()
 
+    expect(mockedSubmit).toHaveBeenCalledTimes(1)
+    expect(mockedSubmit).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ message: 'one' }),
+        expect.objectContaining({ message: 'two' }),
+      ]),
+    )
+    // Success clears the buffer and resolves with the shipped records.
     expect(flushed.map((record) => record.message)).toEqual(['one', 'two'])
+    expect(getBufferedErrors()).toHaveLength(0)
+  })
+
+  it('flushErrors keeps the buffer when the submit fails (retry later)', async () => {
+    captureError(new Error('one'))
+    captureError(new Error('two'))
+    mockedSubmit.mockRejectedValue(new Error('network down'))
+
+    const flushed = await flushErrors()
+
+    expect(flushed).toEqual([])
+    // Never throws, and the buffer survives for the next flush attempt.
+    expect(getBufferedErrors()).toHaveLength(2)
+  })
+
+  it('flushErrors skips the network call when the buffer is empty', async () => {
+    const flushed = await flushErrors()
+
+    expect(flushed).toEqual([])
+    expect(mockedSubmit).not.toHaveBeenCalled()
   })
 
   it('getBufferedErrors is safe before anything is captured', () => {
     expect(getBufferedErrors()).toEqual([])
+  })
+})
+
+describe('initGlobalErrorListeners', () => {
+  // Minimal browser-like window that records handlers and lets tests dispatch
+  // synthetic events (the module only needs addEventListener).
+  function createFakeWindow() {
+    const listeners = new Map()
+    return {
+      listeners,
+      addEventListener: (type, handler) => {
+        const handlers = listeners.get(type) || new Set()
+        handlers.add(handler)
+        listeners.set(type, handlers)
+      },
+      dispatch: (type, event) => {
+        for (const handler of listeners.get(type) || []) handler(event)
+      },
+    }
+  }
+
+  let fakeWindow
+
+  beforeEach(() => {
+    fakeWindow = createFakeWindow()
+    vi.stubGlobal('window', fakeWindow)
+  })
+
+  it('attaches both listeners and captures an uncaught Error', () => {
+    initGlobalErrorListeners()
+
+    fakeWindow.dispatch('error', { error: new Error('async boom'), message: 'Uncaught Error: async boom' })
+
+    expect(getBufferedErrors()).toHaveLength(1)
+    const [record] = getBufferedErrors()
+    expect(record.type).toBe('unhandled_error')
+    expect(record.message).toBe('async boom')
+    expect(record.meta).toEqual({ source: 'window.onerror' })
+  })
+
+  it('is idempotent — a second init never double-captures', () => {
+    initGlobalErrorListeners()
+    initGlobalErrorListeners()
+
+    fakeWindow.dispatch('error', { error: new Error('once') })
+
+    expect(getBufferedErrors()).toHaveLength(1)
+  })
+
+  it('captures resource-load failures with the failing element URL', () => {
+    initGlobalErrorListeners()
+
+    fakeWindow.dispatch('error', {
+      message: 'Failed to load resource',
+      target: { tagName: 'IMG', src: '/assets/broken.png' },
+    })
+
+    const [record] = getBufferedErrors()
+    expect(record.type).toBe('unhandled_error')
+    expect(record.meta).toEqual({
+      source: 'window.onerror',
+      kind: 'resource',
+      resource_tag: 'img',
+      resource_url: '/assets/broken.png',
+    })
+  })
+
+  it('captures cross-origin Script error. events without a stack', () => {
+    initGlobalErrorListeners()
+
+    fakeWindow.dispatch('error', {
+      message: 'Script error.',
+      filename: 'https://cdn.example.com/vendor.js',
+      lineno: 1,
+      colno: 42,
+    })
+
+    const [record] = getBufferedErrors()
+    expect(record.message).toBe('Script error.')
+    expect(record.meta).toEqual({
+      source: 'window.onerror',
+      filename: 'https://cdn.example.com/vendor.js',
+      line: 1,
+      column: 42,
+    })
+  })
+
+  it('captures unhandled promise rejections (Error and string reasons)', () => {
+    initGlobalErrorListeners()
+
+    fakeWindow.dispatch('unhandledrejection', { reason: new Error('fetch failed') })
+    fakeWindow.dispatch('unhandledrejection', { reason: 'plain string reason' })
+    fakeWindow.dispatch('unhandledrejection', {})
+
+    const records = getBufferedErrors()
+    expect(records).toHaveLength(3)
+    expect(records[0].message).toBe('fetch failed')
+    expect(records[1].message).toBe('plain string reason')
+    expect(records[2].message).toBe('Unhandled promise rejection')
+    expect(records.every((r) => r.meta.source === 'unhandledrejection')).toBe(true)
+  })
+
+  it('never throws when the window has no addEventListener', () => {
+    vi.stubGlobal('window', {})
+    expect(() => initGlobalErrorListeners()).not.toThrow()
   })
 })

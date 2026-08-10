@@ -28,7 +28,7 @@ export default function SecurityPage() {
               </motion.h2>
             </motion.div>
 
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {[
                 {
                   title: 'Retention Policies',
@@ -155,7 +155,7 @@ export default function SecurityPage() {
               </motion.h2>
             </motion.div>
 
-            <div className="grid sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {[
                 { title: 'Access Controls', desc: 'Waitlist review, invite-based access, and role-aware product controls define how approved users enter the platform.' },
                 { title: 'Private Storage Direction', desc: 'The production architecture will favor private-by-default file handling and clearer separation between metadata, uploads, and generated artifacts.' },

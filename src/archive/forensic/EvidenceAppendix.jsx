@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { formatPct } from '../app/scanPresentation.js'
+import { formatPct } from '../../components/app/scanPresentation.js'
 
 const signals = [
   {
@@ -41,7 +41,7 @@ export default function EvidenceAppendix() {
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-5 divide-x divide-stone-light">
+      <div className="grid grid-cols-1 lg:grid-cols-5 divide-x divide-stone-light">
         {/* Visual Map */}
         <div className="lg:col-span-3 p-8 bg-white relative">
           <div className="relative aspect-[4/3] bg-stone-light/20 rounded-lg border border-dashed border-stone overflow-hidden group">

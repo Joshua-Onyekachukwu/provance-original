@@ -56,7 +56,7 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="grid gap-8 md:grid-cols-5">
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-5">
           <div className="md:col-span-2">
             <div className="mb-4 flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-parchment shadow-[0_10px_25px_rgba(0,0,0,0.18)]">

@@ -11,6 +11,10 @@ const ACTION_CONFIG = {
   rejected: { label: 'REJECTED', badgeClass: 'bg-rose-100 text-rose-800' },
   deferred: { label: 'DEFERRED', badgeClass: 'bg-amber-100 text-amber-800' },
   invited: { label: 'INVITED', badgeClass: 'bg-sky-100 text-sky-800' },
+  // role.* actions (Roles & Permissions page audit trail)
+  scope_updated: { label: 'SCOPE EDIT', badgeClass: 'bg-sky-100 text-sky-800' },
+  member_assigned: { label: 'ASSIGNED', badgeClass: 'bg-emerald-100 text-emerald-800' },
+  member_removed: { label: 'UNASSIGNED', badgeClass: 'bg-rose-100 text-rose-800' },
 }
 
 function getActionConfig(action) {

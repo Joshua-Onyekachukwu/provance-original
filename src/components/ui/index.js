@@ -20,11 +20,23 @@ export { default as EmptyState } from './EmptyState'
 export { default as Skeleton } from './Skeleton'
 export { default as Spinner } from './Spinner'
 export { default as TrendChart } from './TrendChart'
+export { default as StackedBarChart } from './StackedBarChart'
+export { default as HourlyBarChart } from './HourlyBarChart'
+export { default as DonutChart } from './DonutChart'
+export { default as ChartHoverReadout } from './ChartHoverReadout'
+export { ChartAxisLabels } from './ChartHoverReadout'
 export {
   CHART_W,
   CHART_H,
   PAD,
   buildChartGeometry,
+  buildStackedBarGeometry,
+  buildHitAreaCells,
+  buildGroupedHitAreaCells,
+  buildHourlyBarGeometry,
+  buildDonutSegments,
+  stackedOutlineBounds,
+  stackedSegmentBounds,
   pctOfViewBoxY,
   pctOfViewBoxX,
 } from './chartGeometry'

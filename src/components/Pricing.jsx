@@ -80,7 +80,7 @@ export default function Pricing() {
           </motion.h2>
         </motion.div>
 
-        <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-5 max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 max-w-6xl mx-auto">
           {tiers.map((tier, i) => (
             <motion.div
               key={tier.name}

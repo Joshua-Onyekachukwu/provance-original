@@ -292,7 +292,7 @@ export default function BenchmarkPage() {
             </motion.p>
           </motion.div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {METRICS.map((metric, i) => {
               const improved = metric.higherIsBetter
                 ? metric.provance > metric.standard
@@ -353,7 +353,7 @@ export default function BenchmarkPage() {
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-80px' }}
-            className="grid gap-4 md:grid-cols-2"
+            className="grid grid-cols-1 gap-4 md:grid-cols-2"
           >
             {METRICS.map((metric, i) => (
               <ComparisonBar key={metric.label} metric={metric} index={i} />
@@ -374,7 +374,7 @@ export default function BenchmarkPage() {
             </motion.h2>
           </div>
 
-          <div className="grid gap-5 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             {[
               {
                 title: 'Failures on MJ v6 / Flux.1',
@@ -433,7 +433,7 @@ export default function BenchmarkPage() {
             </motion.p>
           </div>
 
-          <div className="grid gap-5 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
             <TypeBreakdown />
 
             <div className="grid gap-5">

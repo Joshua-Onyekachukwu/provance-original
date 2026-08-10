@@ -1,11 +1,17 @@
 /**
  * useTeamFilterParam.js — URL-backed team filter for the workspace surfaces
- * (scan ledger, queue, reports).
+ * (scan ledger, queue, reports) and the admin Users/Organizations/Analytics
+ * views.
  *
  * Persists the active team filter in the query string (?team=team_legal) so
  * the selection survives navigation and is shareable / linkable, following
  * the existing ?state= demo-param pattern. The two params are independent
  * and coexist (e.g. /app/queue?team=team_legal&state=empty).
+ *
+ * Implementation note: all URL-sync plumbing lives in the generic
+ * useQueryParam hook (see src/lib/useQueryParam.js) — this module only
+ * supplies the key, the validator, and the default, plus the pure helpers
+ * below for router-free reads.
  *
  * Usage:
  *   const [teamFilter, setTeamFilter] = useTeamFilterParam()
@@ -19,9 +25,8 @@
  *     edits) the filter re-derives from the URL.
  */
 
-import { useEffect, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
 import { TEAM_IDS } from '../components/app/scanPresentation.js'
+import { readQueryParam, useQueryParam } from './useQueryParam.js'
 
 /** 'all' + the known workspace team ids (see scanPresentation.TEAM_IDS). */
 export const TEAM_FILTER_VALUES = ['all', ...TEAM_IDS]
@@ -32,8 +37,7 @@ export function isValidTeamFilter(value) {
 }
 
 export function readFromSearch(search) {
-  const value = new URLSearchParams(search).get('team')
-  return isValidTeamFilter(value) ? value : 'all'
+  return readQueryParam(search, 'team', isValidTeamFilter, 'all')
 }
 
 /**
@@ -41,27 +45,9 @@ export function readFromSearch(search) {
  * persisted to the ?team= query param.
  */
 export function useTeamFilterParam() {
-  const navigate = useNavigate()
-  const location = useLocation()
-  const [teamFilter, setTeamFilter] = useState(() => readFromSearch(location.search))
-
-  // Keep the URL canonical — write on change, strip invalid values.
-  useEffect(() => {
-    const params = new URLSearchParams(location.search)
-    if (teamFilter === 'all') params.delete('team')
-    else params.set('team', teamFilter)
-
-    const next = params.toString()
-    const current = location.search.replace(/^\?/, '')
-    if (next !== current) {
-      navigate(`${location.pathname}${next ? `?${next}` : ''}`, { replace: true })
-    }
-  }, [teamFilter, location.pathname, location.search, navigate])
-
-  // Re-derive on back/forward or manual URL edits.
-  useEffect(() => {
-    setTeamFilter(readFromSearch(location.search))
-  }, [location.search])
-
-  return [teamFilter, setTeamFilter]
+  return useQueryParam({
+    key: 'team',
+    validate: isValidTeamFilter,
+    defaultValue: 'all',
+  })
 }

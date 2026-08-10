@@ -7,6 +7,7 @@ import {
   updateSecuritySetting,
 } from '../../lib/api.js'
 import { formatRelativeTime } from '../../components/app/scanPresentation.js'
+import TeamBadge from '../../components/app/TeamBadge.jsx'
 import { useDemoState, withDemoOverride } from '../../lib/useDemoState.js'
 import { useResource } from '../../lib/useResource.js'
 
@@ -72,6 +73,7 @@ function SessionRow({ session, onRevoke, busy }) {
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-sm font-medium text-charcoal">{session.device}</p>
           {session.isCurrent && <Badge tone="success" size="sm">This device</Badge>}
+          {session.teamId && <TeamBadge teamId={session.teamId} />}
         </div>
         <p className="mt-1 text-xs text-charcoal-mid">
           {session.location} · {session.ipAddress}

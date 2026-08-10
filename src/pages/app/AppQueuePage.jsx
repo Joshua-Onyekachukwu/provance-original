@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { useTeamFilterParam } from '../../lib/useTeamFilterParam.js'
+import { useTeamScoping } from '../../lib/useTeamScoping.js'
 import { Badge, Card, DataTable, StatCard, useRegisterCommands } from '../../components/ui'
 import ScanStatusBadge from '../../components/app/ScanStatusBadge.jsx'
 import TeamBadge from '../../components/app/TeamBadge.jsx'
@@ -9,7 +9,10 @@ import {
   formatDurationMs,
   formatFileSize,
   formatScanTimestamp,
+  getTeamMeta,
   getVerdictMeta,
+  hasActiveScanWork,
+  queueNeedsPolling,
 } from '../../components/app/scanPresentation.js'
 import { getQueueSnapshot, listScans } from '../../lib/api.js'
 import { useResource } from '../../lib/useResource.js'
@@ -41,35 +44,55 @@ export default function AppQueuePage() {
   const location = useLocation()
   const demoState = useDemoState()
 
-  const queue = useResource(() => getQueueSnapshot())
+  // Live status polling: refresh every 5s while work is in flight (queued /
+  // processing) so worker-driven transitions land here without a reload, and
+  // idle once the queue drains (see hasActiveScanWork / queueNeedsPolling).
+  const queue = useResource(
+    () => getQueueSnapshot(),
+    [],
+    {
+      pollMs: 5000,
+      pollWhen: (state) => queueNeedsPolling(state.data),
+    },
+  )
   const scans = withDemoOverride(
-    useResource(() => listScans({ pageSize: 100 }).then((r) => r.data || [])),
+    useResource(
+      () => listScans({ pageSize: 100 }).then((r) => r.data || []),
+      [],
+      {
+        pollMs: 5000,
+        pollWhen: (state) => hasActiveScanWork(state.data),
+      },
+    ),
     demoState,
     { emptyData: [] },
   )
 
   const data = queue.data
-  const avgDuration = data ? formatDurationMs(data.avg_processing_time_ms) : '—'
-  const backlog = data ? data.queued > 5 : false
   const newScanId = location.state?.newScanId || null
   const newScanVisible = scans.data?.some((scan) => scan.id === newScanId)
 
-  const [teamFilter, setTeamFilter] = useTeamFilterParam()
-  const teamCounts = useMemo(() => {
-    const counts = {}
-    for (const scan of scans.data || []) {
-      if (scan.team_id) counts[scan.team_id] = (counts[scan.team_id] || 0) + 1
-    }
-    return counts
-  }, [scans.data])
-  const filteredScans = useMemo(
-    () =>
-      teamFilter === 'all'
-        ? scans.data || []
-        : (scans.data || []).filter((scan) => scan.team_id === teamFilter),
-    [scans.data, teamFilter],
-  )
-  const hasActiveFilter = teamFilter !== 'all'
+  const {
+    teamFilter,
+    setTeamFilter,
+    teamCounts,
+    filteredScans,
+    isTeamScoped,
+    teamName,
+    teamKpis,
+  } = useTeamScoping({ scans })
+  const hasActiveFilter = isTeamScoped
+
+  // When a team filter is active the queue posture is recomputed from the
+  // team-scoped scan ledger (same as the dashboard's queue panel), so the
+  // StatCards and MiniStats reflect only that team's work.
+  const queueView = isTeamScoped && teamKpis
+    ? { queued: teamKpis.queued, processing: teamKpis.processing, failed: teamKpis.failed }
+    : data
+  const avgDuration = queueView?.avg_processing_time_ms
+    ? formatDurationMs(queueView.avg_processing_time_ms)
+    : '—'
+  const backlog = queueView ? queueView.queued > 5 : false
 
   useRegisterCommands(
     [
@@ -182,28 +205,28 @@ export default function AppQueuePage() {
         </div>
       )}
 
-      <section className="grid gap-4 sm:grid-cols-3">
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard
           label="Queued"
-          value={data ? String(data.queued ?? 0) : '—'}
-          detail="Awaiting a worker"
+          value={queueView ? String(queueView.queued ?? 0) : '—'}
+          detail={isTeamScoped ? `Awaiting a worker · ${teamName}` : 'Awaiting a worker'}
           tone="info"
           loading={queue.status === 'loading'}
           error={queue.status === 'error'}
         />
         <StatCard
           label="Processing"
-          value={data ? String(data.processing ?? 0) : '—'}
-          detail="Running right now"
+          value={queueView ? String(queueView.processing ?? 0) : '—'}
+          detail={isTeamScoped ? `Running right now · ${teamName}` : 'Running right now'}
           tone="info"
           loading={queue.status === 'loading'}
           error={queue.status === 'error'}
         />
         <StatCard
           label="Failed"
-          value={data ? String(data.failed ?? 0) : '—'}
-          detail={data && data.failed > 0 ? 'Needs attention' : 'No failures'}
-          tone={data && data.failed > 0 ? 'warning' : 'default'}
+          value={queueView ? String(queueView.failed ?? 0) : '—'}
+          detail={queueView && queueView.failed > 0 ? 'Needs attention' : 'No failures'}
+          tone={queueView && queueView.failed > 0 ? 'warning' : 'default'}
           loading={queue.status === 'loading'}
           error={queue.status === 'error'}
         />
@@ -211,23 +234,27 @@ export default function AppQueuePage() {
 
       <Card
         eyebrow="Queue posture"
-        title="Live queue"
-        description="Real-time snapshot of the processing pipeline, refreshed on each visit."
+        title={isTeamScoped ? `Live queue · ${getTeamMeta(teamFilter).short}` : 'Live queue'}
+        description="Real-time snapshot of the processing pipeline, refreshed automatically while work is in flight."
         state={queue.status === 'loading' ? 'loading' : queue.status === 'error' ? 'error' : 'default'}
         loadingRows={3}
         errorDescription={queue.error}
         onRetry={queue.reload}
       >
-        {data && (
+        {queueView && (
           <>
             <div className="grid grid-cols-3 gap-3">
-              <MiniStat label="Queued" value={data.queued ?? 0} tone="info" />
-              <MiniStat label="Processing" value={data.processing ?? 0} tone="info" />
-              <MiniStat label="Failed" value={data.failed ?? 0} tone={data.failed > 0 ? 'danger' : 'default'} />
+              <MiniStat label="Queued" value={queueView.queued ?? 0} tone="info" />
+              <MiniStat label="Processing" value={queueView.processing ?? 0} tone="info" />
+              <MiniStat label="Failed" value={queueView.failed ?? 0} tone={queueView.failed > 0 ? 'danger' : 'default'} />
             </div>
-            {backlog ? (
+            {isTeamScoped ? (
+              <p className="mt-4 text-xs text-charcoal-light">
+                Queue counts scoped to the {teamName} team from the scan ledger.
+              </p>
+            ) : backlog ? (
               <p className="mt-4 rounded-xl border border-amber-100 bg-amber-50/60 px-4 py-3 text-xs text-amber-800">
-                Backlog forming — {data.queued} items queued. Average processing time {avgDuration} per item.
+                Backlog forming — {queueView.queued} items queued. Average processing time {avgDuration} per item.
               </p>
             ) : (
               <p className="mt-4 text-xs text-charcoal-light">

@@ -26,6 +26,12 @@
   --font-mono: "IBM Plex Mono", "Fira Code", monospace;
 }
 
+/* Verdict palette — the hex values live in src/components/app/scanPresentation.js
+   (VERDICT_PALETTE) and are exported onto <html> at boot by applyVerdictPalette()
+   as --color-verdict-authentic / suspicious / inconclusive, plus the
+   --color-tone-success / warning / info aliases that Badge dots and StatCard
+   accents consume. Keep values in the JS module — do not re-declare them here. */
+
 /* Base Styles */
 html {
   scroll-behavior: smooth;
@@ -604,7 +610,9 @@ summary {
   /* Keep printable report panels intact instead of splitting mid-card. */
   .print-sheet article,
   .print-sheet section,
-  .print-sheet .print-sheet-card {
+  .print-sheet .print-sheet-card,
+  .report-paper article,
+  .report-paper section {
     break-inside: avoid;
   }
 }

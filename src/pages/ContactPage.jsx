@@ -70,7 +70,7 @@ export default function ContactPage() {
             onSubmit={handleSubmit}
             className="surface-card p-8"
           >
-            <div className="grid gap-5 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
               <label className="block">
                 <span className="text-sm font-medium text-charcoal">Name</span>
                 <input
@@ -95,7 +95,7 @@ export default function ContactPage() {
               </label>
             </div>
 
-            <div className="grid gap-5 md:grid-cols-2 mt-5">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 mt-5">
               <label className="block">
                 <span className="text-sm font-medium text-charcoal">Company</span>
                 <input

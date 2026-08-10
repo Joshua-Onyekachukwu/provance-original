@@ -19,6 +19,14 @@ export const SCAN_STATUS_META = {
     badge: 'bg-emerald-50 text-emerald-700',
     tone: 'text-emerald-700',
   },
+  // The mock scan dialect uses 'completed' while the analysis pipeline emits
+  // 'complete'; both map to the same presentation so a finished scan's badge
+  // never falls back to "Awaiting upload".
+  completed: {
+    label: 'Complete',
+    badge: 'bg-emerald-50 text-emerald-700',
+    tone: 'text-emerald-700',
+  },
   failed: {
     label: 'Failed',
     badge: 'bg-rose-50 text-rose-700',
@@ -28,6 +36,41 @@ export const SCAN_STATUS_META = {
 
 export function getScanStatusMeta(status) {
   return SCAN_STATUS_META[status] || SCAN_STATUS_META.awaiting_upload
+}
+
+/**
+ * hasActiveScanWork — true when any scan is still moving through the pipeline
+ * (queued or processing). Terminal statuses (completed / failed) stop the
+ * gate, so live surfaces (dashboard ledger, queue page) can pause their
+ * status polling once the queue drains.
+ */
+export function hasActiveScanWork(scans) {
+  if (!Array.isArray(scans)) return false
+  return scans.some(scanNeedsPolling)
+}
+
+/**
+ * scanNeedsPolling — single-scan form of hasActiveScanWork: true while the
+ * scan is queued or processing. Used by per-detail surfaces (the report
+ * detail pane) that poll just one scan until its pipeline finishes. Null /
+ * missing input is safe (returns false).
+ */
+export function scanNeedsPolling(scan) {
+  return Boolean(
+    scan && (scan?.status === 'queued' || scan?.status === 'processing'),
+  )
+}
+
+/**
+ * queueNeedsPolling — the queue-snapshot twin of hasActiveScanWork: true
+ * while any job is queued or processing, so the queue-posture panels keep
+ * polling until the queue is idle.
+ */
+export function queueNeedsPolling(snapshot) {
+  return Boolean(
+    snapshot &&
+      ((snapshot.queued ?? 0) > 0 || (snapshot.processing ?? 0) > 0),
+  )
 }
 
 /**
@@ -229,21 +272,96 @@ export function getVerdictLabel(scan) {
   return scan?.result_payload?.verdict?.display_label || 'Pending'
 }
 
-export const VERDICT_META = {
-  authentic: { label: 'Authentic', tone: 'success' },
-  suspicious: { label: 'Suspicious', tone: 'warning' },
-  inconclusive: { label: 'Inconclusive', tone: 'info' },
+// ---------------------------------------------------------------------------
+// Verdict palette — the SINGLE source of truth for verdict colors + tones.
+//
+// Everything that renders a verdict in color derives from this map:
+//   - VERDICT_CHART_SEGMENTS → chart bars/arcs (SVG fill + hover readout tint)
+//   - VERDICT_META           → Badge tone mapping (success/warning/info)
+//   - applyVerdictPalette()  → exports each hex as CSS custom properties
+//     (--color-verdict-{key} + a --color-tone-{tone} alias) so ui primitives
+//     like Badge's status dot and StatCard's accent border consume the exact
+//     color the charts draw instead of re-declaring Tailwind shades.
+// Key order = chart stack order (index 0 = bottom of each stacked bar).
+// ---------------------------------------------------------------------------
+export const VERDICT_PALETTE = {
+  authentic: {
+    label: 'Authentic',
+    hex: '#10b981',
+    tone: 'success',
+    readoutClass: 'text-emerald-600',
+  },
+  suspicious: {
+    label: 'Suspicious',
+    hex: '#f59e0b',
+    tone: 'warning',
+    readoutClass: 'text-amber-600',
+  },
+  inconclusive: {
+    label: 'Inconclusive',
+    hex: '#38bdf8',
+    tone: 'info',
+    readoutClass: 'text-sky-600',
+  },
+}
+
+// StackedBarChart segment config for the verdict mix surface — segment order
+// is the stack order (index 0 = bottom of each bar). Colors drive the SVG
+// fill; readoutClass tints the hover readout text.
+export const VERDICT_CHART_SEGMENTS = Object.entries(VERDICT_PALETTE).map(
+  ([key, p]) => ({ key, label: p.label, color: p.hex, readoutClass: p.readoutClass }),
+)
+
+export const VERDICT_META = Object.fromEntries(
+  Object.entries(VERDICT_PALETTE).map(([key, p]) => [key, { label: p.label, tone: p.tone }]),
+)
+
+// Semantic-tone → CSS custom property. Only verdict-mapped tones get a var;
+// danger/neutral keep the Tailwind scale (no verdict color backs them).
+export const TONE_CSS_VARS = {
+  success: '--color-tone-success',
+  warning: '--color-tone-warning',
+  info: '--color-tone-info',
+}
+
+/**
+ * Mirror the verdict palette into CSS custom properties on <html> so any
+ * stylesheet or ui primitive accent (Badge dot, StatCard border, …) consumes
+ * the exact chart colors from one source. Call once at app boot
+ * (src/main.jsx) before render. No-op outside a browser (safe in node tests).
+ */
+export function applyVerdictPalette() {
+  if (typeof document === 'undefined') return
+  const root = document.documentElement
+  for (const [key, p] of Object.entries(VERDICT_PALETTE)) {
+    root.style.setProperty(`--color-verdict-${key}`, p.hex)
+    const toneVar = TONE_CSS_VARS[p.tone]
+    if (toneVar) root.style.setProperty(toneVar, p.hex)
+  }
+}
+
+// Analysis verdict classes map onto the display vocabulary the mock rows use.
+const VERDICT_CLASS_TO_DISPLAY = {
+  likely_authentic: 'authentic',
+  suspicious: 'suspicious',
+  inconclusive: 'inconclusive',
 }
 
 /**
  * Resolve a scan's verdict to { label, tone } for Badge presentation.
- * Non-completed scans (or missing verdicts) map to a neutral "Pending".
+ * Accepts both status dialects — 'completed' (mock rows) and 'complete'
+ * (API rows) — and reads the flat verdict field or result_payload's verdict
+ * class. Non-completed scans (or missing verdicts) map to a neutral "Pending".
  */
 export function getVerdictMeta(scan) {
-  if (!scan || scan.status !== 'completed') {
+  if (!scan || !['completed', 'complete'].includes(scan.status)) {
     return { label: 'Pending', tone: 'neutral' }
   }
-  return VERDICT_META[scan.verdict] || { label: 'Pending', tone: 'neutral' }
+  const verdictClass = scan.verdict || scan.result_payload?.verdict?.class || null
+  const display = verdictClass
+    ? VERDICT_CLASS_TO_DISPLAY[verdictClass] || verdictClass
+    : null
+  return VERDICT_META[display] || { label: 'Pending', tone: 'neutral' }
 }
 
 /**

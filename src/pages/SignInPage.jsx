@@ -89,7 +89,7 @@ export default function SignInPage() {
       <section className="section-padding bg-parchment relative overflow-hidden">
         <div className="absolute inset-0 forensic-grid opacity-30" />
         <div className="content-container relative z-10">
-          <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] items-start max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 gap-10 lg:grid-cols-[0.9fr_1.1fr] items-start max-w-5xl mx-auto">
             <div className="max-w-xl">
               <motion.h1
                 initial={{ opacity: 0, y: 18 }}

@@ -18,7 +18,7 @@ export default function AdminOverviewSkeleton() {
       </div>
 
       {/* 2 Panel skeletons (Queue + Health) */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="animate-pulse rounded-3xl bg-stone-light/50 h-[200px]" />
         <div className="animate-pulse rounded-3xl bg-stone-light/50 h-[200px]" />
       </div>

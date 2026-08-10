@@ -159,7 +159,7 @@ function ActivityRow({ event, open, onToggle }) {
           aria-label={`Details for ${event.action}`}
           className="mx-5 mb-4 rounded-2xl border border-stone-light bg-parchment/60 px-5 py-4"
         >
-          <dl className="grid gap-x-8 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+          <dl className="grid grid-cols-1 gap-x-8 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
             <div>
               <dt className="text-[11px] uppercase tracking-[0.18em] text-charcoal-light">Event</dt>
               <dd className="mt-1 font-mono text-xs text-charcoal">{event.action}</dd>

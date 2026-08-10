@@ -220,7 +220,7 @@ export default function AppBillingPage() {
         onRetry={billing.reload}
         loadingRows={2}
       >
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div className="rounded-2xl border border-stone-light bg-parchment px-4 py-4">
             <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">Plan</p>
             <p className="mt-2 font-serif text-2xl text-charcoal">{plan?.name || '—'}</p>
@@ -263,7 +263,7 @@ export default function AppBillingPage() {
         </div>
 
         {loading && (
-          <div className="grid gap-6 lg:grid-cols-3" role="status" aria-label="Loading usage">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3" role="status" aria-label="Loading usage">
             {[0, 1, 2].map((i) => (
               <div key={i} className="rounded-3xl border border-stone-light bg-white-warm p-6 shadow-sm">
                 <Skeleton className="h-4 w-24" />
@@ -279,16 +279,38 @@ export default function AppBillingPage() {
         )}
 
         {!loading && !failed && usageStats && (
-          <div className="grid gap-6 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
             {usageStats.map((stat) => (
               <StatCard key={stat.label} {...stat} loading={loading} error={failed} />
             ))}
           </div>
         )}
 
+        {/* Quota exhausted — surfaced from the same entitlement the upload gate enforces. */}
+        {!loading && !failed && usage && usage.scansUsed >= usage.scansLimit && (
+          <div
+            role="alert"
+            className="mt-6 flex flex-col gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div>
+              <p className="text-sm font-semibold text-amber-900">
+                Scan quota reached for this cycle
+              </p>
+              <p className="mt-1 text-sm text-amber-800">
+                All {formatCount(usage.scansLimit)} monthly scans are used. New uploads are
+                paused until the cycle resets {formatDate(usage.periodEnd)} — upgrade your
+                plan to raise the limit immediately.
+              </p>
+            </div>
+            <Button variant="secondary" size="sm" onClick={changePlan}>
+              Upgrade plan
+            </Button>
+          </div>
+        )}
+
         {!loading && !failed && usage && (
           <Card className="mt-6" padding="lg">
-            <div className="grid gap-6 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
               <UsageMeter label="Scans" used={usage.scansUsed} limit={usage.scansLimit} format={formatCount} />
               <UsageMeter
                 label="Storage"
@@ -326,7 +348,7 @@ export default function AppBillingPage() {
           />
         )}
         {!loading && !failed && paymentMethods.length > 0 && (
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {paymentMethods.map((method) => (
               <div
                 key={method.id}

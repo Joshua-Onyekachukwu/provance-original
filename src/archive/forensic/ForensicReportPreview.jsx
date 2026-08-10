@@ -1,10 +1,10 @@
 import React from 'react'
 import { motion } from 'framer-motion'
-import { formatPct } from '../app/scanPresentation.js'
+import { formatPct } from '../../components/app/scanPresentation.js'
 import EvidenceAppendix from './EvidenceAppendix'
 import SignatureCatalog from './SignatureCatalog'
 import PDFReportMediaAudit from './PDFReportMediaAudit'
-import VeracitySeal from './VeracitySeal'
+import VeracitySeal from '../../components/forensic/VeracitySeal'
 
 const VeracityGauge = ({ score }) => {
   const percentage = score * 100;
@@ -89,7 +89,7 @@ export default function ForensicReportPreview() {
 
         {/* Executive Summary */}
         <div className="p-8 md:p-12 border-b border-stone-light bg-parchment/20 relative z-10">
-          <div className="grid md:grid-cols-3 gap-12 items-center">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 items-center">
             <div className="md:col-span-2">
               <h2 className="font-serif text-2xl mb-4 italic text-charcoal-soft uppercase tracking-tight">Forensic Executive Summary</h2>
               <p className="text-lg leading-relaxed text-charcoal-mid mb-6">

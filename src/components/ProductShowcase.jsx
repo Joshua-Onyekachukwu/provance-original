@@ -538,7 +538,7 @@ export default function ProductShowcase() {
           </p>
         </motion.div>
 
-        <div className="grid gap-6 lg:grid-cols-[1.55fr_0.85fr]">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.55fr_0.85fr]">
           <InteractivePanel className="rounded-[2rem] border border-stone-light/80 bg-white-warm/85 shadow-[0_28px_80px_rgba(26,26,26,0.12)] backdrop-blur-xl">
             <div className="relative z-10 p-5 md:p-7">
               <div className="flex flex-wrap items-center justify-between gap-4 border-b border-stone-light/90 pb-4">
