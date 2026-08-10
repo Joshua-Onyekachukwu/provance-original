@@ -95,3 +95,6 @@ Status values: `Open` · `In Progress` · `Done` · `Deferred` · `Declined`
 
 | 2026-08-10 | AccountController HTTP spec | Consider the same HTTP-layer treatment for the roles controller (list roles, PATCH scopes Owner-guard, PATCH member role) — it is the last admin surface without a controller-level spec | Open |
 | 2026-08-10 | AccountController HTTP spec | The stringy-boolean coercion (emailNotifications: "yes" → true) is a real implicit-conversion contract worth a note in API_DESIGN_STANDARDS.md under DTO validation gotchas | Open |
+
+| 2026-08-10 | ParseIntStrictPipe sweep | Verify the frontend never sends garbage page/pageSize params that would now 400 — grep the api.js real-path callers for templated query strings that could produce NaN | Done |
+| 2026-08-10 | ParseIntStrictPipe sweep | Consider ParseFloatStrictPipe analog for any future decimal query params, and note the strict-int contract in API_DESIGN_STANDARDS.md (garbage page values are 400s, not defaults) | Open |

@@ -19,6 +19,7 @@ import type { App } from 'supertest/types';
 import { GlobalExceptionFilter } from '../common/filters/global-exception.filter';
 import { ApiThrottlerGuard } from '../common/guards/api-throttler.guard';
 import { SupabaseAuthGuard } from '../common/guards/supabase-auth.guard';
+import { ParseIntStrictPipe } from '../common/pipes/parse-int-strict.pipe';
 import { SupabaseService } from '../supabase/supabase.service';
 import { NotificationsController } from './notifications.controller';
 import { NotificationsService } from './notifications.service';
@@ -188,15 +189,18 @@ describe('NotificationsController (HTTP layer)', () => {
 
     expect(page.data).toBe('page');
     expect(pageSize.data).toBe('pageSize');
-    expect(page.pipes[0]).toBeInstanceOf(DefaultValuePipe);
+    // Strict validation runs FIRST (rejects NaN/non-integers before the
+    // default can swallow them), then DefaultValuePipe, then ParseIntPipe.
+    expect(page.pipes[0]).toBeInstanceOf(ParseIntStrictPipe);
+    expect(page.pipes[1]).toBeInstanceOf(DefaultValuePipe);
     // ParseIntPipe is passed as a bare class reference in @Query(...), so the
     // metadata stores the constructor itself, not an instance.
-    expect(page.pipes[1]).toBe(ParseIntPipe);
+    expect(page.pipes[2]).toBe(ParseIntPipe);
     expect(
-      (page.pipes[0] as unknown as { defaultValue: number }).defaultValue,
+      (page.pipes[1] as unknown as { defaultValue: number }).defaultValue,
     ).toBe(1);
     expect(
-      (pageSize.pipes[0] as unknown as { defaultValue: number }).defaultValue,
+      (pageSize.pipes[1] as unknown as { defaultValue: number }).defaultValue,
     ).toBe(20);
   });
 
@@ -246,21 +250,17 @@ describe('NotificationsController (HTTP layer)', () => {
     expect(service.list).not.toHaveBeenCalled();
   });
 
-  it('silently defaults a non-numeric page (page=abc) to 1 — the global ValidationPipe converts it to NaN and DefaultValuePipe treats NaN as nil', async () => {
-    // Locking the ACTUAL production contract (main.ts ValidationPipe has
-    // enableImplicitConversion): 'abc' → NaN via +'abc', then DefaultValuePipe
-    // replaces NaN with its default BEFORE ParseIntPipe runs, so a garbage
-    // page value degrades to page=1 instead of 400. Malformed *numbers*
-    // (page=2.5) are the case ParseIntPipe actually rejects.
+  it('rejects a non-numeric page (page=abc) with 400 instead of silently defaulting', async () => {
+    // The global ValidationPipe's implicit conversion turns 'abc' into NaN;
+    // ParseIntStrictPipe runs before DefaultValuePipe and rejects NaN, so
+    // garbage query values surface as 400s instead of silently degrading to
+    // the default page=1.
     const res = await request(server)
       .get('/v1/notifications?page=abc')
       .set('Authorization', 'Bearer valid-token');
 
-    expect(res.status).toBe(200);
-    expect(service.list).toHaveBeenCalledWith(
-      expect.objectContaining({ id: USER.id }),
-      { page: 1, pageSize: 20 },
-    );
+    expect(res.status).toBe(400);
+    expect(service.list).not.toHaveBeenCalled();
   });
 
   // ── Guard presence (real SupabaseAuthGuard) ──────────────────────────────

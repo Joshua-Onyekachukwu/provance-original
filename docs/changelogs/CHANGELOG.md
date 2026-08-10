@@ -1,5 +1,19 @@
 # Provance — Changelog
 
+## [2026-08-10] - Kill the page=abc silent-default quirk: ParseIntStrictPipe across the API
+
+### Fix
+- **New `ParseIntStrictPipe`** (`common/pipes/`) — rejects NaN/non-integer query values with 400 BEFORE `DefaultValuePipe` can swallow them, while passing `undefined`/`null` through so omitted params still get their default. Root cause of the quirk: the global ValidationPipe's `enableImplicitConversion` turns `?page=abc` into `NaN`, and `DefaultValuePipe` replaces NaN with the default before `ParseIntPipe` ever sees it.
+- **Applied to all six controllers** using the `DefaultValuePipe + ParseIntPipe` pattern: account (activity), notifications (list), scans (list), reports (list), admin (jobs/reports/users/audit-logs) — every paginated surface now 400s on garbage instead of silently serving page=1.
+
+### Tests
+- **`parse-int-strict.pipe.spec.ts`** (+10): undefined/null pass-through, NaN rejects, non-numeric strings reject, 2.5 rejects (number + string), valid/negative/zero integers pass, param name in the message.
+- **Notifications + account controller specs**: the `page=abc` tests flipped from "silently defaults to 1" to **400 + service never called**, and the pipe-metadata assertions now expect the strict pipe → DefaultValuePipe → ParseIntPipe ordering.
+- `page=` (empty string) deliberately unchanged: `Number('')` → 0, which is an integer — the same 0 → service-clamped contract as before.
+
+### Gates
+- Backend jest **389/389** (25 suites, +11), `nest build` clean; e2e 66/68 (the same two pre-existing live-DB invite-accept failures).
+
 ## [2026-08-10] - AccountController HTTP-layer spec (mirrors notifications controller spec)
 
 ### Tests

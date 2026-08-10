@@ -16,6 +16,7 @@ import {
   type CurrentUserPayload,
 } from '../common/decorators/current-user.decorator';
 import { SupabaseAuthGuard } from '../common/guards/supabase-auth.guard';
+import { ParseIntStrictPipe } from '../common/pipes/parse-int-strict.pipe';
 import { NotificationsService } from './notifications.service';
 
 @Controller('notifications')
@@ -27,8 +28,8 @@ export class NotificationsController {
   @Get()
   list(
     @CurrentUser() user: CurrentUserPayload,
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('pageSize', new DefaultValuePipe(20), ParseIntPipe) pageSize: number,
+    @Query('page', new ParseIntStrictPipe(), new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('pageSize', new ParseIntStrictPipe(), new DefaultValuePipe(20), ParseIntPipe) pageSize: number,
   ) {
     return this.notificationsService.list(user, { page, pageSize });
   }

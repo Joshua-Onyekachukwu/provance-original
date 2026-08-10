@@ -17,6 +17,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { CurrentUserPayload } from '../common/decorators/current-user.decorator';
 import { AdminGuard } from '../common/guards/admin.guard';
 import { SupabaseAuthGuard } from '../common/guards/supabase-auth.guard';
+import { ParseIntStrictPipe } from '../common/pipes/parse-int-strict.pipe';
 import { AdminService } from './admin.service';
 import { CreateInviteDto } from './dto/create-invite.dto';
 import { FailJobDto } from './dto/fail-job.dto';
@@ -32,8 +33,8 @@ export class AdminController {
   @Get('jobs')
   listJobs(
     @Query('status') status?: string,
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page = 1,
-    @Query('pageSize', new DefaultValuePipe(500), ParseIntPipe) pageSize = 500,
+    @Query('page', new ParseIntStrictPipe(), new DefaultValuePipe(1), ParseIntPipe) page = 1,
+    @Query('pageSize', new ParseIntStrictPipe(), new DefaultValuePipe(500), ParseIntPipe) pageSize = 500,
   ) {
     return this.adminService.listJobs({ status, page, pageSize });
   }
@@ -62,8 +63,8 @@ export class AdminController {
 
   @Get('reports')
   listAdminReports(
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('pageSize', new DefaultValuePipe(20), ParseIntPipe) pageSize: number,
+    @Query('page', new ParseIntStrictPipe(), new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('pageSize', new ParseIntStrictPipe(), new DefaultValuePipe(20), ParseIntPipe) pageSize: number,
     @Query('team') team?: string,
   ) {
     return this.adminService.listAdminReports({ page, pageSize, team });
@@ -81,8 +82,8 @@ export class AdminController {
 
   @Get('users')
   listUsers(
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('pageSize', new DefaultValuePipe(20), ParseIntPipe) pageSize: number,
+    @Query('page', new ParseIntStrictPipe(), new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('pageSize', new ParseIntStrictPipe(), new DefaultValuePipe(20), ParseIntPipe) pageSize: number,
     @Query('team') team?: string,
   ) {
     return this.adminService.listUsers({ page, pageSize, team });
@@ -114,8 +115,8 @@ export class AdminController {
 
   @Get('audit-logs')
   listAuditLogs(
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('pageSize', new DefaultValuePipe(100), ParseIntPipe) pageSize: number,
+    @Query('page', new ParseIntStrictPipe(), new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('pageSize', new ParseIntStrictPipe(), new DefaultValuePipe(100), ParseIntPipe) pageSize: number,
     @Query('severity') severity?: string,
     @Query('actor') actor?: string,
     @Query('action') action?: string,

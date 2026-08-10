@@ -16,6 +16,7 @@ import {
   type CurrentUserPayload,
 } from '../common/decorators/current-user.decorator';
 import { SupabaseAuthGuard } from '../common/guards/supabase-auth.guard';
+import { ParseIntStrictPipe } from '../common/pipes/parse-int-strict.pipe';
 import { AccountService } from './account.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 
@@ -43,8 +44,8 @@ export class AccountController {
   getActivity(
     @CurrentUser() user: CurrentUserPayload,
     @Query('category', new DefaultValuePipe('all')) category: string,
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('pageSize', new DefaultValuePipe(20), ParseIntPipe) pageSize: number,
+    @Query('page', new ParseIntStrictPipe(), new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('pageSize', new ParseIntStrictPipe(), new DefaultValuePipe(20), ParseIntPipe) pageSize: number,
   ) {
     return this.accountService.getActivity(user, { category, page, pageSize });
   }

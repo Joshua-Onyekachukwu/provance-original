@@ -16,6 +16,7 @@ import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { CurrentUserPayload } from '../common/decorators/current-user.decorator';
 import { SupabaseAuthGuard } from '../common/guards/supabase-auth.guard';
+import { ParseIntStrictPipe } from '../common/pipes/parse-int-strict.pipe';
 import { InitiateScanDto } from './dto/initiate-scan.dto';
 import { ScansService } from './scans.service';
 
@@ -44,8 +45,8 @@ export class ScansController {
   @Get()
   listScans(
     @CurrentUser() user: CurrentUserPayload,
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('pageSize', new DefaultValuePipe(100), ParseIntPipe) pageSize: number,
+    @Query('page', new ParseIntStrictPipe(), new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('pageSize', new ParseIntStrictPipe(), new DefaultValuePipe(100), ParseIntPipe) pageSize: number,
   ) {
     return this.scansService.listScans(user.id, { page, pageSize });
   }
