@@ -1,0 +1,428 @@
+{
+  "board": "Provance",
+  "lists": ["Backlog", "In Progress", "Done"],
+  "cards": [
+    {
+      "title": "Public site and interactive product showcase",
+      "list": "Done",
+      "phase": "Phase 1",
+      "type": "Frontend",
+      "priority": "P1",
+      "desc": "Landing, product, methodology, pricing, security, contact, resources, docs, and policy pages; interactive scan-state demo; public benchmark page.",
+      "acceptance": [
+        "Public pages are production-presentable with self-hosted visuals",
+        "Product showcase runs the full queued → analyzing → complete cycle",
+        "Benchmark page renders the V0.1 findings as a designed experience"
+      ],
+      "links": ["docs/roadmap/MASTER_DEVELOPMENT_ROADMAP.md"]
+    },
+    {
+      "title": "Minimal Supabase auth and invite onboarding",
+      "list": "Done",
+      "phase": "Phase 2",
+      "type": "Backend",
+      "priority": "P0",
+      "desc": "Sign in / sign out, password reset (request + confirm), invite-based onboarding with accept flow, protected routes, and admin gating.",
+      "acceptance": [
+        "Sign in, sign out, and reset flows work end-to-end",
+        "Invite tokens are consumed on acceptance",
+        "Protected and admin routes enforce the right access"
+      ]
+    },
+    {
+      "title": "User workspace — 15/15 pages shipped",
+      "list": "Done",
+      "phase": "Phase 3",
+      "type": "Frontend",
+      "priority": "P1",
+      "desc": "Dashboard, Uploads, Queue, History, Reports (+ detail + print), Account, Notifications, Activity, Organization, Billing, API Keys, Docs/Help, Security, Team — on the ui primitives.",
+      "acceptance": [
+        "Every page has loading/empty/error states and ?state= demo forcing",
+        "Every surface registers ⌘K commands",
+        "Team scoping is URL-backed and shareable"
+      ]
+    },
+    {
+      "title": "Admin workspace — 12/12 pages shipped",
+      "list": "Done",
+      "phase": "Phase 3",
+      "type": "Admin",
+      "priority": "P1",
+      "desc": "Overview, Waitlist, Users, Organizations, Feature Flags, Analytics, Monitoring, Audit Logs, Jobs, Reports, Roles, Settings — mock-backed with demo forcing.",
+      "acceptance": [
+        "All 12 admin pages render on the ui primitives",
+        "?state= demo forcing covers every admin data surface",
+        "Admin team scoping (?team=) is linkable"
+      ]
+    },
+    {
+      "title": "Global error boundary with crash recovery",
+      "list": "Done",
+      "phase": "Phase 3",
+      "type": "Frontend",
+      "priority": "P1",
+      "desc": "Approved 2026-08-04. Recoverable fallback around the app shell so no crashing page blanks the screen; dev-only stack trace; telemetry stub.",
+      "acceptance": [
+        "A thrown error shows retry/reload instead of a blank page",
+        "onError feeds the local telemetry buffer",
+        "Prod builds hide stack details"
+      ]
+    },
+    {
+      "title": "Client-side report PDF export",
+      "list": "Done",
+      "phase": "Phase 3",
+      "type": "Frontend",
+      "priority": "P1",
+      "desc": "Approved 2026-08-04, shipped 2026-08-07. Print-to-PDF from the printable report view with a print stylesheet and export buttons on detail + print pages and ⌘K.",
+      "acceptance": [
+        "Export PDF button on report detail, print page, and command palette",
+        "Print stylesheet keeps panels intact across page breaks",
+        "Pre/post export toasts and a descriptive save filename"
+      ]
+    },
+    {
+      "title": "Admin analytics and monitoring (pages + real endpoint)",
+      "list": "Done",
+      "phase": "Phase 3",
+      "type": "Admin",
+      "priority": "P1",
+      "desc": "Analytics + Monitoring pages and the real GET /admin/analytics aggregation; queue health, storage, DB, and external-service panels.",
+      "acceptance": [
+        "GET /admin/analytics aggregates volume, rates, media types, top orgs",
+        "Monitoring surfaces queue health and service status",
+        "TrendChart and StackedBarChart primitives reused across admin"
+      ]
+    },
+    {
+      "title": "Admin backend endpoints: jobs, reports, roles, settings, audit-logs",
+      "list": "Done",
+      "phase": "Phase 3",
+      "type": "Backend",
+      "priority": "P1",
+      "desc": "Derivation-based admin endpoints behind AdminGuard matching the mock shapes the pages consume, plus job retry/fail actions.",
+      "acceptance": [
+        "GET /admin/jobs, /reports, /roles, /settings, /audit-logs match page contracts",
+        "POST /admin/jobs/:id/retry and /fail honor the guard semantics",
+        "Audit logs reuse the actor-scoped pattern with severity map and CSV export"
+      ]
+    },
+    {
+      "title": "Scan upload and queue round-trip backend",
+      "list": "Done",
+      "phase": "Phase 3",
+      "type": "Backend",
+      "priority": "P0",
+      "desc": "POST /v1/scans creates a row and returns a signed Supabase Storage URL; submit enqueues a BullMQ job; worker marks analyzing → completed and writes the result payload; frontend polling observes transitions.",
+      "acceptance": [
+        "Signed-URL upload round-trip persists media to Storage",
+        "Worker transitions queued → analyzing → completed",
+        "GET /scans/:id returns the real report payload",
+        "e2e spec covers initiate → upload → submit → process → report with a mocked Supabase client"
+      ]
+    },
+    {
+      "title": "Account activity endpoint",
+      "list": "Done",
+      "phase": "Phase 3",
+      "type": "Backend",
+      "priority": "P1",
+      "desc": "GET /v1/account/activity reads auth_audit_events scoped to the user with category filters and pagination matching the Activity page's contract.",
+      "acceptance": [
+        "Events are scoped to the requesting user only",
+        "Category filters and page/pageSize/total match the mock shape",
+        "Missing email returns 400; pagination clamps safely"
+      ]
+    },
+    {
+      "title": "Organization management (page + real API paths)",
+      "list": "Done",
+      "phase": "Phase 3",
+      "type": "Backend",
+      "priority": "P1",
+      "desc": "Member roster with roles and team access, invite flow with pending invites, workspace profile; api.js real-path branches behind USE_MOCK gating.",
+      "acceptance": [
+        "api.js real-path branches for GET /organization, invites, member role/team PATCH, and DELETE are wired behind USE_MOCK gating",
+        "Owner/admin gating matches the permission model",
+        "USE_MOCK keeps the demo flow intact while the live backend module lands separately"
+      ]
+    },
+    {
+      "title": "Formatter consolidation and completion sign-off",
+      "list": "Done",
+      "phase": "Phase 3",
+      "type": "Frontend",
+      "priority": "P2",
+      "desc": "All date/number/duration/storage formatters consolidated in scanPresentation.js with locale pinned to en-US and a vitest edge-case suite; ?state= forcing on every data page.",
+      "acceptance": [
+        "No hand-rolled formatting remains outside the shared module",
+        "63-test vitest suite covers null/NaN/zero/rounding edges",
+        "Sign-off checklist records ?state= on 22/22 data pages"
+      ]
+    },
+    {
+      "title": "URL-backed team scoping and copy-link",
+      "list": "Done",
+      "phase": "Phase 3",
+      "type": "Frontend",
+      "priority": "P2",
+      "desc": "useTeamScoping + generic useQueryParam power ?team= / ?from= / ?to= filters that survive navigation; Copy link affordance; back/forward no longer fights the URL.",
+      "acceptance": [
+        "Team filter persists in the URL and restores on mount",
+        "Date ranges compose with team scoping in one shareable link",
+        "Copy link strips dev-only demo params",
+        "External URL edits settle without ping-pong"
+      ]
+    },
+    {
+      "title": "Trello sync CLI",
+      "list": "Done",
+      "phase": "Phase 3",
+      "type": "Ops",
+      "priority": "P2",
+      "desc": "Zero-dependency scripts/trello.mjs: init, push, move, comment, snapshot, status — idempotent upserts by card title with phase/type/priority labels and acceptance criteria.",
+      "acceptance": [
+        "init, push, move, comment, snapshot, status commands work",
+        "Push upserts idempotently and validates the spec before network calls",
+        "Pure helpers covered by the vitest spec"
+      ]
+    },
+    {
+      "title": "CI gates and render smoke coverage",
+      "list": "Done",
+      "phase": "Phase 3",
+      "type": "Ops",
+      "priority": "P2",
+      "desc": "GitHub Actions runs npm test + lint + build on push/PR; smoke.sh boots the built app and curls key routes; render smokes catch mount-order regressions.",
+      "acceptance": [
+        "CI fails on test, lint, or build regressions",
+        "Smoke step fails on blank-page regressions",
+        "Render smokes cover the team-scoped pages"
+      ]
+    },
+    {
+      "title": "Scan deduplication (hash-based)",
+      "list": "In Progress",
+      "phase": "Phase 3",
+      "type": "Backend",
+      "priority": "P0",
+      "desc": "Approved 2026-08-04. Hash the uploaded media (sha256 fingerprint) and reuse an identical file's completed result instead of reprocessing.",
+      "acceptance": [
+        "Upload computes a content hash before enqueue",
+        "An identical prior scan surfaces its completed report",
+        "Fingerprint is exposed in the report metadata"
+      ]
+    },
+    {
+      "title": "Organization backend module",
+      "list": "In Progress",
+      "phase": "Phase 3",
+      "type": "Backend",
+      "priority": "P1",
+      "desc": "Supabase migration defining organizations/teams/members/invites tables plus the NestJS organization module matching the api.js real-path branches.",
+      "acceptance": [
+        "Migration adds orgs, teams, members, and invites tables",
+        "GET /organization, invites, member role/team PATCH, and DELETE work",
+        "Owner/admin 403s, strict team 400s, and seat/duplicate rules enforced",
+        "Seed script creates the owner member, teams, and sample scans"
+      ]
+    },
+    {
+      "title": "Notifications backend",
+      "list": "In Progress",
+      "phase": "Phase 3",
+      "type": "Backend",
+      "priority": "P1",
+      "desc": "GET /v1/notifications reads a notifications table scoped to the user, mapping to the mockNotifications shape with read-state and mark-read support for the bell and notifications page.",
+      "acceptance": [
+        "Notifications are scoped to the requesting user",
+        "Bell badge and page reflect read/unread state",
+        "Mark-read persists and the unread count updates"
+      ]
+    },
+    {
+      "title": "Active sessions surface",
+      "list": "In Progress",
+      "phase": "Phase 3",
+      "type": "Backend",
+      "priority": "P1",
+      "desc": "Persist session records on sign-in/refresh; expose GET/DELETE /v1/security/sessions to the Security page; revoke server-side via Supabase admin signOut.",
+      "acceptance": [
+        "Session rows are recorded on sign-in and refresh",
+        "Security page lists and revokes real sessions",
+        "Revoking signs the session out server-side"
+      ]
+    },
+    {
+      "title": "Live end-to-end validation with USE_MOCK off",
+      "list": "In Progress",
+      "phase": "Phase 4",
+      "type": "Backend",
+      "priority": "P0",
+      "desc": "Flip USE_MOCK off against a local Supabase + backend and walk the full user flow — sign in, upload, queue, report — to catch contract mismatches before deployment.",
+      "acceptance": [
+        "Sign in works against the real auth path",
+        "Upload → queue → processing → report completes end-to-end",
+        "Any frontend/backend contract mismatches are fixed and recorded"
+      ]
+    },
+    {
+      "title": "Session hardening — httpOnly cookies and rotation",
+      "list": "Backlog",
+      "phase": "Phase 5",
+      "type": "Backend",
+      "priority": "P0",
+      "desc": "Approved 2026-08-04, required before broader beta. Move the Supabase session flow to httpOnly cookie storage with rotation and refresh handling on the backend; document the migration path from the localStorage token flow.",
+      "acceptance": [
+        "Sessions ride httpOnly cookies, not localStorage tokens",
+        "Refresh rotation invalidates the previous session",
+        "Logout revokes the session server-side",
+        "Migration path for the current localStorage flow is documented"
+      ]
+    },
+    {
+      "title": "Sentry + PostHog observability baseline",
+      "list": "Backlog",
+      "phase": "Phase 5",
+      "type": "Ops",
+      "priority": "P1",
+      "desc": "Approved 2026-08-04, before first real users. Sentry for errors (frontend + API + worker) and PostHog for activation funnels.",
+      "acceptance": [
+        "Sentry captures frontend, API, and worker errors",
+        "PostHog tracks the waitlist → sign-in → first-scan funnel",
+        "Local telemetry stub routes into Sentry on activation"
+      ]
+    },
+    {
+      "title": "Usage and entitlement enforcement",
+      "list": "Backlog",
+      "phase": "Phase 5",
+      "type": "Backend",
+      "priority": "P2",
+      "desc": "Approved for later release. Enforce per-plan scan quotas on initiateScan (402 + Retry-After when exhausted) and surface metering in the Billing page.",
+      "acceptance": [
+        "initiateScan returns 402 with Retry-After at quota",
+        "Billing page metering reflects real usage",
+        "Plan limits are configuration-driven"
+      ]
+    },
+    {
+      "title": "Evidence appendix in reports",
+      "list": "Backlog",
+      "phase": "Phase 4",
+      "type": "Frontend",
+      "priority": "P2",
+      "desc": "Approved for later release. Methodology + limitations appendix for court-oriented trust, included in the printable report.",
+      "acceptance": [
+        "Appendix renders methodology and limitations sections",
+        "Included in the PDF export flow",
+        "Language avoids overstating confidence"
+      ]
+    },
+    {
+      "title": "Real image signal pipeline in the worker",
+      "list": "Backlog",
+      "phase": "Phase 4",
+      "type": "Backend",
+      "priority": "P0",
+      "desc": "Move image evidence extraction into the worker: EXIF metadata via exifr with validation, perceptual hashing and signal computation, sharp thumbnails — the 5-signal structure behind the reports.",
+      "acceptance": [
+        "Worker extracts metadata, hashes, and signals without blocking the API",
+        "Perceptual hash feeds dedup and fingerprinting",
+        "Thumbnails render via sharp at scale"
+      ]
+    },
+    {
+      "title": "Queue reliability hardening",
+      "list": "Backlog",
+      "phase": "Phase 4",
+      "type": "Backend",
+      "priority": "P0",
+      "desc": "Retries, stalled-job recovery, failure states, and status tracking via BullMQ; reduce queue infrastructure waste and document the Redis strategy.",
+      "acceptance": [
+        "Failed and stalled jobs recover with clear retry semantics",
+        "Status transitions are measurable and cost-aware",
+        "Redis strategy (Upstash/Valkey) is documented"
+      ]
+    },
+    {
+      "title": "Result payload versioning and report depth",
+      "list": "Backlog",
+      "phase": "Phase 4",
+      "type": "Backend",
+      "priority": "P1",
+      "desc": "Version the result payload structure where needed and deepen report evidence blocks without overstating confidence.",
+      "acceptance": [
+        "Payload schema carries an explicit version",
+        "Older payloads still render in the report surface",
+        "Evidence blocks stay honest about confidence"
+      ]
+    },
+    {
+      "title": "Benchmark methodology",
+      "list": "Backlog",
+      "phase": "Phase 4",
+      "type": "Ops",
+      "priority": "P2",
+      "desc": "Establish methodology for speed, accuracy, and pipeline validation; grow the Provance-1000 catalog coverage.",
+      "acceptance": [
+        "Benchmark runs are reproducible and documented",
+        "Speed and accuracy metrics feed the public benchmark page",
+        "Catalog coverage is tracked"
+      ]
+    },
+    {
+      "title": "Security hardening — RLS, rate limits, file validation",
+      "list": "Backlog",
+      "phase": "Phase 5",
+      "type": "Backend",
+      "priority": "P0",
+      "desc": "Broader authorization and RLS hardening, rate limiting and bot protection, file-validation posture, and admin protections review.",
+      "acceptance": [
+        "RLS covers scans, members, and org data",
+        "Rate limits protect public and authenticated routes",
+        "Upload validation rejects malformed and oversize files"
+      ]
+    },
+    {
+      "title": "MVP launch readiness and Founder review package",
+      "list": "Backlog",
+      "phase": "Phase 6",
+      "type": "Ops",
+      "priority": "P0",
+      "desc": "Full product readiness review from waitlist to report completion; close remaining P0/P1 bugs; validate build/test/deploy gates; confirm docs match shipped behavior; prepare the Founder review package.",
+      "acceptance": [
+        "Release gates pass (test, lint, build, backend, e2e)",
+        "Onboarding through report completion is validated end-to-end",
+        "Documentation reflects shipped behavior",
+        "Founder approval is granted for the MVP release"
+      ]
+    },
+    {
+      "title": "Multimodal verification — video and audio",
+      "list": "Backlog",
+      "phase": "Post-MVP",
+      "type": "Backend",
+      "priority": "P3",
+      "desc": "Deferred. Video via FFmpeg-based workers with frame extraction on separate queues (never in-API); audio with waveform/metadata evidence blocks as a controlled beta expansion.",
+      "acceptance": [
+        "Video jobs run on isolated queues with async notifications",
+        "Frame-level evidence blocks render in reports",
+        "Audio evidence blocks appear in a controlled beta"
+      ]
+    },
+    {
+      "title": "Webhooks UI",
+      "list": "Backlog",
+      "phase": "Post-MVP",
+      "type": "Frontend",
+      "priority": "P2",
+      "desc": "Approved for later release (roadmap: Post-MVP Expansion Themes). Create and manage webhook endpoints alongside API keys, with scopes and test delivery.",
+      "acceptance": [
+        "Webhook create/update/delete UI beside API keys",
+        "Scope selection mirrors the API key scopes",
+        "Test-delivery sends a sample event"
+      ]
+    }
+  ]
+}
