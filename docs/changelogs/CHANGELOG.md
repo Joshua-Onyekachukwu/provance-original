@@ -1,5 +1,23 @@
 # Provance — Changelog
 
+## [2026-08-10] - Projected end-of-cycle usage + overage estimate
+
+### Backend
+- **`projectScanUsage`** — new pure helper in `billing.service.ts` projecting end-of-cycle usage from the current pace: `pace = used / max(1, days elapsed)`, `projected = round(pace × days in cycle)`, `overage = max(0, projected − limit)`, `overageCostUsd = overage × price` (2dp). Days-elapsed clamps to 1 so a first-day burst never divides by zero; zero usage projects to zero.
+- **`SCAN_OVERAGE_PRICE_USD`** env (default `0.05`, validated non-negative in `env.validation.ts`, documented in `.env.example`) feeds the estimate.
+- **`GET /billing` usage gains `projection`** — `{ daysElapsed, daysInCycle, pacePerDay, projectedScans, overageScans, overageCostUsd }` computed from the same `scansUsed/scansLimit/periodStart/periodEnd` the meters render, so the projection card can never disagree with the meters.
+
+### Frontend
+- **Billing page new StatCard** — "Projected end of cycle" shows the projected scan total; when the pace exceeds the limit it escalates to a warning tone with `${n} over · ${cost} est. overage` (e.g. `17 over · $1 est. overage`), otherwise `X scans/day at current pace`. Grid widened to 4 columns (`md:grid-cols-2 lg:grid-cols-4`).
+- **Shared `projectScanUsage`** in `src/lib/scanQuota.js` — frontend mirror of the backend helper; `mockGetBilling` recomputes the projection from the effective usage (so `?quota=high`/`?quota=exhausted` stay consistent with the forced meters) instead of serving a static seed.
+
+### Tests
+- `billing.service.spec.ts` +5 (projection math: pace projection, under-limit zero overage, first-day clamp, zero usage, custom price) — 337 backend total.
+- New `src/lib/scanQuota.test.js` (7 tests) locking frontend/backend projection parity — 463 frontend total.
+
+### Verified
+- Backend jest **337/337**, `nest build` clean; frontend vitest **463/463**, build passes, lint 13 baseline warnings. Live-verified: default state shows `358 · 11.6 scans/day`, `?quota=high` shows `17 over · $1 est. overage` with the warning tone.
+
 ## [2026-08-10] - Billing & entitlements contract doc
 
 ### Docs

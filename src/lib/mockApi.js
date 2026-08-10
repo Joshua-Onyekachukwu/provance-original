@@ -14,6 +14,7 @@
  */
 
 import { isNoiseDisabled } from './mockNoise.js'
+import { projectScanUsage } from './scanQuota.js'
 
 import {
   mockUsers,
@@ -797,17 +798,31 @@ export async function mockGetBilling() {
 
   // Dev-only forcing: report the plan at its quota limit so the Billing
   // exhausted banner renders for review (see mockQuotaExhausted), or at 90%
-  // so the dashboard's ≥85% warning chip renders (see mockQuotaHigh).
+  // so the dashboard's ≥85% warning chip renders (see mockQuotaHigh). The
+  // projection is recomputed from the effective usage so the forced meters
+  // and the projection card always agree.
+  let effectiveUsage = profile.usage
+
   if (mockQuotaExhausted()) {
-    profile.usage = {
+    effectiveUsage = {
       ...profile.usage,
       scansUsed: profile.usage.scansLimit,
     }
   } else if (mockQuotaHigh()) {
-    profile.usage = {
+    effectiveUsage = {
       ...profile.usage,
       scansUsed: Math.round(profile.usage.scansLimit * 0.9),
     }
+  }
+
+  profile.usage = {
+    ...effectiveUsage,
+    projection: projectScanUsage({
+      used: effectiveUsage.scansUsed,
+      limit: effectiveUsage.scansLimit,
+      periodStart: effectiveUsage.periodStart,
+      periodEnd: effectiveUsage.periodEnd,
+    }),
   }
 
   return {

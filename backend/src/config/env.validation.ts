@@ -26,6 +26,22 @@ function parsePositiveInteger(
   return parsed;
 }
 
+function parseNonNegativeNumber(
+  value: string | undefined,
+  fallback: number,
+  key: string,
+): number {
+  if (value === undefined || value === '') return fallback;
+
+  const parsed = Number(value);
+
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    throw new Error(`${key} must be a non-negative number.`);
+  }
+
+  return parsed;
+}
+
 function validateOriginList(value: string | undefined): string {
   const configuredOrigins = (value?.trim() || '')
     .split(',')
@@ -294,6 +310,11 @@ export function validateEnv(config: Record<string, unknown>) {
       env.REPORT_RETENTION_DAYS,
       365,
       'REPORT_RETENTION_DAYS',
+    ),
+    SCAN_OVERAGE_PRICE_USD: parseNonNegativeNumber(
+      env.SCAN_OVERAGE_PRICE_USD,
+      0.05,
+      'SCAN_OVERAGE_PRICE_USD',
     ),
     AUDIT_RETENTION_DAYS: parsePositiveInteger(
       env.AUDIT_RETENTION_DAYS,

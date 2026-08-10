@@ -36,6 +36,63 @@ export const PLAN_API_CALL_QUOTAS: Record<string, number> = {
 
 export const DEFAULT_PLAN = 'pro';
 
+/**
+ * Per-scan overage price (USD) applied to projected usage above the plan's
+ * monthly scan quota. Configurable via SCAN_OVERAGE_PRICE_USD; the estimate is
+ * informational (the Billing page's projected-usage StatCard) until a payment
+ * processor lands.
+ */
+export const OVERAGE_PRICE_PER_SCAN_USD = 0.05;
+
+const DAY_MS = 86_400_000;
+
+/**
+ * projectScanUsage — end-of-cycle projection from current usage pace.
+ *
+ * Pure function (no I/O) so the billing spec can lock the math:
+ *   pace        = used / max(1, days elapsed in cycle)
+ *   projected   = round(pace * days in cycle)
+ *   overage     = max(0, projected - limit)
+ *   overageCost = overage * price (2dp)
+ *
+ * Degenerates gracefully: zero used → zero projection, days-elapsed clamped
+ * to 1 so a first-day burst never divides by zero.
+ */
+export function projectScanUsage(input: {
+  used: number;
+  limit: number;
+  periodStart: string;
+  periodEnd: string;
+  overagePriceUsd?: number;
+  now?: Date;
+}) {
+  const { used, limit, periodStart, periodEnd } = input;
+  const price = input.overagePriceUsd ?? OVERAGE_PRICE_PER_SCAN_USD;
+  const now = input.now ?? new Date();
+
+  const startMs = new Date(periodStart).getTime();
+  const endMs = new Date(periodEnd).getTime();
+  const nowMs = now.getTime();
+
+  const daysElapsed = Math.max(1, Math.floor((nowMs - startMs) / DAY_MS));
+  const daysInCycle = Math.max(1, Math.round((endMs - startMs) / DAY_MS));
+
+  const pacePerDay = used / daysElapsed;
+  const projectedScans = Math.round(pacePerDay * daysInCycle);
+  const overageScans = Math.max(0, projectedScans - limit);
+  const overageCostUsd =
+    Math.round(overageScans * price * 100) / 100;
+
+  return {
+    daysElapsed,
+    daysInCycle,
+    pacePerDay: Math.round(pacePerDay * 100) / 100,
+    projectedScans,
+    overageScans,
+    overageCostUsd,
+  };
+}
+
 const PLAN_DISPLAY: Record<string, { name: string; priceUsd: number; seats: number }> = {
   starter: { name: 'Starter', priceUsd: 0, seats: 1 },
   pro: { name: 'Pro', priceUsd: 49, seats: 3 },
@@ -85,6 +142,7 @@ export class BillingService {
   private readonly orgsTable: string;
   private readonly scansTable: string;
   private readonly apiUsageTable: string;
+  private readonly overagePriceUsd: number;
 
   constructor(
     private readonly supabaseService: SupabaseService,
@@ -101,6 +159,10 @@ export class BillingService {
     this.scansTable = configService.get<string>('SUPABASE_SCANS_TABLE', 'scans');
     this.apiUsageTable =
       configService.get<string>('SUPABASE_API_USAGE_TABLE') || 'api_usage';
+    this.overagePriceUsd =
+      Number(configService.get<number>('SCAN_OVERAGE_PRICE_USD')) > 0
+        ? Number(configService.get<number>('SCAN_OVERAGE_PRICE_USD'))
+        : OVERAGE_PRICE_PER_SCAN_USD;
   }
 
   /**
@@ -238,6 +300,15 @@ export class BillingService {
           storageLimitGb: storage.limitGb,
           apiCallsUsed: apiUsage.used,
           apiCallsLimit: apiUsage.limit,
+          // End-of-cycle projection from the current pace — powers the
+          // Billing page's projected-usage StatCard.
+          projection: projectScanUsage({
+            used: usage.scansUsed,
+            limit: usage.scansLimit,
+            periodStart: usage.periodStart,
+            periodEnd: usage.periodEnd,
+            overagePriceUsd: this.overagePriceUsd,
+          }),
         },
         paymentMethods: [],
       },

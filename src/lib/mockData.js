@@ -1313,6 +1313,17 @@ export const mockBillingProfile = {
     storageLimitGb: 50,
     apiCallsUsed: 4120,
     apiCallsLimit: 10000,
+    // End-of-cycle projection at the current pace (312 over 11 days ≈ 28.4/day
+    // → ~880 by day 31, ~380 over the 500 limit). Mirrors the real
+    // projectScanUsage shape the backend computes.
+    projection: {
+      daysElapsed: 11,
+      daysInCycle: 31,
+      pacePerDay: 28.36,
+      projectedScans: 880,
+      overageScans: 380,
+      overageCostUsd: 19,
+    },
   },
   paymentMethods: [
     {

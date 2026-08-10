@@ -130,6 +130,21 @@ export default function AppBillingPage() {
         detail: `${formatPct(usage.apiCallsUsed / usage.apiCallsLimit, 0)} of ${formatCount(usage.apiCallsLimit)} monthly`,
         tone: percentOf(usage.apiCallsUsed, usage.apiCallsLimit) >= 90 ? 'warning' : 'default',
       },
+      // End-of-cycle projection at the current pace — the new StatCard this
+      // slice adds. Overage is only surfaced when the pace actually exceeds
+      // the plan; otherwise the card reports the projected total.
+      {
+        label: 'Projected end of cycle',
+        value: usage.projection
+          ? formatCount(usage.projection.projectedScans)
+          : '—',
+        detail: usage.projection
+          ? usage.projection.overageScans > 0
+            ? `${formatCount(usage.projection.overageScans)} over · ${formatCurrency(usage.projection.overageCostUsd)} est. overage`
+            : `${formatCount(usage.projection.pacePerDay)} scans/day at current pace`
+          : 'Usage projection unavailable',
+        tone: usage.projection && usage.projection.overageScans > 0 ? 'warning' : 'default',
+      },
     ]
   }, [usage])
 
@@ -279,7 +294,7 @@ export default function AppBillingPage() {
         )}
 
         {!loading && !failed && usageStats && (
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
             {usageStats.map((stat) => (
               <StatCard key={stat.label} {...stat} loading={loading} error={failed} />
             ))}

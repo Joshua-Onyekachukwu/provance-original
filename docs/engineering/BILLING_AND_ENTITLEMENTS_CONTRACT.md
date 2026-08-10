@@ -116,7 +116,15 @@ shape the Billing page renders — `profile` (plan + usage + payment methods) an
       "storageUsedGb": 18.4,
       "storageLimitGb": 50,
       "apiCallsUsed": 4120,
-      "apiCallsLimit": 10000
+      "apiCallsLimit": 10000,
+      "projection": {
+        "daysElapsed": 11,
+        "daysInCycle": 31,
+        "pacePerDay": 28.36,
+        "projectedScans": 880,
+        "overageScans": 380,
+        "overageCostUsd": 19
+      }
     },
     "paymentMethods": []
   },
@@ -134,6 +142,7 @@ Field-by-field source of truth:
 | `usage.storageUsedGb` / `storageLimitGb` | active org's `organizations.storage_used_gb` / `storage_limit_gb` (migration 0005) via the membership join | `null` (frontend renders `—`) |
 | `usage.apiCallsUsed` | `api_usage` row for `(user_id, period_month)` where `period_month = periodStart.slice(0, 7)` (migration **0020**) | `0` when the table/row is missing |
 | `usage.apiCallsLimit` | `apiCallLimitForPlan(plan)` from the plan catalog (never the table) | plan's limit |
+| `usage.projection` | `projectScanUsage` — `pace = used / max(1, daysElapsed)`, `projectedScans = round(pace × daysInCycle)`, `overageScans = max(0, projected − limit)`, `overageCostUsd = overage × SCAN_OVERAGE_PRICE_USD` (default `0.05`) | computed from the same scans/cycle fields; days-elapsed clamps to 1 |
 | `paymentMethods` / `invoices` | empty until a payment processor is wired | `[]` |
 
 `periodStart`/`periodEnd` are resolved **once** per request and shared by
@@ -142,13 +151,18 @@ can never straddle a month boundary mid-payload.
 
 **Consumers:**
 
-- Billing page (`AppBillingPage`) — plan card, usage meters, invoices.
+- Billing page (`AppBillingPage`) — plan card, usage meters, the projected
+  end-of-cycle StatCard, invoices.
 - Dashboard quota warning chip (`ScanQuotaWarningChip`) — reads
   `profile.usage.scansUsed/scansLimit`, warns at ≥85% (85–99% warning,
   100%+ danger), links to `/app/billing`. Pure math in `src/lib/scanQuota.js`
   (`scanQuotaPct`).
 - `initiateScan` quota gate (`assertScanQuota`) — same `scansUsed/scansLimit`
   source, so the dashboard, meters, and enforcement can never disagree.
+
+The projection math is mirrored in `src/lib/scanQuota.js`
+(`projectScanUsage`) so the mock payload and the Billing StatCard use the
+same math as the real endpoint; the billing spec locks parity.
 
 ## 5. Mock parity rules
 
@@ -168,6 +182,9 @@ can never straddle a month boundary mid-payload.
 - **API-call counting is not wired yet** — `api_usage` is read-only today;
   no middleware increments `calls` on authenticated requests. Tracked in
   `docs/project-state/followup-recommendations.md`.
+- **The overage estimate is informational** — `overageCostUsd` is a pace-based
+  projection, not a charge; it becomes billable only once a payment processor
+  lands (deferred).
 - Payment methods and invoices remain `[]` until Stripe (or equivalent) lands
   (deferred per `MASTER_DEVELOPMENT_ROADMAP.md`).
 - The archival/enforcement job for storage is Phase 5 backlog (see

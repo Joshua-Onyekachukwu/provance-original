@@ -7,9 +7,11 @@ import { QuotaExceededException } from './quota-exceeded.exception';
 import {
   BillingService,
   DEFAULT_PLAN,
+  OVERAGE_PRICE_PER_SCAN_USD,
   PLAN_API_CALL_QUOTAS,
   PLAN_SCAN_QUOTAS,
   apiCallLimitForPlan,
+  projectScanUsage,
   scanLimitForPlan,
   currentBillingCycle,
 } from './billing.service';
@@ -104,6 +106,86 @@ describe('billing policy', () => {
   it('never reports a retry-after below 60s', () => {
     const now = new Date('2026-07-31T23:59:59.000Z');
     expect(currentBillingCycle(now).retryAfterSeconds).toBe(60);
+  });
+
+  describe('projectScanUsage', () => {
+    const cycle = {
+      periodStart: '2026-07-01T00:00:00.000Z',
+      periodEnd: '2026-08-01T00:00:00.000Z',
+    };
+
+    it('projects end-of-cycle usage from the current pace', () => {
+      // 10 days elapsed, 250 used → pace 25/day → 31-day July → 775 projected.
+      const now = new Date('2026-07-11T00:00:00.000Z');
+      const projection = projectScanUsage({
+        used: 250,
+        limit: 500,
+        ...cycle,
+        now,
+      });
+
+      expect(projection.daysElapsed).toBe(10);
+      expect(projection.daysInCycle).toBe(31);
+      expect(projection.pacePerDay).toBe(25);
+      expect(projection.projectedScans).toBe(775);
+      expect(projection.overageScans).toBe(275);
+      expect(projection.overageCostUsd).toBe(275 * OVERAGE_PRICE_PER_SCAN_USD);
+    });
+
+    it('reports zero overage when the projection stays under the limit', () => {
+      const now = new Date('2026-07-11T00:00:00.000Z');
+      const projection = projectScanUsage({
+        used: 60,
+        limit: 500,
+        ...cycle,
+        now,
+      });
+
+      expect(projection.projectedScans).toBe(186);
+      expect(projection.overageScans).toBe(0);
+      expect(projection.overageCostUsd).toBe(0);
+    });
+
+    it('clamps days-elapsed to 1 so a first-day burst never divides by zero', () => {
+      const now = new Date('2026-07-01T06:00:00.000Z');
+      const projection = projectScanUsage({
+        used: 30,
+        limit: 100,
+        ...cycle,
+        now,
+      });
+
+      expect(projection.daysElapsed).toBe(1);
+      expect(projection.projectedScans).toBe(930); // 30/day × 31
+      expect(projection.overageScans).toBe(830);
+    });
+
+    it('handles zero usage without crashing', () => {
+      const now = new Date('2026-07-20T00:00:00.000Z');
+      const projection = projectScanUsage({
+        used: 0,
+        limit: 500,
+        ...cycle,
+        now,
+      });
+
+      expect(projection.projectedScans).toBe(0);
+      expect(projection.overageScans).toBe(0);
+      expect(projection.overageCostUsd).toBe(0);
+    });
+
+    it('respects a custom overage price', () => {
+      const now = new Date('2026-07-11T00:00:00.000Z');
+      const projection = projectScanUsage({
+        used: 250,
+        limit: 500,
+        ...cycle,
+        overagePriceUsd: 0.1,
+        now,
+      });
+
+      expect(projection.overageCostUsd).toBe(27.5);
+    });
   });
 });
 
@@ -247,6 +329,12 @@ describe('BillingService', () => {
         apiCallsLimit: PLAN_API_CALL_QUOTAS.pro,
       });
       expect(result.profile.usage.periodStart).toMatch(/T00:00:00.000Z$/);
+      // Projection is computed from the same scansUsed/limit/cycle fields.
+      expect(result.profile.usage.projection).toMatchObject({
+        projectedScans: expect.any(Number),
+        overageScans: expect.any(Number),
+        overageCostUsd: expect.any(Number),
+      });
       expect(result.profile.paymentMethods).toEqual([]);
       expect(result.invoices).toEqual([]);
     });
