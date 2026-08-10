@@ -404,7 +404,7 @@ export default function AppBillingPage() {
           />
         )}
         {!loading && !failed && invoiceList.length > 0 && (
-          <div className="overflow-hidden rounded-2xl border border-stone-light">
+          <div className="overflow-x-auto rounded-2xl border border-stone-light">
             <table className="w-full text-left text-sm">
               <thead className="border-b border-stone-light bg-parchment">
                 <tr>

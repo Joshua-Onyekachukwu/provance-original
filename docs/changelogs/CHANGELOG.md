@@ -1,5 +1,22 @@
 # Provance — Changelog
 
+## [2026-08-10] - Responsive pass: tablet (768px) + desktop (1280px) audit
+
+### Verified
+- Headless real-viewport audit (playwright-core + Edge) walked all 16 workspace routes + 13 admin routes at **768px** and **1280px**, measuring page overflow, elements wider than the viewport, sidebar behavior, and chart grid stacking. Screenshots captured to `.freebuff/shots/<width>/` (gitignored).
+- **Sidebar:** correct at both widths — stacked top-nav with hamburger toggle below `lg` (768: aside full-width, grid `block`), 300px (workspace) / 280px (admin) fixed column at 1280 with `main` at ~980–1000px.
+- **Charts:** no overflow anywhere; panels stack to single column at 768 and expand to 2/3/5 columns at 1280, SVGs scaling via viewBox inside their cards (dashboard trend + verdict mix, admin analytics KPI/verdict/queue/media, monitoring hourly/storage, overview volume).
+
+### Fixed
+- Hand-rolled tables wrapped in `overflow-hidden` clipped their content with no way to scroll at narrow widths. Converted the five table wrappers to `overflow-x-auto` (the DataTable pattern) so wide tables scroll inside their cards instead of clipping:
+  - `admin/JobsPage.jsx` — 8-col ledger (~1018px wide) was clipped at **768 and 1280**; now scrolls (366px / 150px of scrollable width)
+  - `admin/ReportsPage.jsx` — 7-col ledger (907px) clipped at 768; now scrolls (255px)
+  - `app/AppApiKeysPage.jsx`, `app/AppBillingPage.jsx`, `app/AppWebhooksPage.jsx` — same latent pattern hardened (api-keys was 27px over at 768)
+- Re-audit after the fix: **zero flags at both widths**.
+
+### Tests
+- Frontend vitest **463/463**, `npm run build` clean, eslint clean on the changed files.
+
 ## [2026-08-10] - Deploy check: httpOnly-cookie session flow verified end-to-end
 
 ### Verified live (fresh backend build on :4100 + real Supabase project, seed account `founder.admin@provance.local`)

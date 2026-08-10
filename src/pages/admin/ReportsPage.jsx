@@ -355,7 +355,7 @@ export default function ReportsPage() {
                 />
               </div>
             ) : (
-              <div className="mt-4 overflow-hidden rounded-2xl border border-stone-light bg-white-warm">
+              <div className="mt-4 overflow-x-auto rounded-2xl border border-stone-light bg-white-warm">
                 <table className="w-full border-collapse text-sm">
                   <thead>
                     <tr className="border-b border-stone-light bg-parchment/60">
