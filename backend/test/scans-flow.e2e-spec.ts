@@ -403,6 +403,27 @@ describe('Scan flow (e2e)', () => {
     expect(response.body.message).toContain('not ready to be submitted');
   });
 
+  it('marks the scan failed with a failure_reason when the asset download fails', async () => {
+    const initiate = await http.post('/v1/scans').send(initiateBody()).expect(201);
+    const scanId = initiate.body.scanId as string;
+
+    // The storage download fails (missing object / storage outage) — the
+    // inline pipeline must land the scan in failed with the reason on the row.
+    storage.download.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'Object not found.' },
+    });
+
+    await http.post(`/v1/scans/${scanId}/submit`).expect(202);
+
+    const failed = await waitForScanStatus(http, scanId, 'failed');
+    const scan = failed.body.scan;
+
+    expect(scan.status).toBe('failed');
+    expect(scan.failure_reason).toContain('Failed to download the uploaded asset.');
+    expect(scan.result_payload).toBeFalsy();
+  });
+
   it('returns 404 for a report that is not ready yet', async () => {
     const initiate = await http.post('/v1/scans').send(initiateBody()).expect(201);
     const scanId = initiate.body.scanId as string;
