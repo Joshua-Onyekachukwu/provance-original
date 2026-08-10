@@ -240,10 +240,21 @@ Expected `found` per migration: 0003 → 2 · 0004 → 1 · 0005 → 4 · 0006 �
 curl http://localhost:4000/v1/health/readiness
 ```
 
-Acceptance: `"status": "ready"` with `checks.scansSchema.ready = true` and
-`checks.userSessions.ready = true` (both flip from `false` only when 0009 and
-0010 land). The `queue` check is informational (BullMQ configured vs inline
-fallback) and does not gate `ready`.
+Acceptance: `"status": "ready"` requires ALL of:
+
+- `checks.scansSchema.ready = true` — flips only when **0009** lands
+  (`processing_mode`/`team_id`/`completed_at` on `scans`).
+- `checks.userSessions.ready = true` — flips only when **0010** lands
+  (`user_sessions` + `user_security_settings`).
+- `checks.migrations.ready = true` — the `MigrationHealthService` diff gate:
+  it lists every `supabase/migrations/*.sql` file whose probe still fails,
+  and it also gates `ready`. **Applying 0005–0010 alone leaves `status`
+  `degraded`** because 0011–0020 remain unapplied — to converge to `ready`
+  in one paste, apply the full missing set
+  (`.freebuff/combined-0005-0020.sql`, all idempotent, numeric order).
+
+The `queue` check is informational (BullMQ configured vs inline fallback) and
+does not gate `ready`.
 
 ### 3. Service-role REST probes (optional, from a shell)
 

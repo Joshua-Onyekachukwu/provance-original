@@ -1,5 +1,16 @@
 # Provance — Changelog
 
+## [2026-08-10] - Migration apply prep: live verification + combined paste blocks
+
+### Live verification (service-role REST probes, runbook §3)
+- Confirmed the live project still has **0005, 0007, 0008, 0009, 0010 all unapplied**: all four org tables + `admin_incidents` + `audit_logs` + both session tables return `PGRST205`; `scans.processing_mode` returns `42703` (0009's exact column gap). `GET /v1/health/readiness` (backend :4100) reports `degraded` with `scansSchema.ready=false` and `userSessions.ready=false`.
+- **Applying migrations cannot be done from this workspace**: no supabase CLI, no project link, no `SUPABASE_ACCESS_TOKEN`, and `DATABASE_URL` is empty — the dashboard SQL Editor is the only path (as the runbook documents).
+
+### Deliverables
+- **`.freebuff/combined-0005-0010.sql`** (420 lines) — the exact ask, one paste.
+- **`.freebuff/combined-0005-0020.sql`** (959 lines, 16 migrations) — the full missing set. **Required for `status: ready`**: the `MigrationHealthService` `checks.migrations` gate lists 0011–0020 as missing too, so 0005–0010 alone still leaves readiness `degraded`.
+- **`docs/engineering/MIGRATION_RUNBOOK.md`** — acceptance criteria updated: `ready` now requires `scansSchema` + `userSessions` AND the `checks.migrations` diff gate (full 0005–0020 set), with the combined-block pointer.
+
 ## [2026-08-10] - Dashboard notification feed gets the shared click contract
 
 ### Changed

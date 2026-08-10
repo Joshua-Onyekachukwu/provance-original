@@ -104,3 +104,6 @@ Status values: `Open` · `In Progress` · `Done` · `Deferred` · `Declined`
 
 | 2026-08-10 | Dashboard notification feed click contract | Add a View all affordance to the dashboard feed body (it currently caps at unread.slice(0, 4) with no link to /app/notifications) | Open |
 | 2026-08-10 | Dashboard notification feed click contract | The optimistic readIds set resets on remount and the bell keeps its own count (documented as per-instance state) — consider lifting unread state into a shared context so the badge and feed sync instantly without refetch | Open |
+
+| 2026-08-10 | Migration apply prep | User pastes .freebuff/combined-0005-0020.sql in the dashboard SQL Editor, then re-run the one-shot REST probes + readiness check to confirm scansSchema/userSessions/migrations all flip ready (wait a few seconds for the PostgREST schema reload first) | Open |
+| 2026-08-10 | Migration apply prep | Once the full set is applied, re-run PORT=4100 node backend/scripts/validate-scan-roundtrip.mjs and the invite-accept live e2e — the standing 503/PGRST205 blockers should clear | Open |
