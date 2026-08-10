@@ -1,5 +1,13 @@
 # Provance — Changelog
 
+## [2026-08-10] - Deploy check: httpOnly-cookie session flow verified end-to-end
+
+### Verified live (fresh backend build on :4100 + real Supabase project, seed account `founder.admin@provance.local`)
+- **Wire level (curl + cookie jar):** `POST /v1/auth/sign-in` → `Set-Cookie: provance_refresh=…; Path=/; Max-Age=2592000; HttpOnly; SameSite=Lax`, and the response body carries **no refresh token** (session keys: `accessToken, expiresAt, tokenType` only). `POST /v1/auth/refresh` with **only the cookie** (empty body) returns `authenticated` with a fresh access token and **rotates** the cookie on the wire (`wl4vg4cyvklf` → `kcz2mth6ifwt`). Guarded `GET /v1/account/profile` with the bearer → 200 (`Founder Admin`); with **only the cookie** → 401 (the cookie is the refresh credential, never an access token).
+- **Browser level (USE_MOCK=false, vite on :5173 against the real :4000 backend):** fresh sign-in with real credentials → dashboard; `localStorage` **completely empty** (`provance.auth.session.v1` never written — access token lives in module memory only); `document.cookie` empty (httpOnly invisible to JS). Signed out → sign-in page + cookie cleared. Reload-equivalent (fresh page load with the cookie persisted in the browser store) → still signed in as Founder Admin via the silent cookie refresh; authenticated data calls (`/reports`, `/account/activity`, `/billing`, `/scans/queue-snapshot`, `/notifications/unread-count`) all 200.
+- **Known non-auth gaps observed in real mode (unchanged blockers):** `/v1/scans` and `/v1/admin/analytics` 503 (migration 0009 not applied), `/v1/notifications` 503 (0011), `/v1/admin/system-health` 404 (route is `/v1/admin/monitoring`). The dashboard degrades gracefully into per-panel error states with Retry — no blank page, no crash.
+- The temporary `USE_MOCK=false` flip was reverted; working tree clean; only the user's :4000 server left running (temp :4100 + vite instances killed).
+
 ## [2026-08-10] - Refresh-token reuse detection in the audit trail
 
 ### Backend
