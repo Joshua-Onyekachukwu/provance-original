@@ -57,6 +57,7 @@ The active priority is:
 - `product-roadmap.md`
 - `development-priorities.md`
 - `outstanding-questions.md`
+- `followup-recommendations.md` (running log of next-step recommendations made after each completed task — the queue to resume from when the current task load is done)
 - `decision-log.md`
 - `future-improvements.md`
 
