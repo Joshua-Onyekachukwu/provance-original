@@ -1,5 +1,17 @@
 # Provance — Changelog
 
+## [2026-08-10] - Security e2e: settings + password change-password flow at the HTTP layer
+
+### Backend (tests)
+- **`security.e2e-spec.ts` extended (+8 tests → 16 total)** — the suite now covers the settings + password surface at the HTTP layer:
+  - `GET /v1/security/settings` — password policy + session ledger + persisted controls shape, and the defaults fallback when no `user_security_settings` row exists.
+  - `PATCH /v1/security/settings` — flag toggle persistence with `security_setting_updated` audit and GET readback; the `twoFactorAuth` `{ enabled }` object shape mapping back to `enabled + method: 'app'`; 400 on a non-positive `sessionTimeoutMinutes`.
+  - `PATCH /v1/security/password` — the full **revoke-everything-else** flow: current-password verification via the public client, verification-session burn (`admin.auth.admin.signOut`), `admin.updateUserById` password update, GoTrue admin DELETE revocations of **every other** session (current untouched), ledger cleanup, and `password_changed` audit. Plus the wrong-password 400 (revokes nothing, no audit) and the DTO `MinLength(8)` 400.
+- **Mock hardening**: the stateful Supabase client now gives each top-level `.from()` a **fresh chain with its own state** (real supabase-js semantics) — `getSettings` runs `listSessions` + `loadSecurityControls` under `Promise.all`, and a single shared state object let the second query clobber the first (the settings row leaking into the sessions list). Also added `upsert` (updateSetting), the `user_security_settings` table map, `auth.admin.signOut`/`updateUserById` mocks, and a configurable `createPublicClient` for the password flow.
+
+### Verified
+- Security e2e **16/16**; backend unit **354/354**; `nest build` clean. Full e2e: 65/67 — the 2 failures are the pre-existing live-DB `invite-accept` suite (live Supabase project missing migration 0005), unrelated to this change.
+
 ## [2026-08-10] - Security page: two-step session revoke + in-flight state
 
 ### Frontend (AppSecurityPage)
