@@ -46,6 +46,19 @@ const USER = {
 
 type Row = Record<string, unknown>;
 
+/**
+ * Fake access token for the sign-in path. decodeJwtPayloadSid only splits
+ * the token and reads the `sid` claim from the base64url payload — no
+ * signature verification — so a well-formed fake with the right payload is
+ * all the sign-in ledger path needs.
+ */
+function makeAccessToken(sid: string) {
+  const payload = Buffer.from(
+    JSON.stringify({ sid, sub: USER.id, email: USER.email }),
+  ).toString('base64url');
+  return `eyJhbGciOiJub25lIn0.${payload}.fake-signature`;
+}
+
 // ---------------------------------------------------------------------------
 // Stateful in-memory Supabase mock (the organization.e2e-spec.ts convention)
 //
@@ -67,6 +80,7 @@ function createStatefulSecurityClient() {
   const sessions = new Map<string, Row>();
   const auditEvents = new Map<string, Row>();
   const settings = new Map<string, Row>();
+  const profiles = new Map<string, Row>();
   let seq = 0;
 
   const state = {
@@ -83,6 +97,7 @@ function createStatefulSecurityClient() {
     if (table === 'user_sessions') return sessions;
     if (table === 'auth_audit_events') return auditEvents;
     if (table === 'user_security_settings') return settings;
+    if (table === 'profiles') return profiles;
     return null;
   };
 
@@ -139,6 +154,7 @@ function createStatefulSecurityClient() {
         chainState.order = { column, ascending: options?.ascending ?? true };
         return chain;
       }),
+      limit: jest.fn(() => chain),
       insert: jest.fn((payload: Row) => {
         chainState.pendingInsert = payload;
         return chain;
@@ -157,11 +173,12 @@ function createStatefulSecurityClient() {
         chainState.pendingDelete = true;
         return chain;
       }),
-      maybeSingle: jest.fn(async () => {
-        const row = listRows()[0] ?? null;
-        return { data: row ? { ...row } : null, error: null };
-      }),
-      then(resolve: (value: ResolvedResult) => void) {
+    };
+
+    // Terminal execution shared by the thenable (list) and single() paths
+    // — applies the pending mutation to the backing map and returns the
+    // resolved result. Must stay a closure over this chain's own state.
+    const runQuery = (): ResolvedResult => {
         const map = tableMap(chainState.table);
 
         if (chainState.pendingDelete) {
@@ -169,8 +186,7 @@ function createStatefulSecurityClient() {
             const key = String(row.id ?? row.user_id ?? '');
             if (map?.has(key)) map.delete(key);
           }
-          resolve({ data: null, error: null });
-          return undefined;
+          return { data: null, error: null };
         }
 
         if (chainState.pendingUpsert) {
@@ -178,8 +194,7 @@ function createStatefulSecurityClient() {
             chainState.pendingUpsert.user_id ?? chainState.pendingUpsert.id ?? '',
           );
           if (map && key) map.set(key, { ...chainState.pendingUpsert });
-          resolve({ data: null, error: null });
-          return undefined;
+          return { data: null, error: null };
         }
 
         if (chainState.pendingUpdate) {
@@ -187,8 +202,7 @@ function createStatefulSecurityClient() {
             const key = String(row.id ?? row.user_id ?? '');
             if (map?.has(key)) map.set(key, { ...row, ...chainState.pendingUpdate });
           }
-          resolve({ data: null, error: null });
-          return undefined;
+          return { data: null, error: null };
         }
 
         if (chainState.pendingInsert) {
@@ -198,14 +212,30 @@ function createStatefulSecurityClient() {
           };
           const key = String(row.id);
           map?.set(key, row);
-          resolve({ data: [row], error: null });
-          return undefined;
+          return { data: [row], error: null };
         }
 
-        resolve({ data: listRows(), error: null });
+        return { data: listRows(), error: null };
+    };
+
+    // The thenable + single() terminal methods are attached after the literal
+    // so runQuery is in scope.
+    Object.assign(chain, {
+      maybeSingle: jest.fn(async () => {
+        const row = listRows()[0] ?? null;
+        return { data: row ? { ...row } : null, error: null };
+      }),
+      single: jest.fn(async () => {
+        const result = runQuery();
+        const rows = Array.isArray(result.data) ? result.data : [];
+        const row = rows[0] ?? null;
+        return { data: row ? { ...row } : null, error: null };
+      }),
+      then(resolve: (value: ResolvedResult) => void) {
+        resolve(runQuery());
         return undefined;
       },
-    };
+    });
 
     return chain;
   };
@@ -255,6 +285,7 @@ function createStatefulSecurityClient() {
     sessions,
     auditEvents,
     settings,
+    profiles,
   };
 }
 
@@ -702,6 +733,106 @@ describe('Security flow (e2e)', () => {
       expect(response.body.message).toContain(
         'New password must be at least 8 characters.',
       );
+    });
+  });
+
+  describe('session-ledger round-trip — sign in → list → revoke', () => {
+    const signInPublicClient = {
+      auth: {
+        signInWithPassword: jest.fn().mockResolvedValue({
+          data: {
+            session: {
+              access_token: makeAccessToken(USER.sid),
+              refresh_token: 'refresh-fresh-123',
+              expires_at: 1893456000,
+              token_type: 'bearer',
+            },
+            user: { id: USER.id, email: USER.email },
+          },
+          error: null,
+        }),
+      },
+    };
+
+    it('records a ledger row on sign-in, lists it as isCurrent, and leaves the old session revocable', async () => {
+      // The revoke leg drives the GoTrue admin API via global.fetch (the
+      // same stub the standalone DELETE tests use) — sign-in itself uses the
+      // mocked public client, not fetch.
+      global.fetch = jest.fn().mockResolvedValue({ ok: true, status: 200 });
+
+      const roundTripApp = await createTestApp({
+        publicClient: signInPublicClient,
+      });
+      const roundTripHttp = request(roundTripApp.app.getHttpServer());
+      extraApps.push(roundTripApp.app);
+
+      // A pre-existing session on another device — the one the user is NOT
+      // currently signing in from.
+      roundTripApp.seed.session('s-old', {
+        auth_session_id: 'sid-old',
+        device: 'Firefox on macOS',
+      });
+
+      // 1. Sign in — the fresh session is ledgered (cookie mode strips the
+      //    refresh token from the body).
+      const signIn = await roundTripHttp
+        .post('/v1/auth/sign-in')
+        .set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126 Safari/537.36')
+        .send({ email: USER.email, password: 'Pass123!' })
+        .expect(200);
+
+      expect(signIn.body.status).toBe('authenticated');
+      expect(signIn.body.user.id).toBe(USER.id);
+      expect(signIn.body.session.accessToken).toBeTruthy();
+      expect(signIn.body.session.refreshToken).toBeUndefined();
+
+      // The ledger now holds the fresh row (keyed by the decoded sid claim)
+      // with the device derived from the User-Agent.
+      const freshRow = [...roundTripApp.sessions.values()].find(
+        (row) => row.auth_session_id === USER.sid,
+      );
+      expect(freshRow).toMatchObject({
+        user_id: USER.id,
+        auth_session_id: USER.sid,
+        device: 'Chrome on Windows',
+      });
+      expect(typeof freshRow.refresh_token_hash).toBe('string');
+      expect(freshRow.refresh_token_hash.length).toBeGreaterThanOrEqual(32);
+
+      // 2. List sessions — the fresh session is current, the old one is not.
+      const list = await roundTripHttp.get('/v1/security/sessions').expect(200);
+      expect(list.body).toHaveLength(2);
+
+      const fresh = list.body.find(
+        (session: Record<string, unknown>) => session.isCurrent === true,
+      );
+      const old = list.body.find(
+        (session: Record<string, unknown>) => session.id === 's-old',
+      );
+      expect(fresh).toMatchObject({
+        device: 'Chrome on Windows',
+        isCurrent: true,
+      });
+      expect(old).toMatchObject({
+        id: 's-old',
+        device: 'Firefox on macOS',
+        isCurrent: false,
+      });
+
+      // 3. The old session is revocable — deleting it leaves the fresh one
+      //    signed in and still current.
+      const revoke = await roundTripHttp
+        .delete('/v1/security/sessions/s-old')
+        .expect(200);
+      expect(revoke.body).toEqual({ ok: true, sessionId: 's-old' });
+
+      const after = await roundTripHttp.get('/v1/security/sessions').expect(200);
+      expect(after.body).toHaveLength(1);
+      expect(after.body[0]).toMatchObject({
+        device: 'Chrome on Windows',
+        isCurrent: true,
+      });
+      expect(roundTripApp.sessions.has('s-old')).toBe(false);
     });
   });
 

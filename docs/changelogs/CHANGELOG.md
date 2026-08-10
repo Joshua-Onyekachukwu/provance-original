@@ -1,5 +1,14 @@
 # Provance — Changelog
 
+## [2026-08-10] - Session-ledger round-trip e2e (sign in → list → revoke)
+
+### Backend (tests)
+- **`security.e2e-spec.ts` +1 test (17 total)** — a full session-ledger round-trip at the HTTP layer: `POST /v1/auth/sign-in` records a `user_sessions` row (auth session id from the decoded JWT `sid` claim, SHA-256 `refresh_token_hash`, device derived from the User-Agent), `GET /v1/security/sessions` lists it as **isCurrent** alongside a seeded old session, and `DELETE /v1/security/sessions/s-old` revokes only the old one — the fresh session stays signed in and current. Also asserts the cookie-mode contract (body has no `refreshToken`).
+- **Mock additions to the stateful Supabase client**: `profiles` table (the sign-in path runs `ensureProfile` → insert + `.select().single()`), `.limit()` no-op, and `.single()` terminal (materializes pending ops via a shared `runQuery` used by both the thenable and `single`). New `makeAccessToken(sid)` helper builds a fake JWT whose base64url payload carries the `sid` claim `decodeJwtPayloadSid` reads (no signature verification in the util).
+
+### Verified
+- Security e2e **17/17**; backend unit **354/354**; full e2e **66/68** (the 2 failures are the standing live-DB `invite-accept` suite — live project missing migration 0005, unrelated); `nest build` clean.
+
 ## [2026-08-10] - Security e2e: settings + password change-password flow at the HTTP layer
 
 ### Backend (tests)
