@@ -3,6 +3,7 @@ import {
   INestApplication,
   ValidationPipe,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
@@ -75,6 +76,7 @@ function createStatefulOrgClient() {
   const orgs = new Map<string, Row>();
   const teams = new Map<string, Row>();
   const invites = new Map<string, Row>();
+  const sessions = new Map<string, Row>();
   let inviteSeq = 0;
 
   const state = {
@@ -99,6 +101,8 @@ function createStatefulOrgClient() {
         return teams;
       case 'organization_invites':
         return invites;
+      case 'user_sessions':
+        return sessions;
       default:
         return null;
     }
@@ -273,6 +277,19 @@ function createStatefulOrgClient() {
         ...overrides,
       });
     },
+    session(id: string, userId: string, overrides: Record<string, unknown> = {}) {
+      sessions.set(id, {
+        id,
+        user_id: userId,
+        auth_session_id: `sid-${id}`,
+        device: 'Chrome on Windows',
+        ip_address: '1.2.3.4',
+        location: 'AB, NG',
+        created_at: '2026-01-01T00:00:00.000Z',
+        last_active_at: '2026-01-05T00:00:00.000Z',
+        ...overrides,
+      });
+    },
   };
 
   return {
@@ -284,6 +301,7 @@ function createStatefulOrgClient() {
     orgs,
     teams,
     invites,
+    sessions,
   };
 }
 
@@ -307,6 +325,17 @@ async function createTestApp() {
       // No Redis in tests — the scans module must not attempt a real queue.
       isConfigured: jest.fn(() => false),
       enqueueScanProcessing: jest.fn(),
+    })
+    .overrideProvider(ConfigService)
+    .useValue({
+      // Lazy passthrough: read process.env at call time so tests can set
+      // SUPABASE_URL for the GoTrue admin revocation without seeding a real
+      // .env — and every other lookup falls back to the module defaults,
+      // keeping the e2e runnable with no credentials (CI).
+      get: jest.fn((key: string, fallback?: unknown) => {
+        const value = process.env[key];
+        return value !== undefined && value !== '' ? value : fallback;
+      }),
     })
     .overrideGuard(SupabaseAuthGuard)
     .useValue({
@@ -347,6 +376,7 @@ describe('Organization flow (e2e)', () => {
   let seed: ReturnType<typeof createStatefulOrgClient>['seed'];
   let invites: Map<string, Row>;
   let members: Map<string, Row>;
+  let sessions: Map<string, Row>;
 
   beforeEach(async () => {
     const setup = await createTestApp();
@@ -355,10 +385,19 @@ describe('Organization flow (e2e)', () => {
     seed = setup.seed;
     invites = setup.invites;
     members = setup.members;
+    sessions = setup.sessions;
   });
 
   afterEach(async () => {
     await app.close();
+    // ConfigModule.forRoot loads backend/.env.local into process.env when the
+    // app boots — clear the Supabase creds so this spec cannot un-skip the
+    // live invite-accept e2e (which gates on their presence at module load)
+    // when jest shares a worker process across spec files.
+    delete process.env.SUPABASE_URL;
+    delete process.env.SUPABASE_ANON_KEY;
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    delete process.env.SUPABASE_AUTH_REDIRECT_URL;
   });
 
   describe('GET /v1/organization', () => {
@@ -749,6 +788,142 @@ describe('Organization flow (e2e)', () => {
       expect(response.body.message).toContain(
         'Only organization owners and admins can manage the workspace.',
       );
+    });
+  });
+
+  describe('member sessions (org-admin revocation)', () => {
+    let fetchMock: jest.SpyInstance;
+
+    beforeEach(() => {
+      // The ConfigService override reads process.env lazily, so the GoTrue
+      // admin revocation URL resolves without a real .env (CI-safe).
+      process.env.SUPABASE_URL = 'https://project.supabase.co';
+      process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-key';
+      fetchMock = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValue({ ok: true, status: 200 } as Response);
+    });
+
+    afterEach(() => {
+      delete process.env.SUPABASE_URL;
+      delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+      fetchMock.mockRestore();
+    });
+
+    it('lists a member\'s sessions with the team tag', async () => {
+      seed.org();
+      seed.member(OWNER_USER.id, OWNER_USER.email, { role: 'owner' });
+      seed.member('member-a-0000-0000-0000-000000000001', 'a@provance.test', {
+        role: 'member',
+        team_id: TEAM_LEGAL,
+      });
+      seed.session('sess-a1', 'member-a-0000-0000-0000-000000000001', {
+        auth_session_id: 'sid-a1',
+        device: 'Chrome on Windows',
+      });
+      seed.session('sess-a2', 'member-a-0000-0000-0000-000000000001', {
+        auth_session_id: 'sid-a2',
+        device: 'Safari on iPhone',
+      });
+
+      const response = await http
+        .get('/v1/organization/members/member-a-0000-0000-0000-000000000001/sessions')
+        .expect(200);
+
+      expect(response.body).toMatchObject({
+        memberId: 'member-a-0000-0000-0000-000000000001',
+        teamId: TEAM_LEGAL,
+      });
+      expect(response.body.sessions).toHaveLength(2);
+      expect(response.body.sessions[0]).toMatchObject({
+        id: 'sess-a1',
+        device: 'Chrome on Windows',
+        teamId: TEAM_LEGAL,
+      });
+    });
+
+    it('403s for a non-manager caller', async () => {
+      seed.org();
+      seed.member(OWNER_USER.id, OWNER_USER.email, { role: 'member' });
+      seed.member('member-a-0000-0000-0000-000000000001', 'a@provance.test');
+
+      const response = await http
+        .get('/v1/organization/members/member-a-0000-0000-0000-000000000001/sessions')
+        .expect(403);
+
+      expect(response.body.message).toContain(
+        'Only organization owners and admins can manage the workspace.',
+      );
+    });
+
+    it('revokes a single member session server-side', async () => {
+      seed.org();
+      seed.member(OWNER_USER.id, OWNER_USER.email, { role: 'owner' });
+      seed.member('member-a-0000-0000-0000-000000000001', 'a@provance.test', {
+        role: 'member',
+        team_id: TEAM_LEGAL,
+      });
+      seed.session('sess-a1', 'member-a-0000-0000-0000-000000000001', {
+        auth_session_id: 'sid-a1',
+      });
+      seed.session('sess-a2', 'member-a-0000-0000-0000-000000000001', {
+        auth_session_id: 'sid-a2',
+      });
+
+      const response = await http
+        .delete(
+          '/v1/organization/members/member-a-0000-0000-0000-000000000001/sessions/sess-a1',
+        )
+        .expect(200);
+
+      expect(response.body).toEqual({
+        ok: true,
+        memberId: 'member-a-0000-0000-0000-000000000001',
+        sessionId: 'sess-a1',
+      });
+      expect(fetchMock).toHaveBeenCalledWith(
+        'https://project.supabase.co/auth/v1/admin/users/member-a-0000-0000-0000-000000000001/sessions/sid-a1',
+        expect.objectContaining({ method: 'DELETE' }),
+      );
+      expect(sessions.has('sess-a1')).toBe(false);
+      expect(sessions.has('sess-a2')).toBe(true);
+    });
+
+    it('revokes all non-current sessions and reports the count', async () => {
+      seed.org();
+      seed.member(OWNER_USER.id, OWNER_USER.email, { role: 'owner' });
+      seed.member('member-a-0000-0000-0000-000000000001', 'a@provance.test', {
+        role: 'member',
+        team_id: TEAM_LEGAL,
+      });
+      seed.session('sess-a1', 'member-a-0000-0000-0000-000000000001', {
+        auth_session_id: 'sid-a1',
+      });
+      seed.session('sess-a2', 'member-a-0000-0000-0000-000000000001', {
+        auth_session_id: 'sid-a2',
+      });
+
+      const response = await http
+        .delete('/v1/organization/members/member-a-0000-0000-0000-000000000001/sessions')
+        .expect(200);
+
+      expect(response.body).toMatchObject({ ok: true, revoked: 2 });
+      expect(sessions.size).toBe(0);
+    });
+
+    it('400s when revoking the owner\'s sessions', async () => {
+      seed.org();
+      seed.member(OWNER_USER.id, OWNER_USER.email, { role: 'admin' });
+      seed.member('owner-2-0000-0000-0000-000000000099', 'owner2@provance.test', {
+        role: 'owner',
+      });
+      seed.session('sess-o1', 'owner-2-0000-0000-0000-000000000099', {
+        auth_session_id: 'sid-o1',
+      });
+
+      await http
+        .delete('/v1/organization/members/owner-2-0000-0000-0000-000000000099/sessions')
+        .expect(400);
     });
   });
 });

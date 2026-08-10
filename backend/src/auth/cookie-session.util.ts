@@ -1,6 +1,9 @@
 import type { Request, Response } from 'express';
 
 export const REFRESH_COOKIE_NAME = 'provance_refresh';
+// __Host- prefix binds the cookie to the origin: browsers reject it unless
+// Secure + Path=/ + no Domain. Used automatically on secure deployments.
+export const HOST_PREFIXED_REFRESH_COOKIE_NAME = '__Host-provance_refresh';
 
 export type CookieSameSite = 'lax' | 'strict' | 'none';
 
@@ -9,6 +12,12 @@ export type CookieSessionOptions = {
   sameSite: CookieSameSite;
   secure: boolean;
   maxAgeMs: number;
+  /**
+   * Cookie name actually used on the wire. Secure deployments get the
+   * __Host- prefixed name (strongest binding); local HTTP dev keeps the plain
+   * name because browsers reject __Host- cookies on insecure origins.
+   */
+  cookieName: string;
 };
 
 export function buildCookieSessionOptions(
@@ -31,6 +40,9 @@ export function buildCookieSessionOptions(
     secure: effectiveSecure,
     maxAgeMs:
       (config.maxAgeDays ?? 30) * 24 * 60 * 60 * 1000,
+    cookieName: effectiveSecure
+      ? HOST_PREFIXED_REFRESH_COOKIE_NAME
+      : REFRESH_COOKIE_NAME,
   };
 }
 
@@ -49,7 +61,10 @@ function normalizeSameSite(value: string | undefined): CookieSameSite {
  * cookie is read, so a compromised unrelated cookie cannot be replayed as a
  * session credential.
  */
-export function readRefreshCookie(request: Request): string | null {
+export function readRefreshCookie(
+  request: Request,
+  cookieName: string = REFRESH_COOKIE_NAME,
+): string | null {
   const header = request.headers.cookie;
 
   if (!header) {
@@ -66,7 +81,7 @@ export function readRefreshCookie(request: Request): string | null {
     const name = part.slice(0, separatorIndex).trim();
     const value = part.slice(separatorIndex + 1).trim();
 
-    if (name === REFRESH_COOKIE_NAME && value) {
+    if (name === cookieName && value) {
       try {
         return decodeURIComponent(value);
       } catch {
@@ -89,7 +104,7 @@ export function serializeRefreshCookie(
   options: CookieSessionOptions,
 ): string {
   const parts = [
-    `${REFRESH_COOKIE_NAME}=${encodeURIComponent(token)}`,
+    `${options.cookieName}=${encodeURIComponent(token)}`,
     'Path=/',
     `Max-Age=${Math.floor(options.maxAgeMs / 1000)}`,
     'HttpOnly',
@@ -107,7 +122,7 @@ export function serializeClearRefreshCookie(
   options: CookieSessionOptions,
 ): string {
   const parts = [
-    `${REFRESH_COOKIE_NAME}=`,
+    `${options.cookieName}=`,
     'Path=/',
     'Max-Age=0',
     'Expires=Thu, 01 Jan 1970 00:00:00 GMT',
@@ -135,6 +150,31 @@ export function clearRefreshCookie(
   options: CookieSessionOptions,
 ) {
   response.setHeader('Set-Cookie', serializeClearRefreshCookie(options));
+}
+
+/**
+ * Expire every refresh-cookie name this app has ever issued (plain + __Host-).
+ * Sign-out clears both so a stale cookie from a name transition (e.g. moving a
+ * deployment from insecure plain-name to secure __Host-) cannot linger.
+ */
+export function clearAllRefreshCookies(
+  response: Response,
+  options: CookieSessionOptions,
+) {
+  const names = [
+    ...new Set([
+      options.cookieName,
+      REFRESH_COOKIE_NAME,
+      HOST_PREFIXED_REFRESH_COOKIE_NAME,
+    ]),
+  ];
+
+  response.setHeader(
+    'Set-Cookie',
+    names.map((cookieName) =>
+      serializeClearRefreshCookie({ ...options, cookieName }),
+    ),
+  );
 }
 
 function capitalize(value: string): string {

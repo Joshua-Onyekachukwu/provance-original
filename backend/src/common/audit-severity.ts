@@ -21,6 +21,7 @@ export const AUDIT_SEVERITY_BY_ACTION: Record<string, string> = {
   'org.created': 'medium',
   'invite.accepted': 'medium',
   'scan.submitted': 'medium',
+  'scan.retried': 'medium',
   // Real actions the services write themselves (underscore form — the mock's
   // dotted equivalents above are kept for parity with seeded/mock rows).
   'waitlist_reviewed': 'medium',

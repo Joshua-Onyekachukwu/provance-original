@@ -1,11 +1,15 @@
 import {
   Body,
   Controller,
+  DefaultValuePipe,
   Get,
+  Headers,
   HttpCode,
   HttpStatus,
   Param,
+  ParseIntPipe,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
@@ -23,8 +27,12 @@ export class ScansController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  initiateScan(@CurrentUser() user: CurrentUserPayload, @Body() dto: InitiateScanDto) {
-    return this.scansService.initiateScan(user.id, dto);
+  initiateScan(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: InitiateScanDto,
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ) {
+    return this.scansService.initiateScan(user.id, dto, idempotencyKey);
   }
 
   @Post(':scanId/submit')
@@ -34,8 +42,19 @@ export class ScansController {
   }
 
   @Get()
-  listScans(@CurrentUser() user: CurrentUserPayload) {
-    return this.scansService.listScans(user.id);
+  listScans(
+    @CurrentUser() user: CurrentUserPayload,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('pageSize', new DefaultValuePipe(100), ParseIntPipe) pageSize: number,
+  ) {
+    return this.scansService.listScans(user.id, { page, pageSize });
+  }
+
+  // Declared before the :scanId route so 'queue-snapshot' is not captured by
+  // the parameter route.
+  @Get('queue-snapshot')
+  getQueueSnapshot(@CurrentUser() user: CurrentUserPayload) {
+    return this.scansService.getQueueSnapshot(user.id);
   }
 
   @Get(':scanId')

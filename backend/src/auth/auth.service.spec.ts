@@ -1,13 +1,27 @@
+import { createHash } from 'node:crypto';
 import { ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 
+/** Builds a 3-part JWT whose payload carries the given sid claim. */
+function jwtWithSid(sid: string) {
+  const encode = (value: object) => Buffer.from(JSON.stringify(value)).toString('base64url');
+  return `${encode({ alg: 'ES256', typ: 'JWT' })}.${encode({ sub: 'user-1', sid })}.signature`;
+}
+
 describe('AuthService', () => {
   const mockConfigService = {
-    get: jest.fn(),
+    // Emulate ConfigService.get(key, fallback): missing keys resolve to the
+    // fallback, so the constructor's schema-matching table defaults apply.
+    get: jest.fn((_key: string, fallback?: unknown) => fallback),
   } as unknown as ConfigService;
   const mockAccountService = {
     getCurrentViewer: jest.fn(),
+  };
+  const mockSecurityService = {
+    recordSession: jest.fn().mockResolvedValue(undefined),
+    deleteSessionByRefreshHash: jest.fn().mockResolvedValue(undefined),
+    deleteUserSessions: jest.fn().mockResolvedValue(undefined),
   };
 
   afterEach(() => {
@@ -22,7 +36,7 @@ describe('AuthService', () => {
           email: 'user@example.com',
         },
         session: {
-          access_token: 'access-token',
+          access_token: jwtWithSid('sid-1'),
           refresh_token: 'refresh-token',
           expires_at: 123,
           token_type: 'bearer',
@@ -67,12 +81,16 @@ describe('AuthService', () => {
         getAdminClient,
       } as any,
       mockConfigService,
+      mockSecurityService as any,
     );
 
-    const result = await service.signIn({
-      email: 'user@example.com',
-      password: 'password123',
-    });
+    const result = await service.signIn(
+      {
+        email: 'user@example.com',
+        password: 'password123',
+      },
+      { device: 'Chrome on Windows' },
+    );
 
     expect(createPublicClient).toHaveBeenCalledTimes(1);
     expect(signInWithPassword).toHaveBeenCalledWith({
@@ -81,6 +99,16 @@ describe('AuthService', () => {
     });
     expect(result.status).toBe('authenticated');
     expect(insertAuditEvent).toHaveBeenCalledTimes(1);
+    // Successful sign-in records the session ledger entry (sid from the JWT)
+    // with the device meta.
+    expect(mockSecurityService.recordSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 'user-1',
+        authSessionId: 'sid-1',
+        refreshToken: 'refresh-token',
+        meta: { device: 'Chrome on Windows' },
+      }),
+    );
   });
 
   it('logs failed sign-ins and rejects invalid credentials', async () => {
@@ -109,6 +137,7 @@ describe('AuthService', () => {
         }),
       } as any,
       mockConfigService,
+      mockSecurityService as any,
     );
 
     await expect(
@@ -164,8 +193,21 @@ describe('AuthService', () => {
       },
       error: null,
     });
+    // acceptInvite checks the org-invite token path first; when no
+    // organization_invites row matches, it falls back to the access_invites
+    // hashed-token flow below.
+    const orgInviteLookup = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      gt: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+    };
     const from = jest
       .fn()
+      .mockImplementationOnce((table: string) => {
+        expect(table).toBe('organization_invites');
+        return orgInviteLookup;
+      })
       .mockImplementationOnce((table: string) => {
         expect(table).toBe('access_invites');
         return accessInviteLookup;
@@ -198,6 +240,7 @@ describe('AuthService', () => {
         }),
       } as any,
       mockConfigService,
+      mockSecurityService as any,
     );
 
     await expect(
@@ -207,6 +250,15 @@ describe('AuthService', () => {
         fullName: 'Invitee User',
       }),
     ).rejects.toBeInstanceOf(ServiceUnavailableException);
+
+    // Org-invite lookup is by SHA-256 hash, never the raw token (migration
+    // 0015): the first eq is the token_hash match against the hashed token.
+    expect(orgInviteLookup.eq).toHaveBeenNthCalledWith(
+      1,
+      'token_hash',
+      createHash('sha256').update('invite-token').digest('hex'),
+    );
+    expect(orgInviteLookup.eq).toHaveBeenNthCalledWith(2, 'status', 'pending');
 
     expect(createUser).toHaveBeenCalledTimes(1);
     expect(deleteUser).toHaveBeenCalledWith('user-1');

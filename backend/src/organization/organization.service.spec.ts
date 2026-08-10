@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {
   BadRequestException,
   ForbiddenException,
@@ -7,6 +8,7 @@ import {
 import type { ConfigService } from '@nestjs/config';
 import type { CurrentUserPayload } from '../common/decorators/current-user.decorator';
 import { SupabaseService } from '../supabase/supabase.service';
+import { SecurityService } from '../security/security.service';
 import { InviteMemberDto } from './dto/invite-member.dto';
 import { OrganizationService } from './organization.service';
 
@@ -78,10 +80,22 @@ function createSupabaseService(client: unknown) {
   } as unknown as SupabaseService;
 }
 
-function createService(client: unknown, config?: ConfigService) {
+function createSecurityServiceMock() {
+  return {
+    listSessions: jest.fn().mockResolvedValue([]),
+    revokeSessionForUser: jest.fn().mockResolvedValue({ ok: true, sessionId: 'sess-1' }),
+  } as unknown as SecurityService;
+}
+
+function createService(
+  client: unknown,
+  config?: ConfigService,
+  securityService: SecurityService = createSecurityServiceMock(),
+) {
   return new OrganizationService(
     createSupabaseService(client),
     config ?? createConfigService(),
+    securityService,
   );
 }
 
@@ -364,6 +378,17 @@ describe('OrganizationService', () => {
         invited_by: 'user-admin',
       });
       expect(typeof insertPayload.expires_at).toBe('string');
+
+      // Token hardening (migration 0015): only the SHA-256 hash is persisted —
+      // the raw token is never written to the invites table.
+      expect(insertPayload.token).toBeUndefined();
+      expect(insertPayload.token_hash).toMatch(/^[0-9a-f]{64}$/);
+      const rawHash = createHash('sha256').update(result.token as string).digest('hex');
+      expect(insertPayload.token_hash).toBe(rawHash);
+
+      // The raw token is issued once in the response for the share/email link.
+      expect(result.token).toMatch(/^[0-9a-f]{64}$/);
+      expect(result.inviteLink).toBe(`/accept-invite?token=${result.token}`);
     });
 
     it('falls back to the first team when no team is specified', async () => {
@@ -594,6 +619,174 @@ describe('OrganizationService', () => {
       const result = await service.cancelInvite(OWNER_USER, 'inv-1');
 
       expect(result).toEqual({ ok: true, inviteId: 'inv-1' });
+    });
+  });
+
+  describe('member sessions (org-admin revocation)', () => {
+    it('lists a member\'s sessions with the membership team tag', async () => {
+      const client = createAdminClient([
+        { data: membershipRow({ role: 'admin', user_id: 'user-admin' }) },
+        {
+          data: membershipRow({
+            role: 'member',
+            user_id: 'user-a',
+            team_id: 'team-legal',
+          }),
+        },
+      ]);
+      const securityService = createSecurityServiceMock();
+      const listSessions = jest.fn().mockResolvedValue([
+        { id: 'sess-1', device: 'Chrome on Windows', isCurrent: false, teamId: 'team-legal' },
+      ]);
+      (securityService as unknown as { listSessions: jest.Mock }).listSessions = listSessions;
+      const service = createService(client, undefined, securityService);
+
+      const result = await service.listMemberSessions(ADMIN_USER, 'user-a');
+
+      expect(listSessions).toHaveBeenCalledWith(
+        ADMIN_USER,
+        undefined,
+        { targetUserId: 'user-a', teamId: 'team-legal' },
+      );
+      expect(result).toMatchObject({ memberId: 'user-a', teamId: 'team-legal' });
+      expect(result.sessions[0].device).toBe('Chrome on Windows');
+    });
+
+    it('rejects with 403 for a non-manager caller', async () => {
+      const client = createAdminClient([{ data: membershipRow({ role: 'member' }) }]);
+      const securityService = createSecurityServiceMock();
+      const service = createService(client, undefined, securityService);
+
+      await expect(
+        service.listMemberSessions(MEMBER_USER, 'user-a'),
+      ).rejects.toThrow(ForbiddenException);
+      expect(securityService.listSessions).not.toHaveBeenCalled();
+    });
+
+    it('rejects with 404 when the target member is not in the workspace', async () => {
+      const client = createAdminClient([
+        { data: membershipRow({ role: 'admin', user_id: 'user-admin' }) },
+        { data: null },
+      ]);
+      const service = createService(client);
+
+      await expect(
+        service.listMemberSessions(ADMIN_USER, 'user-missing'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('revokes a single session of a member', async () => {
+      const client = createAdminClient([
+        { data: membershipRow({ role: 'admin', user_id: 'user-admin' }) },
+        {
+          data: membershipRow({
+            role: 'member',
+            user_id: 'user-a',
+            team_id: 'team-legal',
+          }),
+        },
+      ]);
+      const securityService = createSecurityServiceMock();
+      const revokeSessionForUser = jest.fn().mockResolvedValue({
+        ok: true,
+        sessionId: 'sess-1',
+      });
+      (securityService as unknown as { revokeSessionForUser: jest.Mock }).revokeSessionForUser =
+        revokeSessionForUser;
+      const service = createService(client, undefined, securityService);
+
+      const result = await service.revokeMemberSession(ADMIN_USER, 'user-a', 'sess-1');
+
+      expect(result).toEqual({ ok: true, memberId: 'user-a', sessionId: 'sess-1' });
+      expect(revokeSessionForUser).toHaveBeenCalledWith(ADMIN_USER, 'user-a', 'sess-1', undefined);
+    });
+
+    it('rejects with 400 when the single-session target is the owner', async () => {
+      const client = createAdminClient([
+        { data: membershipRow() },
+        { data: membershipRow({ role: 'owner', user_id: 'user-owner' }) },
+      ]);
+      const securityService = createSecurityServiceMock();
+      const service = createService(client, undefined, securityService);
+
+      await expect(
+        service.revokeMemberSession(OWNER_USER, 'user-owner', 'sess-1'),
+      ).rejects.toThrow('The owner cannot be modified.');
+      expect(securityService.revokeSessionForUser).not.toHaveBeenCalled();
+    });
+
+    it('rejects with 400 when the revoke-all target is the owner', async () => {
+      const client = createAdminClient([
+        { data: membershipRow() },
+        { data: membershipRow({ role: 'owner', user_id: 'user-owner' }) },
+      ]);
+      const securityService = createSecurityServiceMock();
+      const service = createService(client, undefined, securityService);
+
+      await expect(
+        service.revokeMemberSessions(OWNER_USER, 'user-owner'),
+      ).rejects.toThrow('The owner cannot be modified.');
+      expect(securityService.revokeSessionForUser).not.toHaveBeenCalled();
+    });
+
+    it('revokes every non-current session and reports the count', async () => {
+      const client = createAdminClient([
+        { data: membershipRow({ role: 'admin', user_id: 'user-admin' }) },
+        {
+          data: membershipRow({
+            role: 'member',
+            user_id: 'user-a',
+            team_id: 'team-legal',
+          }),
+        },
+      ]);
+      const securityService = createSecurityServiceMock();
+      (securityService as unknown as { listSessions: jest.Mock }).listSessions = jest
+        .fn()
+        .mockResolvedValue([
+          { id: 'sess-1', isCurrent: false },
+          { id: 'sess-2', isCurrent: false },
+          { id: 'sess-3', isCurrent: true },
+        ]);
+      const revokeSessionForUser = jest.fn().mockResolvedValue({ ok: true });
+      (securityService as unknown as { revokeSessionForUser: jest.Mock }).revokeSessionForUser =
+        revokeSessionForUser;
+      const service = createService(client, undefined, securityService);
+
+      const result = await service.revokeMemberSessions(ADMIN_USER, 'user-a');
+
+      expect(result).toEqual({ ok: true, memberId: 'user-a', revoked: 2 });
+      expect(revokeSessionForUser).toHaveBeenCalledWith(ADMIN_USER, 'user-a', 'sess-1', undefined);
+      expect(revokeSessionForUser).toHaveBeenCalledWith(ADMIN_USER, 'user-a', 'sess-2', undefined);
+      expect(revokeSessionForUser).not.toHaveBeenCalledWith(
+        ADMIN_USER,
+        'user-a',
+        'sess-3',
+        undefined,
+      );
+    });
+
+    it('counts only the sessions whose GoTrue revocation succeeded', async () => {
+      const client = createAdminClient([
+        { data: membershipRow({ role: 'admin', user_id: 'user-admin' }) },
+        { data: membershipRow({ role: 'member', user_id: 'user-a' }) },
+      ]);
+      const securityService = createSecurityServiceMock();
+      (securityService as unknown as { listSessions: jest.Mock }).listSessions = jest
+        .fn()
+        .mockResolvedValue([{ id: 'sess-1', isCurrent: false }, { id: 'sess-2', isCurrent: false }]);
+      const revokeSessionForUser = jest
+        .fn()
+        .mockResolvedValueOnce({ ok: true })
+        .mockRejectedValueOnce(new Error('revocation failed'));
+      (securityService as unknown as { revokeSessionForUser: jest.Mock }).revokeSessionForUser =
+        revokeSessionForUser;
+      const service = createService(client, undefined, securityService);
+
+      const result = await service.revokeMemberSessions(ADMIN_USER, 'user-a');
+
+      // One revocation failed — the batch still resolves with the successful count.
+      expect(result.revoked).toBe(1);
     });
   });
 

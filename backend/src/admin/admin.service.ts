@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
@@ -97,6 +98,22 @@ type ScanJobRow = {
   updated_at: string;
 };
 
+// Columns the jobs ledger reads from the scans table (shared by listJobs and
+// the retry/fail transitions so the row dialect can't drift between them).
+const JOB_COLUMNS =
+  'id,status,original_filename,mime_type,file_size_bytes,processing_mode,team_id,completed_at,result_payload,failure_reason,created_at,updated_at';
+
+// Display-dialect job status → DB scan_status values. The ?status= filter
+// accepts the same dialect the page's chips use (toJobView maps
+// 'complete'→'completed' and 'awaiting_upload'→'queued' at the boundary, so a
+// 'queued' filter spans both pre-submit and queued rows).
+const JOB_STATUS_DB: Record<string, string[]> = {
+  queued: ['awaiting_upload', 'queued'],
+  processing: ['processing'],
+  completed: ['complete'],
+  failed: ['failed'],
+};
+
 type ReportPayload = {
   verdict?: {
     class?: string | null;
@@ -106,14 +123,6 @@ type ReportPayload = {
   report?: { report_id?: string } | null;
   report_id?: string | null;
   signals?: unknown[] | null;
-};
-
-type RoleAuditRow = {
-  id: string;
-  actor_email: string;
-  action: string;
-  details: unknown;
-  created_at: string;
 };
 
 @Injectable()
@@ -129,6 +138,7 @@ export class AdminService {
   private readonly uploadsBucket: string;
   private readonly storageCapacityGb: number;
   private readonly dbMaxConnections: number;
+  private readonly logger = new Logger(AdminService.name);
 
   constructor(
     private readonly supabaseService: SupabaseService,
@@ -1031,7 +1041,6 @@ export class AdminService {
 
     if (
       scanError ||
-      incidentError ||
       queuedError ||
       inFlightError ||
       tableScansError ||
@@ -1041,6 +1050,12 @@ export class AdminService {
     ) {
       throw new ServiceUnavailableException('Failed to load monitoring data.');
     }
+
+    // The incidents table is a display-only peripheral: a missing or errored
+    // table (e.g. migration 0007 not applied live) degrades the incidents
+    // section instead of 503-ing the entire monitoring surface. The overall
+    // status is forced to degraded so the data gap stays visible on the page.
+    const incidentsUnavailable = Boolean(incidentError);
 
     const scans = (scanRows ?? []) as Array<{
       status: string;
@@ -1201,7 +1216,7 @@ export class AdminService {
       },
     ];
 
-    const incidents = (incidentRows ?? []) as Array<{
+    const incidents = (incidentsUnavailable ? [] : (incidentRows ?? [])) as Array<{
       id: string;
       title: string;
       severity: string;
@@ -1222,7 +1237,7 @@ export class AdminService {
     );
     const overallStatus = !reached
       ? 'unreachable'
-      : hasDegraded || openIncidents > 0
+      : hasDegraded || openIncidents > 0 || incidentsUnavailable
         ? 'degraded'
         : 'operational';
 
@@ -1380,15 +1395,39 @@ export class AdminService {
   // worker, progress) default to neutral values the frontend renders as '—'.
   // -------------------------------------------------------------------------
 
-  async listJobs() {
+  async listJobs(
+    query: {
+      status?: string;
+      page?: number;
+      pageSize?: number;
+    } = {},
+  ) {
     const adminClient = this.requireClient();
+    const { status, page = 1, pageSize = 500 } = query;
+    const safePage = Math.max(1, page);
+    const safePageSize = Math.min(500, Math.max(1, pageSize));
+    const from = (safePage - 1) * safePageSize;
+    const to = from + safePageSize - 1;
 
-    const { data, error } = await adminClient
+    let queryBuilder = adminClient
       .from(this.scansTable)
-      .select(
-        'id,status,original_filename,mime_type,file_size_bytes,processing_mode,team_id,completed_at,result_payload,failure_reason,created_at,updated_at',
-      )
-      .order('created_at', { ascending: false });
+      .select(JOB_COLUMNS, { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(from, to);
+
+    // ?status= accepts the page's display dialect ('completed', not the DB
+    // 'complete') and maps to the underlying scan_status values. Default
+    // pageSize 500 preserves the no-params frontend contract (the Jobs page
+    // computes its own counts + pagination client-side).
+    if (status && status !== 'all') {
+      const dbStatuses = JOB_STATUS_DB[status];
+      if (!dbStatuses) {
+        throw new BadRequestException(`Unknown job status filter: ${status}`);
+      }
+      queryBuilder = queryBuilder.in('status', dbStatuses);
+    }
+
+    const { data, error, count } = await queryBuilder;
 
     if (error) {
       throw new ServiceUnavailableException('Failed to fetch jobs.');
@@ -1396,10 +1435,20 @@ export class AdminService {
 
     const rows = (data ?? []) as ScanJobRow[];
     const jobs = rows.map(toJobView);
-    return { data: jobs, total: jobs.length };
+    const total = count ?? jobs.length;
+    return {
+      data: jobs,
+      total,
+      page: safePage,
+      pageSize: safePageSize,
+      totalPages: Math.max(1, Math.ceil(total / safePageSize)),
+    };
   }
 
-  async retryJob(jobId: string) {
+  async retryJob(
+    jobId: string,
+    actor?: { id?: string; email?: string },
+  ) {
     const adminClient = this.requireClient();
 
     const { data: existing, error: findError } = await adminClient
@@ -1426,18 +1475,31 @@ export class AdminService {
         updated_at: new Date().toISOString(),
       })
       .eq('id', jobId)
-      .select(
-        'id,status,original_filename,mime_type,file_size_bytes,processing_mode,team_id,completed_at,result_payload,failure_reason,created_at,updated_at',
-      )
+      .select(JOB_COLUMNS)
       .single();
 
     if (error || !data) {
       throw new ServiceUnavailableException('Failed to re-queue the job.');
     }
+
+    // Audit trail (best-effort — a missing audit_logs table must never block
+    // the admin action; severity derives from the shared action map).
+    await this.insertAdminAuditEvent(
+      { id: actor?.id ?? '', email: actor?.email },
+      'scan.retried',
+      jobId,
+      { from: 'failed', to: 'queued' },
+      'scan',
+    );
+
     return { ok: true, job: toJobView(data) };
   }
 
-  async failJob(jobId: string, reason?: string) {
+  async failJob(
+    jobId: string,
+    reason?: string,
+    actor?: { id?: string; email?: string },
+  ) {
     const adminClient = this.requireClient();
 
     const { data: existing, error: findError } = await adminClient
@@ -1457,7 +1519,9 @@ export class AdminService {
     }
     if (existing.status === 'failed') {
       throw new BadRequestException('This job is already failed.');
-    }    const { data, error } = await adminClient
+    }
+
+    const { data, error } = await adminClient
       .from(this.scansTable)
       .update({
         status: 'failed',
@@ -1466,14 +1530,22 @@ export class AdminService {
         updated_at: new Date().toISOString(),
       })
       .eq('id', jobId)
-      .select(
-        'id,status,original_filename,mime_type,file_size_bytes,processing_mode,team_id,completed_at,result_payload,failure_reason,created_at,updated_at',
-      )
+      .select(JOB_COLUMNS)
       .single();
 
     if (error || !data) {
       throw new ServiceUnavailableException('Failed to fail the job.');
     }
+
+    // Audit trail (best-effort) — records who killed the job and why.
+    await this.insertAdminAuditEvent(
+      { id: actor?.id ?? '', email: actor?.email },
+      'scan.failed',
+      jobId,
+      { from: existing.status, to: 'failed', reason: reason ?? null },
+      'scan',
+    );
+
     return { ok: true, job: toJobView(data) };
   }
 
@@ -1569,92 +1641,6 @@ export class AdminService {
       pageSize: safePageSize,
       total,
       totalPages: Math.max(1, Math.ceil(total / safePageSize)),
-    };
-  }
-
-  async getRoles() {
-    const adminClient = this.requireClient();
-
-    const [memberResult, auditResult] = await Promise.all([
-      adminClient
-        .from(this.membersTable)
-        .select('user_id,role')
-        .eq('status', 'active'),
-      adminClient
-        .from(this.auditTable)
-        .select(
-          'id,actor_email,action,entity_type,entity_id,details,created_at',
-        )
-        .ilike('action', 'role.%')
-        .order('created_at', { ascending: false })
-        .limit(50),
-    ]);
-
-    if (memberResult.error || auditResult.error) {
-      throw new ServiceUnavailableException('Failed to load roles.');
-    }
-
-    const members = (memberResult.data ?? []) as Array<{
-      user_id: string;
-      role: string;
-    }>;
-    const userIds = members.map((member) => member.user_id);
-
-    let profiles: ProfileRow[] = [];
-    if (userIds.length > 0) {
-      const { data, error } = await adminClient
-        .from(this.profilesTable)
-        .select('user_id,display_name,email')
-        .in('user_id', userIds);
-      if (error) {
-        throw new ServiceUnavailableException('Failed to load role members.');
-      }
-      profiles = (data ?? []) as ProfileRow[];
-    }
-
-    const profileById = new Map(
-      profiles.map((profile) => [profile.user_id, profile]),
-    );
-    const roleMembers = members
-      .filter((member) => profileById.has(member.user_id))
-      .map((member) => {
-        const profile = profileById.get(member.user_id)!;
-        return {
-          id: member.user_id,
-          name: profile.display_name,
-          email: profile.email,
-          role_id: ORG_ROLE_TO_RBAC[member.role] ?? 'role_analyst',
-          avatar: initials(profile.display_name),
-        };
-      });
-
-    const memberCounts = roleMembers.reduce<Record<string, number>>(
-      (acc, member) => {
-        acc[member.role_id] = (acc[member.role_id] || 0) + 1;
-        return acc;
-      },
-      {},
-    );
-
-    const roles = ADMIN_ROLES.map((role) => ({
-      ...role,
-      member_count: memberCounts[role.id] ?? 0,
-    }));
-
-    const auditRows = (auditResult.data ?? []) as RoleAuditRow[];
-    const auditEvents = auditRows.map((row) => ({
-      id: row.id,
-      action: row.action,
-      actor_email: row.actor_email,
-      description: readDetailsDescription(row.details),
-      created_at: row.created_at,
-    }));
-
-    return {
-      roles,
-      scopes: ADMIN_SCOPES,
-      members: roleMembers,
-      auditEvents,
     };
   }
 
@@ -1811,6 +1797,7 @@ export class AdminService {
     action: string,
     entityId: string,
     details: Record<string, unknown>,
+    entityType = 'admin_operation',
   ) {
     const adminClient = this.supabaseService.getAdminClient();
 
@@ -1818,17 +1805,25 @@ export class AdminService {
       return;
     }
 
-    await adminClient.from(this.auditTable).insert({
+    const { error } = await adminClient.from(this.auditTable).insert({
       actor_email: reviewer.email ?? null,
       action,
       severity: auditSeverity(action),
-      entity_type: 'admin_operation',
+      entity_type: entityType,
       entity_id: entityId,
       details: {
         reviewer_id: reviewer.id,
         ...details,
       },
     });
+
+    if (error) {
+      // Best-effort trail: a missing audit_logs table (migration 0008 not
+      // applied) must never fail the admin operation itself.
+      this.logger.warn(
+        `Audit log write failed (${action}): ${error.message}`,
+      );
+    }
   }
 }
 
@@ -1842,124 +1837,6 @@ const VERDICT_CLASS_TO_DISPLAY: Record<string, string> = {
   suspicious: 'suspicious',
   inconclusive: 'inconclusive',
 };
-
-/**
- * ORG_ROLE_TO_RBAC — maps the organization_members.role vocabulary
- * (owner/admin/member) onto the RBAC role ids the Roles page renders
- * (role_owner/role_admin/role_analyst). There is no natural source for the
- * read-only Viewer role in the membership table, so it reports 0 members.
- */
-const ORG_ROLE_TO_RBAC: Record<string, string> = {
-  owner: 'role_owner',
-  admin: 'role_admin',
-  member: 'role_analyst',
-};
-
-/**
- * ADMIN_SCOPES — the static scope catalog for the Roles & Permissions page
- * (mirror of mockRoleScopeMeta). RBAC scope definitions are product config,
- * not user data, so they are declared here rather than derived.
- */
-const ADMIN_SCOPES = [
-  { key: 'scans.read', label: 'Read scans', group: 'Verification' },
-  { key: 'scans.create', label: 'Submit verifications', group: 'Verification' },
-  { key: 'scans.revoke', label: 'Revoke scans', group: 'Verification' },
-  { key: 'reports.read', label: 'Read reports', group: 'Reports' },
-  { key: 'reports.export', label: 'Export reports', group: 'Reports' },
-  { key: 'members.manage', label: 'Manage members', group: 'Organization' },
-  { key: 'roles.manage', label: 'Manage roles', group: 'Organization' },
-  { key: 'billing.manage', label: 'Manage billing', group: 'Organization' },
-  { key: 'flags.manage', label: 'Manage feature flags', group: 'Platform' },
-  { key: 'audit.read', label: 'Read audit logs', group: 'Platform' },
-];
-
-/**
- * ADMIN_ROLES — the static RBAC role matrix for the Roles & Permissions page
- * (mirror of mockAdminRoles). Scope grants are product config; member_count is
- * computed from real org membership at request time (getRoles).
- */
-const ADMIN_ROLES = [
-  {
-    id: 'role_owner',
-    name: 'Owner',
-    description:
-      'Full control — billing, membership, security, and all platform configuration.',
-    scope_summary: 'Everything',
-    scopes: {
-      'scans.read': true,
-      'scans.create': true,
-      'scans.revoke': true,
-      'reports.read': true,
-      'reports.export': true,
-      'members.manage': true,
-      'roles.manage': true,
-      'billing.manage': true,
-      'flags.manage': true,
-      'audit.read': true,
-    },
-    editable: false,
-  },
-  {
-    id: 'role_admin',
-    name: 'Admin',
-    description:
-      'Operational control — members, feature flags, and verification oversight.',
-    scope_summary: 'Ops + members',
-    scopes: {
-      'scans.read': true,
-      'scans.create': true,
-      'scans.revoke': true,
-      'reports.read': true,
-      'reports.export': true,
-      'members.manage': true,
-      'roles.manage': false,
-      'billing.manage': false,
-      'flags.manage': true,
-      'audit.read': true,
-    },
-    editable: true,
-  },
-  {
-    id: 'role_analyst',
-    name: 'Analyst',
-    description:
-      'Submit and review verifications — read and export reports, no admin controls.',
-    scope_summary: 'Verify + export',
-    scopes: {
-      'scans.read': true,
-      'scans.create': true,
-      'scans.revoke': false,
-      'reports.read': true,
-      'reports.export': true,
-      'members.manage': false,
-      'roles.manage': false,
-      'billing.manage': false,
-      'flags.manage': false,
-      'audit.read': false,
-    },
-    editable: true,
-  },
-  {
-    id: 'role_viewer',
-    name: 'Viewer',
-    description:
-      'Read-only access to scans and reports for compliance and oversight.',
-    scope_summary: 'Read-only',
-    scopes: {
-      'scans.read': true,
-      'scans.create': false,
-      'scans.revoke': false,
-      'reports.read': true,
-      'reports.export': false,
-      'members.manage': false,
-      'roles.manage': false,
-      'billing.manage': false,
-      'flags.manage': false,
-      'audit.read': true,
-    },
-    editable: true,
-  },
-];
 
 /**
  * getVerdictClass — reads the verdict class out of a scan's result_payload
@@ -2069,23 +1946,6 @@ function readReportPayload(resultPayload: unknown): ReportPayload | null {
   // Narrowed to a non-null object; the fields are read defensively (?? / ?.)
   // so the loose structural cast is safe at this boundary.
   return resultPayload as ReportPayload;
-}
-
-function initials(name: string) {
-  return name
-    .split(' ')
-    .map((part) => part[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
-}
-
-function readDetailsDescription(details: unknown): string | null {
-  if (!details || typeof details !== 'object') {
-    return null;
-  }
-  const description = (details as { description?: unknown }).description;
-  return typeof description === 'string' ? description : null;
 }
 
 function buildDailySignUps(waitlist: WaitlistRow[]) {

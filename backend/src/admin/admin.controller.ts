@@ -30,20 +30,34 @@ export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
   @Get('jobs')
-  listJobs() {
-    return this.adminService.listJobs();
+  listJobs(
+    @Query('status') status?: string,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page = 1,
+    @Query('pageSize', new DefaultValuePipe(500), ParseIntPipe) pageSize = 500,
+  ) {
+    return this.adminService.listJobs({ status, page, pageSize });
   }
 
   @Post('jobs/:id/retry')
   @HttpCode(HttpStatus.OK)
-  retryJob(@Param('id') id: string) {
-    return this.adminService.retryJob(id);
+  retryJob(@Param('id') id: string, @CurrentUser() user: CurrentUserPayload) {
+    return this.adminService.retryJob(id, {
+      id: user.id,
+      email: user.email,
+    });
   }
 
   @Post('jobs/:id/fail')
   @HttpCode(HttpStatus.OK)
-  failJob(@Param('id') id: string, @Body() dto: FailJobDto) {
-    return this.adminService.failJob(id, dto.reason);
+  failJob(
+    @Param('id') id: string,
+    @Body() dto: FailJobDto,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.adminService.failJob(id, dto.reason, {
+      id: user.id,
+      email: user.email,
+    });
   }
 
   @Get('reports')
@@ -53,11 +67,6 @@ export class AdminController {
     @Query('team') team?: string,
   ) {
     return this.adminService.listAdminReports({ page, pageSize, team });
-  }
-
-  @Get('roles')
-  getRoles() {
-    return this.adminService.getRoles();
   }
 
   @Get('settings')

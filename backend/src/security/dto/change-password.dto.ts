@@ -1,0 +1,16 @@
+import { ApiProperty } from '@nestjs/swagger';
+import { IsString, MinLength } from 'class-validator';
+
+export class ChangePasswordDto {
+  @ApiProperty({ description: 'Current password to verify the change.' })
+  @IsString()
+  currentPassword: string;
+
+  @ApiProperty({
+    description: 'New password (min 8 characters).',
+    minLength: 8,
+  })
+  @IsString()
+  @MinLength(8, { message: 'New password must be at least 8 characters.' })
+  newPassword: string;
+}

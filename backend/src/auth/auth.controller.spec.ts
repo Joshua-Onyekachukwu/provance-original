@@ -112,9 +112,12 @@ describe('AuthController', () => {
 
     await controller.refreshSession(response, {});
 
-    expect(authService.refreshSession).toHaveBeenCalledWith({
-      refreshToken: 'refresh-1',
-    });
+    expect(authService.refreshSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        refreshToken: 'refresh-1',
+      }),
+      expect.any(Object),
+    );
 
     const cookieHeader = response.setHeader.mock.calls.find(
       ([name]: [string]) => name === 'Set-Cookie',
@@ -135,9 +138,12 @@ describe('AuthController', () => {
       refreshToken: 'body-refresh-token-1234567890',
     });
 
-    expect(authService.refreshSession).toHaveBeenCalledWith({
-      refreshToken: 'body-refresh-token-1234567890',
-    });
+    expect(authService.refreshSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        refreshToken: 'body-refresh-token-1234567890',
+      }),
+      expect.any(Object),
+    );
   });
 
   it('clears the refresh cookie and burns the token on sign-out', async () => {
@@ -159,8 +165,13 @@ describe('AuthController', () => {
     expect(authService.signOut).toHaveBeenCalledWith('refresh-1');
     const cookieHeader = response.setHeader.mock.calls.find(
       ([name]: [string]) => name === 'Set-Cookie',
-    )?.[1] as string;
-    expect(cookieHeader).toContain('Max-Age=0');
+    )?.[1] as string | string[];
+    const cookieText = Array.isArray(cookieHeader)
+      ? cookieHeader.join('; ')
+      : cookieHeader;
+    // Both cookie names (plain + __Host-) are expired on sign-out.
+    expect(cookieText).toContain('Max-Age=0');
+    expect(cookieText).toContain('__Host-provance_refresh=');
     expect(result.status).toBe('signed_out');
   });
 });

@@ -6,20 +6,12 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SupabaseService } from '../supabase/supabase.service';
-
-type ReportScanRow = {
-  id: string;
-  status: string;
-  original_filename: string;
-  mime_type: string;
-  file_size_bytes: number;
-  created_at: string;
-  updated_at: string;
-  result_payload: unknown | null;
-  failure_reason: string | null;
-  storage_bucket: string;
-  storage_path: string;
-};
+import {
+  buildReportDocument,
+  type ReportDocument,
+  type ReportScanRow,
+} from './report-document';
+import { generateReportPdf } from './report-pdf';
 
 type AdminClient = NonNullable<ReturnType<SupabaseService['getAdminClient']>>;
 
@@ -70,11 +62,13 @@ export class ReportsService {
       .eq('user_id', userId)
       .eq('status', 'complete');
 
+    const total = count ?? data?.length ?? 0;
     return {
       data: data ?? [],
-      total: count ?? data?.length ?? 0,
+      total,
       page: safePage,
       pageSize: safePageSize,
+      totalPages: Math.max(1, Math.ceil(total / safePageSize)),
     };
   }
 
@@ -111,8 +105,39 @@ export class ReportsService {
         updated_at: scan.updated_at,
         asset_preview_url: previewUrl,
         result_payload: scan.result_payload,
+        // Document-oriented evidence payload in the sampleReportContent shape,
+        // derived from the stored result_payload (cover, metrics, per-signal
+        // evidence, findings, next steps, custody chain).
+        document: buildReportDocument(scan),
       },
     };
+  }
+
+  /**
+   * Fetch a ready report's document model only (used by the PDF export path).
+   */
+  async getReportDocument(userId: string, reportId: string): Promise<ReportDocument> {
+    const adminClient = this.supabaseService.getAdminClient();
+
+    if (!adminClient) {
+      throw new ServiceUnavailableException('Supabase is not configured.');
+    }
+
+    const scan = await this.getReportScanOrThrow(adminClient, userId, reportId);
+
+    if (!scan.result_payload) {
+      throw new NotFoundException('Report is not ready yet.');
+    }
+
+    return buildReportDocument(scan);
+  }
+
+  /**
+   * Generate the server-side PDF artifact for a ready report.
+   */
+  async getReportPdf(userId: string, reportId: string): Promise<Buffer> {
+    const document = await this.getReportDocument(userId, reportId);
+    return generateReportPdf(document);
   }
 
   private async getReportScanOrThrow(

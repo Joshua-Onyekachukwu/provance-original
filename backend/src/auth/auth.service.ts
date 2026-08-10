@@ -8,6 +8,9 @@ import { AccountService } from '../account/account.service';
 import type { CurrentUserPayload } from '../common/decorators/current-user.decorator';
 import { ConfigService } from '@nestjs/config';
 import { createHash } from 'crypto';
+import { decodeJwtPayloadSid } from '../common/jwt-sid.util';
+import { SecurityService } from '../security/security.service';
+import type { SessionMeta } from '../security/session-meta.util';
 import { SupabaseService } from '../supabase/supabase.service';
 import { AcceptInviteDto } from './dto/accept-invite.dto';
 import { ConfirmPasswordResetDto } from './dto/confirm-password-reset.dto';
@@ -25,6 +28,7 @@ export class AuthService {
     private readonly accountService: AccountService,
     private readonly supabaseService: SupabaseService,
     private readonly configService: ConfigService,
+    private readonly securityService: SecurityService,
   ) {
     // Org tables mirror the organization module (0005_organization.sql) so the
     // invite-accept path joins the same roster the org endpoints manage.
@@ -46,7 +50,7 @@ export class AuthService {
     return this.accountService.getCurrentViewer(user);
   }
 
-  async signIn(dto: SignInDto) {
+  async signIn(dto: SignInDto, meta?: SessionMeta) {
     const client = this.supabaseService.createPublicClient();
 
     if (!client) {
@@ -81,6 +85,20 @@ export class AuthService {
       entity_id: data.user.id,
       details: {},
     });
+
+    // Ledger the session so the Security page can list and revoke it. Skip
+    // when the sid claim is unavailable rather than collapsing every session
+    // into a sentinel row that could never match the guard's decoded sid.
+    const authSessionId = decodeJwtPayloadSid(data.session.access_token);
+
+    if (authSessionId) {
+      await this.securityService.recordSession({
+        userId: data.user.id,
+        authSessionId,
+        refreshToken: data.session.refresh_token,
+        meta,
+      });
+    }
 
     const viewerState = await this.accountService.getCurrentViewer({
       id: data.user.id,
@@ -170,6 +188,11 @@ export class AuthService {
       );
     }
 
+    // A password reset should invalidate tracked sessions — wipe the ledger.
+    if (data.user) {
+      await this.securityService.deleteUserSessions(data.user.id);
+    }
+
     await this.insertAuditEvent({
       action: 'password_reset_confirmed',
       entity_type: 'auth_user',
@@ -182,7 +205,7 @@ export class AuthService {
     };
   }
 
-  async refreshSession(dto: RefreshSessionDto) {
+  async refreshSession(dto: RefreshSessionDto, meta?: SessionMeta) {
     const client = this.supabaseService.createPublicClient();
 
     if (!client) {
@@ -212,6 +235,19 @@ export class AuthService {
       entity_id: data.user.id,
       details: {},
     });
+
+    // Rotation keeps the same auth session id, so this bumps last_active_at
+    // on the existing ledger row (and stores the fresh token hash).
+    const authSessionId = decodeJwtPayloadSid(data.session.access_token);
+
+    if (authSessionId) {
+      await this.securityService.recordSession({
+        userId: data.user.id,
+        authSessionId,
+        refreshToken: data.session.refresh_token,
+        meta,
+      });
+    }
 
     const viewerState = await this.accountService.getCurrentViewer({
       id: data.user.id,
@@ -250,6 +286,11 @@ export class AuthService {
       }
     }
 
+    // Drop the ledger row for this session (matched by refresh-token hash).
+    if (refreshToken) {
+      await this.securityService.deleteSessionByRefreshHash(refreshToken);
+    }
+
     await this.insertAuditEvent({
       action: 'sign_out',
       entity_type: 'auth_user',
@@ -275,15 +316,16 @@ export class AuthService {
       };
     }
 
-    // ── 1. Organization invite (raw token) — joins the org roster ──────────
-    // POST /organization/invites stores a plaintext token on
-    // organization_invites.token; acceptance creates the auth user and inserts
-    // the membership row so the invitee lands on the org roster with the
-    // invited role and team.
+    // ── 1. Organization invite (hashed token) — joins the org roster ───────
+    // POST /organization/invites persists only the SHA-256 of the raw token
+    // (migration 0015), so a leaked invites table never exposes usable tokens.
+    // Acceptance hashes the submitted token and matches token_hash; the raw
+    // token reached the invitee only via the share/email link.
+    const tokenHash = createHash('sha256').update(dto.token).digest('hex');
     const { data: orgInvite, error: orgInviteError } = await adminClient
       .from(this.orgInvitesTable)
       .select('id, email, role, team_id, organization_id, status, expires_at')
-      .eq('token', dto.token)
+      .eq('token_hash', tokenHash)
       .eq('status', 'pending')
       .gt('expires_at', new Date().toISOString())
       .maybeSingle();
@@ -299,7 +341,7 @@ export class AuthService {
     }
 
     // ── 2. Waitlist access invite (hashed token) — existing flow ───────────
-    const tokenHash = createHash('sha256').update(dto.token).digest('hex');
+    // (tokenHash was already computed above for the org-invite lookup.)
     const { data: invite, error: inviteError } = await adminClient
       .from('access_invites')
       .select('id, email, waitlist_application_id, status, expires_at')

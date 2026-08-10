@@ -11,7 +11,10 @@ export class GlobalExceptionFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const request = ctx.getRequest<{ url: string; requestId?: string }>();
-    const response = ctx.getResponse<{ status: (code: number) => any }>();
+    const response = ctx.getResponse<{
+      status: (code: number) => any;
+      setHeader?: (name: string, value: string) => void;
+    }>();
 
     const status =
       exception instanceof HttpException
@@ -21,30 +24,64 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const exceptionResponse =
       exception instanceof HttpException ? exception.getResponse() : undefined;
 
-    const message = this.getMessage(status, exceptionResponse);
+    const { message, details } = this.normalizeError(status, exceptionResponse);
+
+    // 402 quota responses carry a Retry-After hint (RFC 9110) telling the
+    // client when the next billing cycle makes scans available again.
+    const retryAfterSeconds = (exception as { retryAfterSeconds?: number } | null)
+      ?.retryAfterSeconds;
+    if (retryAfterSeconds && response.setHeader) {
+      response.setHeader('Retry-After', String(retryAfterSeconds));
+    }
 
     response.status(status).json({
       statusCode: status,
       message,
+      ...(details ? { details } : {}),
       path: request.url,
       requestId: request.requestId,
       timestamp: new Date().toISOString(),
     });
   }
 
-  private getMessage(status: number, response: unknown) {
+  /**
+   * Normalize any exception payload to a string `message` (API standard:
+   * message is ALWAYS a string) with a separate `details` array for structured
+   * error lists (e.g. class-validator failures). See
+   * docs/engineering/API_DESIGN_STANDARDS.md §3.1.
+   */
+  private normalizeError(
+    status: number,
+    response: unknown,
+  ): { message: string; details?: string[] } {
     if (response && typeof response === 'object' && 'message' in response) {
-      return (response as { message: string | string[] }).message;
+      const raw = (response as { message: string | string[] }).message;
+
+      if (Array.isArray(raw)) {
+        const strings = raw.map((item) =>
+          typeof item === 'string' ? item : String(item),
+        );
+
+        return {
+          message:
+            strings.length === 1
+              ? strings[0]
+              : `Validation failed: ${strings.join('; ')}`,
+          details: strings,
+        };
+      }
+
+      return { message: typeof raw === 'string' ? raw : String(raw) };
     }
 
     if (typeof response === 'string') {
-      return response;
+      return { message: response };
     }
 
     if (status >= 500) {
-      return 'Internal server error.';
+      return { message: 'Internal server error.' };
     }
 
-    return 'Request failed.';
+    return { message: 'Request failed.' };
   }
 }

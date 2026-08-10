@@ -9,6 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { createHash, randomUUID } from 'crypto';
 import * as exifr from 'exifr';
 import { Jimp } from 'jimp';
+import { BillingService } from '../billing/billing.service';
 import { QueueService } from '../queue/queue.service';
 import { SupabaseService } from '../supabase/supabase.service';
 import { InitiateScanDto } from './dto/initiate-scan.dto';
@@ -27,6 +28,27 @@ type ScanRow = {
   updated_at: string;
   result_payload: unknown | null;
   failure_reason: string | null;
+  processing_mode: string;
+  team_id: string | null;
+  completed_at: string | null;
+};
+
+type QueueSnapshot = {
+  queued: number;
+  processing: number;
+  failed: number;
+  avg_processing_time_ms: number | null;
+};
+
+// The mock scan rows the frontend consumes carry verdicts in the display
+// dialect ('authentic' / 'suspicious' / 'inconclusive'), while the analysis
+// payload emits verdict classes ('likely_authentic' / 'suspicious' /
+// 'inconclusive'). Map at the API boundary so list/get shapes match the mock
+// exactly.
+const VERDICT_CLASS_TO_DISPLAY: Record<string, string> = {
+  likely_authentic: 'authentic',
+  suspicious: 'suspicious',
+  inconclusive: 'inconclusive',
 };
 
 type ImageStats = {
@@ -44,6 +66,7 @@ type ImageStats = {
 export class ScansService {
   private readonly logger = new Logger(ScansService.name);
   private readonly scansTable: string;
+  private readonly orgMembersTable: string;
   private readonly uploadsBucket: string;
   private readonly maxUploadBytes: number;
   private readonly allowedMimeTypes: Set<string>;
@@ -52,8 +75,13 @@ export class ScansService {
     private readonly supabaseService: SupabaseService,
     private readonly configService: ConfigService,
     private readonly queueService: QueueService,
+    private readonly billingService: BillingService,
   ) {
     this.scansTable = this.configService.get<string>('SUPABASE_SCANS_TABLE', 'scans');
+    this.orgMembersTable = this.configService.get<string>(
+      'SUPABASE_ORGANIZATION_MEMBERS_TABLE',
+      'organization_members',
+    );
     this.uploadsBucket = this.configService.get<string>(
       'SUPABASE_UPLOADS_BUCKET',
       'provance-uploads',
@@ -74,7 +102,17 @@ export class ScansService {
     );
   }
 
-  async initiateScan(userId: string, dto: InitiateScanDto) {
+  async initiateScan(
+    userId: string,
+    dto: InitiateScanDto,
+    idempotencyKey?: string,
+  ) {
+    if (idempotencyKey && idempotencyKey.length > 128) {
+      throw new BadRequestException(
+        'Idempotency-Key is too long (max 128 characters).',
+      );
+    }
+
     if (dto.mediaType !== 'image') {
       throw new BadRequestException('Only image uploads are supported right now.');
     }
@@ -93,9 +131,34 @@ export class ScansService {
       throw new ServiceUnavailableException('Supabase is not configured.');
     }
 
+    // Idempotency: a retried initiate with the same key returns the original
+    // reservation (a fresh upload token for the same storage path) instead of
+    // creating a duplicate scan row. The lookup is scoped to awaiting_upload
+    // rows — the partial unique index's window — so the same key issued after
+    // submission starts a fresh record. Skipping the quota gate here matters:
+    // the retry is the same logical operation, not a new scan.
+    if (idempotencyKey) {
+      const existing = await this.findScanByIdempotencyKey(
+        adminClient,
+        userId,
+        idempotencyKey,
+      );
+      if (existing) {
+        this.logger.log(
+          `Initiate retried with idempotency key ${idempotencyKey} — reusing scan ${existing.id}.`,
+        );
+        return this.buildUploadContract(adminClient, existing);
+      }
+    }
+
+    // Per-plan scan quota gate: reject with 402 (Retry-After on the response)
+    // before any record is created when the current cycle's allowance is spent.
+    await this.billingService.assertScanQuota(userId);
+
     const scanId = randomUUID();
     const storagePath = `${userId}/${scanId}/${sanitizeFilename(dto.originalFilename)}`;
     const now = new Date().toISOString();
+    const teamId = await this.resolveUserTeam(adminClient, userId);
 
     const { error: insertError } = await adminClient.from(this.scansTable).insert({
       id: scanId,
@@ -106,6 +169,9 @@ export class ScansService {
       file_size_bytes: dto.fileSizeBytes,
       storage_bucket: this.uploadsBucket,
       storage_path: storagePath,
+      processing_mode: dto.processingMode ?? 'standard',
+      team_id: teamId,
+      idempotency_key: idempotencyKey ?? null,
       result_payload: null,
       failure_reason: null,
       created_at: now,
@@ -113,22 +179,90 @@ export class ScansService {
     });
 
     if (insertError) {
-      throw new ServiceUnavailableException('Failed to create scan record.');
+      // Two concurrent initiates with the same key can both miss the lookup
+      // above; the partial unique index rejects the second insert with 23505.
+      // Fall back to the winner's row instead of failing the retry.
+      if (insertError.code === '23505' && idempotencyKey) {
+        const winner = await this.findScanByIdempotencyKey(
+          adminClient,
+          userId,
+          idempotencyKey,
+        );
+        if (winner) {
+          this.logger.warn(
+            `Concurrent initiate with key ${idempotencyKey} — reusing scan ${winner.id}.`,
+          );
+          return this.buildUploadContract(adminClient, winner);
+        }
+      }
+
+      throw new ServiceUnavailableException(
+        this.schemaErrorHint(insertError, 'Failed to create scan record.'),
+      );
     }
 
-    const { data: signedUploadData, error: signedUploadError } = await adminClient.storage
-      .from(this.uploadsBucket)
-      .createSignedUploadUrl(storagePath);
+    return this.buildUploadContract(adminClient, {
+      id: scanId,
+      storage_bucket: this.uploadsBucket,
+      storage_path: storagePath,
+    });
+  }
+
+  /**
+   * findScanByIdempotencyKey — the awaiting_upload window lookup backing the
+   * Idempotency-Key guarantee on initiateScan. Scoped to the same predicate as
+   * the scans_user_idempotency_awaiting_idx partial index.
+   */
+  private async findScanByIdempotencyKey(
+    adminClient: NonNullable<ReturnType<SupabaseService['getAdminClient']>>,
+    userId: string,
+    idempotencyKey: string,
+  ) {
+    const { data, error } = await adminClient
+      .from(this.scansTable)
+      .select('id,status,storage_bucket,storage_path')
+      .eq('user_id', userId)
+      .eq('idempotency_key', idempotencyKey)
+      .eq('status', 'awaiting_upload')
+      .maybeSingle();
+
+    if (error) {
+      throw new ServiceUnavailableException(
+        this.schemaErrorHint(error, 'Failed to check for an existing scan.'),
+      );
+    }
+
+    return data as {
+      id: string;
+      status: string;
+      storage_bucket: string;
+      storage_path: string;
+    } | null;
+  }
+
+  /**
+   * buildUploadContract — mints the signed upload URL for a scan and returns
+   * the initiate response shape shared by the fresh-insert and idempotency
+   * paths (so a retried initiate returns an identical contract).
+   */
+  private async buildUploadContract(
+    adminClient: NonNullable<ReturnType<SupabaseService['getAdminClient']>>,
+    scan: { id: string; storage_bucket: string; storage_path: string },
+  ) {
+    const { data: signedUploadData, error: signedUploadError } =
+      await adminClient.storage
+        .from(scan.storage_bucket)
+        .createSignedUploadUrl(scan.storage_path);
 
     if (signedUploadError || !signedUploadData) {
       throw new ServiceUnavailableException('Failed to prepare upload URL.');
     }
 
     return {
-      scanId,
+      scanId: scan.id,
       status: 'awaiting_upload' as const,
-      bucket: this.uploadsBucket,
-      path: storagePath,
+      bucket: scan.storage_bucket,
+      path: scan.storage_path,
       token: signedUploadData.token,
       signedUrl: signedUploadData.signedUrl,
     };
@@ -169,31 +303,51 @@ export class ScansService {
     return { scanId, status: 'queued' as const };
   }
 
-  async listScans(userId: string) {
+  async listScans(
+    userId: string,
+    pagination: { page?: number; pageSize?: number } = {},
+  ) {
     const adminClient = this.supabaseService.getAdminClient();
 
     if (!adminClient) {
       throw new ServiceUnavailableException('Supabase is not configured.');
     }
 
+    const safePage = Math.max(1, pagination.page ?? 1);
+    const safePageSize = Math.min(500, Math.max(1, pagination.pageSize ?? 100));
+    const from = (safePage - 1) * safePageSize;
+    const to = from + safePageSize - 1;
+
     const { data, error } = await adminClient
       .from(this.scansTable)
       .select(
-        'id,status,original_filename,mime_type,file_size_bytes,created_at,updated_at,failure_reason,result_payload',
+        'id,status,original_filename,mime_type,file_size_bytes,processing_mode,team_id,completed_at,created_at,updated_at,failure_reason,result_payload',
       )
       .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .range(from, to);
 
     if (error) {
       throw new ServiceUnavailableException('Failed to fetch scans.');
     }
 
-    // `data` matches the frontend list contract; `scans` stays as a
-    // backward-compatible alias for older consumers. All rows are returned in
-    // a single page for now — pagination happens on the reports endpoint.
+    const { count } = await adminClient
+      .from(this.scansTable)
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId);
+
+    const rows = (data ?? []).map(toFrontendScanRow);
+    const total = count ?? rows.length;
+
+    // Standard { data, page, pageSize, total, totalPages } envelope (see
+    // docs/engineering/API_DESIGN_STANDARDS.md §3.2). The `scans` alias is
+    // gone — every frontend consumer reads `.data`.
     return {
-      data: data ?? [],
-      scans: data ?? [],
+      data: rows,
+      page: safePage,
+      pageSize: safePageSize,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / safePageSize)),
     };
   }
 
@@ -216,7 +370,7 @@ export class ScansService {
 
     return {
       scan: {
-        ...scan,
+        ...toFrontendScanRow(scan),
         asset_preview_url: previewUrl,
       },
     };
@@ -231,6 +385,104 @@ export class ScansService {
 
     const scan = await this.getScanByIdOrThrow(adminClient, scanId);
     await this.runScanProcessing(adminClient, scan);
+  }
+
+  /**
+   * Queue posture for the current user's scans: queued/processing/failed
+   * counts plus the average processing duration of completed scans (explicit
+   * result_payload.metadata.total_processing_time_ms when present, otherwise
+   * the created→completed wall-clock difference). Matches the mock
+   * { queued, processing, failed, avg_processing_time_ms } contract.
+   */
+  async getQueueSnapshot(userId: string): Promise<QueueSnapshot> {
+    const adminClient = this.supabaseService.getAdminClient();
+
+    if (!adminClient) {
+      throw new ServiceUnavailableException('Supabase is not configured.');
+    }
+
+    const { data, error } = await adminClient
+      .from(this.scansTable)
+      .select('status,result_payload,created_at,updated_at')
+      .eq('user_id', userId);
+
+    if (error) {
+      throw new ServiceUnavailableException('Failed to fetch queue snapshot.');
+    }
+
+    const rows = data ?? [];
+    const queued = rows.filter((row) => row.status === 'queued').length;
+    const processing = rows.filter((row) => row.status === 'processing').length;
+    const failed = rows.filter((row) => row.status === 'failed').length;
+    const durations: number[] = [];
+
+    for (const row of rows) {
+      if (row.status !== 'complete') {
+        continue;
+      }
+
+      const payload = row.result_payload as
+        | { metadata?: { total_processing_time_ms?: number } }
+        | null
+        | undefined;
+      const explicit = Number(payload?.metadata?.total_processing_time_ms);
+      const created = new Date(row.created_at).getTime();
+      const updated = new Date(row.updated_at).getTime();
+
+      if (Number.isFinite(explicit) && explicit >= 0) {
+        durations.push(explicit);
+      } else if (
+        Number.isFinite(created) &&
+        Number.isFinite(updated) &&
+        updated >= created
+      ) {
+        durations.push(updated - created);
+      }
+    }
+
+    const avg =
+      durations.length > 0
+        ? Math.round(durations.reduce((total, value) => total + value, 0) / durations.length)
+        : null;
+
+    return { queued, processing, failed, avg_processing_time_ms: avg };
+  }
+
+  /**
+   * Best-effort resolution of the user's default team from an active org
+   * membership. Never throws: scan creation must not depend on the org tables
+   * existing (fresh databases with only 0002 applied) or on membership data
+   * being present.
+   */
+  private async resolveUserTeam(
+    adminClient: NonNullable<ReturnType<SupabaseService['getAdminClient']>>,
+    userId: string,
+  ): Promise<string | null> {
+    try {
+      const { data, error } = await adminClient
+        .from(this.orgMembersTable)
+        .select('team_id')
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .not('team_id', 'is', null)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        this.logger.warn(
+          `Team resolution failed for user ${userId}: ${error.message}`,
+        );
+        return null;
+      }
+
+      return typeof data?.team_id === 'string' ? data.team_id : null;
+    } catch (error) {
+      this.logger.warn(
+        `Team resolution skipped for user ${userId}: ${error instanceof Error ? error.message : 'unknown error'}`,
+      );
+      return null;
+    }
   }
 
   private async getScanOrThrow(
@@ -288,8 +540,48 @@ export class ScansService {
       .eq('id', scanId);
 
     if (error) {
-      throw new ServiceUnavailableException('Failed to update scan.');
+      throw new ServiceUnavailableException(
+        this.schemaErrorHint(error, 'Failed to update scan.'),
+      );
     }
+  }
+
+  /**
+   * schemaErrorHint — surfaces an actionable message when a Supabase error
+   * means the scans table is missing a column the flow reads/writes, instead
+   * of a bare "failed to create/update" 503. Postgres reports missing columns
+   * as 42703 through PostgREST (or PGRST204 when the schema cache is stale);
+   * the offending column is extracted from the message and mapped to the
+   * migration that introduces it, so an unapplied migration is diagnosable
+   * with one request.
+   */
+  private schemaErrorHint(error: { code?: string; message?: string }, fallback: string) {
+    if (error.code !== '42703' && error.code !== 'PGRST204') {
+      return fallback;
+    }
+
+    const message = error.message ?? '';
+    // 42703: `column scans.idempotency_key does not exist`; PGRST204:
+    // `Could not find the 'idempotency_key' column of 'scans' ...`.
+    const quoted = /'([a-zA-Z_]+)'\s+column/.exec(message)?.[1];
+    const dotted = /column\s+[a-zA-Z0-9_]+\.([a-zA-Z_]+)\s+does not exist/.exec(
+      message,
+    )?.[1];
+    const column = quoted ?? dotted;
+
+    const migrationByColumn: Record<string, string> = {
+      processing_mode: '0009_scan_processing.sql',
+      completed_at: '0009_scan_processing.sql',
+      team_id: '0012_profiles_team.sql',
+      file_hash_sha256: '0013_scan_dedup.sql',
+      idempotency_key: '0019_scan_idempotency.sql',
+    };
+
+    if (column && migrationByColumn[column]) {
+      return `${fallback} The scans table is missing the ${column} column (migration ${migrationByColumn[column]} not applied) — apply supabase/migrations/${migrationByColumn[column]}.`;
+    }
+
+    return `${fallback} The scans table is missing a column${column ? ` (${column})` : ''} — check supabase/migrations in dependency order (see docs/engineering/MIGRATION_RUNBOOK.md).`;
   }
 
   private async runScanProcessing(
@@ -310,6 +602,40 @@ export class ScansService {
       const startedAt = Date.now();
       const fileBuffer = await this.downloadScanAsset(adminClient, scan);
       const analysisTimestamp = new Date().toISOString();
+
+      // Hash-based dedup (approved feature): an identical file already verified
+      // by this user reuses the prior result payload instead of re-running the
+      // analysis pipeline. The lookup is best-effort — if the dedup column is
+      // missing (migration 0013 not applied), fall back to normal processing.
+      const sha256 = createHash('sha256').update(fileBuffer).digest('hex');
+      const prior = await this.findCompletedScanByHash(
+        adminClient,
+        scan.user_id,
+        sha256,
+        scan.id,
+      );
+
+      if (prior) {
+        const reusedPayload = this.buildDeduplicatedPayload(
+          prior,
+          scan,
+          sha256,
+          analysisTimestamp,
+        );
+        await this.updateScan(adminClient, scan.id, {
+          status: 'complete',
+          file_hash_sha256: sha256,
+          result_payload: reusedPayload,
+          failure_reason: null,
+          completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+        this.logger.log(
+          `Scan ${scan.id} reuses prior result from scan ${prior.id} (identical SHA-256).`,
+        );
+        return;
+      }
+
       const resultPayload = await this.buildAnalysisResultPayload(
         scan,
         fileBuffer,
@@ -319,8 +645,10 @@ export class ScansService {
 
       await this.updateScan(adminClient, scan.id, {
         status: 'complete',
+        file_hash_sha256: sha256,
         result_payload: resultPayload,
         failure_reason: null,
+        completed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       });
     } catch (error) {
@@ -331,6 +659,92 @@ export class ScansService {
         updated_at: new Date().toISOString(),
       });
     }
+  }
+
+  /**
+   * findCompletedScanByHash — the dedup lookup: a completed scan owned by the
+   * same user whose file_hash_sha256 matches (excluding the current scan).
+   *
+   * Best-effort: when the hash column is missing (migration 0013 not applied),
+   * returns null instead of failing the worker so identical files still get
+   * processed normally.
+   */
+  private async findCompletedScanByHash(
+    adminClient: NonNullable<ReturnType<SupabaseService['getAdminClient']>>,
+    userId: string,
+    sha256: string,
+    excludeScanId: string,
+  ): Promise<{ id: string; result_payload: unknown } | null> {
+    try {
+      const { data, error } = await adminClient
+        .from(this.scansTable)
+        .select('id,result_payload')
+        .eq('user_id', userId)
+        .eq('file_hash_sha256', sha256)
+        .eq('status', 'complete')
+        .neq('id', excludeScanId)
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        if (error.code === '42703' || error.code === 'PGRST204') {
+          this.logger.warn(
+            'Dedup lookup skipped — file_hash_sha256 column missing (migration 0013 not applied).',
+          );
+          return null;
+        }
+        throw new ServiceUnavailableException('Failed to check for duplicate scans.');
+      }
+
+      return data ?? null;
+    } catch (error) {
+      if (error instanceof ServiceUnavailableException) throw error;
+      this.logger.warn(
+        `Dedup lookup failed: ${error instanceof Error ? error.message : 'unknown error'}`,
+      );
+      return null;
+    }
+  }
+
+  /**
+   * buildDeduplicatedPayload — reuses a prior completed scan's result payload
+   * for an identical file. The verdict/signals/media blocks carry over as-is;
+   * the report identity is regenerated for the new scan and a deduplicated_from
+   * marker records the source so the report surface can badge the reuse.
+   */
+  private buildDeduplicatedPayload(
+    prior: { id: string; result_payload: unknown },
+    scan: ScanRow,
+    sha256: string,
+    analysisTimestamp: string,
+  ): Record<string, unknown> {
+    const priorPayload = (prior.result_payload ?? {}) as Record<string, unknown>;
+    const priorReport = (priorPayload.report ?? {}) as Record<string, unknown>;
+    const reportId = `PRV-${scan.id.slice(0, 8).toUpperCase()}`;
+
+    return {
+      ...priorPayload,
+      scan_id: scan.id,
+      media: {
+        ...((priorPayload.media ?? {}) as Record<string, unknown>),
+        file_hash_sha256: sha256,
+        sha256,
+      },
+      report: {
+        ...priorReport,
+        report_id: reportId,
+        generated_at: analysisTimestamp,
+        report_url:
+          typeof priorReport.report_url === 'string'
+            ? priorReport.report_url.replace(prior.id, scan.id)
+            : null,
+      },
+      deduplicated_from: {
+        source_scan_id: prior.id,
+        source_report_id: priorReport.report_id ?? null,
+        reused_at: analysisTimestamp,
+      },
+    };
   }
 
   private async assetExists(
@@ -812,7 +1226,12 @@ function buildProvenanceSignal(hasC2paMarker: boolean) {
   };
 }
 
-function buildVerdict(input: {
+/**
+ * Pure verdict classifier — exported as a test seam so the threshold
+ * boundaries (0.2 likely_authentic / 0.45 inconclusive) are unit-lockable
+ * without driving the full pipeline.
+ */
+export function buildVerdict(input: {
   metadata: {
     captureTimestamp: string | null;
     software: string | null;
@@ -1000,5 +1419,46 @@ function getPrimaryOrigin(value: string) {
     .split(',')
     .map((entry) => entry.trim())
     .filter(Boolean)[0] || null;
+}
+
+/**
+ * Shape a DB scan row into the exact row dialect the frontend consumes
+ * (mirror of the mock scan records in mockData.js):
+ *
+ *  - status: the DB enum says 'complete'; the frontend mock dialect says
+ *    'completed' — emit the display dialect at the API boundary.
+ *  - verdict: flat display value ('authentic' / 'suspicious' / 'inconclusive')
+ *    derived from result_payload.verdict.class, or null when not complete.
+ *  - processing_mode / team_id / completed_at: persisted columns surfaced
+ *    directly.
+ *  - result_payload: unchanged, plus a flat `report_id` mirror (the ledger
+ *    surfaces read result_payload?.report_id, while the analysis payload
+ *    nests it under report.report_id).
+ */
+function toFrontendScanRow(scan: ScanRow) {
+  const payload = (scan.result_payload ?? null) as
+    | {
+        verdict?: { class?: string } | null;
+        report?: { report_id?: string } | null;
+      }
+    | null;
+  const verdictClass = payload?.verdict?.class ?? null;
+
+  return {
+    ...scan,
+    status: scan.status === 'complete' ? 'completed' : scan.status,
+    verdict: verdictClass
+      ? VERDICT_CLASS_TO_DISPLAY[verdictClass] ?? verdictClass
+      : null,
+    processing_mode: scan.processing_mode ?? 'standard',
+    team_id: scan.team_id ?? null,
+    completed_at: scan.completed_at ?? null,
+    result_payload: payload
+      ? {
+          ...payload,
+          report_id: payload.report?.report_id ?? null,
+        }
+      : null,
+  };
 }
 

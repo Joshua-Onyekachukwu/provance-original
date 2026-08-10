@@ -1,6 +1,7 @@
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
@@ -67,6 +68,10 @@ async function bootstrap() {
     },
     credentials: true,
   });
+  // Better Auth now mounts as a controller (BetterAuthModule →
+  // /v1/better-auth/*), flag-gated by USE_BETTER_AUTH; the live GoTrue flow
+  // at /v1/auth/* is untouched. better-call's node adapter falls back to the
+  // pre-parsed req.body, so running after Nest's body parser is safe.
   app.setGlobalPrefix('v1');
   app.useGlobalPipes(
     new ValidationPipe({
@@ -80,6 +85,31 @@ async function bootstrap() {
   );
   app.useGlobalFilters(new GlobalExceptionFilter());
   app.enableShutdownHooks();
+
+  // ── OpenAPI / Swagger UI at /v1/docs ─────────────────────────────────────
+  // Self-documenting API (docs/engineering/API_DESIGN_STANDARDS.md). The
+  // document is generated from route metadata + the @ApiProperty-decorated
+  // DTOs, so the schema mirrors the live surface. useGlobalPrefix mounts the
+  // UI under the v1 prefix (paths render as /v1/... in the spec too).
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('Provance API')
+    .setDescription(
+      'REST API for the Provance media-verification platform — the schema ' +
+        'mirrors the mock contract the frontend consumes (see ' +
+        'docs/engineering/API_DESIGN_STANDARDS.md).',
+    )
+    .setVersion('0.1.0')
+    .addBearerAuth(
+      { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+      'access-token',
+    )
+    .build();
+
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup('docs', app, document, {
+    useGlobalPrefix: true,
+    swaggerOptions: { persistAuthorization: true },
+  });
 
   await app.listen(configService.get<number>('PORT', 4000), '0.0.0.0');
 }

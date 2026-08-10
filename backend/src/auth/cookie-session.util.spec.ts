@@ -1,6 +1,8 @@
 import {
   buildCookieSessionOptions,
+  clearAllRefreshCookies,
   clearRefreshCookie,
+  HOST_PREFIXED_REFRESH_COOKIE_NAME,
   readRefreshCookie,
   REFRESH_COOKIE_NAME,
   serializeClearRefreshCookie,
@@ -29,6 +31,7 @@ describe('cookie-session.util', () => {
         sameSite: 'lax',
         secure: false,
         maxAgeMs: 30 * 24 * 60 * 60 * 1000,
+        cookieName: REFRESH_COOKIE_NAME,
       });
     });
 
@@ -37,6 +40,13 @@ describe('cookie-session.util', () => {
 
       expect(options.secure).toBe(true);
       expect(options.sameSite).toBe('none');
+    });
+
+    it('uses the __Host- prefixed name on secure deployments', () => {
+      const options = buildCookieSessionOptions({ secure: true });
+
+      expect(options.cookieName).toBe(HOST_PREFIXED_REFRESH_COOKIE_NAME);
+      expect(options.secure).toBe(true);
     });
 
     it('accepts explicit flags from config', () => {
@@ -71,6 +81,18 @@ describe('cookie-session.util', () => {
       expect(readRefreshCookie(request)).toBe('abc def');
     });
 
+    it('reads the __Host- prefixed name when configured', () => {
+      const request = {
+        headers: {
+          cookie: `${HOST_PREFIXED_REFRESH_COOKIE_NAME}=host-token`,
+        },
+      } as any;
+
+      expect(
+        readRefreshCookie(request, HOST_PREFIXED_REFRESH_COOKIE_NAME),
+      ).toBe('host-token');
+    });
+
     it('returns null when the cookie is absent', () => {
       const request = { headers: { cookie: 'theme=dark' } } as any;
 
@@ -91,6 +113,7 @@ describe('cookie-session.util', () => {
         sameSite: 'lax',
         secure: false,
         maxAgeMs: 30 * 24 * 60 * 60 * 1000,
+        cookieName: REFRESH_COOKIE_NAME,
       });
 
       expect(cookie).toContain(`${REFRESH_COOKIE_NAME}=token-123`);
@@ -106,10 +129,12 @@ describe('cookie-session.util', () => {
         sameSite: 'none',
         secure: true,
         maxAgeMs: 1000,
+        cookieName: HOST_PREFIXED_REFRESH_COOKIE_NAME,
       });
 
       expect(cookie).toContain('Secure');
       expect(cookie).toContain('SameSite=None');
+      expect(cookie).toContain(HOST_PREFIXED_REFRESH_COOKIE_NAME);
     });
 
     it('URL-encodes the token value', () => {
@@ -118,6 +143,7 @@ describe('cookie-session.util', () => {
         sameSite: 'lax',
         secure: false,
         maxAgeMs: 1000,
+        cookieName: REFRESH_COOKIE_NAME,
       });
 
       expect(cookie).toContain('a%2Fb%20c');
@@ -132,6 +158,7 @@ describe('cookie-session.util', () => {
         sameSite: 'lax' as const,
         secure: false,
         maxAgeMs: 1000,
+        cookieName: REFRESH_COOKIE_NAME,
       };
 
       setRefreshCookie(response, 'token-456', options);
@@ -149,6 +176,7 @@ describe('cookie-session.util', () => {
         sameSite: 'lax' as const,
         secure: false,
         maxAgeMs: 1000,
+        cookieName: REFRESH_COOKIE_NAME,
       };
 
       clearRefreshCookie(response, options);
@@ -157,6 +185,24 @@ describe('cookie-session.util', () => {
       expect(clearHeader).toContain('Max-Age=0');
       expect(clearHeader).toContain('Expires=Thu, 01 Jan 1970');
       expect(response.setHeader).toHaveBeenCalledWith('Set-Cookie', clearHeader);
+    });
+
+    it('clears both the plain and __Host- cookie names on sign-out', () => {
+      const response = createResponse() as any;
+      const options = {
+        enabled: true,
+        sameSite: 'lax' as const,
+        secure: false,
+        maxAgeMs: 1000,
+        cookieName: REFRESH_COOKIE_NAME,
+      };
+
+      clearAllRefreshCookies(response, options);
+
+      expect(response.setHeader).toHaveBeenCalledWith('Set-Cookie', [
+        expect.stringContaining(`${REFRESH_COOKIE_NAME}=`),
+        expect.stringContaining(`${HOST_PREFIXED_REFRESH_COOKIE_NAME}=`),
+      ]);
     });
   });
 });

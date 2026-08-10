@@ -69,6 +69,33 @@ export class OrganizationController {
     return this.organizationService.removeMember(user, memberId);
   }
 
+  @Get('members/:memberId/sessions')
+  listMemberSessions(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('memberId') memberId: string,
+  ) {
+    return this.organizationService.listMemberSessions(user, memberId);
+  }
+
+  @Delete('members/:memberId/sessions')
+  @HttpCode(HttpStatus.OK)
+  revokeMemberSessions(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('memberId') memberId: string,
+  ) {
+    return this.organizationService.revokeMemberSessions(user, memberId);
+  }
+
+  @Delete('members/:memberId/sessions/:sessionId')
+  @HttpCode(HttpStatus.OK)
+  revokeMemberSession(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('memberId') memberId: string,
+    @Param('sessionId') sessionId: string,
+  ) {
+    return this.organizationService.revokeMemberSession(user, memberId, sessionId);
+  }
+
   @Delete('invites/:inviteId')
   @HttpCode(HttpStatus.OK)
   cancelInvite(

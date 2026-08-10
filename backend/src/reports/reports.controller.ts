@@ -5,9 +5,12 @@ import {
   Param,
   ParseIntPipe,
   Query,
+  Res,
+  StreamableFile,
   UseGuards,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
+import type { Response } from 'express';
 import {
   CurrentUser,
   type CurrentUserPayload,
@@ -28,6 +31,24 @@ export class ReportsController {
     @Query('pageSize', new DefaultValuePipe(20), ParseIntPipe) pageSize: number,
   ) {
     return this.reportsService.listReports(user.id, { page, pageSize });
+  }
+
+  @Get(':reportId/pdf')
+  async exportReportPdf(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('reportId') reportId: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const pdf = await this.reportsService.getReportPdf(user.id, reportId);
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Length': String(pdf.length),
+      'Content-Disposition': `attachment; filename="provance-report-${reportId}.pdf"`,
+      'Cache-Control': 'private, max-age=0, must-revalidate',
+    });
+
+    return new StreamableFile(pdf);
   }
 
   @Get(':reportId')

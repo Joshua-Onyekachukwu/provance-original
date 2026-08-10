@@ -41,6 +41,14 @@ function createAdminClient(plan: Array<Record<string, unknown>>) {
     maybeSingle: jest.fn(() => builder),
     single: jest.fn(() => builder),
     update: jest.fn(() => builder),
+    insert: jest.fn(() => builder),
+    // Storage namespace for the monitoring storage probe
+    // (adminClient.storage.from(bucket).list(...) is awaited like a query).
+    storage: {
+      from: jest.fn(() => ({
+        list: jest.fn(() => builder),
+      })),
+    },
     // Directly-awaited chains resolve through the thenable contract.
     then(resolve: (value: Record<string, unknown>) => void) {
       resolve(next());
@@ -132,36 +140,6 @@ const scanRows = [
   },
 ];
 
-const memberRows = [
-  { user_id: 'user-1', role: 'owner' },
-  { user_id: 'user-2', role: 'admin' },
-  { user_id: 'user-3', role: 'member' },
-];
-
-const profileRows = [
-  {
-    user_id: 'user-1',
-    display_name: 'Joshua Onyekachukwu',
-    email: 'joshua@provance.io',
-  },
-  { user_id: 'user-2', display_name: 'Amina Sow', email: 'amina@provance.io' },
-  {
-    user_id: 'user-3',
-    display_name: 'David Okafor',
-    email: 'david@trustedmedia.ng',
-  },
-];
-
-const roleAuditRows = [
-  {
-    id: 'ra-1',
-    actor_email: 'amina@provance.io',
-    action: 'role.scope_updated',
-    details: { description: 'Admin role — enabled reports.export.' },
-    created_at: '2026-08-04T09:00:00.000Z',
-  },
-];
-
 describe('AdminService.listJobs', () => {
   it('derives jobs from scans with the display status dialect', async () => {
     const client = createAdminClient([{ data: scanRows, error: null }]);
@@ -198,6 +176,70 @@ describe('AdminService.listJobs', () => {
       ServiceUnavailableException,
     );
   });
+
+  it('maps a completed filter to the DB complete status', async () => {
+    const client = createAdminClient([
+      { data: scanRows, error: null, count: 3 },
+    ]);
+    const service = createService(client);
+
+    await service.listJobs({ status: 'completed' });
+
+    expect(client.in).toHaveBeenCalledWith('status', ['complete']);
+  });
+
+  it('maps a queued filter across awaiting_upload + queued', async () => {
+    const client = createAdminClient([{ data: [], error: null, count: 0 }]);
+    const service = createService(client);
+
+    await service.listJobs({ status: 'queued' });
+
+    expect(client.in).toHaveBeenCalledWith('status', ['awaiting_upload', 'queued']);
+  });
+
+  it('treats all/undefined as no filter', async () => {
+    const client = createAdminClient([
+      { data: scanRows, error: null, count: 3 },
+    ]);
+    const service = createService(client);
+
+    await service.listJobs({ status: 'all' });
+
+    expect(client.in).not.toHaveBeenCalled();
+  });
+
+  it('paginates with range and reports the filtered total', async () => {
+    const client = createAdminClient([
+      { data: [scanRows[0]], error: null, count: 3 },
+    ]);
+    const service = createService(client);
+
+    const result = await service.listJobs({ page: 2, pageSize: 2 });
+
+    expect(client.range).toHaveBeenCalledWith(2, 3);
+    expect(result.total).toBe(3); // count reflects the filter, not the page
+    expect(result.page).toBe(2);
+    expect(result.pageSize).toBe(2);
+    expect(result.data).toHaveLength(1);
+  });
+
+  it('clamps page and pageSize', async () => {
+    const client = createAdminClient([{ data: [], error: null, count: 0 }]);
+    const service = createService(client);
+
+    await service.listJobs({ page: 0, pageSize: 9999 });
+
+    expect(client.range).toHaveBeenCalledWith(0, 499);
+  });
+
+  it('rejects an unknown status filter', async () => {
+    const client = createAdminClient([]);
+    const service = createService(client);
+
+    await expect(service.listJobs({ status: 'bogus' })).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
 });
 
 describe('AdminService.retryJob', () => {
@@ -221,10 +263,15 @@ describe('AdminService.retryJob', () => {
         },
         error: null,
       },
+      // Best-effort audit write resolves without error.
+      { data: null, error: null },
     ]);
     const service = createService(client);
 
-    const result = await service.retryJob('scan-2');
+    const result = await service.retryJob('scan-2', {
+      id: 'admin-1',
+      email: 'ops@provance.local',
+    });
 
     expect(result.ok).toBe(true);
     expect(result.job.status).toBe('queued');
@@ -232,6 +279,56 @@ describe('AdminService.retryJob', () => {
     expect(client.update).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'queued', failure_reason: null }),
     );
+    // Audit trail: who retried it + the transition, severity from the map.
+    expect(client.from).toHaveBeenCalledWith('audit_logs');
+    expect(client.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actor_email: 'ops@provance.local',
+        action: 'scan.retried',
+        severity: 'medium',
+        entity_type: 'scan',
+        entity_id: 'scan-2',
+        details: expect.objectContaining({
+          reviewer_id: 'admin-1',
+          from: 'failed',
+          to: 'queued',
+        }),
+      }),
+    );
+  });
+
+  it('re-queues even when the audit write fails (best-effort trail)', async () => {
+    const client = createAdminClient([
+      { data: { id: 'scan-2', status: 'failed' }, error: null },
+      {
+        data: {
+          id: 'scan-2',
+          status: 'queued',
+          original_filename: 'cctv_clip.mp4',
+          mime_type: 'video/mp4',
+          file_size_bytes: 512_000,
+          processing_mode: 'standard',
+          team_id: null,
+          completed_at: null,
+          result_payload: null,
+          failure_reason: null,
+          created_at: '2026-08-05T09:00:00.000Z',
+          updated_at: '2026-08-06T11:00:00.000Z',
+        },
+        error: null,
+      },
+      // audit_logs table missing (migration 0008 not applied)
+      { error: { message: 'relation "audit_logs" does not exist' } },
+    ]);
+    const service = createService(client);
+
+    const result = await service.retryJob('scan-2', {
+      id: 'admin-1',
+      email: 'ops@provance.local',
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.job.status).toBe('queued');
   });
 
   it('rejects non-failed jobs', async () => {
@@ -276,14 +373,67 @@ describe('AdminService.failJob', () => {
         },
         error: null,
       },
+      // Best-effort audit write.
+      { data: null, error: null },
     ]);
     const service = createService(client);
 
-    const result = await service.failJob('scan-3', 'Admin override');
+    const result = await service.failJob(
+      'scan-3',
+      'Admin override',
+      { id: 'admin-1', email: 'ops@provance.local' },
+    );
 
     expect(result.ok).toBe(true);
     expect(result.job.status).toBe('failed');
     expect(result.job.error).toBe('Admin override');
+    expect(client.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actor_email: 'ops@provance.local',
+        action: 'scan.failed',
+        severity: 'high',
+        entity_type: 'scan',
+        entity_id: 'scan-3',
+        details: expect.objectContaining({
+          from: 'queued',
+          to: 'failed',
+          reason: 'Admin override',
+        }),
+      }),
+    );
+  });
+
+  it('fails the job even when the audit write fails (best-effort trail)', async () => {
+    const client = createAdminClient([
+      { data: { id: 'scan-3', status: 'queued' }, error: null },
+      {
+        data: {
+          id: 'scan-3',
+          status: 'failed',
+          original_filename: 'photo_evidence.jpg',
+          mime_type: 'image/jpeg',
+          file_size_bytes: 1_024_000,
+          processing_mode: 'quick',
+          team_id: null,
+          completed_at: null,
+          result_payload: null,
+          failure_reason: 'Admin override',
+          created_at: '2026-08-04T08:00:00.000Z',
+          updated_at: '2026-08-06T11:30:00.000Z',
+        },
+        error: null,
+      },
+      { error: { message: 'relation "audit_logs" does not exist' } },
+    ]);
+    const service = createService(client);
+
+    const result = await service.failJob('scan-3', 'Admin override', {
+      id: 'admin-1',
+      email: 'ops@provance.local',
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.job.status).toBe('failed');
   });
 
   it('rejects completed jobs', async () => {
@@ -429,77 +579,6 @@ describe('AdminService.listAdminReports', () => {
     // Only the status eq — no team_id clause for the 'all' sentinel.
     expect(client.eq).toHaveBeenCalledWith('status', 'complete');
     expect(client.eq).not.toHaveBeenCalledWith('team_id', expect.anything());
-  });
-});
-
-describe('AdminService.getRoles', () => {
-  it('builds the RBAC matrix with real member counts and role audit events', async () => {
-    const client = createAdminClient([
-      { data: memberRows, error: null },
-      { data: roleAuditRows, error: null },
-      { data: profileRows, error: null },
-    ]);
-    const service = createService(client);
-
-    const result = await service.getRoles();
-
-    expect(result.roles).toHaveLength(4);
-    const owner = result.roles.find((role) => role.id === 'role_owner');
-    const admin = result.roles.find((role) => role.id === 'role_admin');
-    const analyst = result.roles.find((role) => role.id === 'role_analyst');
-    const viewer = result.roles.find((role) => role.id === 'role_viewer');
-    expect(owner?.member_count).toBe(1);
-    expect(admin?.member_count).toBe(1);
-    expect(analyst?.member_count).toBe(1);
-    expect(viewer?.member_count).toBe(0);
-    expect(owner?.scopes['billing.manage']).toBe(true);
-    expect(analyst?.scopes['roles.manage']).toBe(false);
-
-    expect(result.scopes).toHaveLength(10);
-    expect(result.members).toEqual([
-      {
-        id: 'user-1',
-        name: 'Joshua Onyekachukwu',
-        email: 'joshua@provance.io',
-        role_id: 'role_owner',
-        avatar: 'JO',
-      },
-      {
-        id: 'user-2',
-        name: 'Amina Sow',
-        email: 'amina@provance.io',
-        role_id: 'role_admin',
-        avatar: 'AS',
-      },
-      {
-        id: 'user-3',
-        name: 'David Okafor',
-        email: 'david@trustedmedia.ng',
-        role_id: 'role_analyst',
-        avatar: 'DO',
-      },
-    ]);
-    expect(result.auditEvents).toEqual([
-      {
-        id: 'ra-1',
-        action: 'role.scope_updated',
-        actor_email: 'amina@provance.io',
-        description: 'Admin role — enabled reports.export.',
-        created_at: '2026-08-04T09:00:00.000Z',
-      },
-    ]);
-  });
-
-  it('throws ServiceUnavailable when membership fails', async () => {
-    const client = createAdminClient([
-      { data: null, error: { message: 'boom' } },
-      { data: [], error: null },
-    ]);
-    const service = createService(client);
-
-    await expect(service.getRoles()).rejects.toBeInstanceOf(
-      ServiceUnavailableException,
-    );
   });
 });
 
@@ -1167,5 +1246,423 @@ describe('AdminService.listAuditLogs', () => {
     await expect(service.listAuditLogs({})).rejects.toBeInstanceOf(
       ServiceUnavailableException,
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AdminService.getMonitoring
+//
+// Queue-health buckets, hourly/daily series, storage totals, worker
+// idle-vs-backlog status, and overall status derivation. The aggregation
+// windows are relative to Date.now(), so a frozen clock pins every bucket;
+// expected arrays are rebuilt from the same key math the service uses.
+//
+// Query plan (in await order):
+//   1. db probe       — scans select head count (throws on error)
+//   2. storage probe  — storage list (throws on error)
+//   3. scans rows     — status/file_size_bytes/created_at/updated_at
+//   4. incidents      — select * ordered by started_at
+//   5. queued count   — status=queued head count
+//   6. in-flight      — status=processing head count
+//   7..10. table rows — scans/profiles/waitlist/audit head counts
+// ---------------------------------------------------------------------------
+
+describe('AdminService.getMonitoring', () => {
+  const NOW_MS = Date.UTC(2026, 7, 7, 12, 0, 0); // 2026-08-07T12:00:00.000Z
+  const DAY_MS = 86_400_000;
+  const HOUR_MS = 3_600_000;
+
+  function monitoringHourKeys(nowMs: number) {
+    const keys: string[] = [];
+    for (let i = 11; i >= 0; i -= 1) {
+      keys.push(new Date(nowMs - i * HOUR_MS).toISOString().slice(0, 13));
+    }
+    return keys;
+  }
+
+  function monitoringDayKeys(nowMs: number) {
+    const keys: string[] = [];
+    for (let i = 13; i >= 0; i -= 1) {
+      keys.push(new Date(nowMs - i * DAY_MS).toISOString().slice(0, 10));
+    }
+    return keys;
+  }
+
+  function monitoringScan(overrides: Record<string, unknown>) {
+    return {
+      status: 'complete',
+      file_size_bytes: 1_000_000_000,
+      created_at: '2026-08-07T08:00:00.000Z',
+      updated_at: '2026-08-07T08:02:00.000Z',
+      ...overrides,
+    };
+  }
+
+  function monitoringConfig(overrides: Record<string, unknown> = {}) {
+    return createConfigService({
+      REDIS_URL: 'redis://localhost:6379',
+      SMTP_HOST: 'smtp.provance.io',
+      ...overrides,
+    });
+  }
+
+  it('buckets queue_health + hourly/daily series + storage exactly (frozen clock)', async () => {
+    const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(NOW_MS);
+    try {
+      const scanRows = [
+        // 1h ago, completed: counts in 24h + 1h buckets; latency 60s.
+        monitoringScan({
+          status: 'complete',
+          file_size_bytes: 2_000_000_000,
+          created_at: '2026-08-07T11:00:00.000Z',
+          updated_at: '2026-08-07T11:01:00.000Z',
+        }),
+        // 4h ago, completed: 24h bucket only; latency 120s.
+        monitoringScan({
+          status: 'complete',
+          file_size_bytes: 1_000_000_000,
+          created_at: '2026-08-07T08:00:00.000Z',
+          updated_at: '2026-08-07T08:02:00.000Z',
+        }),
+        // 6h ago, failed: failed_24h only.
+        monitoringScan({
+          status: 'failed',
+          file_size_bytes: 1_000_000_000,
+          created_at: '2026-08-07T06:00:00.000Z',
+          updated_at: '2026-08-07T06:01:00.000Z',
+        }),
+        // Backlog rows: storage only (no completion buckets).
+        monitoringScan({ status: 'queued', file_size_bytes: 500_000_000, created_at: '2026-08-07T10:00:00.000Z' }),
+        monitoringScan({ status: 'processing', file_size_bytes: 500_000_000, created_at: '2026-08-06T12:00:00.000Z' }),
+      ];
+      const incidentRows = [
+        {
+          id: 'inc-1',
+          title: 'Worker latency spike',
+          severity: 'medium',
+          status: 'active',
+          started_at: '2026-08-07T09:00:00.000Z',
+          resolved_at: null,
+          duration_hours: null,
+          services: ['worker'],
+          summary: 'Queue backlog rising.',
+        },
+        {
+          id: 'inc-2',
+          title: 'Storage degraded',
+          severity: 'low',
+          status: 'resolved',
+          started_at: '2026-08-05T09:00:00.000Z',
+          resolved_at: '2026-08-05T12:00:00.000Z',
+          duration_hours: 3,
+          services: ['storage'],
+          summary: 'Transient R2 latency.',
+        },
+      ];
+      const client = createAdminClient([
+        { data: null, error: null }, // db probe
+        { error: null }, // storage probe
+        { data: scanRows, error: null },
+        { data: incidentRows, error: null },
+        { count: 2, error: null }, // queued
+        { count: 1, error: null }, // in-flight
+        { count: 5, error: null }, // table scans
+        { count: 4, error: null }, // table profiles
+        { count: 3, error: null }, // table waitlist
+        { count: 20, error: null }, // table audit
+      ]);
+      const service = createService(client, monitoringConfig());
+
+      const result = await service.getMonitoring();
+
+      // ── Queue health ──────────────────────────────────────────────────────
+      expect(result.queue_health).toMatchObject({
+        queued: 2,
+        in_flight: 1,
+        failed_24h: 1,
+        // completed1h: exactly-1h-old row counts (≤ HOUR_MS inclusive).
+        throughput_per_hour: 1,
+        // (60000 + 120000) / 2
+        avg_processing_time_ms: 90_000,
+        // failed_24h / (completed_24h + failed_24h) = 1 / 3
+        failure_rate: 1 / 3,
+      });
+
+      // Hourly series: only the T08 (4h-ago) and T11 (1h-ago) buckets.
+      const hourKeys = monitoringHourKeys(NOW_MS);
+      const hourIndex = new Map(hourKeys.map((key, index) => [key, index]));
+      const eightIdx = hourIndex.get('2026-08-07T08');
+      const elevenIdx = hourIndex.get('2026-08-07T11');
+      expect(eightIdx).toBeDefined();
+      expect(elevenIdx).toBeDefined();
+      expect(result.queue_health.hourly_series).toHaveLength(12);
+      result.queue_health.hourly_series.forEach((entry, i) => {
+        expect(entry.hour).toBe(`${hourKeys[i]}:00:00.000Z`);
+        const expected = i === eightIdx || i === elevenIdx ? 1 : 0;
+        expect(entry.processed).toBe(expected);
+      });
+
+      // Daily series: only the final day (2026-08-07) has processed=3
+      // (2 completed + 1 failed); completed=2, failed=1.
+      const dayKeys = monitoringDayKeys(NOW_MS);
+      const dayIndex = new Map(dayKeys.map((key, index) => [key, index]));
+      const todayIdx = dayIndex.get('2026-08-07');
+      expect(todayIdx).toBeDefined();
+      expect(result.queue_health.daily_series).toHaveLength(14);
+      result.queue_health.daily_series.forEach((entry, i) => {
+        expect(entry.date).toBe(`${dayKeys[i]}T12:00:00.000Z`);
+        if (i === todayIdx) {
+          expect(entry.processed).toBe(3);
+          expect(entry.completed).toBe(2);
+          expect(entry.failed).toBe(1);
+        } else {
+          expect(entry.processed).toBe(0);
+          expect(entry.completed).toBe(0);
+          expect(entry.failed).toBe(0);
+        }
+      });
+
+      // ── Storage ──────────────────────────────────────────────────────────
+      // 2 + 1 + 1 + 0.5 + 0.5 = 5 GB, capacity default 500.
+      expect(result.storage_utilization).toEqual({
+        total_used_gb: 5,
+        total_capacity_gb: 500,
+        buckets: [
+          {
+            id: 'uploads',
+            label: 'Media uploads',
+            used_gb: 5,
+            capacity_gb: 500,
+            growth_30d: null,
+          },
+        ],
+      });
+
+      // ── Overall / uptime / services ──────────────────────────────────────
+      // completed30d=2, failed30d=1 → 2/3.
+      expect(result.overall.uptime_30d).toBeCloseTo(2 / 3, 6);
+      // checks_24h = 3 completions/failures + 2 queued + 1 in-flight.
+      expect(result.overall.checks_24h).toBe(6);
+      // One open incident rides through.
+      expect(result.overall.open_incidents).toBe(1);
+      // Backlog with no recent worker activity → degraded worker → degraded.
+      expect(result.overall.status).toBe('degraded');
+      const worker = result.services.find((s) => s.id === 'worker');
+      expect(worker?.status).toBe('degraded');
+      const queue = result.services.find((s) => s.id === 'queue');
+      expect(queue?.status).toBe('operational');
+      // Incidents pass through with the resolved one intact.
+      expect(result.incidents).toHaveLength(2);
+      expect(result.incidents[0]).toMatchObject({ id: 'inc-1', status: 'active' });
+      expect(result.incidents[1]).toMatchObject({ id: 'inc-2', status: 'resolved' });
+      // DB performance: p50/p95 measured from the (frozen) probes.
+      expect(result.db_performance.avg_query_ms).toBe(0);
+      expect(result.db_performance.p95_query_ms).toBe(0);
+      expect(result.db_performance.connections).toEqual({ active: 1, max: 100 });
+    } finally {
+      nowSpy.mockRestore();
+    }
+  });
+
+  it('idles gracefully with no backlog (worker + overall operational)', async () => {
+    const client = createAdminClient([
+      { data: null, error: null }, // db probe
+      { error: null }, // storage probe
+      { data: [], error: null }, // scans rows
+      { data: [], error: null }, // incidents
+      { count: 0, error: null }, // queued
+      { count: 0, error: null }, // in-flight
+      { count: 0, error: null }, // table scans
+      { count: 0, error: null }, // table profiles
+      { count: 0, error: null }, // table waitlist
+      { count: 0, error: null }, // table audit
+    ]);
+    const service = createService(client, monitoringConfig());
+
+    const result = await service.getMonitoring();
+
+    // A configured worker with no backlog is idle, not degraded.
+    const worker = result.services.find((s) => s.id === 'worker');
+    expect(worker?.status).toBe('operational');
+    // Nothing degraded and no open incidents → overall operational.
+    expect(result.overall.status).toBe('operational');
+    // Zero rows → no completion-based uptime and no activity proxy.
+    expect(result.overall.uptime_30d).toBeNull();
+    expect(result.overall.checks_24h).toBe(0);
+    // No completions/failures in 24h → failure_rate stays 0 (no div-by-zero).
+    expect(result.queue_health.failure_rate).toBe(0);
+  });
+
+  it('treats a backlog with recent worker activity as healthy', async () => {
+    const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(NOW_MS);
+    try {
+      const scanRows = [
+        // Completed 5 minutes before the frozen clock → worker active recently.
+        monitoringScan({
+          status: 'complete',
+          created_at: '2026-08-07T11:50:00.000Z',
+          updated_at: '2026-08-07T11:55:00.000Z',
+        }),
+        monitoringScan({ status: 'queued', created_at: '2026-08-07T11:00:00.000Z' }),
+      ];
+      const client = createAdminClient([
+        { data: null, error: null }, // db probe
+        { error: null }, // storage probe
+        { data: scanRows, error: null },
+        { data: [], error: null }, // incidents
+        { count: 1, error: null }, // queued
+        { count: 0, error: null }, // in-flight
+        { count: 1, error: null }, // table scans
+        { count: 0, error: null }, // table profiles
+        { count: 0, error: null }, // table waitlist
+        { count: 0, error: null }, // table audit
+      ]);
+      const service = createService(client, monitoringConfig());
+
+      const result = await service.getMonitoring();
+
+      // Backlog exists (1 queued) but a completion landed 5 min ago → healthy.
+      const worker = result.services.find((s) => s.id === 'worker');
+      expect(worker?.status).toBe('operational');
+      expect(result.queue_health).toMatchObject({
+        queued: 1,
+        in_flight: 0,
+        throughput_per_hour: 1,
+        avg_processing_time_ms: 300_000,
+      });
+      // No degraded services and no open incidents.
+      expect(result.overall.status).toBe('operational');
+    } finally {
+      nowSpy.mockRestore();
+    }
+  });
+
+  it('degrades storage and goes unreachable when the storage probe fails', async () => {
+    const client = createAdminClient([
+      { data: null, error: null }, // db probe ok
+      { error: { message: 'R2 timeout' } }, // storage probe fails
+      { data: [], error: null },
+      { data: [], error: null },
+      { count: 0, error: null },
+      { count: 0, error: null },
+      { count: 0, error: null },
+      { count: 0, error: null },
+      { count: 0, error: null },
+      { count: 0, error: null },
+    ]);
+    const service = createService(client, monitoringConfig());
+
+    const result = await service.getMonitoring();
+
+    const storage = result.services.find((s) => s.id === 'storage');
+    expect(storage?.status).toBe('degraded');
+    expect(storage?.latency_ms).toBeNull();
+    // A failed probe makes the platform unreachable regardless of service mix.
+    expect(result.overall.status).toBe('unreachable');
+  });
+
+  it('marks api/database unreachable when the db probe fails', async () => {
+    const client = createAdminClient([
+      { data: null, error: { message: 'connection refused' } }, // db probe fails
+      { error: null }, // storage probe ok
+      { data: [], error: null },
+      { data: [], error: null },
+      { count: 0, error: null },
+      { count: 0, error: null },
+      { count: 0, error: null },
+      { count: 0, error: null },
+      { count: 0, error: null },
+      { count: 0, error: null },
+    ]);
+    const service = createService(client, monitoringConfig());
+
+    const result = await service.getMonitoring();
+
+    const api = result.services.find((s) => s.id === 'api');
+    const database = result.services.find((s) => s.id === 'database');
+    expect(api?.status).toBe('unreachable');
+    expect(database?.status).toBe('unreachable');
+    expect(result.overall.status).toBe('unreachable');
+  });
+
+  it('returns null storage utilization when no bytes are recorded', async () => {
+    const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(NOW_MS);
+    try {
+      const client = createAdminClient([
+        { data: null, error: null }, // db probe
+        { error: null }, // storage probe
+        {
+          // All scans carry zero/absent byte counts → usedBytes stays 0.
+          data: [
+            monitoringScan({
+              status: 'complete',
+              file_size_bytes: 0,
+              created_at: '2026-08-07T11:00:00.000Z',
+              updated_at: '2026-08-07T11:01:00.000Z',
+            }),
+            monitoringScan({
+              status: 'queued',
+              file_size_bytes: null,
+              created_at: '2026-08-07T10:00:00.000Z',
+            }),
+          ],
+          error: null,
+        },
+        { data: [], error: null }, // incidents
+        { count: 1, error: null }, // queued
+        { count: 0, error: null }, // in-flight
+        { count: 2, error: null }, // table scans
+        { count: 0, error: null }, // table profiles
+        { count: 0, error: null }, // table waitlist
+        { count: 0, error: null }, // table audit
+      ]);
+      const service = createService(client, monitoringConfig());
+
+      const result = await service.getMonitoring();
+
+      // Zero recorded bytes → the utilization panel is null (page renders '—').
+      expect(result.storage_utilization).toBeNull();
+      // The queue-health buckets still flow from the same rows.
+      expect(result.queue_health.queued).toBe(1);
+      expect(result.queue_health.throughput_per_hour).toBe(1);
+    } finally {
+      nowSpy.mockRestore();
+    }
+  });
+
+  it('degrades the incidents section (not a 503) when the incidents table is missing', async () => {
+    // Live-project scenario: migration 0007 (admin_incidents) not applied —
+    // the incidents query errors while every core query succeeds. The whole
+    // monitoring surface must not 503 over a display-only peripheral table.
+    const client = createAdminClient([
+      { data: null, error: null }, // db probe
+      { error: null }, // storage probe
+      { data: [], error: null }, // scans rows
+      {
+        data: null,
+        error: {
+          message:
+            "Could not find the table 'public.admin_incidents' in the schema cache",
+        },
+      }, // incidents → unavailable
+      { count: 0, error: null }, // queued
+      { count: 0, error: null }, // in-flight
+      { count: 0, error: null }, // table scans
+      { count: 0, error: null }, // table profiles
+      { count: 0, error: null }, // table waitlist
+      { count: 0, error: null }, // table audit
+    ]);
+    const service = createService(client, monitoringConfig());
+
+    const result = await service.getMonitoring();
+
+    // Incidents degrade to an empty list; no throw.
+    expect(result.incidents).toEqual([]);
+    expect(result.overall.open_incidents).toBe(0);
+    // The data gap stays visible: overall must be degraded, never operational.
+    expect(result.overall.status).toBe('degraded');
+    // Core surfaces still flow normally.
+    expect(result.queue_health).toBeDefined();
+    expect(result.storage_utilization).toBeNull();
   });
 });

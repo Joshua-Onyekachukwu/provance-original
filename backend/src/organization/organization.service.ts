@@ -6,8 +6,10 @@ import {
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { createHash, randomBytes } from 'node:crypto';
 import { ConfigService } from '@nestjs/config';
 import { SupabaseService } from '../supabase/supabase.service';
+import { SecurityService } from '../security/security.service';
 import type { CurrentUserPayload } from '../common/decorators/current-user.decorator';
 import type { InviteMemberDto } from './dto/invite-member.dto';
 
@@ -65,6 +67,7 @@ export class OrganizationService {
   constructor(
     private readonly supabaseService: SupabaseService,
     configService: ConfigService,
+    private readonly securityService: SecurityService,
   ) {
     this.orgsTable = configService.get<string>('SUPABASE_ORGANIZATIONS_TABLE', 'organizations');
     this.teamsTable = configService.get<string>('SUPABASE_TEAMS_TABLE', 'teams');
@@ -168,6 +171,12 @@ export class OrganizationService {
       dto.team,
     );
 
+    // Issue the raw token once, here — it is returned in the response so the
+    // invitee can be reached via the share/email link, but only the SHA-256
+    // hash is persisted (migration 0015), so a leaked invites table never
+    // exposes usable tokens.
+    const rawToken = randomBytes(32).toString('hex');
+
     const { data, error } = await client
       .from(this.invitesTable)
       .insert({
@@ -176,6 +185,7 @@ export class OrganizationService {
         role: dto.role,
         team_id: team?.id ?? null,
         invited_by: user.id,
+        token_hash: createHash('sha256').update(rawToken).digest('hex'),
         expires_at: new Date(Date.now() + 7 * 86_400_000).toISOString(),
       })
       .select()
@@ -196,6 +206,10 @@ export class OrganizationService {
         invitedAt: invite.created_at,
         expiresAt: invite.expires_at,
       },
+      // One-time issuance — the raw token exists only here (and in the link
+      // the frontend builds from it); the DB holds only its hash.
+      token: rawToken,
+      inviteLink: `/accept-invite?token=${rawToken}`,
     };
   }
 
@@ -249,6 +263,112 @@ export class OrganizationService {
     }
 
     return { ok: true, memberId, teamId };
+  }
+
+  // -------------------------------------------------------------------------
+  // Member sessions (org-admin revocation)
+  // -------------------------------------------------------------------------
+
+  /**
+   * listMemberSessions — the member's active-session ledger for the
+   * Organization page (owner/admin only). The team tag comes from the
+   * membership row the service already resolved, so no extra lookup is needed.
+   */
+  async listMemberSessions(
+    user: CurrentUserPayload,
+    memberId: string,
+  ): Promise<{
+    memberId: string;
+    teamId: string | null;
+    sessions: Array<{
+      id: string;
+      device: string;
+      location: string;
+      ipAddress: string;
+      lastActiveAt: string;
+      isCurrent: boolean;
+      teamId: string | null;
+    }>;
+  }> {
+    const client = this.requireClient();
+    const membership = await this.getMembershipOrThrow(client, user);
+    this.assertCanManage(membership);
+    const member = await this.getMemberOrThrow(client, membership.organization_id, memberId);
+
+    const sessions = await this.securityService.listSessions(user, user.sid, {
+      targetUserId: memberId,
+      teamId: member.team_id,
+    });
+
+    return { memberId, teamId: member.team_id, sessions };
+  }
+
+  /**
+   * revokeMemberSession — revokes a single session of a member (owner/admin
+   * only). The owner seat is protected like every other owner mutation; an
+   * admin revoking their own session still cannot kill the current one.
+   */
+  async revokeMemberSession(
+    user: CurrentUserPayload,
+    memberId: string,
+    sessionId: string,
+  ): Promise<{ ok: true; memberId: string; sessionId: string }> {
+    const client = this.requireClient();
+    const membership = await this.getMembershipOrThrow(client, user);
+    this.assertCanManage(membership);
+    const member = await this.getMemberOrThrow(client, membership.organization_id, memberId);
+    this.assertNotOwner(member);
+
+    await this.securityService.revokeSessionForUser(user, memberId, sessionId, user.sid);
+
+    return { ok: true, memberId, sessionId };
+  }
+
+  /**
+   * revokeMemberSessions — revokes every tracked session of a member except
+   * the actor's own current one (owner/admin only; owner seat protected).
+   * Returns the count actually revoked; GoTrue revocation failures are
+   * surfaced per-session rather than failing the whole batch.
+   *
+   * Sequential on purpose: each revocation is a GoTrue admin DELETE plus a
+   * ledger write, and sessions number in the handful — a burst of parallel
+   * admin calls buys nothing and makes each failure harder to attribute.
+   */
+  async revokeMemberSessions(
+    user: CurrentUserPayload,
+    memberId: string,
+  ): Promise<{ ok: true; memberId: string; revoked: number }> {
+    const client = this.requireClient();
+    const membership = await this.getMembershipOrThrow(client, user);
+    this.assertCanManage(membership);
+    const member = await this.getMemberOrThrow(client, membership.organization_id, memberId);
+    this.assertNotOwner(member);
+
+    const sessions = await this.securityService.listSessions(user, user.sid, {
+      targetUserId: memberId,
+      teamId: member.team_id,
+    });
+
+    let revoked = 0;
+    for (const session of sessions) {
+      if (session.isCurrent) {
+        continue;
+      }
+      try {
+        await this.securityService.revokeSessionForUser(
+          user,
+          memberId,
+          session.id,
+          user.sid,
+        );
+        revoked += 1;
+      } catch {
+        // A single GoTrue revocation failure must not strand the rest of the
+        // batch — the count reflects only the sessions that actually died.
+      }
+    }
+
+    return { ok: true, memberId, revoked };
   }
 
   // -------------------------------------------------------------------------
