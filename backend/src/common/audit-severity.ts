@@ -17,6 +17,10 @@ export const AUDIT_SEVERITY_BY_ACTION: Record<string, string> = {
   // security-relevant event even before the notifyOnNewDevice preference
   // decides whether to email — the audit trail always records it.
   'new_device_signin': 'high',
+  // Supabase rejected a refresh token (replayed rotated token, expired, or
+  // unknown) — the signature of token theft / replay attempts. Surfaced in
+  // the Admin Audit Logs page as a high-severity security event.
+  'refresh_token_rejected': 'high',
   'user.invited': 'medium',
   'waitlist.approved': 'medium',
   'waitlist.deferred': 'medium',

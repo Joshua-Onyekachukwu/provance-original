@@ -1,10 +1,12 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { AccountService } from '../account/account.service';
+import { auditSeverity } from '../common/audit-severity';
 import type { CurrentUserPayload } from '../common/decorators/current-user.decorator';
 import { ConfigService } from '@nestjs/config';
 import { createHash } from 'crypto';
@@ -20,9 +22,11 @@ import { SignInDto } from './dto/sign-in.dto';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   private readonly orgsTable: string;
   private readonly orgMembersTable: string;
   private readonly orgInvitesTable: string;
+  private readonly auditTable: string;
 
   constructor(
     private readonly accountService: AccountService,
@@ -44,6 +48,9 @@ export class AuthService {
       'SUPABASE_ORGANIZATION_INVITES_TABLE',
       'organization_invites',
     );
+    this.auditTable =
+      this.configService.get<string>('SUPABASE_AUDIT_LOGS_TABLE') ||
+      'audit_logs';
   }
 
   async getCurrentSession(user: CurrentUserPayload) {
@@ -205,7 +212,11 @@ export class AuthService {
     };
   }
 
-  async refreshSession(dto: RefreshSessionDto, meta?: SessionMeta) {
+  async refreshSession(
+    dto: RefreshSessionDto,
+    meta?: SessionMeta,
+    tokenSource: 'cookie' | 'body' = 'body',
+  ) {
     const client = this.supabaseService.createPublicClient();
 
     if (!client) {
@@ -224,7 +235,17 @@ export class AuthService {
       refresh_token: dto.refreshToken,
     });
 
-    if (error || !data.session || !data.user) {
+    // Supabase rejected the refresh token — this is exactly what a replayed
+    // rotated token (token theft) produces. Record it in the admin audit
+    // trail before rejecting: only the SHA-256 hash of the presented token
+    // is stored, never the raw value, and the write is best-effort so the
+    // rejection itself can never be blocked by the audit insert.
+    if (error) {
+      await this.recordRejectedRefresh(dto.refreshToken, error, tokenSource, meta);
+      throw new UnauthorizedException('Invalid or expired session.');
+    }
+
+    if (!data.session || !data.user) {
       throw new UnauthorizedException('Invalid or expired session.');
     }
 
@@ -629,6 +650,60 @@ export class AuthService {
     if (error && strict) {
       throw new ServiceUnavailableException(
         'Audit logging is temporarily unavailable.',
+      );
+    }
+  }
+
+  /**
+   * Record a rejected refresh token in the admin audit trail (audit_logs).
+   *
+   * Supabase rejects a refresh token when it was already rotated (the replay
+   * signature of token theft), expired, or was never issued. The event is
+   * high-severity so it surfaces on the Admin Audit Logs page; only a
+   * SHA-256 hash of the presented token is stored so a leaked table never
+   * leaks the credential. The write is best-effort — a missing audit_logs
+   * table (migration 0008 not applied) must never break the rejection path.
+   */
+  private async recordRejectedRefresh(
+    presentedToken: string,
+    supabaseError: { message?: string; status?: number },
+    tokenSource: 'cookie' | 'body',
+    meta?: SessionMeta,
+  ) {
+    const adminClient = this.supabaseService.getAdminClient();
+
+    if (!adminClient) {
+      return;
+    }
+
+    const message = supabaseError.message ?? '';
+    // The known replay/revoked-family signature from GoTrue — flagged in the
+    // details so the admin can distinguish it from a plain expiry.
+    const reuseSuspected = message.includes('Refresh Token Not Found');
+
+    const { error } = await adminClient.from(this.auditTable).insert({
+      actor_email: 'system',
+      action: 'refresh_token_rejected',
+      severity: auditSeverity('refresh_token_rejected'),
+      entity_type: 'auth_session',
+      entity_id: null,
+      details: {
+        refresh_token_hash: createHash('sha256')
+          .update(presentedToken)
+          .digest('hex'),
+        reuse_suspected: reuseSuspected,
+        error: message.slice(0, 300),
+        status: supabaseError.status ?? null,
+        token_source: tokenSource,
+        device: meta?.device ?? null,
+        ip_address: meta?.ipAddress ?? null,
+        location: meta?.location ?? null,
+      },
+    });
+
+    if (error) {
+      this.logger.warn(
+        `Refresh-token rejection audit write failed: ${error.message}`,
       );
     }
   }

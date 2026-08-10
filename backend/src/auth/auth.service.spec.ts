@@ -275,4 +275,85 @@ describe('AuthService', () => {
       approved_at: null,
     });
   });
+
+  it('records a replayed rotated refresh token as a high-severity audit event', async () => {
+    const insertAuditEvent = jest.fn().mockResolvedValue({ error: null });
+    const createPublicClient = jest.fn().mockReturnValue({
+      auth: {
+        refreshSession: jest.fn().mockResolvedValue({
+          data: { session: null, user: null },
+          // The replay signature: GoTrue rejects a rotated token with this
+          // exact message, which is what a token-theft replay produces.
+          error: { message: 'Refresh Token Not Found', status: 400 },
+        }),
+      },
+    });
+    const getAdminClient = jest.fn().mockReturnValue({
+      from: jest.fn().mockReturnValue({
+        insert: insertAuditEvent,
+      }),
+    });
+    const service = new AuthService(
+      mockAccountService as any,
+      { createPublicClient, getAdminClient } as any,
+      mockConfigService,
+      mockSecurityService as any,
+    );
+
+    await expect(
+      service.refreshSession(
+        { refreshToken: 'replayed-token' },
+        { device: 'Test Device', ipAddress: '10.0.0.1', location: 'Test City' },
+        'cookie',
+      ),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+
+    expect(getAdminClient).toHaveBeenCalledTimes(1);
+    expect(insertAuditEvent).toHaveBeenCalledTimes(1);
+    const row = insertAuditEvent.mock.calls[0][0];
+    expect(row.action).toBe('refresh_token_rejected');
+    expect(row.severity).toBe('high');
+    expect(row.actor_email).toBe('system');
+    expect(row.entity_type).toBe('auth_session');
+    // Only the SHA-256 hash of the presented token is stored — never the raw
+    // value, so a leaked audit_logs table never leaks the credential.
+    expect(row.details.refresh_token_hash).toBe(
+      createHash('sha256').update('replayed-token').digest('hex'),
+    );
+    expect(row.details.refresh_token_hash).not.toContain('replayed-token');
+    expect(row.details.reuse_suspected).toBe(true);
+    expect(row.details.token_source).toBe('cookie');
+    expect(row.details.device).toBe('Test Device');
+    expect(row.details.ip_address).toBe('10.0.0.1');
+  });
+
+  it('never lets a failing audit insert block the refresh rejection (best-effort)', async () => {
+    const createPublicClient = jest.fn().mockReturnValue({
+      auth: {
+        refreshSession: jest.fn().mockResolvedValue({
+          data: { session: null, user: null },
+          error: { message: 'Refresh Token Not Found', status: 400 },
+        }),
+      },
+    });
+    const getAdminClient = jest.fn().mockReturnValue({
+      from: jest.fn().mockReturnValue({
+        insert: jest
+          .fn()
+          .mockResolvedValue({ error: { message: 'audit_logs does not exist' } }),
+      }),
+    });
+    const service = new AuthService(
+      mockAccountService as any,
+      { createPublicClient, getAdminClient } as any,
+      mockConfigService,
+      mockSecurityService as any,
+    );
+
+    // The rejection must still surface even though the audit write failed
+    // (e.g. migration 0008 not applied) — the audit trail is advisory.
+    await expect(
+      service.refreshSession({ refreshToken: 'replayed-token' }, undefined, 'body'),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
 });

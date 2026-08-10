@@ -695,6 +695,7 @@ export const AUDIT_SEVERITY_BY_ACTION = {
   'role.changed': 'high',
   'feature_flag.toggled': 'high',
   'new_device_signin': 'high',
+  'refresh_token_rejected': 'high',
   'user.invited': 'medium',
   'waitlist.approved': 'medium',
   'waitlist.deferred': 'medium',

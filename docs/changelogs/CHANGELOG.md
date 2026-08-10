@@ -1,5 +1,19 @@
 # Provance — Changelog
 
+## [2026-08-10] - Refresh-token reuse detection in the audit trail
+
+### Backend
+- **`recordRejectedRefresh`** (`auth.service.ts`) — when Supabase rejects a presented refresh token (the exact signature of a replayed rotated token / token theft), the service now writes a **high-severity** `refresh_token_rejected` event to `audit_logs` before throwing `401` — surfacing theft attempts on the Admin Audit Logs page. Only the **SHA-256 hash** of the presented token is stored (never the raw value); `reuse_suspected` is set when the GoTrue `Refresh Token Not Found` replay signature is present; `token_source` (`cookie` | `body`), device/IP/location meta, and the truncated error + status are recorded. The write is **best-effort** — a missing `audit_logs` table (migration 0008 not applied) can never block the rejection.
+- `auth.controller.ts` — passes the credential source (`cookie` when the cookie token won, else `body`) through to the service so replays are attributable.
+- `audit-severity.ts` — `refresh_token_rejected` mapped to `high`.
+
+### Frontend
+- `mockData.js` — `AUDIT_SEVERITY_BY_ACTION` gains the matching `refresh_token_rejected: 'high'` entry so mock and real modes badge the event identically.
+
+### Tests
+- `auth.service.spec.ts` +2 — replay signature recorded (action, `high` severity, hash-only token, `reuse_suspected: true`, `token_source: 'cookie'`, meta passthrough, rejection still thrown) and best-effort audit-failure path (rejection surfaces even when the audit insert errors).
+- `auth.controller.spec.ts` — refresh assertions updated for the third `tokenSource` argument. Backend jest **354/354**, `nest build` clean, frontend vitest **463/463**.
+
 ## [2026-08-10] - Auth controller cookie-flow coverage
 
 ### Tests

@@ -115,6 +115,9 @@ export class AuthController {
         refreshToken: cookieRefreshToken ?? dto.refreshToken,
       },
       requestSessionMeta(response.req),
+      // Where the presented credential came from — recorded on rejection so
+      // the admin audit trail can distinguish cookie vs body-token replays.
+      cookieRefreshToken ? 'cookie' : 'body',
     );
 
     if (

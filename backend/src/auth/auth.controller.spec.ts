@@ -117,6 +117,7 @@ describe('AuthController', () => {
         refreshToken: 'refresh-1',
       }),
       expect.any(Object),
+      'cookie',
     );
 
     const cookieHeader = response.setHeader.mock.calls.find(
@@ -143,6 +144,7 @@ describe('AuthController', () => {
         refreshToken: 'body-refresh-token-1234567890',
       }),
       expect.any(Object),
+      'body',
     );
   });
 
@@ -210,6 +212,7 @@ describe('AuthController', () => {
     expect(authService.refreshSession).toHaveBeenCalledWith(
       expect.objectContaining({ refreshToken: 'stale-refresh' }),
       expect.any(Object),
+      'cookie',
     );
     expect(response.setHeader).not.toHaveBeenCalled();
   });
@@ -239,6 +242,7 @@ describe('AuthController', () => {
     expect(authService.refreshSession).toHaveBeenCalledWith(
       expect.objectContaining({ refreshToken: 'cookie-refresh' }),
       expect.any(Object),
+      'cookie',
     );
   });
 
