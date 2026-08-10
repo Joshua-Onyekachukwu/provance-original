@@ -19,10 +19,12 @@ import {
   hasActiveScanWork,
   queueNeedsPolling,
 } from '../../components/app/scanPresentation.js'
+import { scanQuotaPct } from '../../lib/scanQuota.js'
 import { useAuth } from '../../context/AuthContext.jsx'
 import {
   getActivityLogs,
   getAnalytics,
+  getBilling,
   getNotifications,
   getQueueSnapshot,
   getReports,
@@ -48,6 +50,37 @@ function formatAction(action) {
     .replaceAll('.', ' ')
     .replaceAll('_', ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+/**
+ * ScanQuotaWarningChip — dashboard-level banner linking to Billing when the
+ * workspace is at or above 85% of its monthly scan quota. Tones escalate:
+ * 85–99% warning, 100%+ danger (exhausted).
+ */
+export function ScanQuotaWarningChip({ usage }) {
+  const pct = scanQuotaPct(usage)
+  if (pct == null || pct < 85) return null
+
+  const exhausted = pct >= 100
+  const tone = exhausted ? 'danger' : 'warning'
+  const toneClasses = {
+    warning: 'border-amber-300/60 bg-amber-50 text-amber-800',
+    danger: 'border-rose-300/60 bg-rose-50 text-rose-800',
+  }
+
+  return (
+    <Link
+      to="/app/billing"
+      className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors hover:brightness-[0.98] ${toneClasses[tone]}`}
+    >
+      <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" aria-hidden="true">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
+      </svg>
+      {exhausted
+        ? 'Monthly scan quota exhausted — view billing'
+        : `${pct}% of monthly scan quota used — view billing`}
+    </Link>
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -859,6 +892,12 @@ export default function AppDashboardPage() {
   const health = withDemoOverride(useResource(() => getSystemHealth()), demoState, {
     emptyData: { api: true, database: true, storage: true, queue: true, worker: true, email: true },
   })
+  // Billing usage (scansUsed/scansLimit) — same resolveUsage source of truth
+  // as the Billing page and the initiateScan quota gate. Powers the ≥85%
+  // quota warning chip without a second round-trip contract.
+  const billing = withDemoOverride(useResource(() => getBilling()), demoState, {
+    emptyData: { profile: { usage: { scansUsed: 0, scansLimit: 0 } } },
+  })
   const analytics = withDemoOverride(useResource(() => getAnalytics()), demoState, {
     emptyData: { scans_today: 0, scans_7d: 0, completion_rate: 0, suspicious_rate: 0 },
   })
@@ -1030,6 +1069,9 @@ export default function AppDashboardPage() {
         healthData={health.data}
         onRetry={scans.reload}
       />
+
+      {/* ── 1.5. Scan-quota warning (≥85% this cycle → Billing) ──────────── */}
+      <ScanQuotaWarningChip usage={billing.data?.profile?.usage} />
 
       {/* ── 2. KPI StatCards (mockAnalytics-driven; team-scoped when filtered) ── */}
       <section className="space-y-4">

@@ -84,6 +84,16 @@ function mockQuotaExhausted() {
 }
 
 /**
+ * Dev-only quota-high forcing — `?quota=high` pushes scansUsed to 90% of the
+ * plan limit so the dashboard's ≥85% warning chip renders for review. Inert
+ * in production builds — same pattern as `?quota=exhausted`.
+ */
+function mockQuotaHigh() {
+  if (!import.meta.env.DEV) return false
+  return new URLSearchParams(window.location.search).get('quota') === 'high'
+}
+
+/**
  * Dev-only dedup forcing — `?dedup=1` makes mockSubmitScan treat the next
  * submission as an identical file, completing it instantly with a reused
  * payload copied from the first seeded completed scan. Lets the reuse UX be
@@ -786,11 +796,17 @@ export async function mockGetBilling() {
   const profile = { ...mockBillingProfile }
 
   // Dev-only forcing: report the plan at its quota limit so the Billing
-  // exhausted banner renders for review (see mockQuotaExhausted).
+  // exhausted banner renders for review (see mockQuotaExhausted), or at 90%
+  // so the dashboard's ≥85% warning chip renders (see mockQuotaHigh).
   if (mockQuotaExhausted()) {
     profile.usage = {
       ...profile.usage,
       scansUsed: profile.usage.scansLimit,
+    }
+  } else if (mockQuotaHigh()) {
+    profile.usage = {
+      ...profile.usage,
+      scansUsed: Math.round(profile.usage.scansLimit * 0.9),
     }
   }
 

@@ -1,5 +1,19 @@
 # Provance — Changelog
 
+## [2026-08-10] - Dashboard scan-quota warning chip
+
+### Frontend
+- **Dashboard-level quota warning** — when the workspace is at ≥85% of its monthly scan quota, a chip renders between the hero and the KPI row linking to `/app/billing`. Tones escalate: 85–99% warning (`90% of monthly scan quota used`), 100%+ danger (`Monthly scan quota exhausted`). Below 85% or without a usable limit it renders nothing.
+- **Same source of truth** — the chip consumes `getBilling()` → `profile.usage.scansUsed/scansLimit`, the exact `resolveUsage` payload the Billing page and the `initiateScan` quota gate share, so the dashboard, meters, and enforcement can never disagree.
+- New pure util `src/lib/scanQuota.js` (`scanQuotaPct` — null for missing/non-positive limits, clamped 0..100) kept out of the component file so fast-refresh stays intact.
+- **Dev demo seam** — `?quota=high` forces `scansUsed` to 90% of the plan limit in `mockGetBilling` (alongside the existing `?quota=exhausted`), so the warning state renders for review. Inert in production builds.
+
+### Tests
+- New `scanQuotaWarning.test.jsx` (7 tests): pure pct math (ratio, clamp, null cases) + chip rendering (warning link → `/app/billing`, danger at 100%, nothing below 85% / no limit) — 456 frontend total.
+
+### Verified
+- Frontend vitest **456/456**, lint 0 errors (13 baseline warnings), build passes. Live-verified in the preview: chip renders with `?quota=high` (90%, links to `/app/billing`) and is absent at the default 62% usage. No console errors.
+
 ## [2026-08-10] - Real storage + API-call meters on GET /billing
 
 ### Backend
