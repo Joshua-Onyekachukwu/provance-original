@@ -228,6 +228,7 @@ describe('scan analysis pipeline', () => {
       expect(payload.verdict.class).toBe('likely_authentic');
       expect(payload.verdict.display_label).toBe('Likely Authentic');
       expect(payload.verdict.signal_count_total).toBe(4);
+      expect(payload.payload_version).toBe('1.0.0');
 
       const integrity = payload.signals.find(
         (signal: { signal_name: string }) => signal.signal_name === 'file_integrity',

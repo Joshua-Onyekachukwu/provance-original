@@ -854,6 +854,7 @@ export class ScansService {
     const reportId = `PRV-${scan.id.slice(0, 8).toUpperCase()}`;
 
     return {
+      payload_version: '1.0.0',
       scan_id: scan.id,
       organization_id: null,
       user_id: scan.user_id,

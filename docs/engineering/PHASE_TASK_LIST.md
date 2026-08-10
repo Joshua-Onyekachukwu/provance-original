@@ -184,7 +184,7 @@ Status tags:
 - [x] Complete: refresh endpoint
 - [x] Complete: current-session identity endpoint
 - [x] Complete: backend-backed profile endpoints
-- [ ] Not Started: cookie-based session transport
+- [x] Complete: cookie-based session transport (httpOnly refresh cookie + in-memory access token; backend flow shipped 2026-08-04, frontend migration shipped 2026-08-06 — see `docs/engineering/AUTH_HARDENING_MIGRATION.md`)
 - [ ] Not Started: fuller authorization model beyond allowlists and route guards
 
 ### Verification Pipeline
@@ -196,7 +196,7 @@ Status tags:
 - [x] Complete: structured `result_payload`
 - [ ] In Progress: end-to-end reliability validation in deployed environments
 - [ ] In Progress: better retry and failure classification
-- [ ] Not Started: payload schema versioning strategy
+- [x] Complete: payload schema versioning strategy (`result_payload.payload_version` semantic-lite `MAJOR.MINOR.PATCH`, shipped 2026-08-10 — see `docs/engineering/SCAN_UPLOAD_CONTRACT.md`)
 - [ ] Deferred: multi-media orchestration
 
 ### Storage And Data
@@ -206,7 +206,7 @@ Status tags:
 - [x] Complete: profiles table migration in repo
 - [x] Complete: private uploads bucket expectation
 - [x] Complete: reconcile remote schema state with local migration truth
-- [ ] Not Started: retention policy documentation for uploaded artifacts
+- [x] Complete: retention policy documentation for uploaded artifacts (baseline ratified 2026-08-10 — see `docs/engineering/RETENTION_POLICY.md`; archival enforcement job tracked as Phase 5 backlog)
 
 ### Security
 
@@ -216,7 +216,7 @@ Status tags:
 - [x] Complete: request IDs
 - [x] Complete: global exception filtering
 - [x] Complete: admin allowlist gating
-- [ ] In Progress: auth transport hardening
+- [x] Complete: auth transport hardening (httpOnly cookie session transport + rotation; see `docs/engineering/AUTH_HARDENING_MIGRATION.md`)
 - [ ] Not Started: expanded RLS review
 - [ ] Not Started: bot protection
 - [ ] Not Started: deeper file inspection before processing
@@ -245,7 +245,7 @@ Status tags:
 - [x] Complete: Supabase project access verified
 - [x] Complete: Fly deployment files present
 - [x] Complete: Vercel deployment path present
-- [ ] In Progress: decide queue strategy for dev and shared environments
+- [x] Complete: decide queue strategy for dev and shared environments (Upstash Redis + BullMQ, documented in `docs/engineering/DEPLOYMENT_FLYIO_AND_UPSTASH.md`; verified via `backend/scripts/verify-bullmq.mjs`)
 - [ ] Not Started: Cloudflare account and domain strategy confirmation
 - [ ] Approved 2026-08-04: Sentry setup
 - [ ] Approved 2026-08-04: PostHog setup

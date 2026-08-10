@@ -141,10 +141,29 @@ job it calls `ScansService.processQueuedScan(scanId)`, which:
 4. Builds the four signals (`file_integrity`, `metadata_forensics`,
    `visual_statistics`, `provenance_credentials`), the verdict
    (`likely_authentic | suspicious | inconclusive`), and the report payload
-   (methodology `0.2.0-mvp`, `report_id` `PRV-XXXXXXXX`).
+   (top-level `payload_version: '1.0.0'`, methodology `0.2.0-mvp`,
+   `report_id` `PRV-XXXXXXXX`).
 5. Writes `status = 'complete'` with `result_payload`, `completed_at`, and
    clears `failure_reason`. Any thrown error lands the scan in `failed` with
    `failure_reason` set (worker retries up to 3 attempts first).
+
+### Payload versioning
+
+`result_payload.payload_version` uses **semantic-lite** `MAJOR.MINOR.PATCH`:
+
+- **MAJOR** — breaking shape changes (renamed/removed signals, changed verdict
+  enum, reorganized sections). Consumers must branch on it; old payloads are
+  migrated or explicitly unsupported.
+- **MINOR** — additive changes (new signal, new metadata field) that keep every
+  existing field intact; consumers keep working.
+- **PATCH** — value-level fixes (threshold tweaks, label corrections) with no
+  shape change.
+
+The mock payload (`src/lib/mockData.js`) mirrors the same `payload_version` so
+mock and real mode cannot drift; the mock seam `?payload=v2` (if used) would
+force a future MAJOR bump to prove the consumer handles both. The strategy is
+referenced from `docs/engineering/API_DESIGN_STANDARDS.md` (schema versioning
+P1 checklist item).
 
 ### 5. Read surfaces
 

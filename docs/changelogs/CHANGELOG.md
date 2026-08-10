@@ -1,5 +1,18 @@
 # Provance — Changelog
 
+## [2026-08-10] - Payload versioning, retention policy baseline, task-list sync
+
+### Backend
+- **`result_payload.payload_version`** — every analysis payload now carries a top-level `payload_version: '1.0.0'` (semantic-lite `MAJOR.MINOR.PATCH`), with the versioning strategy documented in `SCAN_UPLOAD_CONTRACT.md` (MAJOR = breaking shape, MINOR = additive, PATCH = value-level). The mock scan payload mirrors the same field so mock/real cannot drift.
+- **Retention env keys validated** — `REPORT_RETENTION_DAYS` (default 365) and `AUDIT_RETENTION_DAYS` (default 730) are now parsed/validated in `env.validation.ts` and documented in `.env.example`, matching the values already surfaced in admin Settings.
+
+### Docs
+- **`RETENTION_POLICY.md`** (new) — ratified baseline for uploaded media (365d), report payloads (365d), audit events (730d), crash reports (90d), and the session ledger; archival-not-deletion semantics and the planned enforcement job.
+- **`PHASE_TASK_LIST.md` synced** — cookie-based session transport, auth transport hardening, payload schema versioning, retention policy docs, and the dev/shared queue strategy decision all marked Complete (they shipped in prior slices); the remaining Not Started items are now an accurate backlog.
+
+### Verified
+- Backend jest scans+config suites **38/38**, frontend spot suites green; full gates re-verified before the branch push (321 backend / 444 frontend).
+
 ## [2026-08-10] - Team-tagged session ledger + org-admin session revocation
 
 ### Backend

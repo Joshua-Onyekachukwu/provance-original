@@ -573,6 +573,7 @@ export const mockScans = Array.from({ length: 25 }, (_, i) => {
   const resultPayload =
     status === 'completed'
       ? {
+          payload_version: '1.0.0',
           signals: [
             {
               model: 'generative-fingerprint-v2',

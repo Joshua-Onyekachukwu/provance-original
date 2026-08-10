@@ -286,5 +286,18 @@ export function validateEnv(config: Record<string, unknown>) {
       4,
       'WORKER_CONCURRENCY',
     ),
+    // Retention windows (days) for completed reports and audit events. These
+    // are surfaced in admin settings and drive the retention policy documented
+    // in docs/engineering/RETENTION_POLICY.md.
+    REPORT_RETENTION_DAYS: parsePositiveInteger(
+      env.REPORT_RETENTION_DAYS,
+      365,
+      'REPORT_RETENTION_DAYS',
+    ),
+    AUDIT_RETENTION_DAYS: parsePositiveInteger(
+      env.AUDIT_RETENTION_DAYS,
+      730,
+      'AUDIT_RETENTION_DAYS',
+    ),
   };
 }
