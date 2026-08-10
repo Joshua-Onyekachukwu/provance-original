@@ -1,5 +1,13 @@
 # Provance — Changelog
 
+## [2026-08-10] - BullMQ e2e variant + live migration-state correction
+
+### Tests
+- **`scans-flow.e2e-spec.ts` gains a second variant** — `Scan flow with BullMQ enqueue (e2e)`: `createTestApp(queueConfigured)` now parameterizes the `QueueService` override, and the new describe block boots with `isConfigured() === true` to cover the Redis/enqueue path instead of inline processing. Two new tests: (1) submit enqueues the BullMQ job with the scan id and the row **stays queued with no payload** (no inline fallback); (2) simulating the worker via `ScansService.processQueuedScan(scanId)` — the exact entry point `backend/src/worker.ts` invokes — drives queued → processing → completed with the full payload (verdict, 4 signals, `PRV-` report id, sha256). scans-flow suite now **9/9**.
+
+### Docs
+- **`MIGRATION_RUNBOOK.md`** — corrected live-project state after non-head service-role probes: only **0001, 0002, 0004** are applied; the whole **0005+ set (0005, 0007, 0008, 0009, 0010, 0011, 0014, 0016, 0020) is missing** (`PGRST205`/`42703`). Added a probe caveat: `head: true`/HEAD requests mask PostgREST error bodies (and a v1-style client can falsely report tables as present) — always verify with non-head selects. This explains the pre-existing `invite-accept.e2e-spec.ts` failure (live seed hits missing org tables), which reproduces standalone and is unrelated to this change.
+
 ## [2026-08-10] - Projected end-of-cycle usage + overage estimate
 
 ### Backend

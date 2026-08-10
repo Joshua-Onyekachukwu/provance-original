@@ -10,6 +10,7 @@ import { AppModule } from '../src/app.module';
 import { GlobalExceptionFilter } from '../src/common/filters/global-exception.filter';
 import { SupabaseAuthGuard } from '../src/common/guards/supabase-auth.guard';
 import { QueueService } from '../src/queue/queue.service';
+import { ScansService } from '../src/scans/scans.service';
 import { SupabaseService } from '../src/supabase/supabase.service';
 
 // ---------------------------------------------------------------------------
@@ -169,8 +170,16 @@ function createStatefulAdminClient() {
 // App scaffolding
 // ---------------------------------------------------------------------------
 
-async function createTestApp() {
+async function createTestApp(queueConfigured = false) {
   const mocked = createStatefulAdminClient();
+
+  const queueOverride = {
+    // queueConfigured=false → no Redis, force the inline processing path.
+    // queueConfigured=true  → BullMQ enqueue path; the worker is simulated by
+    // calling ScansService.processQueuedScan directly (see the BullMQ block).
+    isConfigured: jest.fn(() => queueConfigured),
+    enqueueScanProcessing: jest.fn(async () => undefined),
+  };
 
   const moduleFixture: TestingModule = await Test.createTestingModule({
     imports: [AppModule],
@@ -181,11 +190,7 @@ async function createTestApp() {
       createPublicClient: jest.fn(() => null),
     })
     .overrideProvider(QueueService)
-    .useValue({
-      // No Redis in tests → force the inline processing path.
-      isConfigured: jest.fn(() => false),
-      enqueueScanProcessing: jest.fn(),
-    })
+    .useValue(queueOverride)
     .overrideGuard(SupabaseAuthGuard)
     .useValue({
       canActivate: (context: ExecutionContext) => {
@@ -209,7 +214,7 @@ async function createTestApp() {
   app.useGlobalFilters(new GlobalExceptionFilter());
   await app.init();
 
-  return { app, ...mocked };
+  return { app, ...mocked, queueOverride };
 }
 
 function initiateBody(overrides: Record<string, unknown> = {}) {
@@ -428,5 +433,88 @@ describe('Scan flow (e2e)', () => {
 
     await http.get('/v1/scans/foreign-scan-1').expect(404);
     await http.get('/v1/reports/foreign-scan-1').expect(404);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// BullMQ enqueue path — QueueService.isConfigured() returns true, so submit
+// enqueues a BullMQ job instead of inline-processing. The worker itself is
+// simulated by calling ScansService.processQueuedScan(scanId) directly — the
+// exact entry point the real worker (backend/src/worker.ts) invokes from the
+// 'process-scan' job handler.
+// ---------------------------------------------------------------------------
+
+describe('Scan flow with BullMQ enqueue (e2e)', () => {
+  let app: INestApplication<App>;
+  let http: ReturnType<typeof request>;
+  let scans: Map<string, ScanRow>;
+  let queueOverride: {
+    isConfigured: jest.Mock<boolean>;
+    enqueueScanProcessing: jest.Mock;
+  };
+  let scansService: ScansService;
+
+  beforeEach(async () => {
+    const setup = await createTestApp(true);
+    app = setup.app;
+    http = request(app.getHttpServer());
+    scans = setup.scans;
+    queueOverride = setup.queueOverride;
+    scansService = app.get(ScansService);
+  });
+
+  afterEach(async () => {
+    await app.close();
+  });
+
+  it('enqueues the BullMQ job on submit and does not inline-process', async () => {
+    const initiate = await http.post('/v1/scans').send(initiateBody()).expect(201);
+    const scanId = initiate.body.scanId as string;
+
+    const submit = await http.post(`/v1/scans/${scanId}/submit`).expect(202);
+    expect(submit.body).toEqual({ scanId, status: 'queued' });
+
+    // The enqueue call carries the scan id, and the row is left queued.
+    expect(queueOverride.enqueueScanProcessing).toHaveBeenCalledWith(scanId);
+    expect(scans.get(scanId)?.status).toBe('queued');
+
+    // Give any (wrongly-started) inline processing a chance to complete —
+    // the scan must stay queued with no payload while Redis owns the pipeline.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(scans.get(scanId)?.status).toBe('queued');
+    expect(scans.get(scanId)?.result_payload).toBeFalsy();
+  });
+
+  it('processQueuedScan (worker entry point) drives queued → processing → completed with the full payload', async () => {
+    const initiate = await http.post('/v1/scans').send(initiateBody()).expect(201);
+    const scanId = initiate.body.scanId as string;
+
+    await http.post(`/v1/scans/${scanId}/submit`).expect(202);
+    expect(scans.get(scanId)?.status).toBe('queued');
+
+    // Simulate the BullMQ worker consuming the 'process-scan' job.
+    await scansService.processQueuedScan(scanId);
+
+    const completed = await waitForScanStatus(http, scanId, 'completed');
+    const scan = completed.body.scan;
+
+    expect(scan.status).toBe('completed');
+    expect(scan.verdict).toBeDefined();
+    expect(scan.asset_preview_url).toBe('https://storage.e2e/preview');
+
+    const payload = scan.result_payload;
+    expect(payload).toBeDefined();
+    expect(payload.verdict.class).toBeDefined();
+    expect(payload.signals).toHaveLength(4);
+    expect(payload.media).toMatchObject({
+      original_filename: 'evidence.png',
+      mime_type: 'image/png',
+      sha256: expect.any(String),
+    });
+    expect(payload.media.sha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(payload.metadata.total_processing_time_ms).toEqual(
+      expect.any(Number),
+    );
+    expect(payload.report.report_id).toMatch(/^PRV-/);
   });
 });

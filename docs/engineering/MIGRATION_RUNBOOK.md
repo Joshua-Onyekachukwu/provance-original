@@ -12,9 +12,20 @@ per migration.
   CLI `supabase db push` path to rely on.
 - The configured backend project is
   `https://dmhrwdcuwtgscwlaagsa.supabase.co` (see `backend/.env.local`).
-  As of 2026-08-09 that project has **0001, 0002, 0003, 0004, 0006** applied
-  and is **missing 0005, 0007, 0008, 0009, 0010** — a partially migrated
-  state that 503s the scan, org, monitoring, and audit endpoints.
+  As of **2026-08-10** (live non-head service-role probes) that project has
+  **0001, 0002, 0004 applied** (`scans` with 4 rows, `profiles` with 3, the
+  waitlist tables, and the `provance-uploads` bucket) and is **missing the
+  entire 0005+ set**: 0005 (org), 0007 (incidents), 0008 (audit logs), 0009
+  (scan processing columns — `42703` on `scans.processing_mode`), 0010
+  (user sessions), 0011, 0014, 0016, 0020 all return `PGRST205`. That state
+  503s `POST /v1/scans`, keeps `/v1/health/readiness` degraded, and fails
+  the live `invite-accept.e2e-spec.ts` seed.
+- **Probe caveat:** verify live schema state with **non-head** selects (or
+  `select('*')`) using the backend's supabase-js v2 — `head: true` / HEAD
+  requests mask PostgREST error bodies (`PGRST205`/`42703`), so a v1-style
+  client or `head: true` probe can report tables as present when they are
+  not. The canonical check is `backend/scripts/probe-monitoring-tables.mjs`
+  (which uses `select('*')` for incidents).
 - Every file is **idempotent** (`if not exists`, `on conflict do nothing`,
   `create or replace`, `add column if not exists`), so re-running an already
   applied migration is safe. Applying the full 0003–0010 set in order is the
