@@ -1,5 +1,10 @@
 # Provance — Changelog
 
+## [2026-08-10] - Billing & entitlements contract doc
+
+### Docs
+- **`docs/engineering/BILLING_AND_ENTITLEMENTS_CONTRACT.md`** (new, ratified) — captures the full billing contract: the plan catalog (`PLAN_SCAN_QUOTAS`/`PLAN_API_CALL_QUOTAS`/`PLAN_DISPLAY` with plan resolution via org membership), the calendar-month UTC cycle math, the `402 QUOTA_EXCEEDED` + `Retry-After` gate contract (with idempotency precedence), the complete `GET /v1/billing` payload with a field-by-field source-of-truth table (including storage/API meters and their degradation), mock parity rules, and known gaps (API-call counting not yet wired, payment processor deferred). Wired into the master documentation index.
+
 ## [2026-08-10] - Dashboard scan-quota warning chip
 
 ### Frontend

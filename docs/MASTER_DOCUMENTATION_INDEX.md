@@ -12,6 +12,7 @@
 | Frontend Completion Review + Backend Stack | `reports/2026-08-04-frontend-completion-review.md` | ✅ Current |
 | Team Workflow | `engineering/DEVELOPMENT_WORKFLOW_AND_RELEASE_PROCESS.md` | ✅ Current |
 | Trello Sync CLI + Workflow | `trello-workflow.md` + `scripts/trello.mjs` | ✅ Current |
+| Billing & Entitlements Contract | `engineering/BILLING_AND_ENTITLEMENTS_CONTRACT.md` | ✅ Current |
 | Multi-Agent Operating Model | `ai-agents/HOW_TO_RUN_THE_ORG.md` + `ai-agents/RUNTIME_MAPPING.md` | ✅ Current |
 | Engineering Standards | `engineering/ENGINEERING_STANDARDS.md` | ✅ Current |
 | PR Review Guidelines | `engineering/PR_REVIEW_GUIDELINES.md` | ✅ Current |
