@@ -694,6 +694,7 @@ export const AUDIT_SEVERITY_BY_ACTION = {
   'api_key.revoked': 'high',
   'role.changed': 'high',
   'feature_flag.toggled': 'high',
+  'new_device_signin': 'high',
   'user.invited': 'medium',
   'waitlist.approved': 'medium',
   'waitlist.deferred': 'medium',

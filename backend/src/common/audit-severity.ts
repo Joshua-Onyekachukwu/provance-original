@@ -13,6 +13,10 @@ export const AUDIT_SEVERITY_BY_ACTION: Record<string, string> = {
   'api_key.revoked': 'high',
   'role.changed': 'high',
   'feature_flag.toggled': 'high',
+  // A sign-in from a device/IP combo the ledger has never seen is a
+  // security-relevant event even before the notifyOnNewDevice preference
+  // decides whether to email — the audit trail always records it.
+  'new_device_signin': 'high',
   'user.invited': 'medium',
   'waitlist.approved': 'medium',
   'waitlist.deferred': 'medium',

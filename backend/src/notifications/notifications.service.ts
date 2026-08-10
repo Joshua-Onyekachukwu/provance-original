@@ -97,6 +97,41 @@ export class NotificationsService {
   }
 
   /**
+   * create — inserts a notification row for a user (used by the security
+   * service for new-device sign-in alerts and by any future system events).
+   * Best-effort like the other notification writes: a missing table degrades
+   * to a no-op instead of breaking the caller's flow.
+   */
+  async create(
+    userId: string,
+    input: {
+      category: string;
+      title: string;
+      description?: string;
+      link?: string | null;
+    },
+  ): Promise<void> {
+    const adminClient = this.supabaseService.getAdminClient();
+
+    if (!adminClient || !userId?.trim()) {
+      return;
+    }
+
+    const { error } = await adminClient.from(this.notificationsTable).insert({
+      user_id: userId,
+      category: input.category,
+      title: input.title,
+      description: input.description ?? null,
+      is_read: false,
+      link: input.link ?? null,
+    });
+
+    // Best-effort: a missing notifications table (migration 0011 not applied)
+    // must never fail a security write the caller depends on.
+    void error;
+  }
+
+  /**
    * getUnreadCount — a single number for the shell's badge, so the app can
    * poll the badge without refetching the whole feed. Uses a head-count query
    * (no rows transferred) scoped to the user with is_read = false.

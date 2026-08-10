@@ -220,14 +220,84 @@ function buildAuthResponse(account, loginEmail) {
   }
 }
 
-export async function mockSignInWithPassword({ email, password } = {}) {
+/**
+ * Seen (user, device, ip) combos — mock parity for the backend's new-device
+ * detection. Mirrors SecurityService.isNewDeviceCombo: a combo with no prior
+ * sign-in triggers a new_device_signin audit event, and — when the
+ * notifyOnNewDevice control is on — a security notification + mock email.
+ */
+const mockSeenDeviceCombos = new Set()
+
+export async function mockSignInWithPassword({ email, password, meta } = {}) {
   await delay()
   const key = (email || '').trim().toLowerCase()
   const account = MOCK_TEST_ACCOUNTS[key]
   if (!account || !password || password.length < 8) {
     throw new Error('Invalid login credentials. Check your email and password.')
   }
+  await mockRecordNewDeviceSignIn({
+    userId: account.user.id,
+    email: account.user.email,
+    meta,
+  })
   return buildAuthResponse(account, email.trim())
+}
+
+/**
+ * mockRecordNewDeviceSignIn — the mock half of the backend's new-device
+ * detection. A first-time (user, device, ip) combo writes a high-severity
+ * audit event unconditionally and, when notifyOnNewDevice is enabled, a
+ * security notification + a console mock-email line. Exporting it lets the
+ * parity test drive combos directly instead of round-tripping a sign-in.
+ */
+export async function mockRecordNewDeviceSignIn({ userId, email, meta } = {}) {
+  const device = meta?.device || 'Chrome on Windows'
+  const ipAddress = meta?.ipAddress || '127.0.0.1'
+  const location = meta?.location || null
+  const combo = `${userId}|${device}|${ipAddress}`
+
+  if (mockSeenDeviceCombos.has(combo)) {
+    return { isNewDevice: false }
+  }
+  mockSeenDeviceCombos.add(combo)
+
+  // Unconditional high-severity audit event (matches the backend trail).
+  mockAuditEvents.unshift({
+    id: `audit_live_${Date.now()}_${String(++mockAuditLiveSeq).padStart(3, '0')}`,
+    actor_email: email || null,
+    action: 'new_device_signin',
+    severity: AUDIT_SEVERITY_BY_ACTION['new_device_signin'],
+    resource_type: 'auth_session',
+    resource_id: userId,
+    details: { device, ip_address: ipAddress, location },
+    created_at: new Date().toISOString(),
+  })
+
+  if (!mockSecuritySettings.signInControls.notifyOnNewDevice) {
+    return { isNewDevice: true }
+  }
+
+  // In-app notification (bell + notification center).
+  mockNotifications.unshift({
+    id: `notif_live_${Date.now()}_${String(++mockAuditLiveSeq).padStart(3, '0')}`,
+    category: 'security',
+    title: 'New device sign-in detected',
+    description: `${device} signed in from ${ipAddress}${
+      location ? ` (${location})` : ''
+    }.`,
+    read: false,
+    link: '/app/security',
+    created_at: new Date().toISOString(),
+  })
+
+  // Mock email — mirrors the backend's [mock-email] log line contract.
+  // eslint-disable-next-line no-console
+  console.log(
+    `[mock-email] To: ${email || userId} — Subject: "New device sign-in detected" — ` +
+      `${device} from ${ipAddress}${location ? ` (${location})` : ''} — secure your account if this wasn't you.`,
+  )
+
+  return { isNewDevice: true }
 }
 
 /**

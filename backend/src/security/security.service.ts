@@ -1,12 +1,14 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHash } from 'crypto';
 import type { CurrentUserPayload } from '../common/decorators/current-user.decorator';
+import { NotificationsService } from '../notifications/notifications.service';
 import { SupabaseService } from '../supabase/supabase.service';
 import type { SessionMeta } from './session-meta.util';
 
@@ -73,12 +75,14 @@ function isMissingRelationError(error: unknown): boolean {
 
 @Injectable()
 export class SecurityService {
+  private readonly logger = new Logger(SecurityService.name);
   private readonly sessionsTable: string;
   private readonly settingsTable: string;
 
   constructor(
     private readonly supabaseService: SupabaseService,
     private readonly configService: ConfigService,
+    private readonly notificationsService: NotificationsService,
   ) {
     this.sessionsTable = this.configService.get<string>(
       'SUPABASE_USER_SESSIONS_TABLE',
@@ -113,6 +117,19 @@ export class SecurityService {
       return;
     }
 
+    const device = input.meta?.device || 'Unknown device';
+    const ipAddress = input.meta?.ipAddress || null;
+
+    // New-device detection runs BEFORE the upsert: a (user, device, ip) combo
+    // that has no ledger row yet is a first-time sign-in from that surface.
+    // Refresh keeps the same auth_session_id and its existing row, so it
+    // matches and never re-triggers.
+    const isNewDevice = await this.isNewDeviceCombo(
+      input.userId,
+      device,
+      ipAddress,
+    );
+
     const { error } = await adminClient
       .from(this.sessionsTable)
       .upsert(
@@ -122,8 +139,8 @@ export class SecurityService {
           refresh_token_hash: input.refreshToken
             ? hashRefreshToken(input.refreshToken)
             : null,
-          device: input.meta?.device || 'Unknown device',
-          ip_address: input.meta?.ipAddress || null,
+          device,
+          ip_address: ipAddress,
           location: input.meta?.location || null,
           last_active_at: new Date().toISOString(),
         },
@@ -132,6 +149,14 @@ export class SecurityService {
 
     // The ledger is bookkeeping — sign-in/refresh never fail on a write error.
     void error;
+
+    if (isNewDevice) {
+      await this.handleNewDeviceSignIn(input.userId, {
+        device,
+        ipAddress,
+        location: input.meta?.location || null,
+      });
+    }
   }
 
   /**
@@ -352,6 +377,99 @@ export class SecurityService {
       entity_id: row.id,
       details,
     });
+  }
+
+  // -------------------------------------------------------------------------
+  // New-device sign-in detection
+  // -------------------------------------------------------------------------
+
+  /**
+   * isNewDeviceCombo — true when the ledger has NO row for this
+   * (user_id, device, ip_address) combo. Best-effort: any error (missing
+   * table, unparseable response) degrades to false so detection can never
+   * block sign-in. A combo with no device or ip info is treated as not-new
+   * (nothing meaningful to compare).
+   */
+  private async isNewDeviceCombo(
+    userId: string,
+    device: string,
+    ipAddress: string | null,
+  ): Promise<boolean> {
+    if (!userId || !device || !ipAddress) {
+      return false;
+    }
+
+    const adminClient = this.supabaseService.getAdminClient();
+
+    if (!adminClient) {
+      return false;
+    }
+
+    try {
+      const { data, error } = await adminClient
+        .from(this.sessionsTable)
+        .select('id')
+        .eq('user_id', userId)
+        .eq('device', device)
+        .eq('ip_address', ipAddress)
+        .limit(1);
+
+      if (error) {
+        return false;
+      }
+
+      return (data ?? []).length === 0;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * handleNewDeviceSignIn — a first-time (device, ip) combo for the user:
+   * always records a high-severity audit event (the trail is unconditional),
+   * then honors the notifyOnNewDevice control by creating an in-app
+   * notification and logging a mock email (no email provider is wired yet).
+   * All writes are best-effort — detection must never break sign-in.
+   */
+  private async handleNewDeviceSignIn(
+    userId: string,
+    meta: { device: string; ipAddress: string | null; location: string | null },
+  ): Promise<void> {
+    await this.recordAudit({
+      actor_email: null,
+      action: 'new_device_signin',
+      entity_type: 'auth_user',
+      entity_id: userId,
+      details: {
+        device: meta.device,
+        ip_address: meta.ipAddress,
+        location: meta.location,
+      },
+    });
+
+    const controls = await this.loadSecurityControls(userId);
+
+    if (!controls.notifyOnNewDevice) {
+      return;
+    }
+
+    // In-app notification (bell + notification center).
+    await this.notificationsService.create(userId, {
+      category: 'security',
+      title: 'New device sign-in detected',
+      description: `${meta.device} signed in from ${meta.ipAddress ?? 'an unknown IP'}${
+        meta.location ? ` (${meta.location})` : ''
+      }.`,
+      link: '/app/security',
+    });
+
+    // Mock email — no provider is wired yet; the log line is the contract the
+    // future transactional-email service will implement.
+    this.logger.log(
+      `[mock-email] To: user ${userId} — Subject: "New device sign-in detected" — ` +
+        `${meta.device} from ${meta.ipAddress ?? 'unknown IP'}` +
+        `${meta.location ? ` (${meta.location})` : ''} — secure your account if this wasn't you.`,
+    );
   }
 
   /**

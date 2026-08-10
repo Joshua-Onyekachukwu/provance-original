@@ -1,5 +1,23 @@
 # Provance — Changelog
 
+## [2026-08-10] - New-device sign-in detection layer
+
+### Backend
+- **`SecurityService.recordSession` now detects first-time (user, device, IP) combos** — before the ledger upsert, `isNewDeviceCombo` checks whether any existing row matches the combo; a miss means a first-time sign-in from that surface. Refresh keeps the same `auth_session_id` and its existing row, so it never re-triggers.
+- **Unconditional high-severity audit event** — every new device writes `new_device_signin` to `auth_audit_events` (details: device/IP/location), added to `AUDIT_SEVERITY_BY_ACTION` as `high` so the Admin Audit Logs and account Activity pages badge it correctly.
+- **`notifyOnNewDevice` honored** — when the control is on, `handleNewDeviceSignIn` creates an in-app security notification (bell + notification center, links to `/app/security`) and logs a `[mock-email]` line (the contract the future transactional-email service implements). All writes are best-effort — detection can never break sign-in.
+- `NotificationsService.create` — new best-effort insert used by the security module; `SecurityModule` now imports `NotificationsModule`.
+
+### Frontend mock parity
+- `mockSignInWithPassword` + `mockRecordNewDeviceSignIn` mirror the backend exactly: first-time combo → `new_device_signin` audit event (high), security notification + `[mock-email]` console line when `notifyOnNewDevice` is on, no re-trigger for a known combo. `AUDIT_SEVERITY_BY_ACTION` gains `new_device_signin: 'high'`.
+
+### Tests
+- `security.service.spec.ts` +4 (first-time combo → audit write; notification created only when the control is on; skipped when off; refresh never re-triggers) — 330 backend total.
+- New `src/lib/newDeviceSignin.test.js` (5 tests) locking mock parity — 449 frontend total.
+
+### Verified
+- Backend jest **330/330**, `nest build` clean; frontend vitest **449/449**, lint 0 errors, build passes.
+
 ## [2026-08-10] - Deeper pre-processing file inspection
 
 ### Backend

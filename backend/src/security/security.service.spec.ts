@@ -25,10 +25,17 @@ function createConfigService(overrides: Record<string, unknown> = {}) {
   } as unknown as ConfigService;
 }
 
+function createNotificationsMock() {
+  return {
+    create: jest.fn().mockResolvedValue(undefined),
+  };
+}
+
 function createService(
   adminClient: unknown,
   publicClient?: unknown,
   config?: ConfigService,
+  notifications?: ReturnType<typeof createNotificationsMock>,
 ) {
   return new SecurityService(
     {
@@ -36,6 +43,7 @@ function createService(
       createPublicClient: jest.fn(() => publicClient ?? null),
     } as unknown as SupabaseService,
     config ?? createConfigService(),
+    (notifications ?? createNotificationsMock()) as never,
   );
 }
 
@@ -181,6 +189,131 @@ describe('SecurityService', () => {
       await expect(
         service.recordSession({ userId: USER_ID, authSessionId: 'sid-1' }),
       ).resolves.toBeUndefined();
+    });
+
+    /**
+     * sessionLedgerChain — a from() result that answers the detection probe
+     * (select/eq/eq/eq/limit, awaited as the final value) and then the upsert.
+     * `insert` covers the auth_audit_events + notifications writes so the
+     * new-device path runs end to end. Returns the builder object so the test
+     * can re-point each call.
+     */
+    function sessionLedgerChain(
+      probeResult: { data: unknown[]; error: unknown },
+    ) {
+      const builder = {
+        select: jest.fn(() => builder),
+        eq: jest.fn(() => builder),
+        limit: jest.fn(() => Promise.resolve(probeResult)),
+        upsert: jest.fn().mockResolvedValue({ error: null }),
+        insert: jest.fn().mockResolvedValue({ error: null }),
+      };
+      return { builder };
+    }
+
+    it('detects a first-time (device, ip) combo and writes the audit event', async () => {
+      const { builder } = sessionLedgerChain({ data: [], error: null });
+      // Settings probe degrades to defaults (no notifyOnNewDevice) so the
+      // test asserts only the unconditional audit write.
+      const settingsProbe = chain(() => ({ data: null, error: null }));
+      const adminClient = {
+        from: jest.fn((table: string) =>
+          table === 'user_security_settings' ? settingsProbe : builder,
+        ),
+      };
+      const notifications = createNotificationsMock();
+      const service = createService(adminClient, undefined, undefined, notifications);
+
+      await service.recordSession({
+        userId: USER_ID,
+        authSessionId: 'sid-1',
+        meta: { device: 'Chrome on Windows', ipAddress: '9.9.9.9', location: 'US' },
+      });
+
+      // The probe queried user_sessions for the exact combo before upserting.
+      expect(adminClient.from).toHaveBeenCalledWith('user_sessions');
+      expect(builder.eq).toHaveBeenCalledWith('user_id', USER_ID);
+      expect(builder.eq).toHaveBeenCalledWith('device', 'Chrome on Windows');
+      expect(builder.eq).toHaveBeenCalledWith('ip_address', '9.9.9.9');
+
+      // Audit event written with the device/IP details.
+      const auditInsert = adminClient.from.mock.calls
+        .map((call: [string]) => call[0])
+        .filter((table: string) => table === 'auth_audit_events');
+      expect(auditInsert).toHaveLength(1);
+    });
+
+    it('creates a security notification + mock email only when notifyOnNewDevice is on', async () => {
+      const { builder } = sessionLedgerChain({ data: [], error: null });
+      // settings table probe → notifyOnNewDevice true.
+      const settingsProbe = chain(() => ({
+        data: { notify_on_new_device: true },
+        error: null,
+      }));
+      const adminClient = {
+        from: jest.fn((table: string) =>
+          table === 'user_security_settings' ? settingsProbe : builder,
+        ),
+      };
+      const notifications = createNotificationsMock();
+      const service = createService(adminClient, undefined, undefined, notifications);
+
+      await service.recordSession({
+        userId: USER_ID,
+        authSessionId: 'sid-1',
+        meta: { device: 'Safari on macOS', ipAddress: '8.8.8.8', location: 'DE' },
+      });
+
+      expect(notifications.create).toHaveBeenCalledWith(
+        USER_ID,
+        expect.objectContaining({
+          category: 'security',
+          title: 'New device sign-in detected',
+          link: '/app/security',
+        }),
+      );
+    });
+
+    it('skips the notification when notifyOnNewDevice is off (audit still written)', async () => {
+      const { builder } = sessionLedgerChain({ data: [], error: null });
+      const settingsProbe = chain(() => ({
+        data: { notify_on_new_device: false },
+        error: null,
+      }));
+      const adminClient = {
+        from: jest.fn((table: string) =>
+          table === 'user_security_settings' ? settingsProbe : builder,
+        ),
+      };
+      const notifications = createNotificationsMock();
+      const service = createService(adminClient, undefined, undefined, notifications);
+
+      await service.recordSession({
+        userId: USER_ID,
+        authSessionId: 'sid-1',
+        meta: { device: 'Firefox on Linux', ipAddress: '7.7.7.7', location: null },
+      });
+
+      expect(notifications.create).not.toHaveBeenCalled();
+    });
+
+    it('does not re-trigger when the same combo already has a ledger row (refresh)', async () => {
+      const { builder } = sessionLedgerChain({
+        data: [{ id: 'row-1' }],
+        error: null,
+      });
+      const adminClient = { from: jest.fn().mockReturnValue(builder) };
+      const notifications = createNotificationsMock();
+      const service = createService(adminClient, undefined, undefined, notifications);
+
+      await service.recordSession({
+        userId: USER_ID,
+        authSessionId: 'sid-1',
+        meta: { device: 'Chrome on Windows', ipAddress: '1.2.3.4', location: 'DE' },
+      });
+
+      expect(adminClient.from).not.toHaveBeenCalledWith('auth_audit_events');
+      expect(notifications.create).not.toHaveBeenCalled();
     });
   });
 

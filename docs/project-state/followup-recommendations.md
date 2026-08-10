@@ -24,7 +24,9 @@ Status values: `Open` · `In Progress` · `Done` · `Deferred` · `Declined`
 
 | Date | Source task | Recommendation | Status |
 | --- | --- | --- | --- |
-| 2026-08-10 | Push milestone to `dev/backend-integration-milestone` | Merge the branch into main (builds green, 326 backend / 444 frontend) so Vercel picks up the latest for live testing — Founder decision, test first | Open |
+| 2026-08-10 | Push milestone to `dev/backend-integration-milestone` | Merge the branch into main (builds green, 330 backend / 449 frontend) so Vercel picks up the latest for live testing — Founder decision, test first | Open |
+| 2026-08-10 | New-device sign-in detection | Wire the `[mock-email]` new-device alert to a real transactional-email provider once one is selected, so the security alert actually reaches the user out-of-band | Open |
+| 2026-08-10 | New-device sign-in detection | Add a live two-device validation: sign in from two IPs/devices against a real Supabase project and confirm the audit event + notification land and refresh does not re-trigger | Open |
 | 2026-08-10 | Push milestone | Next implementable backlog slice: fuller authorization model beyond allowlists and route guards (scopes enforcement across the API) | Open |
 | 2026-08-10 | Push milestone | Build the admin search and filter model across waitlist, users, scans, and reports so admin views share one filterable table pattern | Open |
 | 2026-08-10 | Push milestone | Build report share links (mock-backed) with an expiry surface, replacing the null `share_url` in the report payload | Open |
