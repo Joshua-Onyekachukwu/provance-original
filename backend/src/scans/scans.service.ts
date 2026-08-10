@@ -603,6 +603,15 @@ export class ScansService {
       const fileBuffer = await this.downloadScanAsset(adminClient, scan);
       const analysisTimestamp = new Date().toISOString();
 
+      // Deeper pre-processing inspection: reject empty/truncated uploads and
+      // files whose magic bytes match no supported image format (renamed
+      // PDFs/executables). A supported-image header mismatch is NOT rejected
+      // here — that is the forensic signal the pipeline reports as suspicious.
+      const inspectionFailure = inspectUploadContent(fileBuffer, scan.mime_type);
+      if (inspectionFailure) {
+        throw new Error(inspectionFailure);
+      }
+
       // Hash-based dedup (approved feature): an identical file already verified
       // by this user reuses the prior result payload instead of re-running the
       // analysis pipeline. The lookup is best-effort — if the dedup column is
@@ -1366,6 +1375,39 @@ function detectImageFormat(fileBuffer: Buffer) {
   }
 
   return { label: 'Unknown', mimeType: null };
+}
+
+/**
+ * Pre-processing content gate (deeper file inspection before the analysis
+ * pipeline runs). Distinguishes a *rejected* upload from a *forensic signal*:
+ *
+ * - Empty or truncated buffers (too small to hold any magic header) are
+ *   rejected — nothing meaningful can be analyzed.
+ * - Files whose magic bytes match **no** supported image format (a renamed
+ *   PDF, an executable, an archive) are rejected with an actionable reason —
+ *   the declared MIME said image, the content is not an image at all.
+ * - A supported image whose format differs from the declared MIME is **not**
+ *   rejected: that mismatch is exactly the header-mismatch signal the
+ *   pipeline reports as `suspicious`. Only a total format miss fails.
+ *
+ * Returns `null` when the content is acceptable, otherwise the failure reason
+ * (which lands the scan in `failed`).
+ */
+export function inspectUploadContent(
+  fileBuffer: Buffer,
+  declaredMimeType: string,
+): string | null {
+  if (fileBuffer.length === 0) {
+    return 'The uploaded file is empty (0 bytes).';
+  }
+
+  const detected = detectImageFormat(fileBuffer);
+
+  if (!detected.mimeType) {
+    return `The file content does not match any supported image format (declared ${declaredMimeType || 'unknown'}). Upload a JPEG, PNG, WebP, or GIF image.`;
+  }
+
+  return null;
 }
 
 function containsC2paMarker(fileBuffer: Buffer) {

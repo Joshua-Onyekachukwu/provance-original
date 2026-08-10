@@ -1,5 +1,16 @@
 # Provance — Changelog
 
+## [2026-08-10] - Deeper pre-processing file inspection
+
+### Backend
+- **`inspectUploadContent` pre-processing gate** — before the analysis pipeline (and dedup lookup) runs, the worker now rejects uploads whose content is empty/truncated or whose magic bytes match **no** supported image format (renamed PDFs/executables/archives), landing the scan in `failed` with an actionable `failure_reason`. A supported-image header mismatch (e.g. PNG bytes declared as JPEG) is deliberately **not** rejected — that mismatch is the forensic `suspicious` signal the pipeline reports. 5 new tests (20 total in `analysis-pipeline.spec.ts`).
+
+### Task list
+- `PHASE_TASK_LIST.md` — deeper file inspection, queue metrics/backlog monitoring (Monitoring page queue_health), and founder diagnostics marked Complete; malware scanning + worker error alerting explicitly deferred as vendor/channel decisions.
+
+### Verified
+- Backend jest **326/326**, `nest build` clean.
+
 ## [2026-08-10] - Payload versioning, retention policy baseline, task-list sync
 
 ### Backend

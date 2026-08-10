@@ -219,17 +219,17 @@ Status tags:
 - [x] Complete: auth transport hardening (httpOnly cookie session transport + rotation; see `docs/engineering/AUTH_HARDENING_MIGRATION.md`)
 - [ ] Not Started: expanded RLS review
 - [ ] Not Started: bot protection
-- [ ] Not Started: deeper file inspection before processing
-- [ ] Not Started: malware scanning before beta
+- [x] Complete: deeper file inspection before processing (pre-processing content gate — empty/truncated and non-image magic bytes rejected with actionable failure reasons; supported-image header mismatch still flows through as the suspicious signal; shipped 2026-08-10 with `inspectUploadContent` tests)
+- [ ] Not Started: malware scanning before beta (needs a scanning vendor — decision deferred)
 
 ### Observability And Operations
 
 - [x] Complete: health endpoint
 - [ ] Approved 2026-08-04: Sentry integration (errors)
 - [ ] Approved 2026-08-04: product analytics integration (PostHog)
-- [ ] Not Started: queue metrics and backlog monitoring
-- [ ] Not Started: worker error alerting
-- [ ] Not Started: founder-friendly operational diagnostics surface
+- [x] Complete: queue metrics and backlog monitoring (Monitoring page queue_health — queued/in-flight backlog, throughput/hour, failure rate, hourly + daily series, avg processing time; real `GET /admin/monitoring` payload)
+- [ ] Not Started: worker error alerting (needs an alerting channel — Sentry/email decision deferred)
+- [x] Complete: founder-friendly operational diagnostics surface (dashboard internal diagnostics panel + admin Overview/Monitoring surfaces)
 - [x] Complete: admin analytics + monitoring pages (Analytics + Monitoring pages, real `GET /admin/analytics` endpoint)
 - [ ] Approved 2026-08-04: global error boundary + crash recovery
 - [x] Complete: scan deduplication (hash-based) — worker-side SHA-256 lookup + reused payload (migration 0013, shipped 2026-08-08)

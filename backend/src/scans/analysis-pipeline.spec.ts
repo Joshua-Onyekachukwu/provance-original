@@ -3,7 +3,7 @@ import { deflateSync } from 'zlib';
 import { Jimp, rgbaToInt } from 'jimp';
 import type { ConfigService } from '@nestjs/config';
 import { SupabaseService } from '../supabase/supabase.service';
-import { ScansService, buildVerdict } from './scans.service';
+import { ScansService, buildVerdict, inspectUploadContent } from './scans.service';
 
 // ---------------------------------------------------------------------------
 // Analysis pipeline tests — real image fixtures, controlled metadata.
@@ -200,6 +200,38 @@ function runAnalysis(service: ScansService, scan: Record<string, unknown>, buffe
 describe('scan analysis pipeline', () => {
   beforeEach(() => {
     mockExifrParse().mockReset();
+  });
+
+  describe('inspectUploadContent — pre-processing content gate', () => {
+    it('accepts a real JPEG regardless of declared MIME (header mismatch is a signal, not a rejection)', async () => {
+      const jpeg = await makeNoiseImage('image/jpeg');
+      expect(inspectUploadContent(jpeg, 'image/jpeg')).toBeNull();
+      // Declared PNG but bytes are JPEG → forensic header mismatch, must NOT fail.
+      expect(inspectUploadContent(jpeg, 'image/png')).toBeNull();
+    });
+
+    it('accepts a real PNG', async () => {
+      const png = await makeNoiseImage('image/png');
+      expect(inspectUploadContent(png, 'image/png')).toBeNull();
+    });
+
+    it('rejects an empty buffer', () => {
+      expect(inspectUploadContent(Buffer.alloc(0), 'image/jpeg')).toContain('empty');
+    });
+
+    it('rejects a truncated buffer too small to hold any magic header', () => {
+      expect(inspectUploadContent(Buffer.from([0xff]), 'image/jpeg')).toContain(
+        'does not match any supported image format',
+      );
+    });
+
+    it('rejects a renamed non-image (PDF bytes declared as image/jpeg)', () => {
+      const pdfBytes = Buffer.from('%PDF-1.7\n1 0 obj\n<<>>\nendobj\n%%EOF');
+      expect(inspectUploadContent(pdfBytes, 'image/jpeg')).toContain(
+        'does not match any supported image format',
+      );
+      expect(inspectUploadContent(pdfBytes, 'image/jpeg')).toContain('image/jpeg');
+    });
   });
 
   describe('buildAnalysisResultPayload — fixture verdicts', () => {
