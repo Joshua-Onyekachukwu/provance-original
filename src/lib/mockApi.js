@@ -559,6 +559,103 @@ export async function mockInitiateScan(payload = {}, idempotencyKey) {
   }
 }
 
+const MOCK_WORKER_STEP_MS = 2000
+
+/**
+ * buildMockCompletedScanPayload — mock parity with the real worker's
+ * buildAnalysisResultPayload (scans.service.ts): produces the report-payload
+ * contract the report detail pane consumes — a verdict object with
+ * display_label / confidence / signal counts, a report reference, and
+ * per-signal analysis entries. Called when the simulated worker marks a scan
+ * complete, so polling surfaces swap in a fully rendered report.
+ */
+function buildMockCompletedScanPayload(scan) {
+  const verdictClasses = [
+    { class: 'likely_authentic', display_label: 'Likely Authentic', color: '#0f766e' },
+    { class: 'suspicious', display_label: 'Suspicious', color: '#b45309' },
+    { class: 'inconclusive', display_label: 'Inconclusive', color: '#6b6b6b' },
+  ]
+  const pick = verdictClasses[Math.floor(Math.random() * verdictClasses.length)]
+  const confidenceScore = Math.round(45 + Math.random() * 50)
+  const signals = [
+    {
+      signal_id: 'file_integrity',
+      signal_display_name: 'File Integrity',
+      signal_category: 'Integrity',
+      methodology_version: 'v2',
+      status: Math.random() > 0.5 ? 'clear' : 'flagged',
+      status_reason:
+        Math.random() > 0.5
+          ? 'File hash matches the declared original; no tampering detected.'
+          : 'Header mismatch: the declared MIME type does not match the file signature.',
+      findings: [],
+    },
+    {
+      signal_id: 'metadata_forensics',
+      signal_display_name: 'Metadata Forensics',
+      signal_category: 'Metadata',
+      methodology_version: 'v3',
+      status: Math.random() > 0.5 ? 'clear' : 'flagged',
+      status_reason:
+        Math.random() > 0.5
+          ? 'EXIF chain is consistent with the declared capture time and device.'
+          : 'Creation path and edit history do not fully reconcile.',
+      findings: [],
+    },
+    {
+      signal_id: 'frequency_domain',
+      signal_display_name: 'Frequency-Domain Analysis',
+      signal_category: 'Signal Processing',
+      methodology_version: 'v1',
+      status: Math.random() > 0.5 ? 'clear' : 'anomaly_detected',
+      status_reason:
+        Math.random() > 0.5
+          ? 'No synthetic patterning detected in the spectral profile.'
+          : 'Synthetic patterning detected around facial edges and backdrop gradients.',
+      findings: [],
+    },
+    {
+      signal_id: 'temporal_continuity',
+      signal_display_name: 'Temporal Continuity',
+      signal_category: 'Temporal',
+      methodology_version: 'v2',
+      status: Math.random() > 0.5 ? 'clear' : 'continuity_break',
+      status_reason:
+        Math.random() > 0.5
+          ? 'Frame flow is continuous across the clip.'
+          : 'Frame continuity breaks in the final segment of the uploaded clip.',
+      findings: [],
+    },
+  ]
+  return {
+    payload_version: '1.0.0',
+    verdict: {
+      class: pick.class,
+      display_label: pick.display_label,
+      display_color: pick.color,
+      confidence_score: confidenceScore,
+      confidence_level: confidenceScore >= 75 ? 'high' : confidenceScore >= 55 ? 'moderate' : 'low',
+      signal_count_total: signals.length,
+      signal_count_completed: signals.length,
+      primary_contributing_signals: signals
+        .filter((s) => s.status !== 'clear')
+        .map((s) => s.signal_id)
+        .slice(0, 2),
+      plain_language_summary:
+        pick.class === 'suspicious'
+          ? 'Strong synthetic indicators were detected across multiple signals. The result benefits from human review before any high-stakes decision.'
+          : pick.class === 'likely_authentic'
+            ? 'File integrity checks are stable and no strong anomaly cluster was detected. The result still benefits from human review before any high-stakes decision.'
+            : 'Signals returned mixed or insufficient evidence to reach a confident conclusion. Further review is recommended.',
+    },
+    report: {
+      report_id: `PRV-${scan.id.slice(0, 8).toUpperCase()}`,
+      generated_at: new Date().toISOString(),
+    },
+    signals,
+  }
+}
+
 /**
  * mockSubmitScan — marks the reserved record as submitted (still queued for a
  * worker). Mirrors POST /scans/:id/submit.
@@ -616,6 +713,31 @@ export async function mockSubmitScan(scanId) {
   scan.status = 'queued'
   scan.submitted_at = new Date().toISOString()
   persistScanStore()
+
+  // Simulated worker pipeline (mock parity with the real BullMQ worker): the
+  // record advances queued → processing → completed with a full report
+  // payload over a few seconds, so the report detail page's 5s polling
+  // visibly flips the scan from its pending state to the completed report
+  // without a reload — instead of sitting in a static queued state forever.
+  // The record is mutated in place, so every surface reading the store
+  // (report detail, queue, dashboard, ledger) sees the same transitions.
+  setTimeout(() => {
+    if (scan.status !== 'queued') return
+    scan.status = 'processing'
+    scan.updated_at = new Date().toISOString()
+    persistScanStore()
+  }, MOCK_WORKER_STEP_MS)
+  setTimeout(() => {
+    if (scan.status !== 'processing') return
+    const completedAt = new Date().toISOString()
+    const payload = buildMockCompletedScanPayload(scan)
+    scan.status = 'completed'
+    scan.verdict = payload.verdict.class
+    scan.result_payload = payload
+    scan.completed_at = completedAt
+    scan.updated_at = completedAt
+    persistScanStore()
+  }, MOCK_WORKER_STEP_MS * 2)
   return { scan }
 }
 

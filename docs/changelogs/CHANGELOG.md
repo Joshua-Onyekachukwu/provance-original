@@ -1,5 +1,15 @@
 # Provance — Changelog
 
+## [2026-08-10] - Report detail live-completion via mock worker lifecycle
+
+### Frontend (mock parity)
+- **`mockSubmitScan` simulated worker** (`mockApi.js`) — a submitted scan now advances `queued → processing → completed` over ~4s via module-level timers (mirroring the real BullMQ worker), instead of sitting in a static queued state forever. The record is mutated in place, so every surface reading the store (report detail, queue, dashboard, ledger) sees the same transitions through its existing 5s `useResource` polling.
+- **`buildMockCompletedScanPayload`** (new) — produces the report-payload contract the detail pane consumes: verdict object (`class`/`display_label`/`confidence_score`/`confidence_level`/signal counts/`plain_language_summary`), `report.report_id`, and 4 signal entries (`signal_id`/`signal_display_name`/`signal_category`/`methodology_version`/`status`/`status_reason`) — matching the backend `buildAnalysisResultPayload` shape. The dedup path still completes instantly and is untouched.
+- Result: the report detail page (which already polled `GET /scans/:id` via `useResource` with `scanNeedsPolling`) now visibly flips from its pending state to the completed report the moment the simulated worker finishes — verified live: upload → queue shows `JUST ADDED → COMPLETE` with a verdict, and the detail pane renders the full payload (report id, verdict, signals, confidence, no `Pending`).
+
+### Tests
+- `mockScanLifecycle.test.js` (new, 2 tests, fake timers) — full queued → processing → completed transition with payload contract assertions (verdict class parity, 4 signals, `PRV-` report id, `payload_version`), the still-pending gate before the worker steps elapse, and `mockGetScan` reflecting the mutation. Frontend vitest **478/478**, `npm run build` clean.
+
 ## [2026-08-10] - Dashboard live-refresh indicator
 
 ### Frontend
