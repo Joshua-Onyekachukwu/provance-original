@@ -1,5 +1,10 @@
 # Provance — Changelog
 
+## [2026-08-10] - Auth controller cookie-flow coverage
+
+### Tests
+- `auth.controller.spec.ts` +6 (now 11) — locks the httpOnly-cookie migration in at the controller layer, not just the cookie-session util: no Set-Cookie on failed sign-in or failed refresh; the refresh cookie wins over a body token when both are present; a body-token refresh still rotates into a cookie with the rotated token stripped from the response body; `__Host-` cookie name + `Secure` on a secure deployment; cookies-disabled refresh keeps the body token and sets no cookie. Backend jest **352/352**, `nest build` clean.
+
 ## [2026-08-10] - MigrationHealthService: startup diff + readiness gate
 
 ### Backend
