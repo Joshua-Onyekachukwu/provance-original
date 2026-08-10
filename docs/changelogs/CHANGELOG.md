@@ -1,5 +1,16 @@
 # Provance — Changelog
 
+## [2026-08-10] - Real scan upload + queue round-trip: verified complete
+
+### Backend (audit result)
+- The full real-mode slice is **implemented and green** — verified across the existing modules rather than re-implemented: `POST /scans` creates the scans row (idempotency-key dedupe, per-plan quota gate, team resolution, signed-upload URL contract `{scanId,status,bucket,path,token,signedUrl}`), `POST /scans/:scanId/submit` transitions to `queued` after an upload-exists pre-flight check, and the worker drives `queued → processing → complete|failed` (inline fallback when `REDIS_URL` is absent; BullMQ `process-scan` jobs via `QueueService.enqueueScanProcessing` consumed by `backend/src/worker.ts` standalone process). `GET /scans`, `GET /scans/:scanId`, and `GET /scans/queue-snapshot` serve the frontend dialect (`complete` → `completed`, verdict classes → display values).
+- **Reports leg**: `GET /reports/:id` returns the signal-by-signal payload and `GET /reports/:id/pdf` serves a server-generated PDF artifact.
+- **Frontend real branches** (all `USE_MOCK`-gated): `initiateScan`/`submitScan`/`listScans`/`getScan`/`getQueueSnapshot` hit the backend; `AppUploadsPage` performs the signed-URL upload via the anon `supabase` client (`uploadToSignedUrl`). Dashboard/report polling lands real statuses via the existing 5s `useResource` loop; polling predicates (`hasActiveScanWork`/`scanNeedsPolling`/`queueNeedsPolling`) are consistent with the emitted display dialect.
+
+### Verified
+- Backend jest **354/354** (22 suites) incl. `scans-flow.e2e-spec.ts` (full initiate → signed URL → submit → inline processing → report payload; download-failure → `failed` + `failure_reason`; BullMQ enqueue variant; worker entry point) and `scans-api.e2e-spec.ts` (DTO validation, signed-contract shape, submit pre-flight, enqueue-vs-inline). `nest build` clean. Frontend vitest **493/493**, build clean.
+- **Live blocker (unchanged)**: the live Supabase project is still missing the scan-pipeline migrations (0009 columns + 0019 idempotency_key) — `POST /scans` returns 503 with an actionable hint. Applying `.freebuff/combined-0005-0009.sql` (+0010/0011) in the SQL Editor unlocks the live walk.
+
 ## [2026-08-10] - scanPresentation import-parity guard
 
 ### Tests (regression protection)
