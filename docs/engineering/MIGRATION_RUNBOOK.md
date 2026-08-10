@@ -256,35 +256,22 @@ Acceptance: `"status": "ready"` requires ALL of:
 The `queue` check is informational (BullMQ configured vs inline fallback) and
 does not gate `ready`.
 
-### 3. Service-role REST probes (optional, from a shell)
+### 3. One-command schema check (from a shell)
 
-Equivalent check without the SQL editor — expects HTTP 200 for each
-`table?select=<column>` (columns chosen to match each table's real PK):
+The canonical pre-walk gate — probes the SAME `MIGRATION_PROBES` list the
+readiness `checks.migrations` check uses (imported from
+`src/health/migration-health.service.ts`), so the script and the health
+endpoint can never disagree:
 
 ```bash
-cd backend && node -e '
-const { readFileSync } = require("fs");
-const env = readFileSync(".env.local", "utf8");
-const get = (k) => (env.match(new RegExp(`^${k}=(.*)$`, "m")) || [])[1]?.trim();
-const url = get("SUPABASE_URL"), key = get("SUPABASE_SERVICE_ROLE_KEY");
-const probes = [
-  ["0005", "organizations", "id"], ["0005", "teams", "id"],
-  ["0005", "organization_members", "user_id"], ["0005", "organization_invites", "token"],
-  ["0007", "admin_incidents", "id"], ["0008", "audit_logs", "id"],
-  ["0009", "scans", "processing_mode"], ["0010", "user_sessions", "user_id"],
-];
-(async () => {
-  for (const [m, t, c] of probes) {
-    const r = await fetch(`${url}/rest/v1/${t}?select=${c}&limit=1`,
-      { headers: { apikey: key, Authorization: `Bearer ${key}` } });
-    console.log(m, t, r.ok ? "OK" : `${r.status} ${(await r.json()).code}`);
-  }
-})();
-'
+cd backend && npm run build && npm run validate:migrations
 ```
 
-A `42703` (column missing) or `PGRST205` (table missing) pinpoints exactly
-which migration is still outstanding.
+Prints every migration's status (`OK`/`MISSING`/`SKIP`), an applied/missing
+summary, and — on failure — the exact `MISSING MIGRATIONS: <n> (<file>), …`
+list, exiting non-zero. A `42703` (column missing) or `PGRST205` (table
+missing) pinpoints which migration is still outstanding. Equivalent to the
+service-role REST probes below, minus the SQL editor.
 
 ---
 

@@ -1,5 +1,15 @@
 # Provance — Changelog
 
+## [2026-08-10] - One-command migration verification: validate:migrations
+
+### Added
+- **`backend/scripts/validate-migrations.mjs`** (+ npm script `validate:migrations`) — the runbook's one-shot verification as a single command. Probes the live project against the **same `MIGRATION_PROBES` list the readiness `checks.migrations` gate uses** (now exported from `src/health/migration-health.service.ts` and imported via dist — one source of truth, no drift between the script and the health endpoint). Non-head REST selects with the service role key (respecting the runbook's `head:true`-masks-PGRST205 caveat).
+- Prints every migration's status (`OK`/`MISSING`/`SKIP`), an applied/missing/errored/skipped summary, and on failure the exact `MISSING MIGRATIONS: 0005 (0005_organization.sql), …` list in the readiness-detail format, exiting 1. Verified live: reports **5 applied · 14 missing · 0 errored · 1 skipped** (0017 seed-only) with the full missing set, exit 1.
+
+### Changed
+- `backend/src/health/migration-health.service.ts` — `MIGRATION_PROBES` exported (behavior unchanged; backend jest still 403/403).
+- `docs/engineering/MIGRATION_RUNBOOK.md` — §3 now leads with `npm run build && npm run validate:migrations` as the canonical pre-walk gate.
+
 ## [2026-08-10] - Migration apply prep: live verification + combined paste blocks
 
 ### Live verification (service-role REST probes, runbook §3)

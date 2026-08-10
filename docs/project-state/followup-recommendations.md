@@ -107,3 +107,6 @@ Status values: `Open` · `In Progress` · `Done` · `Deferred` · `Declined`
 
 | 2026-08-10 | Migration apply prep | User pastes .freebuff/combined-0005-0020.sql in the dashboard SQL Editor, then re-run the one-shot REST probes + readiness check to confirm scansSchema/userSessions/migrations all flip ready (wait a few seconds for the PostgREST schema reload first) | Open |
 | 2026-08-10 | Migration apply prep | Once the full set is applied, re-run PORT=4100 node backend/scripts/validate-scan-roundtrip.mjs and the invite-accept live e2e — the standing 503/PGRST205 blockers should clear | Open |
+
+| 2026-08-10 | validate:migrations script | After the user applies the combined migration block, cd backend && npm run build && npm run validate:migrations should print ALL OK and exit 0 — the single re-check command (currently reports 14 missing, exit 1) | Open |
+| 2026-08-10 | validate:migrations script | Add a --json flag to validate-migrations.mjs so CI can gate on the missing list without parsing the table output | Open |

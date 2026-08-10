@@ -64,7 +64,10 @@ export interface MigrationDiff {
  * a migration file with no probe is logged as a warning at boot (the checker
  * is self-enforcing — it refuses to silently skip an unknown file).
  */
-const MIGRATION_PROBES: MigrationProbe[] = [
+// Exported so scripts/validate-migrations.mjs probes the SAME list the
+// readiness gate uses — one source of truth, no drift between the health
+// check and the one-command pre-walk verification.
+export const MIGRATION_PROBES: MigrationProbe[] = [
   { migration: '0001', file: '0001_waitlist_auth.sql', probeable: true, table: 'waitlist_applications', column: 'id', note: 'waitlist + access_invites + auth_audit_events' },
   { migration: '0002', file: '0002_scans.sql', probeable: true, table: 'scans', column: 'id' },
   { migration: '0003', file: '0003_admin_ops.sql', probeable: true, table: 'waitlist_applications', column: 'notes', note: 'adds waitlist_applications.notes + access_invites.invited_by' },

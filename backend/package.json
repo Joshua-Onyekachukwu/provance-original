@@ -20,7 +20,8 @@
     "seed:org": "ts-node scripts/seed-org.ts",
     "validate:sessions": "node scripts/validate-session-lifecycle.mjs",
     "validate:monitoring-parity": "node scripts/parity-monitoring.mjs",
-    "validate:bullmq": "node scripts/verify-bullmq.mjs"
+    "validate:bullmq": "node scripts/verify-bullmq.mjs",
+    "validate:migrations": "node scripts/validate-migrations.mjs"
   },
   "dependencies": {
     "@better-auth/api-key": "1.6.26",
