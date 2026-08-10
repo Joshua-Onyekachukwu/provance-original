@@ -110,3 +110,5 @@ Status values: `Open` · `In Progress` · `Done` · `Deferred` · `Declined`
 
 | 2026-08-10 | validate:migrations script | After the user applies the combined migration block, cd backend && npm run build && npm run validate:migrations should print ALL OK and exit 0 — the single re-check command (currently reports 14 missing, exit 1) | Open |
 | 2026-08-10 | validate:migrations script | Add a --json flag to validate-migrations.mjs so CI can gate on the missing list without parsing the table output | Open |
+
+| 2026-08-10 | Full live walk (queue live) | Queue side verified live: BullMQ worker ready on scan-processing (concurrency 4, Upstash REDIS_URL); backend :4200 + worker left running. The ONLY remaining gate is the schema: validate:migrations still reports 14 missing (0005, 0007-0016, 0018-0020). Paste .freebuff/combined-0005-0020.sql in the SQL Editor, then run PORT=4200 node backend/scripts/validate-scan-roundtrip.mjs | Open |
