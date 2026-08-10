@@ -22,6 +22,18 @@ export const PLAN_SCAN_QUOTAS: Record<string, number> = {
   enterprise: 10000,
 };
 
+/**
+ * Per-plan monthly API-call allowances — the apiCallsLimit side of the
+ * Billing usage meter. Read from the plan catalog (not the api_usage table,
+ * which only stores the used count), so limits stay code-configurable.
+ */
+export const PLAN_API_CALL_QUOTAS: Record<string, number> = {
+  starter: 1000,
+  pro: 10000,
+  team: 50000,
+  enterprise: 250000,
+};
+
 export const DEFAULT_PLAN = 'pro';
 
 const PLAN_DISPLAY: Record<string, { name: string; priceUsd: number; seats: number }> = {
@@ -33,6 +45,10 @@ const PLAN_DISPLAY: Record<string, { name: string; priceUsd: number; seats: numb
 
 export function scanLimitForPlan(plan: string | null | undefined): number {
   return PLAN_SCAN_QUOTAS[plan ?? ''] ?? PLAN_SCAN_QUOTAS[DEFAULT_PLAN];
+}
+
+export function apiCallLimitForPlan(plan: string | null | undefined): number {
+  return PLAN_API_CALL_QUOTAS[plan ?? ''] ?? PLAN_API_CALL_QUOTAS[DEFAULT_PLAN];
 }
 
 export function planDisplay(plan: string) {
@@ -68,6 +84,7 @@ export class BillingService {
   private readonly orgMembersTable: string;
   private readonly orgsTable: string;
   private readonly scansTable: string;
+  private readonly apiUsageTable: string;
 
   constructor(
     private readonly supabaseService: SupabaseService,
@@ -82,6 +99,8 @@ export class BillingService {
       'organizations',
     );
     this.scansTable = configService.get<string>('SUPABASE_SCANS_TABLE', 'scans');
+    this.apiUsageTable =
+      configService.get<string>('SUPABASE_API_USAGE_TABLE') || 'api_usage';
   }
 
   /**
@@ -183,11 +202,16 @@ export class BillingService {
   /**
    * GET /billing payload — mirrors the mockBillingProfile contract the Billing
    * page already renders. Invoices/payment methods are empty until a processor
-   * is wired; usage reflects the real scans table.
+   * is wired; usage reflects the real scans table, the org's storage columns,
+   * and the api_usage table.
    */
   async getBilling(userId: string) {
     const usage = await this.resolveUsage(userId);
     const display = planDisplay(usage.plan);
+    const [storage, apiUsage] = await Promise.all([
+      this.resolveStorageUsage(userId),
+      this.resolveApiUsage(userId, usage.periodStart, usage.plan),
+    ]);
 
     return {
       profile: {
@@ -210,14 +234,111 @@ export class BillingService {
           periodEnd: usage.periodEnd,
           scansUsed: usage.scansUsed,
           scansLimit: usage.scansLimit,
-          storageUsedGb: null,
-          storageLimitGb: null,
-          apiCallsUsed: null,
-          apiCallsLimit: null,
+          storageUsedGb: storage.usedGb,
+          storageLimitGb: storage.limitGb,
+          apiCallsUsed: apiUsage.used,
+          apiCallsLimit: apiUsage.limit,
         },
         paymentMethods: [],
       },
       invoices: [],
     };
+  }
+
+  /**
+   * resolveStorageUsage — reads the user's org storage columns
+   * (storage_used_gb / storage_limit_gb from migration 0005). Best-effort:
+   * a missing org table/membership degrades to nulls so a fresh DB never
+   * breaks the billing payload.
+   */
+  private async resolveStorageUsage(userId: string): Promise<{
+    usedGb: number | null;
+    limitGb: number | null;
+  }> {
+    const adminClient = this.supabaseService.getAdminClient();
+
+    if (!adminClient) {
+      return { usedGb: null, limitGb: null };
+    }
+
+    try {
+      const { data: membership } = await adminClient
+        .from(this.orgMembersTable)
+        .select('organization_id')
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .maybeSingle();
+
+      if (!membership?.organization_id) {
+        return { usedGb: null, limitGb: null };
+      }
+
+      const { data: organization } = await adminClient
+        .from(this.orgsTable)
+        .select('storage_used_gb,storage_limit_gb')
+        .eq('id', membership.organization_id)
+        .maybeSingle();
+
+      if (!organization) {
+        return { usedGb: null, limitGb: null };
+      }
+
+      return {
+        usedGb: Number(organization.storage_used_gb) || null,
+        limitGb: Number(organization.storage_limit_gb) || null,
+      };
+    } catch (error) {
+      this.logger.warn(
+        `Storage usage skipped for user ${userId}: ${error instanceof Error ? error.message : 'unknown error'}`,
+      );
+      return { usedGb: null, limitGb: null };
+    }
+  }
+
+  /**
+   * resolveApiUsage — reads the user's api_usage row for the current month
+   * and pairs the used count with the plan's API-call allowance. Best-effort:
+   * a missing table (migration 0020 not applied) or missing row degrades to
+   * used 0 with the plan limit, so the meter still renders.
+   */
+  private async resolveApiUsage(
+    userId: string,
+    periodStartIso: string,
+    plan: string,
+  ): Promise<{
+    used: number | null;
+    limit: number | null;
+  }> {
+    const adminClient = this.supabaseService.getAdminClient();
+
+    if (!adminClient) {
+      return { used: null, limit: null };
+    }
+
+    const periodMonth = periodStartIso.slice(0, 7); // 'YYYY-MM'
+
+    try {
+      const { data, error } = await adminClient
+        .from(this.apiUsageTable)
+        .select('calls')
+        .eq('user_id', userId)
+        .eq('period_month', periodMonth)
+        .maybeSingle();
+
+      if (error || !data) {
+        // Missing migration/row → zero used, plan limit intact.
+        return { used: 0, limit: apiCallLimitForPlan(plan) };
+      }
+
+      return {
+        used: Number(data.calls) || 0,
+        limit: apiCallLimitForPlan(plan),
+      };
+    } catch (error) {
+      this.logger.warn(
+        `API usage skipped for user ${userId}: ${error instanceof Error ? error.message : 'unknown error'}`,
+      );
+      return { used: null, limit: null };
+    }
   }
 }

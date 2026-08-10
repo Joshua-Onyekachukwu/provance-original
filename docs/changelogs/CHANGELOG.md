@@ -1,5 +1,20 @@
 # Provance — Changelog
 
+## [2026-08-10] - Real storage + API-call meters on GET /billing
+
+### Backend
+- **`getBilling` now resolves the storage and API-call meters from real data** instead of returning `null` (the `—` the Billing page renders):
+  - `storageUsedGb`/`storageLimitGb` — read from the user's active org (`organizations.storage_used_gb` / `storage_limit_gb`, migration 0005), resolved via the membership join. Best-effort: no membership/org tables → `null` so a fresh DB never breaks the payload.
+  - `apiCallsUsed`/`apiCallsLimit` — `apiCallsUsed` from the new `api_usage` table row for the current month (`user_id`, `period_month` unique — migration **0020**); `apiCallsLimit` from the new `PLAN_API_CALL_QUOTAS` plan catalog (starter 1k / pro 10k / team 50k / enterprise 250k). Missing table/row degrades to used 0 with the plan limit intact.
+- `SUPABASE_API_USAGE_TABLE` env override added to `env.validation.ts` (default `api_usage`), matching the other table configs.
+- The `Promise.all` storage/api resolution reuses the already-resolved plan (no redundant plan lookup).
+
+### Tests
+- `billing.service.spec.ts` +2 (storage + api-call meters resolved from org/api_usage rows; degradation paths) — 332 backend total.
+
+### Verified
+- Backend jest **332/332**, `nest build` clean. Frontend formatters already degrade null meters to `—` (verified `formatStorageGb`/`formatPct`/`percentOf` null handling) — no frontend change needed.
+
 ## [2026-08-10] - New-device sign-in detection layer
 
 ### Backend

@@ -7,7 +7,9 @@ import { QuotaExceededException } from './quota-exceeded.exception';
 import {
   BillingService,
   DEFAULT_PLAN,
+  PLAN_API_CALL_QUOTAS,
   PLAN_SCAN_QUOTAS,
+  apiCallLimitForPlan,
   scanLimitForPlan,
   currentBillingCycle,
 } from './billing.service';
@@ -209,10 +211,21 @@ describe('BillingService', () => {
 
   describe('getBilling', () => {
     it('returns the mock-contract payload with real usage', async () => {
+      // Query order: resolveUsage (membership, org plan, scan count), then the
+      // Promise.all pair — storage's membership probe, then the api_usage
+      // lookup, then storage's org read (the concurrent branches interleave).
       const client = createAdminClient([
+        // resolveUsage → resolveUserPlan: membership + org plan
         { data: { organization_id: 'org-1' } },
         { data: { plan: 'pro' } },
+        // countCycleScans
         { count: 312 },
+        // resolveStorageUsage: membership probe
+        { data: { organization_id: 'org-1' } },
+        // resolveApiUsage: api_usage row
+        { data: { calls: 4120 } },
+        // resolveStorageUsage: storage columns
+        { data: { storage_used_gb: 18.4, storage_limit_gb: 50 } },
       ]);
       const service = createService(client);
 
@@ -228,10 +241,65 @@ describe('BillingService', () => {
         period: 'current-month',
         scansUsed: 312,
         scansLimit: 500,
+        storageUsedGb: 18.4,
+        storageLimitGb: 50,
+        apiCallsUsed: 4120,
+        apiCallsLimit: PLAN_API_CALL_QUOTAS.pro,
       });
       expect(result.profile.usage.periodStart).toMatch(/T00:00:00.000Z$/);
       expect(result.profile.paymentMethods).toEqual([]);
       expect(result.invoices).toEqual([]);
+    });
+
+    it('degrades storage/api usage to nulls when the org tables are absent', async () => {
+      const client = createAdminClient([
+        // resolveUsage → resolveUserPlan: no membership → default plan
+        { data: null },
+        // countCycleScans
+        { count: 5 },
+        // resolveStorageUsage: no membership → nulls (short-circuits)
+        { data: null },
+        // resolveApiUsage: missing table error → 0 used, plan limit
+        { data: null, error: { message: 'Could not find the table public.api_usage' } },
+      ]);
+      const service = createService(client);
+
+      const result = await service.getBilling(USER_ID);
+
+      expect(result.profile.usage).toMatchObject({
+        scansUsed: 5,
+        scansLimit: PLAN_SCAN_QUOTAS[DEFAULT_PLAN],
+        storageUsedGb: null,
+        storageLimitGb: null,
+        apiCallsUsed: 0,
+        apiCallsLimit: apiCallLimitForPlan(DEFAULT_PLAN),
+      });
+    });
+
+    it('reports zero api calls when no api_usage row exists for the month', async () => {
+      const client = createAdminClient([
+        // resolveUsage → resolveUserPlan: membership + org plan
+        { data: { organization_id: 'org-1' } },
+        { data: { plan: 'team' } },
+        // countCycleScans
+        { count: 0 },
+        // resolveStorageUsage: membership probe
+        { data: { organization_id: 'org-1' } },
+        // resolveApiUsage: no row → zero used, plan limit
+        { data: null },
+        // resolveStorageUsage: storage columns
+        { data: { storage_used_gb: 1.2, storage_limit_gb: 200 } },
+      ]);
+      const service = createService(client);
+
+      const result = await service.getBilling(USER_ID);
+
+      expect(result.profile.usage).toMatchObject({
+        apiCallsUsed: 0,
+        apiCallsLimit: PLAN_API_CALL_QUOTAS.team,
+        storageUsedGb: 1.2,
+        storageLimitGb: 200,
+      });
     });
   });
 });

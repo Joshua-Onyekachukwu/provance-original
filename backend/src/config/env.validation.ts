@@ -238,6 +238,7 @@ export function validateEnv(config: Record<string, unknown>) {
       env.SUPABASE_USER_SESSIONS_TABLE?.trim() || 'user_sessions',
     SUPABASE_USER_SECURITY_SETTINGS_TABLE:
       env.SUPABASE_USER_SECURITY_SETTINGS_TABLE?.trim() || 'user_security_settings',
+    SUPABASE_API_USAGE_TABLE: env.SUPABASE_API_USAGE_TABLE?.trim() || 'api_usage',
     PASSWORD_MIN_LENGTH: parsePositiveInteger(
       env.PASSWORD_MIN_LENGTH,
       8,
