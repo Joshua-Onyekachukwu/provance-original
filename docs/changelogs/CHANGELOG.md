@@ -1,5 +1,14 @@
 # Provance — Changelog
 
+## [2026-08-10] - AccountController HTTP-layer spec (mirrors notifications controller spec)
+
+### Tests
+- **`backend/src/account/account.controller.spec.ts`** (+17, supertest + real SupabaseAuthGuard + ApiThrottlerGuard): route order/metadata (profile GET → profile PATCH → activity, no shadowing); profile get/patch forwarding with the CurrentUser payload; DTO validation (invalid `defaultWorkspace` 400, MaxLength 120 400, forbidNonWhitelisted 400, non-coercible `emailNotifications` array 400); activity query parsing (DefaultValuePipe + ParseIntPipe metadata, category/page/pageSize forwarding, defaults, `page=2.5` → 400, `page=abc` → NaN→default 1 — the implicit-conversion contract); guard 401s (no header, invalid token); throttle 429 past 30/60s with exactly 30 service calls.
+- Two contract facts the tests lock explicitly: `emailNotifications: 'yes'` coerces to `true` under `enableImplicitConversion` (stringy booleans pass — @IsBoolean only rejects non-coercible values like arrays), and unknown `category` values pass through raw for the service to normalize to 'all' (controller doesn't validate categories).
+
+### Gates
+- Backend jest **378/378** (24 suites, +17), `nest build` clean.
+
 ## [2026-08-10] - httpOnly refresh-cookie verification: rotation confirmed + GoTrue v2.195.0 replay-signature fix
 
 ### Live verification (backend :4200 fresh build, real Supabase)

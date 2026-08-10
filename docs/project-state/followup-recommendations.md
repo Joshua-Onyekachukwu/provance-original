@@ -92,3 +92,6 @@ Status values: `Open` · `In Progress` · `Done` · `Deferred` · `Declined`
 
 | 2026-08-10 | Refresh-cookie validation | Apply migration 0008 (audit_logs) so the walk FINAL check (reuse rows with reuse_suspected) reads live instead of noting the missing table — replays already 401, the audit trail is the only unreadable leg | Open |
 | 2026-08-10 | Refresh-cookie validation | GoTrue reuse grace interval measured ~20s on v2.195.0 (replays inside return 200) — consider surfacing the reuse-interval constant in the deploy contract doc so ops know a stolen-token replay window exists by design | Open |
+
+| 2026-08-10 | AccountController HTTP spec | Consider the same HTTP-layer treatment for the roles controller (list roles, PATCH scopes Owner-guard, PATCH member role) — it is the last admin surface without a controller-level spec | Open |
+| 2026-08-10 | AccountController HTTP spec | The stringy-boolean coercion (emailNotifications: "yes" → true) is a real implicit-conversion contract worth a note in API_DESIGN_STANDARDS.md under DTO validation gotchas | Open |
