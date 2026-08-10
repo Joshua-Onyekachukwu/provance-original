@@ -527,7 +527,7 @@ export default function BenchmarkPage() {
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-60px' }}
-            className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+            className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4"
           >
             {RAW_FILES.map((file, i) => (
               <motion.a

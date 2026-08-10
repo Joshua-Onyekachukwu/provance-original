@@ -69,7 +69,7 @@ export default function SampleReport() {
                 </div>
               </div>
 
-              <div className="mt-8 grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+              <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[1.05fr_0.95fr]">
                 <div className="space-y-6">
                   <div className="rounded-[1.75rem] border border-stone-light/80 bg-parchment/70 p-4">
                     <div className="flex items-center justify-between">
@@ -89,7 +89,7 @@ export default function SampleReport() {
                         loading="lazy"
                       />
                     </div>
-                    <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                    <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
                       {[
                         ['Source information', 'Uploaded by newsroom desk'],
                         ['Fingerprint', 'SHA-256 matched to case'],

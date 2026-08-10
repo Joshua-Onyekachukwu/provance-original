@@ -150,7 +150,7 @@ export default function ResourcesPage() {
       </section>
 
       <section className="section-padding bg-parchment-light">
-        <div className="content-container grid gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
+        <div className="content-container grid grid-cols-1 gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
           <div className="surface-card relative overflow-hidden p-8 md:p-10">
             <div className="absolute left-[-2rem] top-[-2rem] h-24 w-24 rounded-full bg-amber/10 blur-2xl" />
             <p className="font-mono text-xs uppercase tracking-[0.2em] text-charcoal-light">Why this page matters</p>

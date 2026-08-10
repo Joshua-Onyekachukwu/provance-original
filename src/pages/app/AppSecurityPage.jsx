@@ -322,7 +322,7 @@ export default function AppSecurityPage() {
           </label>
 
           {passwordPolicy && (
-            <ul className="mt-3 grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
+            <ul className="mt-3 grid grid-cols-1 gap-x-6 gap-y-1.5 sm:grid-cols-2">
               {passwordChecks.map((check) => (
                 <li
                   key={check.label}

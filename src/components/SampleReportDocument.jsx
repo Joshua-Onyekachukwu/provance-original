@@ -101,7 +101,7 @@ export default function SampleReportDocument({ compact = false, showPrintControl
             </div>
           </div>
 
-          <div className="mt-6 grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[1.05fr_0.95fr]">
             <div className="overflow-hidden rounded-[1.5rem] border border-stone-light bg-charcoal">
               <img
                 src={sampleReportPreviewImage}
@@ -366,7 +366,7 @@ export default function SampleReportDocument({ compact = false, showPrintControl
               <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-charcoal-light">
                 Technical findings
               </div>
-              <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
                 {sampleTechnicalFindings.map((item) => (
                   <div key={item.id} className="rounded-2xl border border-stone-light bg-white-warm/92 p-4">
                     <div className="flex items-center justify-between gap-3">
@@ -456,7 +456,7 @@ export default function SampleReportDocument({ compact = false, showPrintControl
             Disclaimer
           </div>
           <p className="mt-4 text-sm leading-relaxed text-charcoal-mid">{sampleDisclaimer}</p>
-          <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-2xl border border-stone-light bg-white-warm/92 p-4">
               <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-charcoal-light">Report ID</div>
               <div className="mt-2 text-sm text-charcoal">{sampleReportMeta.reportId}</div>

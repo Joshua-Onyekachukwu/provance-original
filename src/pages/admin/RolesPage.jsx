@@ -59,7 +59,7 @@ function RoleCard({ role, scopeMeta, onToggleScope, onSaveRole, saving }) {
             Save role
           </Button>
         </div>
-        <div className="mt-3 grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
+        <div className="mt-3 grid grid-cols-1 gap-x-6 gap-y-1.5 sm:grid-cols-2">
           {scopeMeta.map(({ key, label }) => (
             <label
               key={key}

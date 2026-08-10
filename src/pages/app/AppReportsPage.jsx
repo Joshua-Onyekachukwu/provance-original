@@ -193,7 +193,7 @@ export default function AppReportsPage() {
           Uploaded media lands in a report workspace where teams can review status,
           open completed verdict payloads, and track the queue as the workflow matures.
         </p>
-        <div className="mt-8 grid gap-4 md:grid-cols-4">
+        <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-4">
           <ReportMetaItem label="Total uploads" value={String(summary.total)} />
           <ReportMetaItem label="Completed" value={String(summary.completed)} />
           <ReportMetaItem label="In progress" value={String(summary.active)} />
@@ -329,7 +329,7 @@ export default function AppReportsPage() {
               <section key={i} className="rounded-3xl border border-stone-light bg-white-warm p-6 shadow-sm">
                 <Skeleton className="h-3 w-24" />
                 <Skeleton className="mt-4 h-8 w-2/3" />
-                <div className="mt-6 grid gap-4 md:grid-cols-2">
+                <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
                   <Skeleton className="h-16 rounded-2xl" />
                   <Skeleton className="h-16 rounded-2xl" />
                 </div>
@@ -384,7 +384,7 @@ export default function AppReportsPage() {
                   <ScanStatusBadge status={selectedScan.status} />
                 </div>
               </div>
-              <div className="mt-6 grid gap-4 md:grid-cols-2">
+              <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
                 <ReportMetaItem label="Scan ID" value={selectedScan.id} />
                 <ReportMetaItem
                   label="Report ID"
@@ -456,7 +456,7 @@ export default function AppReportsPage() {
                   selectedScan.failure_reason ||
                   'This upload has not produced a verdict payload yet.'}
               </p>
-              <div className="mt-6 grid gap-4 md:grid-cols-3">
+              <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
                 <ReportMetaItem
                   label="Confidence"
                   value={

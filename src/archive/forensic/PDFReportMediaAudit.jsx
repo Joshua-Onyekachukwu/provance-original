@@ -54,7 +54,7 @@ const PDFReportMediaAudit = () => {
 
       <div className="bg-charcoal p-6 rounded-xl relative overflow-hidden">
         <div className="absolute inset-0 forensic-grid opacity-5" />
-        <div className="relative z-10 grid md:grid-cols-2 gap-8 items-center">
+        <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
            <div>
               <div className="text-[10px] font-mono text-amber uppercase tracking-[0.2em] mb-2">Spectral Density Map</div>
               <div className="h-24 w-full bg-charcoal-soft border border-charcoal-mid/30 rounded flex items-end justify-between p-2 gap-1">

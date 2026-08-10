@@ -648,7 +648,7 @@ export default function AppOrganizationPage() {
 
           <fieldset>
             <legend className="text-sm font-medium text-charcoal">Team</legend>
-            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
               {teams.map((team) => {
                 const selected = inviteTeam === team.id
                 return (
@@ -676,7 +676,7 @@ export default function AppOrganizationPage() {
 
           <fieldset>
             <legend className="text-sm font-medium text-charcoal">Role</legend>
-            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
               {ROLE_OPTIONS.map((role) => {
                 const selected = inviteRole === role
                 return (

@@ -497,7 +497,7 @@ export default function AppUploadsPage() {
                   {selectedMode.eta} estimate
                 </p>
               </div>
-              <div role="radiogroup" aria-label="Processing mode" className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div role="radiogroup" aria-label="Processing mode" className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
                 {PROCESSING_MODES.map((mode) => {
                   const selected = processingMode === mode.id
                   return (

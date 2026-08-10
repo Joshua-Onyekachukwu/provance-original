@@ -384,7 +384,7 @@ export default function AppReportPrintPage() {
           </div>
         </div>
 
-        <section className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <section className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           <ReportMetric
             label="Overall verdict"
             value={verdict.display_label || 'Pending'}
@@ -411,7 +411,7 @@ export default function AppReportPrintPage() {
           />
         </section>
 
-        <section className="mt-8 grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+        <section className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-[1.15fr_0.85fr]">
           <div className="space-y-6">
             <div className="rounded-[1.75rem] border border-stone-light bg-parchment p-5">
               <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">
@@ -487,12 +487,12 @@ export default function AppReportPrintPage() {
           </div>
         </section>
 
-        <section className="mt-8 grid gap-6 xl:grid-cols-2">
+        <section className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-2">
           <section className="rounded-[1.75rem] border border-stone-light bg-parchment p-5">
             <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">
               Metadata summary
             </p>
-            <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
               <ReportDataCard label="Capture timestamp" value={formatDateTime(metadata.capture_timestamp, 'Not available')} />
               <ReportDataCard label="Software tag" value={metadata.software || 'Not available'} />
               <ReportDataCard label="Camera make" value={metadata.make || 'Not available'} />
@@ -522,7 +522,7 @@ export default function AppReportPrintPage() {
           </section>
         </section>
 
-        <section className="mt-8 grid gap-6 xl:grid-cols-2">
+        <section className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-2">
           <section className="rounded-[1.75rem] border border-stone-light bg-parchment p-5">
             <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">
               AI detection results
@@ -614,7 +614,7 @@ export default function AppReportPrintPage() {
           <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">
             Key findings
           </p>
-          <div className="mt-5 grid gap-4 lg:grid-cols-2">
+          <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
             {keyFindings.length > 0 ? (
               keyFindings.map((finding) => (
                 <div
@@ -678,7 +678,7 @@ export default function AppReportPrintPage() {
           </div>
         </section>
 
-        <section className="mt-8 grid gap-6 xl:grid-cols-2">
+        <section className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-2">
           <section className="rounded-[1.75rem] border border-stone-light bg-parchment p-5">
             <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">
               Recommendations
@@ -736,7 +736,7 @@ export default function AppReportPrintPage() {
         </section>
 
         {/* Evidence appendix — methodology + limitations (approved MVP feature) */}
-        <section className="mt-8 grid gap-6 xl:grid-cols-2">
+        <section className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-2">
           <section className="rounded-[1.75rem] border border-stone-light bg-parchment p-5">
             <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">
               Appendix — Methodology

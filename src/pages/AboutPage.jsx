@@ -33,7 +33,7 @@ export default function AboutPage() {
       />
 
       <section className="section-padding bg-parchment-light">
-        <div className="content-container grid gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
+        <div className="content-container grid grid-cols-1 gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
           <div className="surface-card relative overflow-hidden p-8 md:p-10">
             <div className="absolute right-0 top-0 h-28 w-28 rounded-full bg-trust/8 blur-2xl" />
             <p className="font-mono text-xs uppercase tracking-[0.2em] text-charcoal-light">Our story</p>
@@ -90,7 +90,7 @@ export default function AboutPage() {
 
       <section className="section-padding bg-charcoal text-parchment relative overflow-hidden">
         <div className="absolute inset-0 forensic-grid opacity-[0.04]" />
-        <div className="content-container relative z-10 grid gap-8 lg:grid-cols-[1.08fr_0.92fr]">
+        <div className="content-container relative z-10 grid grid-cols-1 gap-8 lg:grid-cols-[1.08fr_0.92fr]">
           <div className="surface-card-dark p-8 md:p-10">
             <p className="font-mono text-xs uppercase tracking-[0.2em] text-stone">The problem we are solving</p>
             <h2 className="mt-4 font-serif text-3xl">Trust is getting harder to establish.</h2>
@@ -133,7 +133,7 @@ export default function AboutPage() {
       </section>
 
       <section className="section-padding bg-parchment-light">
-        <div className="content-container grid gap-8 lg:grid-cols-[0.95fr_1.05fr]">
+        <div className="content-container grid grid-cols-1 gap-8 lg:grid-cols-[0.95fr_1.05fr]">
           <div className="surface-card p-8 md:p-10">
             <p className="font-mono text-xs uppercase tracking-[0.2em] text-charcoal-light">Our approach</p>
             <h2 className="mt-4 font-serif text-3xl text-charcoal">Evidence-first verification</h2>
@@ -179,7 +179,7 @@ export default function AboutPage() {
       </section>
 
       <section className="section-padding bg-parchment-light">
-        <div className="content-container grid gap-8 lg:grid-cols-2">
+        <div className="content-container grid grid-cols-1 gap-8 lg:grid-cols-2">
           <div className="surface-card p-8 md:p-10">
             <p className="font-mono text-xs uppercase tracking-[0.2em] text-charcoal-light">Commitment to transparency</p>
             <h2 className="mt-4 font-serif text-3xl text-charcoal">We want users to understand the result, not just receive it.</h2>

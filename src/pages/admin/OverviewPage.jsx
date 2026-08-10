@@ -275,7 +275,7 @@ export default function OverviewPage() {
         description="The administration control room is active. As users, scans, and waitlist applications flow through the platform, metrics will populate here automatically."
         variant="empty"
       >
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
           {[
             { label: 'Waitlist', to: '/app/admin/waitlist', desc: 'Review and manage access applications' },
             { label: 'Users', to: '/app/admin/users', desc: 'Manage user accounts and roles' },

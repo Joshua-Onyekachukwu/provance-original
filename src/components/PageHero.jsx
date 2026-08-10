@@ -125,7 +125,7 @@ export default function PageHero({
           <motion.div
             initial="hidden"
             animate="visible"
-            className="mt-10 grid gap-4 md:grid-cols-3"
+            className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-3"
           >
             {meta.map((item, index) => (
               <motion.div key={item.label} variants={fadeUp} custom={index + 3} className="page-hero-meta-item">

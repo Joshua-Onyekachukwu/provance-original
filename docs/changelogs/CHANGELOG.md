@@ -1,5 +1,17 @@
 # Provance — Changelog
 
+## [2026-08-10] - Mobile-first grid guard: every responsive grid needs a base grid-cols-1
+
+### Guard
+- **`src/lib/gridClassGuard.js`** (new) — static scanner that walks `src/` for `className` literals (static strings + non-interpolated JSX template literals) and enforces the mobile-first convention: any className with a breakpoint grid-cols token (`sm:`/`md:`/`lg:`/`xl:`/`2xl:grid-cols-*`) must also declare a base `grid-cols-1`. Exceptions are explicit and reviewed: breakpoint-gated grids (`lg:grid lg:grid-cols-[…]`, the shells — not a grid on mobile) and an `INTENTIONAL_MOBILE_GRIDS` allowlist (deliberate 2-up mobile chips/metric tiles, archived forensic media audit).
+- **`src/lib/gridClassGuard.test.js`** (new, 13 tests) — parser unit tests (static vs template vs interpolated literals), rule tests (compliant bases, gated grids, allowlist, and the three violation shapes), the **repo-wide guard** (zero violations in src), and an allowlist-staleness check so a removed allowlisted literal fails loudly instead of rotting.
+
+### Fixed (36 violations, all the implicit-base regression class)
+- Inserted the explicit `grid-cols-1` base into every responsive grid that relied on the implicit single-column default — zero visual change (identical rendering), but the convention is now explicit and enforced: PageHero, SampleReport, SampleReportDocument, ProductShowcase, AboutPage, ContactPage, ResourcesPage, WaitlistPage, BenchmarkPage, SampleReportPage, admin Overview/Roles, app Organization/ReportPrint/Reports/Security/Uploads, and the archived forensic PDFReportMediaAudit.
+
+### Tests
+- Frontend vitest **476/476** (+13), `npm run build` clean, eslint clean on the new files.
+
 ## [2026-08-10] - Responsive pass: tablet (768px) + desktop (1280px) audit
 
 ### Verified

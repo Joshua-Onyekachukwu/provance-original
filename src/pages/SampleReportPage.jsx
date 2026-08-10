@@ -62,7 +62,7 @@ export default function SampleReportPage() {
                         className="rounded-[1.2rem] border-0"
                       />
                     </div>
-                    <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                    <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
                       {[
                         ['Source information', 'Uploaded by newsroom desk'],
                         ['Fingerprint', 'Matched to case record'],
