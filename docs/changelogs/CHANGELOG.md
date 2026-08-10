@@ -1,5 +1,14 @@
 # Provance — Changelog
 
+## [2026-08-10] - useResource polling: explicit tab-hidden pause contract
+
+### Frontend (poll hardening)
+- **`useResource` visibility gate** (`useResource.js`) — the polling loop now enforces its documented "pauses while the tab is hidden" contract explicitly: `tick` bails when `document.visibilityState === 'hidden'`, and a `visibilitychange` listener fires an immediate catch-up tick on return. Previously the pause relied on browser timer throttling, which is not guaranteed in every environment (backgrounded iframes, headless, non-throttled contexts). The gate is checked per tick; the catch-up respects `pollWhen`, so a hidden tab can't waste background requests and surfaces resume tracking the moment it's visible again.
+- Live walk re-attempt: POST /scans is still **503** against the live project — the scan-pipeline migrations (0009 columns + 0019 idempotency_key) are not applied, so the real upload → dashboard poll walk remains blocked on the same pending migration set (see the deploy-check follow-up row).
+
+### Tests
+- `useResource.test.jsx` (new, 4 tests, jsdom + fake timers) — interval cadence with silent in-place swaps, the hidden-tab pause (zero requests across 5 interval windows), the `visibilitychange` catch-up + resumed cadence, last-known-good survival on a rejected poll, and the `pollWhen` gate idling. Uses deterministic `act` flushes instead of RTL `waitFor` (which can't see vitest fake timers). Frontend vitest **482/482** (+4), `npm run build` clean, oxlint 0 errors.
+
 ## [2026-08-10] - Report detail live-completion via mock worker lifecycle
 
 ### Frontend (mock parity)

@@ -100,6 +100,14 @@ export function useResource(loader, deps = [], options = {}) {
 
     const tick = async () => {
       if (cancelled || inFlight) return
+      // Documented contract: the loop pauses while the tab is hidden (no
+      // wasted background requests) and catches up on return — the
+      // visibilitychange listener fires an immediate tick when visible again.
+      // An explicit gate (not just browser timer throttling) guarantees the
+      // pause in every environment, including non-throttled ones.
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+        return
+      }
       inFlight = true
       try {
         // Gate checked inside the try so a throwing predicate is caught (and
