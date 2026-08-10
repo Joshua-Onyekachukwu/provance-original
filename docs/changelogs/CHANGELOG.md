@@ -1,5 +1,12 @@
 # Provance — Changelog
 
+## [2026-08-10] - scanPresentation import-parity guard
+
+### Tests (regression protection)
+- **`scanPresentationParity.js` + test** (new) — a static import-parity guard mirroring the `gridClassGuard` pattern. Walks every file in `src/` that imports from `scanPresentation.js` (50+ importers incl. test files), parses the imported names (single-line, multi-line, aliased, multiple statements), and asserts every name still exists in the module's **runtime export surface** — so a formatter consolidation that renames/removes an export but misses an importer fails the unit suite the moment it lands instead of drifting silently.
+- The module's public signature is pinned as a 30-name snapshot (`SURFACE`), so adding/removing/renaming an export is a deliberate, documented API change (the test error tells you to extend the snapshot). Namespace (`import * as`) and default imports are flagged as unsupported shapes. Verified non-vacuous: a scratch importer referencing a bogus `noSuchFormatter` is flagged by the scan.
+- Frontend vitest **493/493** (+11), `npm run build` clean, oxlint 0 errors.
+
 ## [2026-08-10] - useResource polling: explicit tab-hidden pause contract
 
 ### Frontend (poll hardening)
