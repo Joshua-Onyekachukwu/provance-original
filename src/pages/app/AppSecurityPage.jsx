@@ -65,7 +65,7 @@ function DeviceIcon() {
   )
 }
 
-function SessionRow({ session, onRevoke, busy }) {
+function SessionRow({ session, onRevoke, onCancelConfirm, confirming, busy }) {
   return (
     <div className="flex items-center gap-4 rounded-2xl border border-stone-light bg-parchment px-4 py-4">
       <DeviceIcon />
@@ -82,14 +82,22 @@ function SessionRow({ session, onRevoke, busy }) {
           Last active {formatRelativeTime(session.lastActiveAt)}
         </p>
       </div>
-      <Button
-        variant="ghost"
-        size="sm"
-        disabled={session.isCurrent || busy}
-        onClick={() => onRevoke(session)}
-      >
-        Revoke
-      </Button>
+      <div className="flex shrink-0 items-center gap-2">
+        {confirming && !busy && (
+          <Button variant="ghost" size="sm" onClick={onCancelConfirm}>
+            Cancel
+          </Button>
+        )}
+        <Button
+          variant={confirming ? 'danger' : 'ghost'}
+          size="sm"
+          loading={busy}
+          disabled={session.isCurrent || busy}
+          onClick={() => onRevoke(session)}
+        >
+          {busy ? 'Revoking…' : confirming ? 'Confirm revoke?' : 'Revoke'}
+        </Button>
+      </div>
     </div>
   )
 }
@@ -120,6 +128,10 @@ export default function AppSecurityPage() {
   const [passwordSuccess, setPasswordSuccess] = useState('')
   const [isChangingPassword, setIsChangingPassword] = useState(false)
   const [revokeBusyId, setRevokeBusyId] = useState(null)
+  // Row id awaiting the destructive confirm — two-step revoke, so a stray
+  // click can never sign a device out. Resets on cancel / revoke start /
+  // reload (settings reload clears localSessions below).
+  const [confirmingRevokeId, setConfirmingRevokeId] = useState(null)
   const [localSessions, setLocalSessions] = useState(null)
   const [localControls, setLocalControls] = useState(null)
 
@@ -138,6 +150,7 @@ export default function AppSecurityPage() {
   useEffect(() => {
     setLocalSessions(null)
     setLocalControls(null)
+    setConfirmingRevokeId(null)
   }, [settings.status])
 
   const passwordChecks = useMemo(() => {
@@ -190,7 +203,30 @@ export default function AppSecurityPage() {
     }
   }
 
+  /**
+   * Two-step revoke: the first click arms the row's confirm state, the
+   * second ("Confirm revoke?") actually calls the API. The bulk "revoke all
+   * other sessions" command calls handleRevoke directly and skips the per-row
+   * confirm, matching the existing one-shot behavior.
+   */
+  function handleRevokeClick(session) {
+    if (session.isCurrent) {
+      // Contract parity: DELETE /security/sessions/:id rejects the current
+      // session with 400 — the row's button is disabled anyway, but guard
+      // here so a stale isCurrent flag surfaces the exact rule instead of a
+      // generic error.
+      toast.error('You cannot revoke the current session.')
+      return
+    }
+    if (confirmingRevokeId !== session.id) {
+      setConfirmingRevokeId(session.id)
+      return
+    }
+    void handleRevoke(session)
+  }
+
   async function handleRevoke(session) {
+    setConfirmingRevokeId(null)
     setRevokeBusyId(session.id)
     try {
       await revokeSession(session.id)
@@ -201,6 +237,8 @@ export default function AppSecurityPage() {
         description: `${session.device} signed out.`,
       })
     } catch (error) {
+      // The DELETE contract's 400 (current session / not found) arrives as
+      // error.message and is surfaced verbatim.
       toast.error(error instanceof Error ? error.message : 'Session could not be revoked.')
     } finally {
       setRevokeBusyId(null)
@@ -391,7 +429,9 @@ export default function AppSecurityPage() {
                 key={session.id}
                 session={session}
                 busy={revokeBusyId === session.id}
-                onRevoke={handleRevoke}
+                confirming={confirmingRevokeId === session.id}
+                onRevoke={handleRevokeClick}
+                onCancelConfirm={() => setConfirmingRevokeId(null)}
               />
             ))}
           </div>

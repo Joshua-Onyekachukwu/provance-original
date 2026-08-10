@@ -1,5 +1,17 @@
 # Provance — Changelog
 
+## [2026-08-10] - Security page: two-step session revoke + in-flight state
+
+### Frontend (AppSecurityPage)
+- **Two-step confirm**: clicking Revoke now arms an inline confirm — the row's button switches to a danger **"Confirm revoke?"** with a **Cancel** affordance; only the second click calls the API. The bulk "Revoke all other sessions" ⌘K command keeps its one-shot behavior (skips the per-row confirm).
+- **Per-session in-flight state**: while the DELETE is in flight, the revoking session's button shows a spinner + **"Revoking…"** (`aria-busy`, disabled via the ui Button `loading` prop) — other rows stay interactive for parallel revokes.
+- **DELETE contract parity (400-on-current-session)**: the current session's button stays disabled, and `handleRevokeClick` guards defensively — a stale `isCurrent` flag surfaces the exact contract message ("You cannot revoke the current session.") instead of a generic error. Backend/mock 400 messages already flow through verbatim on the error path.
+- Confirm state resets on cancel, on revoke start, and on settings refetch.
+
+### Verified
+- Live in the preview (mock mode): armed confirm renders Cancel + danger button; confirmed revoke removed the row with a success toast; the in-flight state was captured deterministically (`Revoking…`, `aria-busy="true"`, spinner) via a microtask-flush read inside the 200–600ms mock delay window. Current-session row renders disabled.
+- Frontend vitest **493/493**, `npm run build` clean, oxlint 0 errors.
+
 ## [2026-08-10] - Real scan upload + queue round-trip: verified complete
 
 ### Backend (audit result)
