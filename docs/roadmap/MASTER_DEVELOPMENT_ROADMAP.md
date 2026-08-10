@@ -1,6 +1,6 @@
 # Master Development Roadmap
 
-Last updated: 2026-07-24
+Last updated: 2026-08-07
 
 ## Purpose
 
@@ -147,7 +147,7 @@ Turn the authenticated workspace into a coherent, polished operating surface wit
 
 **Current Status**
 
-In Progress
+Completed
 
 **Priority**
 
@@ -200,7 +200,7 @@ Finish the remaining MVP-critical product capabilities needed for a usable inter
 
 **Current Status**
 
-In Progress (frontend 100% complete: user workspace 15/15 + admin workspace 12/12 pages shipped; approved features + backend integration remain)
+In Progress (frontend **100% complete**: user workspace 16/16 + admin workspace 12/12 pages shipped and verified — all 12 admin pages closed out incl. Analytics, Monitoring, Audit Logs, Jobs, Reports, Roles, Settings; only backend slices and the approved feature set remain)
 
 **Priority**
 
@@ -227,9 +227,9 @@ High
 - document and expose internal diagnostics needed for Founder testing
 - evaluate whether any existing template assets are worth selective reuse without adopting a full template system
 - add the approved global error boundary + crash recovery
-- add the approved report PDF export (client-side)
+- add the approved report PDF export (client-side) — **shipped 2026-08-07**: printable view + print stylesheet + Export PDF buttons (detail, print page, ⌘K) with pre/post export toasts
 - add the approved admin analytics + monitoring pages (shipped: Analytics + Monitoring pages + real `GET /admin/analytics` endpoint)
-- add the approved scan deduplication (hash-based)
+- add the approved scan deduplication (hash-based) — **shipped 2026-08-08**: worker-side SHA-256 lookup against prior completed scans (migration 0013), reused payload with `deduplicated_from` marker, mock `?dedup=1` demo seam, uploads-page reused-report CTA + report-detail badge
 
 **Dependencies**
 
@@ -280,7 +280,7 @@ High
 - version result payload structure where needed
 - improve report usefulness without overstating confidence
 - establish benchmark methodology for speed, accuracy, and pipeline validation
-- add the approved evidence appendix (methodology + limitations) to reports
+- add the approved evidence appendix (methodology + limitations) to reports — **shipped 2026-08-08**: honest methodology + limitations appendix on the report document model, server PDF, printable report, and sample report demo (approved MVP feature, all approved MVP features now shipped)
 
 **Dependencies**
 
@@ -417,24 +417,27 @@ Features recommended in the frontend completion review (`docs/reports/2026-08-04
 | Feature | Priority | Target | Status |
 | --- | --- | --- | --- |
 | Global error boundary + crash recovery | High | MVP | Approved |
-| Report PDF export (client-side) | High | MVP | Approved |
-| Scan deduplication (hash-based) | Medium | MVP | Approved |
+| Report PDF export (client-side) | High | MVP | **Shipped** (printable view + export flow, 2026-08-07) |
+| Scan deduplication (hash-based) | Medium | MVP | **Shipped** (worker-side hash lookup + reused payload, 2026-08-08) |
 | Organization invites + roles | High | MVP | **Shipped** (Organization Management page) |
 | Admin analytics + monitoring pages | Medium | MVP (admin) | **Shipped** (Analytics + Monitoring pages; real `GET /admin/analytics` backend endpoint) |
 | Session hardening (httpOnly cookies) | High | Before beta | Approved |
 | Sentry + PostHog baseline | Medium | Before beta | Approved |
-| Webhooks UI | Medium | Later | Approved |
+| Webhooks UI | Medium | Later | **Shipped** (/app/webhooks — endpoints, signing secrets, delivery log, test ping, 2026-08-08) |
+| Evidence appendix in reports | Medium | Later | **Shipped** (methodology + limitations appendix on print/PDF/sample surfaces, 2026-08-08) |
 | Usage/entitlement enforcement | Medium | Later | Approved |
-| Evidence appendix in reports | Medium | Later | Approved |
 
 ## Immediate Active Phase
 
 The current work is in Phase 3 (Working MVP Product Completion).
 
-The frontend is **100% complete** — the user workspace (15/15 pages) and the
+The frontend is **100% complete** — the user workspace (16/16 pages) and the
 admin workspace (12/12 pages) are both built and verified; no placeholders remain.
-The active focus is now:
+The admin close-out (all 12 pages: Overview, Waitlist, Users, Organizations,
+Feature Flags, Analytics, Monitoring, Audit Logs, Jobs, Reports, Roles, Settings)
+was confirmed 2026-08-07 and re-verified by the final sign-off audit on
+2026-08-08 — no frontend slices remain. The active focus is now:
 
-- implementing the approved MVP feature set (error boundary done, PDF export + dedup next; admin analytics/monitoring done)
+- implementing the approved MVP feature set (error boundary, **PDF export**, **scan dedup**, **webhooks UI**, **evidence appendix**, admin analytics/monitoring all shipped)
 - backend integration: auth token hardening, **real `/admin/analytics` endpoint (done)** → scan upload + queue round-trip against Supabase → report payload API
 - session hardening and the Sentry + PostHog baseline ahead of beta

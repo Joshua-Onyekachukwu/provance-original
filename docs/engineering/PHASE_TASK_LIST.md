@@ -1,6 +1,6 @@
 # Provance Feature And Phase Checklist
 
-Last updated: 2026-07-24
+Last updated: 2026-08-07
 
 ## Purpose
 
@@ -86,9 +86,9 @@ Status tags:
 - [x] Complete: formatter consolidation — all date/number/duration/storage formatters unified into `src/components/app/scanPresentation.js` (formatCount, formatDate, formatDateTime, formatScanTimestamp, formatShortDate, formatDateLong, formatTimeShort, formatHourShort, formatRelativeTime, formatPct, percentOf, formatCurrency, formatDurationMs, formatStorageGb, formatFileSize)
 - [x] Complete: formatter locale pinned to en-US (formatDate + formatRelativeTime fallback were locale-default `toLocaleDateString(undefined, …)`; now `Intl.DateTimeFormat('en-US', …)` so output never shifts with the browser locale)
 - [x] Complete: sample-report timestamp standardization — single canonical `analysisTimestampIso` in `sampleReportContent.js` rendered via `formatDateTime` on the landing, page, document, and print surfaces (was hardcoded and divergent: `2026-06-25` vs `2026-07-16`)
-- [x] Complete: formatter test suite — **63 vitest tests** covering edge cases (nulls, NaN, zero, sub-second, invalid input, rounding and unit boundaries)
+- [x] Complete: formatter test suite — **113-test suite** covering edge cases (nulls, NaN, zero, sub-second, invalid input, rounding and unit boundaries); full vitest suite **295/295** (2026-08-07)
 - [x] Complete: formatter sign-off sweep — final grep for hand-rolled formatting (numbers/percents/dates) across forensic components and Sample Report surfaces; stragglers migrated (`AppBillingPage` → `formatStorageGb`, forensic `VeracityGauge` → `formatPct`); `scanPresentation.js` confirmed as the single source of truth for presentation formatting (2026-08-05)
-- [ ] Not Started: sweep the two legacy admin pages (Organizations, Feature Flags) onto the ui kit primitives
+- [x] Complete: sweep the legacy admin pages onto the ui kit primitives — Organizations + Feature Flags migrated in the prior pass; final sweep (2026-08-07) found and migrated the last `AdminTable` consumer (AnalyticsPage top-orgs table → `DataTable`), leaving **zero** legacy `AdminTable`/`AdminStatCard`/`AdminDrawer` imports anywhere in `src/pages/`
 
 ### App Shell And Navigation
 
@@ -157,6 +157,7 @@ Status tags:
 
 ### Admin Workspace
 
+- [x] Complete: all 12 admin pages shipped and verified — Overview, Waitlist, Users, Organizations, Feature Flags, Analytics, Monitoring, Audit Logs, Jobs, Reports, Roles, Settings — mock-backed with loading/empty/error states and `?state=` demo forcing (2026-08-07); no admin placeholders remain
 - [x] Complete: admin-gated route
 - [x] Complete: waitlist search and filtering
 - [x] Complete: notes and status review
@@ -231,7 +232,7 @@ Status tags:
 - [ ] Not Started: founder-friendly operational diagnostics surface
 - [x] Complete: admin analytics + monitoring pages (Analytics + Monitoring pages, real `GET /admin/analytics` endpoint)
 - [ ] Approved 2026-08-04: global error boundary + crash recovery
-- [ ] Approved 2026-08-04: scan deduplication (hash-based)
+- [x] Complete: scan deduplication (hash-based) — worker-side SHA-256 lookup + reused payload (migration 0013, shipped 2026-08-08)
 - [ ] Approved 2026-08-04: webhooks UI (later release)
 - [ ] Approved 2026-08-04: usage/entitlement enforcement (later release)
 - [ ] Approved 2026-08-04: evidence appendix in reports (later release)

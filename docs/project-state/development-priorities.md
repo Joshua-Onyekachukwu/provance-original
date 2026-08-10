@@ -10,8 +10,8 @@ This document records the active development priorities in execution order.
 
 Complete the working MVP application.
 
-**Status (2026-08-05):** the frontend is 100% complete — the user workspace
-(15/15 pages) and admin workspace (12/12 pages) are built and verified, with
+**Status (2026-08-08):** the frontend is 100% complete — the user workspace
+(16/16 pages) and admin workspace (12/12 pages) are built and verified, with
 loading/empty/error states, `?state=` demo forcing, and ⌘K commands on every
 surface. No placeholders remain. The remaining work is approved MVP features
 (PDF export, scan dedup) and backend integration:

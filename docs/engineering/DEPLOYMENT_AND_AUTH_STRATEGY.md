@@ -1,6 +1,6 @@
 # Deployment And Auth Strategy
 
-Last updated: 2026-07-16
+Last updated: 2026-08-06
 
 ## Status Note
 
@@ -46,11 +46,14 @@ Provance uses a backend-mediated auth path:
 
 - frontend submits sign-in to the NestJS API
 - NestJS signs in against Supabase Auth
-- the **access token** is returned in the response body and kept in browser memory / short-lived storage
-- the **refresh token** is transported exclusively in an httpOnly cookie (`provance_refresh`)
+- the **access token** is returned in the response body and kept in **JS memory only** — the migrated frontend never persists it to localStorage (mock mode `USE_MOCK=true` is the one dev-only exception)
+- the **refresh token** is transported exclusively in an httpOnly cookie (`provance_refresh`, or `__Host-provance_refresh` when `AUTH_COOKIE_SECURE=true`)
 - every refresh rotates the cookie value (Supabase refresh tokens are single-use), and sign-out burns the token server-side before clearing the cookie
-- frontend hydrates signed-in identity, permissions, and account profile state through backend identity endpoints
-- protected routes use the access token to authorize API calls
+- on cold boot the frontend performs a silent cookie refresh (`ensureSession`), then hydrates identity, permissions, and profile through `GET /auth/me`
+- protected routes use the in-memory access token to authorize API calls
+
+The full migration path (current → target state, deploy order, env matrix, rollback, security
+posture) is documented in `docs/engineering/AUTH_HARDENING_MIGRATION.md`.
 
 Cookie behavior is configurable:
 
@@ -164,11 +167,12 @@ Reference:
 ## Deployment Checklist
 
 Run before shipping backend changes. `npm run check:launch` is the single
-pre-ship gate: it runs the **frontend vitest suite first** (`npm test`, 63
-tests), then the frontend build, backend build, and backend e2e health check —
-so a formatter or component regression fails fast before any deploy.
+pre-ship gate: it runs **`npm run check:test` first** (lint + the full frontend
+vitest suite — 166 tests, formatters included), then the frontend build,
+backend build, and backend e2e health check — so a lint violation or formatter
+regression fails fast before any deploy.
 
-1. `npm test` — frontend vitest suite (63 tests: formatters + edge cases)
+1. `npm run check:test` — `npm run lint` + `npm test` (166 vitest tests: formatters + edge cases)
 2. `npm run build` — frontend production build
 3. `npm run backend:build` — backend production build
 4. `npm run backend:test:e2e` — backend in-memory e2e health check
