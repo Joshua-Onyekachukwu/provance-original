@@ -101,3 +101,6 @@ Status values: `Open` · `In Progress` · `Done` · `Deferred` · `Declined`
 
 | 2026-08-10 | SecurityController HTTP spec | Decide whether PATCH /security/settings should reject unknown keys with 400 (currently a silent no-op — controls unchanged, still 200) so client typos surface instead of silently doing nothing | Open |
 | 2026-08-10 | SecurityController HTTP spec | The stateful in-memory Supabase mock is now duplicated between backend/test/security.e2e-spec.ts and this controller spec — extract it into a shared test helper module so the two cannot drift | Open |
+
+| 2026-08-10 | Dashboard notification feed click contract | Add a View all affordance to the dashboard feed body (it currently caps at unread.slice(0, 4) with no link to /app/notifications) | Open |
+| 2026-08-10 | Dashboard notification feed click contract | The optimistic readIds set resets on remount and the bell keeps its own count (documented as per-instance state) — consider lifting unread state into a shared context so the badge and feed sync instantly without refetch | Open |

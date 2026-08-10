@@ -30,6 +30,7 @@ import {
   getReports,
   getSystemHealth,
   listScans,
+  markNotificationRead,
 } from '../../lib/api.js'
 import { useDemoStateControl, withDemoOverride } from '../../lib/useDemoState.js'
 import { useResource } from '../../lib/useResource.js'
@@ -137,7 +138,7 @@ function SystemStatusDot({ label, operational }) {
   )
 }
 
-function NotificationPreviewRow({ notification }) {
+function NotificationPreviewRow({ notification, onClick }) {
   const categoryColors = {
     scan: 'bg-sky-500',
     system: 'bg-stone-400',
@@ -147,17 +148,24 @@ function NotificationPreviewRow({ notification }) {
   }
   const dotColor = categoryColors[notification.category] || 'bg-stone-400'
 
+  // Same click contract as the bell + full Notifications page: mark read,
+  // then navigate to the linked route when the notification carries one
+  // (mockNotifications deep-link to /app/reports/:scanId).
   return (
-    <div className="flex items-start gap-3 py-3.5 first:pt-0 last:pb-0">
+    <button
+      type="button"
+      onClick={onClick}
+      className="ui-focus-ring flex w-full items-start gap-3 py-3.5 text-left first:pt-0 last:pb-0"
+    >
       <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${dotColor}`} aria-hidden="true" />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-charcoal">{notification.title}</p>
-        <p className="mt-0.5 line-clamp-1 text-xs text-charcoal-mid">{notification.description}</p>
-      </div>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-medium text-charcoal">{notification.title}</span>
+        <span className="mt-0.5 block line-clamp-1 text-xs text-charcoal-mid">{notification.description}</span>
+      </span>
       <time className="shrink-0 pt-0.5 text-xs tabular-nums whitespace-nowrap text-charcoal-light">
         {formatRelativeTime(notification.created_at)}
       </time>
-    </div>
+    </button>
   )
 }
 
@@ -759,8 +767,13 @@ function ReportsFeedBody({ reports, onRetry }) {
   )
 }
 
-function NotificationsFeedBody({ notifications, onRetry }) {
-  const unread = (notifications.data || []).filter((n) => !n.read)
+function NotificationsFeedBody({ notifications, onRetry, readIds, onNotificationClick }) {
+  // readIds is the optimistic in-session read set (mirrors the bell's local
+  // state): a clicked row drops out of the unread preview immediately, and
+  // the API persistence is fire-and-forget like the bell.
+  const unread = (notifications.data || []).filter(
+    (n) => !n.read && !readIds.has(n.id),
+  )
 
   return (
     <>
@@ -775,7 +788,11 @@ function NotificationsFeedBody({ notifications, onRetry }) {
       {notifications.status === 'ready' && unread.length > 0 && (
         <div className="divide-y divide-stone-light">
           {unread.slice(0, 4).map((notification) => (
-            <NotificationPreviewRow key={notification.id} notification={notification} />
+            <NotificationPreviewRow
+              key={notification.id}
+              notification={notification}
+              onClick={() => onNotificationClick(notification)}
+            />
           ))}
         </div>
       )}
@@ -816,7 +833,7 @@ function ActivityFeedBody({ activity, onRetry }) {
  * the live activity feed, recent reports, and notifications via the Tabs
  * primitive; each tab manages its own loading / error / empty state.
  */
-function ActivityTabsPanel({ activity, reports, notifications, onRetryActivity, onRetryReports, onRetryNotifications }) {
+function ActivityTabsPanel({ activity, reports, notifications, onRetryActivity, onRetryReports, onRetryNotifications, readIds, onNotificationClick }) {
   const [activeTab, setActiveTab] = useState('activity')
 
   const unreadCount = (notifications.data || []).filter((n) => !n.read).length
@@ -868,7 +885,12 @@ function ActivityTabsPanel({ activity, reports, notifications, onRetryActivity, 
           aria-labelledby="workspace-activity-tab-notifications"
           hidden={activeTab !== 'notifications'}
         >
-          <NotificationsFeedBody notifications={notifications} onRetry={onRetryNotifications} />
+          <NotificationsFeedBody
+            notifications={notifications}
+            onRetry={onRetryNotifications}
+            readIds={readIds}
+            onNotificationClick={onNotificationClick}
+          />
         </div>
       </div>
     </Card>
@@ -911,6 +933,21 @@ export default function AppDashboardPage() {
     demoState,
     { emptyData: [] },
   )
+  // Optimistic in-session read set for the dashboard's notification feed —
+  // the same contract as the bell: clicking marks read (row leaves the
+  // unread preview immediately) and navigates to the linked route when the
+  // notification carries one. Persistence is fire-and-forget.
+  const [localReadIds, setLocalReadIds] = useState(() => new Set())
+
+  function handleFeedNotificationClick(notification) {
+    setLocalReadIds((current) => new Set(current).add(notification.id))
+    if (notification.link) {
+      navigate(notification.link)
+    }
+    markNotificationRead(notification.id).catch(() => {
+      if (import.meta.env.DEV) console.warn('[notifications] mark-read persistence failed')
+    })
+  }
   const queue = withDemoOverride(
     useResource(
       () => getQueueSnapshot(),
@@ -1254,6 +1291,8 @@ export default function AppDashboardPage() {
         onRetryActivity={activity.reload}
         onRetryReports={reports.reload}
         onRetryNotifications={notifications.reload}
+        readIds={localReadIds}
+        onNotificationClick={handleFeedNotificationClick}
       />
 
       // Dev-only: force loading / empty / error for review & screenshots

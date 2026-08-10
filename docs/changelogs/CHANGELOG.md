@@ -1,5 +1,16 @@
 # Provance — Changelog
 
+## [2026-08-10] - Dashboard notification feed gets the shared click contract
+
+### Changed
+- `src/pages/app/AppDashboardPage.jsx` — the separately-mounted notification feed (Workspace activity → Notifications tab) now uses the exact bell/Notifications-page click contract: clicking a row marks it read and navigates to the linked report route when the notification carries a `link` (mockNotifications deep-link to `/app/reports/:scanId`); link-less rows mark read and stay put. `NotificationPreviewRow` is now a focusable button; the feed keeps an optimistic in-session `readIds` set so the clicked row leaves the unread preview immediately (persistence fire-and-forget via `markNotificationRead`, same as the bell).
+
+### Added
+- **`src/pages/app/appDashboardNotifications.test.jsx`** (+2, jsdom): deterministic api mock (completed-only scans so polling idles, first 8 seed notifications, zeroed counters) in the nested-route harness (`/app` + `/app/reports/:scanId` marker). Test 1: clicking "Scan completed successfully" navigates to `REPORT_MARKER:scan_007` and calls `markNotificationRead('notif_001')`. Test 2: clicking the link-less "Verification report ready" stays on the dashboard, marks `notif_002` read, and the row drops out of the preview.
+
+### Gates
+- Frontend vitest **495/495** (+2), `npm run build` clean, oxlint 0 errors.
+
 ## [2026-08-10] - SecurityController HTTP-layer spec (real service + stateful Supabase mock)
 
 ### Tests
