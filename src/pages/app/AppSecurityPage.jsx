@@ -73,6 +73,11 @@ function SessionRow({ session, onRevoke, onCancelConfirm, confirming, busy }) {
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-sm font-medium text-charcoal">{session.device}</p>
           {session.isCurrent && <Badge tone="success" size="sm">This device</Badge>}
+          {session.isNewDevice && (
+            <Badge tone="warning" size="sm" title="This device is new to your account">
+              New device
+            </Badge>
+          )}
           {session.teamId && <TeamBadge teamId={session.teamId} />}
         </div>
         <p className="mt-1 text-xs text-charcoal-mid">

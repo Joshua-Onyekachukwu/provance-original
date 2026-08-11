@@ -12,7 +12,7 @@
 // Helpers
 // ---------------------------------------------------------------------------
 
-const NOW_TS = new Date('2026-07-24T12:00:00Z').getTime()
+export const NOW_TS = new Date('2026-07-24T12:00:00Z').getTime()
 
 function daysAgo(days, hourOffset = 0) {
   const d = new Date(NOW_TS - days * 86400000 + hourOffset * 3600000)

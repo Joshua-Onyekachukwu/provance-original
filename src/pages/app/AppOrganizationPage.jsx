@@ -776,6 +776,15 @@ export default function AppOrganizationPage() {
                           This device
                         </Badge>
                       )}
+                      {session.isNewDevice && (
+                        <Badge
+                          tone="warning"
+                          size="sm"
+                          title="First time this device has been seen for this member"
+                        >
+                          New device
+                        </Badge>
+                      )}
                     </div>
                     <p className="mt-0.5 truncate text-xs text-charcoal-mid">
                       {session.location} · {session.ipAddress}

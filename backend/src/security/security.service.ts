@@ -39,9 +39,25 @@ type SessionView = {
   ipAddress: string;
   lastActiveAt: string;
   isCurrent: boolean;
+  /**
+   * Trust signal: true when the device's FIRST appearance in this user's
+   * ledger is recent (within NEW_DEVICE_WINDOW_DAYS) — i.e. the device is
+   * new to the account. Unknown-device rows never badge. Mirrors the mock's
+   * computeNewDeviceFlags so mock and real modes agree.
+   */
+  isNewDevice: boolean;
   /** The user's workspace team — resolves the tag the UI badges. */
   teamId: string | null;
 };
+
+/** A session on a device first seen within this window is badged 'New device'. */
+const NEW_DEVICE_WINDOW_DAYS = 7;
+
+/** A device label meaningful enough to badge — never the DB 'Unknown device' default. */
+function isMeaningfulDevice(device: string): boolean {
+  const trimmed = (device || '').trim();
+  return trimmed !== '' && trimmed !== 'Unknown device';
+}
 
 type ListSessionsOptions = {
   /** List another user's ledger rows (org-admin view) instead of the caller's. */
@@ -241,13 +257,36 @@ export class SecurityService {
         ? opts.teamId
         : await this.resolveUserTeam(scopedUserId);
 
-    return ((data ?? []) as SessionRow[]).map((row) => ({
+    const rows = (data ?? []) as SessionRow[];
+
+    // Trust signal: a session is a 'New device' when its device's first
+    // appearance in this user's ledger is within NEW_DEVICE_WINDOW_DAYS.
+    // Devices without a meaningful label (empty / 'Unknown device') never
+    // badge. Only created_at ordering matters — a device used for weeks then
+    // revisited stays known, while a brand-new device badges for its first
+    // week.
+    const deviceFirstSeen = new Map<string, number>();
+    const cutoff = Date.now() - NEW_DEVICE_WINDOW_DAYS * 86_400_000;
+    for (const row of rows) {
+      if (!isMeaningfulDevice(row.device)) continue;
+      const firstSeen = new Date(row.created_at).getTime();
+      if (Number.isNaN(firstSeen)) continue;
+      const known = deviceFirstSeen.get(row.device);
+      if (known === undefined || firstSeen < known) {
+        deviceFirstSeen.set(row.device, firstSeen);
+      }
+    }
+
+    return rows.map((row) => ({
       id: row.id,
       device: row.device,
       location: row.location || 'Unknown',
       ipAddress: row.ip_address || 'Unknown',
       lastActiveAt: row.last_active_at,
       isCurrent: Boolean(currentAuthSessionId) && row.auth_session_id === currentAuthSessionId,
+      isNewDevice:
+        isMeaningfulDevice(row.device) &&
+        (deviceFirstSeen.get(row.device) ?? 0) >= cutoff,
       teamId,
     }));
   }

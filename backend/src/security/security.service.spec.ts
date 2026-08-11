@@ -388,6 +388,59 @@ describe('SecurityService', () => {
       });
     });
 
+    it('badges devices first seen within the window as New device (trust signal)', async () => {
+      const day = 86_400_000;
+      const iso = (daysBack: number) => new Date(Date.now() - daysBack * day).toISOString();
+      const rows = [
+        {
+          id: 'sess-new',
+          user_id: USER_ID,
+          auth_session_id: 'sid-new',
+          refresh_token_hash: 'h',
+          device: 'Chrome on Windows',
+          ip_address: '1.2.3.4',
+          location: null,
+          created_at: iso(2),
+          last_active_at: iso(1),
+        },
+        {
+          id: 'sess-known',
+          user_id: USER_ID,
+          auth_session_id: 'sid-known',
+          refresh_token_hash: 'h',
+          device: 'Firefox on macOS',
+          ip_address: '5.6.7.8',
+          location: null,
+          created_at: iso(40),
+          last_active_at: iso(39),
+        },
+        {
+          id: 'sess-unknown',
+          user_id: USER_ID,
+          auth_session_id: 'sid-unknown',
+          refresh_token_hash: 'h',
+          device: 'Unknown device',
+          ip_address: '9.9.9.9',
+          location: null,
+          created_at: iso(0),
+          last_active_at: iso(0),
+        },
+      ];
+      const builder = chain(() => ({ data: rows, error: null }));
+      const adminClient = { from: jest.fn().mockReturnValue(builder) };
+      const service = createService(adminClient);
+
+      const result = await service.listSessions({ id: USER_ID });
+
+      const byId = Object.fromEntries(result.map((session) => [session.id, session]));
+      // First appearance 2 days ago → new. First appearance 40 days ago →
+      // known, even though last_active is recent. 'Unknown device' never
+      // badges regardless of recency.
+      expect(byId['sess-new'].isNewDevice).toBe(true);
+      expect(byId['sess-known'].isNewDevice).toBe(false);
+      expect(byId['sess-unknown'].isNewDevice).toBe(false);
+    });
+
     it('tags every row with the user\'s team (profile-first)', async () => {
       const ledgerBuilder = chain(() => ({ data: rows, error: null }));
       const adminClient = {

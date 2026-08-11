@@ -1,6 +1,19 @@
 # Provance — Changelog
 
-## [2026-08-11] - Live e2e is opt-in: PROVANCE_LIVE_E2E=1; full test:e2e suite green locally
+## [2026-08-11] - Per-session 'New device' trust signal on the Security page and org sessions drawer
+
+### Added
+- **`isNewDevice` on every session view** — a trust signal computed once in `SecurityService.listSessions` (so it flows to `GET /security/settings`, `GET /security/sessions`, and the org `GET /organization/members/:memberId/sessions` drawer alike): a session is badged when its device's FIRST appearance in the user's ledger is within the last 7 days (`NEW_DEVICE_WINDOW_DAYS`). Devices without a meaningful label (empty / the DB `'Unknown device'` default) never badge, and a device used for weeks then revisited stays known.
+- **Frontend badge** — `New device` (warning tone, with a tooltip explaining the signal) next to the device name on `AppSecurityPage` and in the org member-sessions drawer (`AppOrganizationPage`), so workspace admins see the same trust context as the account owner.
+- **Mock parity** — new pure helper `src/lib/sessionTrust.js` (`computeNewDeviceFlags` / `isMeaningfulDevice`, mirroring the backend logic) drives both `mockGetSecuritySettings` and `mockGetMemberSessions`. The mock computes against the fixture clock (`NOW_TS`, exported from mockData) rather than the wall clock, so the demo is deterministic: usr_001 shows both states on the Security page (Edge on Windows, first seen 9d ago → known; the other three → new).
+
+### Tests (+9)
+- `sessionTrust.test.js` (8): meaningful-device filtering, window boundary, repeated-device-first-appearance governance, createdAt/created_at parity, unparseable timestamps, non-array tolerance.
+- `memberSessions.test.js` (+1): trust flags on the mock member-sessions surface + the Security page ledger (sess_004 known, sess_001 new).
+- `security.service.spec.ts` (+1): backend window logic (2d → new, 40d → known, 'Unknown device' → never).
+
+### Verified
+- Backend jest **420/420**, `nest build` clean; frontend vitest **517/517** (52 files); lint 0 errors.
 
 ### Fixed
 - **The live invite-accept spec no longer runs by accident.** The spec's old "skip when credentials absent" gate was dead in practice: `AppModule`'s `ConfigModule.forRoot({ envFilePath: ['.env.local', ...] })` loads this checkout's real project credentials into `process.env` the moment the spec imports `AppModule`, so the presence check always passed and the suite wrote org/invite/user rows to the real Supabase project on every local `npm run test:e2e` (its 2 failures were the missing-0005 seed error). The suite is now **opt-in via `PROVANCE_LIVE_E2E=1`** and always skipped otherwise — even when real credentials are in the process env. With the flag set but credentials absent, the spec fails loudly at load time instead of silently skipping. The misleading `import 'dotenv/config'` (which loaded nothing — there is no `backend/.env`) is removed and the gate's contract is documented in the spec header.

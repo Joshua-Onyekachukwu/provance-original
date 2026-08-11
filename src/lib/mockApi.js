@@ -15,6 +15,7 @@
 
 import { isNoiseDisabled } from './mockNoise.js'
 import { projectScanUsage } from './scanQuota.js'
+import { computeNewDeviceFlags } from './sessionTrust.js'
 
 import {
   mockUsers,
@@ -33,6 +34,7 @@ import {
   mockBillingProfile,
   mockInvoices,
   mockSecuritySettings,
+  NOW_TS,
   mockApiKeys,
   API_KEY_SCOPES,
   mockApiKeyLimits,
@@ -1265,7 +1267,19 @@ export async function mockGetAdminSettings() {
 export async function mockGetSecuritySettings() {
   await delay()
   maybeError()
-  return mockSecuritySettings
+  // Recompute the 'New device' trust flags per call — the rows are mutable
+  // (revoke filters them) and the signal is time-relative, so it must stay
+  // fresh like the backend's live computation.
+  // Fixture clock (NOW_TS), not the wall clock — the mock rows are baked
+  // relative to it, so the badge demo is deterministic across dates.
+  const flags = computeNewDeviceFlags(mockSecuritySettings.activeSessions, NOW_TS)
+  return {
+    ...mockSecuritySettings,
+    activeSessions: mockSecuritySettings.activeSessions.map((session) => ({
+      ...session,
+      isNewDevice: flags.get(session.id) ?? false,
+    })),
+  }
 }
 
 export async function mockChangePassword({ currentPassword, newPassword } = {}) {
@@ -1644,9 +1658,12 @@ export async function mockGetMemberSessions(memberId) {
   const member = mockOrgWorkspace.members.find((m) => m.id === memberId)
   if (!member) throw new Error('Member not found.')
   const actorId = mockActorUserId()
+  // Fixture clock (NOW_TS), not the wall clock — see mockGetSecuritySettings.
+  const flags = computeNewDeviceFlags(mockMemberSessionsByUserId[memberId] || [], NOW_TS)
   const sessions = (mockMemberSessionsByUserId[memberId] || []).map((session, index) => ({
     ...session,
     isCurrent: memberId === actorId && index === 0,
+    isNewDevice: flags.get(session.id) ?? false,
   }))
   return { memberId, teamId: member.team || null, sessions }
 }

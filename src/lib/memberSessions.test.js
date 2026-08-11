@@ -76,6 +76,30 @@ describe('mock member sessions (org-admin revocation)', () => {
     expect(result.sessions[1]).toMatchObject({ id: 'sess_102', isCurrent: false })
   })
 
+  it('tags sessions on recently-seen devices as New device (trust signal parity)', async () => {
+    stubWindow()
+
+    // Every tracked session of usr_012 sits inside the 7-day window, so all
+    // three rows badge — mirroring SecurityService.listSessions.
+    const result = await mockGetMemberSessions('usr_012')
+    expect(result.sessions.every((session) => session.isNewDevice)).toBe(true)
+    expect(result.sessions.map((session) => session.isNewDevice)).toEqual([
+      true,
+      true,
+      true,
+    ])
+
+    // The Security page's own ledger (usr_001) demonstrates the known state:
+    // Edge on Windows was first seen 9 days ago → NOT new.
+    const { mockGetSecuritySettings } = await import('./mockApi.js')
+    const settings = await mockGetSecuritySettings()
+    const byId = Object.fromEntries(
+      settings.activeSessions.map((session) => [session.id, session]),
+    )
+    expect(byId.sess_004.isNewDevice).toBe(false) // Edge on Windows, 9d ago
+    expect(byId.sess_001.isNewDevice).toBe(true) // Chrome on Windows, 1h ago
+  })
+
   it('revokes a single member session and persists the removal', async () => {
     stubWindow()
 
