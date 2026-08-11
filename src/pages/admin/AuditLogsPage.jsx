@@ -48,6 +48,8 @@ const SHORT_ACTION_TONES = {
   failed: 'danger',
   'invite created': 'success',
   'waitlist reviewed': 'neutral',
+  'member session revoked': 'danger',
+  'member sessions revoked': 'danger',
 }
 
 function shortAction(action) {

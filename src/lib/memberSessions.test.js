@@ -4,7 +4,11 @@ import {
   mockRevokeMemberSession,
   mockRevokeMemberSessions,
 } from './mockApi.js'
-import { mockMemberSessionsByUserId, mockOrgWorkspace } from './mockData.js'
+import {
+  mockAuditEvents,
+  mockMemberSessionsByUserId,
+  mockOrgWorkspace,
+} from './mockData.js'
 
 /**
  * Mock member-sessions parity — the org-admin revocation surface must mirror
@@ -34,6 +38,7 @@ function snapshotStores() {
         rows.map((row) => ({ ...row })),
       ]),
     ),
+    auditEvents: mockAuditEvents.map((event) => ({ ...event })),
   }
 }
 
@@ -42,6 +47,8 @@ function restoreStores(snapshot) {
   for (const [userId, rows] of Object.entries(snapshot.sessions)) {
     mockMemberSessionsByUserId[userId] = rows
   }
+  mockAuditEvents.length = 0
+  mockAuditEvents.push(...snapshot.auditEvents)
 }
 
 describe('mock member sessions (org-admin revocation)', () => {
@@ -100,13 +107,22 @@ describe('mock member sessions (org-admin revocation)', () => {
     expect(byId.sess_001.isNewDevice).toBe(true) // Chrome on Windows, 1h ago
   })
 
-  it('revokes a single member session and persists the removal', async () => {
+  it('revokes a single member session, persists the removal, and surfaces member_session_revoked', async () => {
     stubWindow()
 
     const result = await mockRevokeMemberSession('usr_012', 'sess_301')
 
     expect(result).toEqual({ ok: true, memberId: 'usr_012', sessionId: 'sess_301' })
     expect(mockMemberSessionsByUserId.usr_012.map((s) => s.id)).toEqual(['sess_302', 'sess_303'])
+    // The revocation lands in the audit trail + Activity feed, prepended
+    // newest-first with the actor attributed (mirrors the real backend).
+    expect(mockAuditEvents[0]).toMatchObject({
+      action: 'member_session_revoked',
+      severity: 'high',
+      resource_type: 'auth_session',
+      resource_id: 'sess_301',
+      details: { member_id: 'usr_012', session_id: 'sess_301' },
+    })
   })
 
   it('rejects the owner seat (both single and revoke-all)', async () => {
@@ -128,13 +144,21 @@ describe('mock member sessions (org-admin revocation)', () => {
     )
   })
 
-  it('revokes every non-current session and reports the count', async () => {
+  it('revokes every non-current session, reports the count, and persists it in the audit trail', async () => {
     stubWindow()
 
     const result = await mockRevokeMemberSessions('usr_012')
 
     expect(result).toEqual({ ok: true, memberId: 'usr_012', revoked: 3 })
     expect(mockMemberSessionsByUserId.usr_012).toHaveLength(0)
+    // One summary audit row per batch carrying the revoked count.
+    expect(mockAuditEvents[0]).toMatchObject({
+      action: 'member_sessions_revoked',
+      severity: 'high',
+      resource_type: 'member',
+      resource_id: 'usr_012',
+      details: { member_id: 'usr_012', revoked: 3 },
+    })
   })
 
   it('404s for an unknown member or session', async () => {

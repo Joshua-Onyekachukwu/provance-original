@@ -675,7 +675,7 @@ describe('OrganizationService', () => {
       ).rejects.toThrow(NotFoundException);
     });
 
-    it('revokes a single session of a member', async () => {
+    it('revokes a single session of a member and records the admin-trail row', async () => {
       const client = createAdminClient([
         { data: membershipRow({ role: 'admin', user_id: 'user-admin' }) },
         {
@@ -685,6 +685,8 @@ describe('OrganizationService', () => {
             team_id: 'team-legal',
           }),
         },
+        // audit_logs insert (best-effort audit write)
+        { data: null, error: null },
       ]);
       const securityService = createSecurityServiceMock();
       const revokeSessionForUser = jest.fn().mockResolvedValue({
@@ -699,6 +701,17 @@ describe('OrganizationService', () => {
 
       expect(result).toEqual({ ok: true, memberId: 'user-a', sessionId: 'sess-1' });
       expect(revokeSessionForUser).toHaveBeenCalledWith(ADMIN_USER, 'user-a', 'sess-1', undefined);
+      // The revocation lands in the admin audit trail the way job retry/fail
+      // does — member_session_revoked, high severity, actor attributed.
+      expect(client.insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actor_email: 'admin@example.com',
+          action: 'member_session_revoked',
+          severity: 'high',
+          entity_type: 'auth_session',
+          entity_id: 'sess-1',
+        }),
+      );
     });
 
     it('rejects with 400 when the single-session target is the owner', async () => {
@@ -729,7 +742,7 @@ describe('OrganizationService', () => {
       expect(securityService.revokeSessionForUser).not.toHaveBeenCalled();
     });
 
-    it('revokes every non-current session and reports the count', async () => {
+    it('revokes every non-current session, reports the count, and persists it in the admin trail', async () => {
       const client = createAdminClient([
         { data: membershipRow({ role: 'admin', user_id: 'user-admin' }) },
         {
@@ -739,6 +752,8 @@ describe('OrganizationService', () => {
             team_id: 'team-legal',
           }),
         },
+        // audit_logs insert (best-effort audit write)
+        { data: null, error: null },
       ]);
       const securityService = createSecurityServiceMock();
       (securityService as unknown as { listSessions: jest.Mock }).listSessions = jest
@@ -763,6 +778,17 @@ describe('OrganizationService', () => {
         'user-a',
         'sess-3',
         undefined,
+      );
+      // The batch persists the revoked-session count in the admin trail — one
+      // summary row with member_sessions_revoked + the count that succeeded.
+      expect(client.insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'member_sessions_revoked',
+          severity: 'high',
+          entity_type: 'member',
+          entity_id: 'user-a',
+          details: expect.objectContaining({ member_id: 'user-a', revoked: 2 }),
+        }),
       );
     });
 

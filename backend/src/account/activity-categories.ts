@@ -34,6 +34,9 @@ export const ACTIVITY_CATEGORY_ACTIONS: Record<
     'invite.accepted',
     // Real services write the underscore form (see audit-severity.ts).
     'invite_created',
+    // Session revocation — self-service (Security page) and org-admin paths.
+    'session_revoked',
+    'member_session_revoked',
   ],
   team: ['team.member_added', 'team.member_removed', 'role.changed', 'org.created'],
   system: [

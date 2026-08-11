@@ -32,6 +32,9 @@ export const ACTIVITY_CATEGORY_ACTION_LISTS = {
     'api_key.revoked',
     'invite.accepted',
     'invite_created',
+    // Session revocation — self-service (Security page) and org-admin paths.
+    'session_revoked',
+    'member_session_revoked',
   ],
   team: ['team.member_added', 'team.member_removed', 'role.changed', 'org.created'],
   system: [

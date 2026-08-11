@@ -649,7 +649,9 @@ describe('SecurityService', () => {
       );
       expect(auditInsert).toHaveBeenCalledWith(
         expect.objectContaining({
-          action: 'session_revoked',
+          // Org-admin path carries the distinct action so the admin's Activity
+          // feed and the audit trail surface it as member_session_revoked.
+          action: 'member_session_revoked',
           actor_email: 'admin@example.com',
           details: { targetUserId: 'target-9' },
         }),

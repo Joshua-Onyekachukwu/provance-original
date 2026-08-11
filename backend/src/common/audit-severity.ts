@@ -21,6 +21,14 @@ export const AUDIT_SEVERITY_BY_ACTION: Record<string, string> = {
   // unknown) — the signature of token theft / replay attempts. Surfaced in
   // the Admin Audit Logs page as a high-severity security event.
   'refresh_token_rejected': 'high',
+  // An owner/admin revoked a member's session(s) — a security action on
+  // someone else's devices, written by the org service (audit_logs) and the
+  // security service (auth_audit_events feed).
+  'member_session_revoked': 'high',
+  'member_sessions_revoked': 'high',
+  // Self-service device revocation (Security page) — security-relevant but
+  // the actor's own device, so medium rather than high.
+  'session_revoked': 'medium',
   'user.invited': 'medium',
   'waitlist.approved': 'medium',
   'waitlist.deferred': 'medium',

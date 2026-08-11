@@ -1,5 +1,24 @@
 # Provance — Changelog
 
+## [2026-08-11] - Org session revocations now persist in the audit trail and surface in the Activity Log
+
+### Added
+- **Org session revocation is now fully audited** — the org module's first audit writes, mirroring how job retry/fail persists to the admin trail:
+  - `DELETE /v1/organization/members/:memberId/sessions/:sessionId` writes a **`member_session_revoked`** row to `audit_logs` (severity `high`, entity `auth_session`, details carry `member_id` + `session_id`).
+  - `DELETE /v1/organization/members/:memberId/sessions` writes one **`member_sessions_revoked`** summary row per batch carrying the **revoked-session count** in `details.revoked` (entity `member`) — exactly the count that actually succeeded. Writes are best-effort (a missing `audit_logs` table must never fail the revocation) and severity derives from the shared `auditSeverity` map, same as `scan.retried`/`scan.failed`.
+- **`member_session_revoked` events surface in the Activity Log** — `SecurityService.revokeLedgerRow` now takes an action parameter: the org-admin path (`revokeSessionForUser`) writes `member_session_revoked` to `auth_audit_events` while the self-service Security-page path keeps `session_revoked`, so the workspace Activity feed can tell the two apart.
+- **Severity + category parity (mock ↔ real)** — `member_session_revoked`/`member_sessions_revoked` (`high`) and `session_revoked` (`medium`) added to both the backend `audit-severity.ts` map and the mock's `AUDIT_SEVERITY_BY_ACTION`; the two session actions added to the **account** tab action lists in `activity-categories.ts` and `activityCategories.js` (the parity test locks them together).
+- **Mock parity** — `mockRevokeMemberSession`/`mockRevokeMemberSessions` now unshift `member_session_revoked`/`member_sessions_revoked` events (actor attributed via `currentMockActorEmail`, count in `details.revoked`) into `mockAuditEvents`, which feeds both the Activity Log and the admin Audit Logs trail in mock mode.
+- **`SHORT_ACTION_TONES`** — `member session revoked` / `member sessions revoked` badge `danger` on the admin Audit Logs page (was falling through to `neutral`).
+
+### Tests (+8)
+- `organization.service.spec.ts` — both revoke tests now assert the exact `audit_logs` insert (`member_session_revoked` with entity `auth_session`, `member_sessions_revoked` with `details.revoked: 2`, severity `high`, actor attributed).
+- `security.service.spec.ts` — the org-admin revocation assertion updated to `member_session_revoked` (self-service keeps `session_revoked`).
+- `memberSessions.test.js` — both revoke tests assert the prepended audit event (action, severity, resource, `details` count); the store snapshot now restores `mockAuditEvents`.
+
+### Verified
+- Backend jest **420/420** (27 suites), `nest build` clean, e2e **68 passed / 2 opt-in skipped / 0 failures**, frontend vitest **517/517** (52 files), lint 0 errors (only the two pre-existing unused-import warnings).
+
 ## [2026-08-11] - Live org-admin two-device revoke walk prepared; apply of 0005 + 0010 remains the user's step
 
 ### Added

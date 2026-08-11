@@ -1688,6 +1688,20 @@ export async function mockRevokeMemberSession(memberId, sessionId) {
     throw new Error('You cannot revoke the current session.')
   }
   mockMemberSessionsByUserId[memberId] = sessions.filter((s) => s.id !== sessionId)
+  // Surface the revocation in the audit trail + Activity feed (mirrors the
+  // real backend: SecurityService writes member_session_revoked to the feed
+  // and the org service writes the admin-trail row). Prepend so the newest
+  // event lands first, matching the newest-first feed contract.
+  mockAuditEvents.unshift({
+    id: `audit_live_${Date.now()}_${String(++mockAuditLiveSeq).padStart(3, '0')}`,
+    actor_email: currentMockActorEmail(),
+    action: 'member_session_revoked',
+    severity: AUDIT_SEVERITY_BY_ACTION['member_session_revoked'] || 'high',
+    resource_type: 'auth_session',
+    resource_id: sessionId,
+    created_at: new Date().toISOString(),
+    details: { member_id: memberId, session_id: sessionId },
+  })
   return { ok: true, memberId, sessionId }
 }
 
@@ -1706,6 +1720,18 @@ export async function mockRevokeMemberSessions(memberId) {
   const actorId = mockActorUserId()
   const revocable = sessions.filter((session, index) => !(memberId === actorId && index === 0))
   mockMemberSessionsByUserId[memberId] = sessions.filter((session) => !revocable.includes(session))
+  // One summary audit row per batch carrying the revoked count — mirrors the
+  // real backend's member_sessions_revoked write on revoke-all.
+  mockAuditEvents.unshift({
+    id: `audit_live_${Date.now()}_${String(++mockAuditLiveSeq).padStart(3, '0')}`,
+    actor_email: currentMockActorEmail(),
+    action: 'member_sessions_revoked',
+    severity: AUDIT_SEVERITY_BY_ACTION['member_sessions_revoked'] || 'high',
+    resource_type: 'member',
+    resource_id: memberId,
+    created_at: new Date().toISOString(),
+    details: { member_id: memberId, revoked: revocable.length },
+  })
   return { ok: true, memberId, revoked: revocable.length }
 }
 

@@ -324,7 +324,10 @@ export class SecurityService {
   ): Promise<{ ok: true; sessionId: string }> {
     const row = await this.getLedgerRow(targetUserId, sessionId);
     this.assertNotCurrentSession(row, actor.id, currentAuthSessionId);
-    await this.revokeLedgerRow(row, actor, { targetUserId });
+    // Org-admin path: distinct action so the admin's Activity feed and the
+    // admin audit trail surface it as a member_session_revoked event, not a
+    // self-service session_revoked.
+    await this.revokeLedgerRow(row, actor, { targetUserId }, 'member_session_revoked');
     return { ok: true, sessionId };
   }
 
@@ -383,12 +386,15 @@ export class SecurityService {
   /**
    * revokeLedgerRow — kills the GoTrue session server-side, drops the ledger
    * row, and writes the audit event. Shared by the self-service and org-admin
-   * revocation paths.
+   * revocation paths; the action differs so the Activity feed can tell a
+   * member's own device revocation (session_revoked) from an owner/admin
+   * revoking a member's devices (member_session_revoked).
    */
   private async revokeLedgerRow(
     row: { id: string; user_id: string; auth_session_id: string },
     actor: CurrentUserPayload,
     details: Record<string, unknown> = {},
+    action: string = 'session_revoked',
   ): Promise<void> {
     const adminClient = this.supabaseService.getAdminClient();
 
@@ -411,7 +417,7 @@ export class SecurityService {
 
     await this.recordAudit({
       actor_email: actor.email ?? null,
-      action: 'session_revoked',
+      action,
       entity_type: 'auth_session',
       entity_id: row.id,
       details,

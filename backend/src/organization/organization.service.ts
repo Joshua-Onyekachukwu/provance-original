@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { createHash, randomBytes } from 'node:crypto';
 import { ConfigService } from '@nestjs/config';
+import { auditSeverity } from '../common/audit-severity';
 import { SupabaseService } from '../supabase/supabase.service';
 import { SecurityService } from '../security/security.service';
 import type { CurrentUserPayload } from '../common/decorators/current-user.decorator';
@@ -63,6 +64,7 @@ export class OrganizationService {
   private readonly teamsTable: string;
   private readonly membersTable: string;
   private readonly invitesTable: string;
+  private readonly auditTable: string;
 
   constructor(
     private readonly supabaseService: SupabaseService,
@@ -79,6 +81,7 @@ export class OrganizationService {
       'SUPABASE_ORGANIZATION_INVITES_TABLE',
       'organization_invites',
     );
+    this.auditTable = configService.get<string>('SUPABASE_AUDIT_LOGS_TABLE', 'audit_logs');
   }
 
   // -------------------------------------------------------------------------
@@ -321,6 +324,14 @@ export class OrganizationService {
 
     await this.securityService.revokeSessionForUser(user, memberId, sessionId, user.sid);
 
+    // Admin audit trail (best-effort — a missing audit_logs table must never
+    // fail the revocation itself; severity derives from the shared action
+    // map, the same way AdminService writes scan.retried / scan.failed).
+    await this.recordOrgAudit(user, 'member_session_revoked', sessionId, 'auth_session', {
+      member_id: memberId,
+      session_id: sessionId,
+    });
+
     return { ok: true, memberId, sessionId };
   }
 
@@ -368,7 +379,48 @@ export class OrganizationService {
       }
     }
 
+    // Persist the revoked-session count in the admin audit trail the way job
+    // retry/fail does — one summary row per batch, attributed to the acting
+    // owner/admin, carrying the count that actually succeeded.
+    await this.recordOrgAudit(user, 'member_sessions_revoked', memberId, 'member', {
+      member_id: memberId,
+      revoked,
+    });
+
     return { ok: true, memberId, revoked };
+  }
+
+  /**
+   * recordOrgAudit — best-effort write to the admin audit trail (audit_logs),
+   * mirroring AdminService.insertAdminAuditEvent so org mutations are visible
+   * on the Admin Audit Logs page. A missing audit_logs table (migration 0008
+   * not applied) or a failed insert must never fail the org action itself.
+   */
+  private async recordOrgAudit(
+    actor: CurrentUserPayload,
+    action: string,
+    entityId: string,
+    entityType: string,
+    details: Record<string, unknown>,
+  ): Promise<void> {
+    const client = this.requireClient();
+
+    try {
+      const { error } = await client.from(this.auditTable).insert({
+        actor_email: actor.email ?? null,
+        action,
+        severity: auditSeverity(action),
+        entity_type: entityType,
+        entity_id: entityId,
+        details: {
+          actor_id: actor.id,
+          ...details,
+        },
+      });
+      void error;
+    } catch {
+      this.logger.warn(`Failed to record org audit event ${action} — skipping.`);
+    }
   }
 
   // -------------------------------------------------------------------------

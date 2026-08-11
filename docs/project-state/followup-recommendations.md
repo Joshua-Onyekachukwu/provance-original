@@ -24,6 +24,9 @@ Status values: `Open` · `In Progress` · `Done` · `Deferred` · `Declined`
 
 | Date | Source task | Recommendation | Status |
 | --- | --- | --- | --- |
+| 2026-08-11 | Org session revocations audited | Add `session_revoked` mock parity to the self-service `mockRevokeSession` (Security page) — the real backend writes it to the feed but the mock still doesn't, so mock mode under-demos the account tab | Open |
+| 2026-08-11 | Org session revocations audited | Render `details.revoked` (and member context) in the Admin Audit Logs event drawer so the persisted count is visible, not just stored | Open |
+| 2026-08-11 | Org session revocations audited | Extend `validate-org-session-revoke.mjs` to assert the `member_sessions_revoked` row (with the exact count) appears in `GET /admin/audit-logs` once migrations 0005 + 0010 land | Open |
 | 2026-08-10 | Push milestone to `dev/backend-integration-milestone` | Merge the branch into main (builds green, 330 backend / 449 frontend) so Vercel picks up the latest for live testing — Founder decision, test first | Open |
 | 2026-08-10 | New-device sign-in detection | Wire the `[mock-email]` new-device alert to a real transactional-email provider once one is selected, so the security alert actually reaches the user out-of-band | Open |
 | 2026-08-10 | Billing meters real data | Apply migration `0020_api_usage.sql` in the Supabase dashboard and seed a couple of `api_usage` rows, then verify GET /v1/billing renders real storage + API meters end-to-end | Open |
