@@ -24,6 +24,11 @@ describe('mockGetAdminJobs params', () => {
     expect(result.data).toHaveLength(mockAdminJobs.length)
     expect(result.page).toBe(1)
     expect(result.pageSize).toBe(500)
+    // Contract parity with the real backend: totalPages derives from the
+    // exact (post-filter) total.
+    expect(result.totalPages).toBe(
+      Math.max(1, Math.ceil(mockAdminJobs.length / 500)),
+    )
   })
 
   it('filters by status with an exact total (display dialect, like the backend)', async () => {
@@ -55,6 +60,7 @@ describe('mockGetAdminJobs params', () => {
     expect(page1.page).toBe(1)
     expect(page2.page).toBe(2)
     expect(page1.pageSize).toBe(5)
+    expect(page1.totalPages).toBe(Math.max(1, Math.ceil(expected.length / 5)))
     // Pages are disjoint and neither repeats a job.
     const ids = new Set([...page1.data, ...page2.data].map((j) => j.id))
     expect(ids.size).toBe(page1.data.length + page2.data.length)

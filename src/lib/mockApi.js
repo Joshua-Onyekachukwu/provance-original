@@ -1091,7 +1091,15 @@ export async function mockGetAdminJobs(params = {}) {
 
   // Shallow copy semantics preserved: rows is already a fresh array (filter
   // or spread), so downstream useMemo-derived counts recompute correctly.
-  return { data, total, page: safePage, pageSize: safePageSize }
+  // totalPages mirrors the real backend's envelope (the Jobs page computes
+  // its own pageCount from the exact total, so this is contract parity).
+  return {
+    data,
+    total,
+    page: safePage,
+    pageSize: safePageSize,
+    totalPages: Math.max(1, Math.ceil(total / safePageSize)),
+  }
 }
 
 /**

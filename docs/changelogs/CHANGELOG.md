@@ -1,6 +1,13 @@
 # Provance — Changelog
 
-## [2026-08-11] - Admin Jobs deep links resolve server-side; useQueryParam loop bug fixed
+## [2026-08-11] - AdminController jobs routes covered at the HTTP layer (+16); mock/backend jobs envelope parity
+
+### Added
+- **`backend/src/admin/admin.controller.spec.ts` (+16)** — the jobs routes (`GET /admin/jobs`, `POST /admin/jobs/:id/retry`, `POST /admin/jobs/:id/fail`) now have route-level coverage following the notifications-controller convention: a minimal app wired exactly like `main.ts` (v1 prefix, ValidationPipe, GlobalExceptionFilter, ThrottlerModule + ApiThrottlerGuard) with the **real `SupabaseAuthGuard` + real `AdminGuard`** (ConfigService mocked with the `ADMIN_EMAILS` allowlist) over a token-driven Supabase mock. Covers: route metadata (paths/verbs/`@HttpCode(OK)` on retry/fail, `GUARDS_METADATA` order), query parsing — `status` passthrough with no pipes, `page`/`pageSize` as strict → `DefaultValuePipe(1|500)` → `ParseIntPipe` (metadata + HTTP), `page=abc`/`page=2.5` → 400 without a service call — **`CurrentUser` → actor wiring** on retry (`(id, { id, email })`) and fail (`(id, reason, { id, email })`, empty body → `undefined` reason, unknown body property → 400 via `forbidNonWhitelisted`), guard behavior at the HTTP layer (401 no header / invalid token, **403 non-admin allowlist** on both GET and POST), and the 30/60s throttle (31st request 429s, service called exactly 30 times).
+- **Jobs envelope parity:** `mockGetAdminJobs` now returns `totalPages` (derived from the exact post-filter total) matching the real backend's `listJobs` envelope; the mock params test locks it.
+
+### Verified
+- Backend jest **419/419** (27 suites, +16), `nest build` clean, e2e **68/70** (only the two pre-existing live-DB invite-accept failures), frontend mock suite 6/6.
 
 ### Added
 - **`getAdminJobs(params)` now forwards `status`/`page`/`pageSize`** (api.js real path + `mockGetAdminJobs` mock path, mirroring `getAdminReports`), so `/app/admin/jobs?status=failed` filters and paginates on the backend — not just client-side. The mock matches the backend envelope exactly: `{ data, total, page, pageSize }` with the exact total after the status filter (display dialect: `failed`, not DB `fail`), page clamped to ≥ 1, pageSize clamped to ≤ 500, and a no-params fetch still returning the full set (pageSize 500) so downstream full-set derivation keeps working.
