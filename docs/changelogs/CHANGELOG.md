@@ -1,5 +1,14 @@
 # Provance — Changelog
 
+## [2026-08-11] - ProductShowcase wired into the landing (dead code decision: reuse, not archive)
+
+### Changed
+- **`HomePage` now renders `<ProductShowcase />` between Use Cases and Pricing** — the 767-line interactive evidence-workflow demo was unreferenced dead code; instead of archiving it (the forensic/ precedent), it's wired in because it's a finished, self-contained, mock-data-driven demo (real `mockReports` payloads, auto-playing scan cycle, per-signal evidence accordions) that fills the landing's "watch it work" gap before the pricing ask. The landing order is now Hero → WhyProvance → SampleReport → HowItWorks → UseCases → **ProductShowcase** → Pricing → CLEARAnswers.
+
+### Verified
+- The section renders on `/` (h2 "Watch a scan move from queue to report." present between Use Cases and Pricing) and the auto-play cycle is live — scrolling it into view advanced Queued → Analyzing with signal chips rendering (it was previously never browser-tested).
+- `audit:responsive` **208/208 clean** at 640/768/1024/1280 with the new section in the page; vitest **518/518**, lint 0 errors, build clean.
+
 ## [2026-08-11] - Responsive audit extended to 640px + 1024px (208 audits) — one fix surfaced
 
 ### Changed
