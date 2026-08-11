@@ -79,6 +79,7 @@ type ResolvedResult = {
 function createStatefulSecurityClient() {
   const sessions = new Map<string, Row>();
   const auditEvents = new Map<string, Row>();
+  const adminAuditLogs = new Map<string, Row>();
   const settings = new Map<string, Row>();
   const profiles = new Map<string, Row>();
   let seq = 0;
@@ -96,6 +97,7 @@ function createStatefulSecurityClient() {
   const tableMap = (table: string): Map<string, Row> | null => {
     if (table === 'user_sessions') return sessions;
     if (table === 'auth_audit_events') return auditEvents;
+    if (table === 'audit_logs') return adminAuditLogs;
     if (table === 'user_security_settings') return settings;
     if (table === 'profiles') return profiles;
     return null;
@@ -284,6 +286,7 @@ function createStatefulSecurityClient() {
     seed,
     sessions,
     auditEvents,
+    adminAuditLogs,
     settings,
     profiles,
   };
@@ -366,6 +369,7 @@ describe('Security flow (e2e)', () => {
   let seed: ReturnType<typeof createStatefulSecurityClient>['seed'];
   let sessions: Map<string, Row>;
   let auditEvents: Map<string, Row>;
+  let adminAuditLogs: Map<string, Row>;
   let settings: Map<string, Row>;
   const extraApps: INestApplication[] = [];
   const originalFetch = global.fetch;
@@ -377,6 +381,7 @@ describe('Security flow (e2e)', () => {
     seed = setup.seed;
     sessions = setup.sessions;
     auditEvents = setup.auditEvents;
+    adminAuditLogs = setup.adminAuditLogs;
     settings = setup.settings;
   });
 
@@ -458,6 +463,19 @@ describe('Security flow (e2e)', () => {
       expect(audit).toMatchObject({
         actor_email: USER.email,
         action: 'session_revoked',
+        entity_type: 'auth_session',
+        entity_id: 's-1',
+      });
+
+      // The ADMIN trail (audit_logs) reflects the revocation too — the
+      // dotted high-severity row the Admin Audit Logs page reads.
+      const adminAudit = [...adminAuditLogs.values()].find(
+        (row) => row.action === 'session.revoked',
+      );
+      expect(adminAudit).toMatchObject({
+        actor_email: USER.email,
+        action: 'session.revoked',
+        severity: 'high',
         entity_type: 'auth_session',
         entity_id: 's-1',
       });

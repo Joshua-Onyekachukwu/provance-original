@@ -3,11 +3,13 @@ import {
   mockGetMemberSessions,
   mockRevokeMemberSession,
   mockRevokeMemberSessions,
+  mockRevokeSession,
 } from './mockApi.js'
 import {
   mockAuditEvents,
   mockMemberSessionsByUserId,
   mockOrgWorkspace,
+  mockSecuritySettings,
 } from './mockData.js'
 
 /**
@@ -38,6 +40,10 @@ function snapshotStores() {
         rows.map((row) => ({ ...row })),
       ]),
     ),
+    securitySettings: {
+      ...mockSecuritySettings,
+      activeSessions: mockSecuritySettings.activeSessions.map((s) => ({ ...s })),
+    },
     auditEvents: mockAuditEvents.map((event) => ({ ...event })),
   }
 }
@@ -47,6 +53,7 @@ function restoreStores(snapshot) {
   for (const [userId, rows] of Object.entries(snapshot.sessions)) {
     mockMemberSessionsByUserId[userId] = rows
   }
+  mockSecuritySettings.activeSessions = snapshot.securitySettings.activeSessions
   mockAuditEvents.length = 0
   mockAuditEvents.push(...snapshot.auditEvents)
 }
@@ -158,6 +165,23 @@ describe('mock member sessions (org-admin revocation)', () => {
       resource_type: 'member',
       resource_id: 'usr_012',
       details: { member_id: 'usr_012', revoked: 3 },
+    })
+  })
+
+  it('self-service revoke removes the ledger row and surfaces session.revoked in the trail', async () => {
+    stubWindow() // no stored session → actor falls back to usr_001 (sess_001 is current)
+
+    const result = await mockRevokeSession('sess_002')
+
+    expect(result).toEqual({ ok: true, sessionId: 'sess_002' })
+    expect(mockSecuritySettings.activeSessions.map((s) => s.id)).not.toContain('sess_002')
+    // Mirrors the real backend's session.revoked admin-trail write: dotted,
+    // high severity, actor attributed, prepended newest-first.
+    expect(mockAuditEvents[0]).toMatchObject({
+      action: 'session.revoked',
+      severity: 'high',
+      resource_type: 'auth_session',
+      resource_id: 'sess_002',
     })
   })
 

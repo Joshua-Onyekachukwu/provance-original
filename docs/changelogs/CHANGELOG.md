@@ -1,5 +1,19 @@
 # Provance — Changelog
 
+## [2026-08-11] - Session revocations now land in the admin audit trail (session.revoked, high)
+
+### Added
+- **Self-service session revocations are now in the admin audit log** — `SecurityService.revokeLedgerRow` writes a **`session.revoked`** row (dotted form, `severity: high`, entity `auth_session`) to `audit_logs` whenever a user revokes their own device from the Security page, matching the `refresh_token_rejected` admin-trail pattern (best-effort — a missing `audit_logs` table must never fail the revocation). Org-admin revocations were already recorded (`member_session_revoked` / `member_sessions_revoked`), so the self-service write is gated on `row.user_id === actor.id` to avoid double-recording the same revocation. The Activity-feed events (`session_revoked` medium / `member_session_revoked` high) are unchanged — the security page's session ledger and Activity Log keep their existing visibility.
+- **Severity map + mock parity** — `session.revoked: 'high'` added to both the backend `audit-severity.ts` and the mock's `AUDIT_SEVERITY_BY_ACTION`; `mockRevokeSession` (self-service, previously silent) now unshifts the `session.revoked` event into `mockAuditEvents` (which feeds both the Activity Log and the admin Audit Logs trail in mock mode), actor attributed.
+
+### Tests (+2)
+- `security.service.spec.ts` — the self-service revoke test asserts the `audit_logs` insert (`session.revoked`, `high`, `auth_session`, entity id); the changePassword flow's mock gained the extra `from` entry its revoke leg now consumes.
+- `security.e2e-spec.ts` — the stateful client gained an `audit_logs` store, and the revoke test asserts the `session.revoked` admin-trail row end to end.
+- `memberSessions.test.js` — new self-service revoke test (ledger row removed + `session.revoked` event prepended); the store snapshot now restores `mockSecuritySettings.activeSessions`.
+
+### Verified
+- Backend jest **420/420**, `nest build` clean, e2e **75 passed / 2 opt-in skipped / 0 failures**, frontend vitest **518/518**, lint 0 errors (same two pre-existing unused-import warnings).
+
 ## [2026-08-11] - Cookie flow verified live against the real backend (17/17 checks)
 
 ### Verified

@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHash } from 'crypto';
+import { auditSeverity } from '../common/audit-severity';
 import type { CurrentUserPayload } from '../common/decorators/current-user.decorator';
 import { NotificationsService } from '../notifications/notifications.service';
 import { SupabaseService } from '../supabase/supabase.service';
@@ -94,6 +95,7 @@ export class SecurityService {
   private readonly logger = new Logger(SecurityService.name);
   private readonly sessionsTable: string;
   private readonly settingsTable: string;
+  private readonly auditTable: string;
 
   constructor(
     private readonly supabaseService: SupabaseService,
@@ -107,6 +109,10 @@ export class SecurityService {
     this.settingsTable = this.configService.get<string>(
       'SUPABASE_USER_SECURITY_SETTINGS_TABLE',
       'user_security_settings',
+    );
+    this.auditTable = this.configService.get<string>(
+      'SUPABASE_AUDIT_LOGS_TABLE',
+      'audit_logs',
     );
   }
 
@@ -422,6 +428,56 @@ export class SecurityService {
       entity_id: row.id,
       details,
     });
+
+    // Admin audit trail (audit_logs): self-service revocations land here too,
+    // so the Admin Audit Logs page reflects them — matching the
+    // refresh_token_rejected pattern (AuthService.recordRejectedRefresh).
+    // Org-admin revocations are written by OrganizationService as
+    // member_session_revoked / member_sessions_revoked, so only the
+    // self-service path (row.user_id === actor.id) writes this row to avoid
+    // double-recording the same revocation.
+    if (row.user_id === actor.id) {
+      await this.recordAdminTrail(actor, row.id);
+    }
+  }
+
+  /**
+   * recordAdminTrail — best-effort `session.revoked` row in the admin audit
+   * trail (audit_logs), mirroring AuthService.recordRejectedRefresh: severity
+   * derives from the shared map, and a missing audit_logs table (migration
+   * 0008 not applied) must never fail the revocation itself.
+   */
+  private async recordAdminTrail(
+    actor: CurrentUserPayload,
+    sessionId: string,
+  ): Promise<void> {
+    const adminClient = this.supabaseService.getAdminClient();
+
+    if (!adminClient) {
+      return;
+    }
+
+    try {
+      const { error } = await adminClient.from(this.auditTable).insert({
+        actor_email: actor.email ?? null,
+        action: 'session.revoked',
+        severity: auditSeverity('session.revoked'),
+        entity_type: 'auth_session',
+        entity_id: sessionId,
+        details: {
+          actor_id: actor.id,
+          session_id: sessionId,
+        },
+      });
+
+      if (error) {
+        this.logger.warn(`Session-revocation audit write failed: ${error.message}`);
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Session-revocation audit write failed: ${(error as Error).message}`,
+      );
+    }
   }
 
   // -------------------------------------------------------------------------

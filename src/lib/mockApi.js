@@ -1305,6 +1305,20 @@ export async function mockRevokeSession(sessionId) {
   mockSecuritySettings.activeSessions = mockSecuritySettings.activeSessions.filter(
     (s) => s.id !== sessionId,
   )
+  // Surface the revocation in the audit trail + Activity feed — mirrors the
+  // real backend's session.revoked admin-trail write on self-service revoke
+  // (SecurityService.recordAdminTrail). Prepend so the newest event lands
+  // first, matching the newest-first feed contract.
+  mockAuditEvents.unshift({
+    id: `audit_live_${Date.now()}_${String(++mockAuditLiveSeq).padStart(3, '0')}`,
+    actor_email: currentMockActorEmail(),
+    action: 'session.revoked',
+    severity: AUDIT_SEVERITY_BY_ACTION['session.revoked'] || 'high',
+    resource_type: 'auth_session',
+    resource_id: sessionId,
+    created_at: new Date().toISOString(),
+    details: { session_id: sessionId },
+  })
   return { ok: true, sessionId }
 }
 

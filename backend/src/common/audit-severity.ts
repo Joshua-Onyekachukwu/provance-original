@@ -26,8 +26,14 @@ export const AUDIT_SEVERITY_BY_ACTION: Record<string, string> = {
   // security service (auth_audit_events feed).
   'member_session_revoked': 'high',
   'member_sessions_revoked': 'high',
-  // Self-service device revocation (Security page) — security-relevant but
-  // the actor's own device, so medium rather than high.
+  // Self-service device revocation (Security page) — the admin-trail row
+  // (dotted form, matching the mock's seeded dialect). High because a
+  // revoked device is a security-relevant state change; the feed event below
+  // stays medium (the actor's own device, not an admin acting on someone
+  // else's).
+  'session.revoked': 'high',
+  // Self-service device revocation feed event (auth_audit_events) — the
+  // actor's own device, so medium rather than high.
   'session_revoked': 'medium',
   'user.invited': 'medium',
   'waitlist.approved': 'medium',

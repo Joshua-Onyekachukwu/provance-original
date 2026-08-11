@@ -527,12 +527,15 @@ describe('SecurityService', () => {
       }));
       const ledgerDelete = jest.fn().mockResolvedValue({ error: null });
       const auditInsert = jest.fn().mockResolvedValue({ error: null });
+      // Self-service revoke writes the admin-trail session.revoked row too.
+      const adminAuditInsert = jest.fn().mockResolvedValue({ error: null });
       const adminClient = {
         from: jest
           .fn()
           .mockImplementationOnce(() => lookup)
           .mockImplementationOnce(() => deleteChain(() => ledgerDelete()))
-          .mockImplementationOnce(() => ({ insert: auditInsert })),
+          .mockImplementationOnce(() => ({ insert: auditInsert }))
+          .mockImplementationOnce(() => ({ insert: adminAuditInsert })),
       };
       const service = createService(adminClient);
 
@@ -543,6 +546,16 @@ describe('SecurityService', () => {
       );
 
       expect(result).toEqual({ ok: true, sessionId: 'sess-other' });
+      // The admin trail (audit_logs) gets the dotted high-severity row so the
+      // Admin Audit Logs page reflects self-service revocations too.
+      expect(adminAuditInsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'session.revoked',
+          severity: 'high',
+          entity_type: 'auth_session',
+          entity_id: 'sess-other',
+        }),
+      );
       expect(fetchMock).toHaveBeenCalledWith(
         'https://project.supabase.co/auth/v1/admin/users/user-1/sessions/sid-other',
         expect.objectContaining({
@@ -601,6 +614,7 @@ describe('SecurityService', () => {
           .fn()
           .mockImplementationOnce(() => lookup)
           .mockImplementationOnce(() => deleteChain(() => Promise.resolve({ error: null })))
+          .mockImplementationOnce(() => ({ insert: jest.fn().mockResolvedValue({ error: null }) }))
           .mockImplementationOnce(() => ({ insert: jest.fn().mockResolvedValue({ error: null }) })),
       };
       const service = createService(adminClient);
@@ -852,7 +866,8 @@ describe('SecurityService', () => {
               })),
           ) // revoke: row lookup
           .mockImplementationOnce(() => deleteChain(() => Promise.resolve({ error: null }))) // revoke: ledger delete
-          .mockImplementationOnce(() => ({ insert: jest.fn().mockResolvedValue({ error: null }) })) // revoke: audit
+          .mockImplementationOnce(() => ({ insert: jest.fn().mockResolvedValue({ error: null }) })) // revoke: feed audit
+          .mockImplementationOnce(() => ({ insert: jest.fn().mockResolvedValue({ error: null }) })) // revoke: admin trail (audit_logs)
           .mockImplementationOnce(() => ({ insert: jest.fn().mockResolvedValue({ error: null }) })), // password change: audit
         auth: {
           admin: {

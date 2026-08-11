@@ -698,6 +698,7 @@ export const AUDIT_SEVERITY_BY_ACTION = {
   'refresh_token_rejected': 'high',
   'member_session_revoked': 'high',
   'member_sessions_revoked': 'high',
+  'session.revoked': 'high',
   'user.invited': 'medium',
   'session_revoked': 'medium',
   'waitlist.approved': 'medium',
