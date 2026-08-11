@@ -46,9 +46,9 @@ jobs:
         # the shell/asset regressions that produce blank pages.
 
   responsive:
-    name: Responsive audit (768/1280 overflow gate)
+    name: Responsive audit (640-1280 overflow gate)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -66,13 +66,14 @@ jobs:
       - name: Install Chromium (Playwright)
         run: npx playwright install --with-deps chromium
 
-      - name: Responsive audit (768/1280)
+      - name: Responsive audit (640/768/1024/1280)
         run: npm run audit:responsive
         # Boots vite in mock mode, signs in as the seeded mock admin, and walks
-        # every public + /app/* + /app/admin/* route at 768px and 1280px,
-        # failing on page-level horizontal overflow or clipped in-flow elements
-        # (the grid/table regression class). New routes must be added to the
-        # inventory in scripts/audit-responsive.mjs to stay under the gate.
+        # every public + /app/* + /app/admin/* route at 640px, 768px, 1024px,
+        # and 1280px, failing on page-level horizontal overflow or clipped
+        # in-flow elements (the grid/table regression class). New routes must be
+        # added to the inventory in scripts/audit-responsive.mjs to stay under
+        # the gate.
 
   backend:
     name: Backend (build · unit · e2e)

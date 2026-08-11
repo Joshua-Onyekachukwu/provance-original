@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
- * audit-responsive.mjs — repeatable responsive layout gate (768px tablet /
- * 1280px desktop), the permanent CI successor to the one-off browser passes.
+ * audit-responsive.mjs — repeatable responsive layout gate (640px phone /
+ * 768px tablet / 1024px laptop / 1280px desktop), the permanent CI successor
+ * to the one-off browser passes.
  *
  * What it does:
  *   1. Boots `vite` in mock mode (VITE_USE_MOCK=true is forced so ambient
@@ -120,7 +121,9 @@ const ADMIN_ROUTES = [
 const ALL_ROUTES = [...PUBLIC_ROUTES, ...APP_ROUTES, ...ADMIN_ROUTES];
 
 const VIEWPORTS = [
+  { name: 'phone-640', width: 640, height: 1136 },
   { name: 'tablet-768', width: 768, height: 1024 },
+  { name: 'laptop-1024', width: 1024, height: 768 },
   { name: 'desktop-1280', width: 1280, height: 800 },
 ];
 
@@ -311,7 +314,7 @@ async function main() {
     console.error('  overflow/clipped regression — fix the layout or add a scroll container.');
     process.exit(1);
   }
-  console.log('\nresponsive audit passed — no page-level overflow or clipped in-flow elements at 768/1280');
+  console.log('\nresponsive audit passed — no page-level overflow or clipped in-flow elements at 640/768/1024/1280');
   process.exit(0);
 }
 

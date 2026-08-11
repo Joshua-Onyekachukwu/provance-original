@@ -1,5 +1,17 @@
 # Provance — Changelog
 
+## [2026-08-11] - Responsive audit extended to 640px + 1024px (208 audits) — one fix surfaced
+
+### Changed
+- **`audit:responsive` now walks four viewports** — 640×1136 (small phone), 768×1024 (tablet), 1024×768 (small laptop), 1280×800 (desktop) — so the permanent CI gate covers the whole responsive range, not just the 768/1280 pair. CI job renamed to `Responsive audit (640-1280 overflow gate)`, timeout bumped to 30 min for the doubled workload, and the script/CI messaging updated.
+
+### Fixed
+- **Admin Monitoring — Table stats card clipped at 1024px (the only failure across all 208 audits).** The card's 4-column header (`1fr_auto_auto_auto` with fixed `w-16`/`w-28` columns ≈ 278px) sits in a `lg:grid-cols-3` section, so at 1024px the card is only ~268px wide and the `Dead tuples` header overflowed its `overflow-hidden` wrapper — the exact table-clip pattern from the original `53d9a8e` sweep. Converted the wrapper to `overflow-x-auto`; the table stats now scroll inside the card at any width.
+
+### Verified
+- Full audit: **208/208 page audits clean** (52 routes × 4 viewports). The 640px phone width surfaced nothing — the mobile shell/menu/grids hold up.
+- vitest **518/518**, lint 0 errors (34 baseline warnings), `vite build` clean.
+
 ## [2026-08-11] - Overflow-hidden sweep on public pages + print views: long-string wrap hardening
 
 ### Changed

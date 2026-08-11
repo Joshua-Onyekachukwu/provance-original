@@ -363,7 +363,7 @@ function DBPerformancePanel({ db }) {
         {tables.length === 0 ? (
           <p className="py-6 text-center text-sm text-charcoal-mid">No table statistics yet.</p>
         ) : (
-          <div className="overflow-hidden rounded-2xl border border-stone-light bg-white-warm">
+          <div className="overflow-x-auto rounded-2xl border border-stone-light bg-white-warm">
             <div className="hidden grid-cols-[1fr_auto_auto_auto] items-center gap-4 border-b border-stone-light/50 px-4 py-2 font-mono text-[10px] uppercase tracking-[0.16em] text-charcoal-light sm:grid">
               <span>Table</span>
               <span className="w-16 text-right">Rows</span>
