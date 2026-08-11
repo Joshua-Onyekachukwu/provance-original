@@ -24,6 +24,8 @@ Status values: `Open` · `In Progress` · `Done` · `Deferred` · `Declined`
 
 | Date | Source task | Recommendation | Status |
 | --- | --- | --- | --- |
+| 2026-08-11 | Auth cookie e2e slice | Extend the spec with a secure-deployment variant (AUTH_COOKIE_SECURE=true) asserting the `__Host-provance_refresh` cookie name + `Secure` flag, since only the plain local name is covered today | Open |
+| 2026-08-11 | Auth cookie e2e slice | Add a guarded-surface leg: sign in, then GET /v1/auth/me with the access token (SupabaseAuthGuard overridden like the security spec) to prove the full session round-trip past the cookie boundary | Open |
 | 2026-08-11 | Readiness surfaced live | The migrations gate runs 20 sequential REST probes so the first readiness call takes ~15s — either parallelize the probes or note the timeout in the runbook so a slow first call isn't mistaken for a hang | Open |
 | 2026-08-11 | One-paste schema convergence | After pasting `combined-0005-0020.sql`, run every live walk in sequence (readiness → `validate:admin-jobs` → `validate:org-revoke` → `validate:scan-roundtrip`) to confirm each surface flips real, since the single paste unblocks all of them at once | Open |
 | 2026-08-11 | One-paste schema convergence | Migrate the stale `.freebuff/probe_migrations.mjs` (0001–0010, soft "table present" fallback) onto the canonical `migration-health.service.ts` probe list or delete it, so scratch and canonical probes can't disagree (0009 already showed that false-positive) | Open |

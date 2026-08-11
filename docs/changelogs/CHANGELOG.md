@@ -1,5 +1,19 @@
 # Provance — Changelog
 
+## [2026-08-11] - Auth cookie lifecycle locked at the HTTP layer (auth.e2e-spec.ts, +7)
+
+### Added
+- **`backend/test/auth.e2e-spec.ts`** — the httpOnly refresh-cookie session lifecycle through the **real module graph** (real AuthService, real guards, real ValidationPipe + GlobalExceptionFilter) with a mocked Supabase service, following the security.e2e-spec.ts convention:
+  - **sign-in** → 200 with `Set-Cookie: provance_refresh=…; Path=/; Max-Age=2592000; HttpOnly; SameSite=Lax` (no `Secure` locally), the body refresh token **stripped**, and a `sign_in_succeeded` audit row attributed to the actor; invalid creds → 401 with `sign_in_failed` + `reason: invalid_credentials`.
+  - **refresh with the cookie** → 200, new access token, body still stripped, and the cookie **rotated** to the fresh refresh token.
+  - **replay of the rotated-out cookie** → 401 with `refresh_token_rejected` in the admin trail (`severity: high`, `reuse_suspected: true`, `token_source: 'cookie'`) — the theft signature.
+  - **body-token fallback** → refreshing with a body token when no cookie is present works and **promotes** it to the cookie; no credential at all → 401 "No session credential was provided."
+  - **sign-out** → clears both cookie names (plain + `__Host-`, `Max-Age=0`) and burns the presented token (a subsequent refresh 401s).
+- The mock Supabase service pairs a **rotation-aware public client** (each refresh consumes the presented token and issues the next; replaying a consumed token returns GoTrue's "Already Used" error) with the stateful admin client (profiles / user_sessions / auth_audit_events / audit_logs). Env is pinned before the AppModule import (SUPABASE trio + `AUTH_COOKIE_*`) so the suite is hermetic against `backend/.env.local`.
+
+### Verified
+- e2e **75 passed / 2 opt-in skipped / 0 failures** (+7), unit jest **420/420**, `nest build` clean.
+
 ## [2026-08-11] - :4000 backend restarted from a fresh build; readiness surfaces checks.migrations live
 
 ### What changed
