@@ -1,5 +1,15 @@
 # Provance — Changelog
 
+## [2026-08-11] - One-paste schema convergence verified; runbook verification extended to 0020
+
+### What changed
+- **The single paste block is confirmed to converge the whole schema.** The canonical `validate:migrations` probe (all 20 migrations) shows the live project (`dmhrwdcuwtgscwlaagsa`) has **0001–0004 + 0006 applied** and **0005, 0007–0009, 0010–0020 missing** (0017 is a seed-only skip). The existing `.freebuff/combined-0005-0020.sql` (959 lines) contains **all 16 source files byte-identical** (CRLF-normalized, in numeric/dependency order, all idempotent) — one dashboard paste of it covers the full missing set, including 0009 (whose `scans.processing_mode` probe still 42703 — the earlier `.freebuff/probe_migrations.mjs` "table present" reading was a soft false-positive) and the seed 0017. Header annotated with the verified convergence claim.
+- **Runbook one-shot verification extended 0010 → 0020.** `MIGRATION_RUNBOOK.md` §1 now checks every migration's objects (notifications, `profiles.team_id`, `scans.file_hash_sha256`, crash_reports, `organization_invites.token_hash`, role_scopes, the conditional 0017 seed rows, the twelve Better Auth tables, `scans.idempotency_key`, api_usage) with documented expected counts, so one paste → one verification query confirms full convergence before `npm run validate:migrations` / readiness.
+
+### Verified
+- Byte-parity of `combined-0005-0020.sql` vs all 16 sources re-confirmed after the header edit.
+- Applied-set fingerprint in the runbook §3 (0001–0004, 0006) matches the live canonical probe exactly.
+
 ## [2026-08-11] - Org session revocations now persist in the audit trail and surface in the Activity Log
 
 ### Added

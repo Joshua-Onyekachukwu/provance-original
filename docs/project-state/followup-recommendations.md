@@ -24,6 +24,8 @@ Status values: `Open` · `In Progress` · `Done` · `Deferred` · `Declined`
 
 | Date | Source task | Recommendation | Status |
 | --- | --- | --- | --- |
+| 2026-08-11 | One-paste schema convergence | After pasting `combined-0005-0020.sql`, run every live walk in sequence (readiness → `validate:admin-jobs` → `validate:org-revoke` → `validate:scan-roundtrip`) to confirm each surface flips real, since the single paste unblocks all of them at once | Open |
+| 2026-08-11 | One-paste schema convergence | Migrate the stale `.freebuff/probe_migrations.mjs` (0001–0010, soft "table present" fallback) onto the canonical `migration-health.service.ts` probe list or delete it, so scratch and canonical probes can't disagree (0009 already showed that false-positive) | Open |
 | 2026-08-11 | Org session revocations audited | Add `session_revoked` mock parity to the self-service `mockRevokeSession` (Security page) — the real backend writes it to the feed but the mock still doesn't, so mock mode under-demos the account tab | Open |
 | 2026-08-11 | Org session revocations audited | Render `details.revoked` (and member context) in the Admin Audit Logs event drawer so the persisted count is visible, not just stored | Open |
 | 2026-08-11 | Org session revocations audited | Extend `validate-org-session-revoke.mjs` to assert the `member_sessions_revoked` row (with the exact count) appears in `GET /admin/audit-logs` once migrations 0005 + 0010 land | Open |

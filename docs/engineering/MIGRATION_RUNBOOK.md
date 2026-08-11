@@ -228,11 +228,52 @@ union all
 select '0010', 'sessions tables', count(*) from information_schema.tables
   where table_schema = 'public'
   and table_name in ('user_sessions', 'user_security_settings')
+union all
+select '0011', 'notifications table', count(*) from information_schema.tables
+  where table_schema = 'public' and table_name = 'notifications'
+union all
+select '0012', 'profiles.team_id col', count(*) from information_schema.columns
+  where table_schema = 'public' and table_name = 'profiles' and column_name = 'team_id'
+union all
+select '0013', 'scans.file_hash_sha256 col', count(*) from information_schema.columns
+  where table_schema = 'public' and table_name = 'scans' and column_name = 'file_hash_sha256'
+union all
+select '0014', 'crash_reports table', count(*) from information_schema.tables
+  where table_schema = 'public' and table_name = 'crash_reports'
+union all
+select '0015', 'invites.token_hash col', count(*) from information_schema.columns
+  where table_schema = 'public' and table_name = 'organization_invites'
+  and column_name = 'token_hash'
+union all
+select '0016', 'role_scopes table', count(*) from information_schema.tables
+  where table_schema = 'public' and table_name = 'role_scopes'
+union all
+select '0017', 'sessions seed rows (dev account)', count(*) from public.user_sessions
+  where user_id = (select id from auth.users
+                   where email = 'founder.admin@provance.local' limit 1)
+union all
+select '0018', 'better-auth tables', count(*) from information_schema.tables
+  where table_schema = 'public'
+  and table_name in ('user', 'session', 'account', 'verification', 'twoFactor',
+    'organization', 'team', 'member', 'teamMember', 'invitation', 'role', 'apiKey')
+union all
+select '0019', 'scans.idempotency_key col', count(*) from information_schema.columns
+  where table_schema = 'public' and table_name = 'scans' and column_name = 'idempotency_key'
+union all
+select '0020', 'api_usage table', count(*) from information_schema.tables
+  where table_schema = 'public' and table_name = 'api_usage'
 order by m;
 ```
 
 Expected `found` per migration: 0003 → 2 · 0004 → 1 · 0005 → 4 · 0006 → 10 ·
-0007 → 5 · 0008 → 15 · 0009 → 3 · 0010 → 2.
+0007 → 5 · 0008 → 15 · 0009 → 3 · 0010 → 2 · 0011 → 1 · 0012 → 1 · 0013 → 1 ·
+0014 → 1 · 0015 → 1 · 0016 → 1 · 0017 → 3 · 0018 → 12 · 0019 → 1 · 0020 → 1.
+
+(`0017 → 3` is conditional: the seed only inserts when the dev test account
+`founder.admin@provance.local` exists in `auth.users` — expect 0 in a
+project without that account. `0018 → 12` counts the twelve Better Auth
+core/plugin tables; this row is informational since the live auth flow
+still runs on GoTrue behind `USE_BETTER_AUTH`.)
 
 ### 2. Readiness endpoint (backend must be running on :4000)
 
