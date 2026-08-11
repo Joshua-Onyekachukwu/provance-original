@@ -45,6 +45,35 @@ jobs:
         # Client-side rendering can't be asserted via curl; this gate catches
         # the shell/asset regressions that produce blank pages.
 
+  responsive:
+    name: Responsive audit (768/1280 overflow gate)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium (Playwright)
+        run: npx playwright install --with-deps chromium
+
+      - name: Responsive audit (768/1280)
+        run: npm run audit:responsive
+        # Boots vite in mock mode, signs in as the seeded mock admin, and walks
+        # every public + /app/* + /app/admin/* route at 768px and 1280px,
+        # failing on page-level horizontal overflow or clipped in-flow elements
+        # (the grid/table regression class). New routes must be added to the
+        # inventory in scripts/audit-responsive.mjs to stay under the gate.
+
   backend:
     name: Backend (build · unit · e2e)
     runs-on: ubuntu-latest

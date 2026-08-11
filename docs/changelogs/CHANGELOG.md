@@ -1,5 +1,19 @@
 # Provance — Changelog
 
+## [2026-08-11] - Responsive audit gate: audit:responsive + CI job (Playwright, 768/1280)
+
+### Added
+- **`scripts/audit-responsive.mjs`** (registered as `audit:responsive`) — the tablet/desktop pass is now a repeatable, CI-runnable gate. It boots `vite` in forced mock mode (`VITE_USE_MOCK=true`, noise injection disabled via `provance.mock.noisy.v1`), signs in as the seeded mock admin, and walks **52 routes × 2 viewports** (768×1024, 1280×800) in headless Chromium (Playwright). The in-page probe fails on **page-level horizontal overflow** (`scrollWidth > clientWidth`) and **clipped in-flow elements** whose right edge (or width) exceeds the viewport — fixed/absolute elements and elements inside horizontal-scroll containers are exempt, but `overflow:hidden` containers are *not* (that is the clipping bug class). Exits non-zero on any issue; `AUDIT_ROUTES=uploads,analytics` runs a quick subset, `AUDIT_PORT` overrides the port.
+- **Playwright devDependency** — the project's first browser-automation dep (jsdom cannot do layout); CI installs the browser with `npx playwright install --with-deps chromium`.
+- **CI job** — new `responsive` job in `ci.yml` (install → playwright chromium → `npm run audit:responsive`), parallel to frontend/backend.
+
+### Fixed
+- **Public Navbar 768px overflow (caught by the new gate on its first full run)** — the desktop nav (`hidden md:flex`) switched on at 768px but its six links + CTA need ~716px on top of the logo, overflowing to 882px. Moved the desktop nav to `lg:` and the mobile toggle/menu to `lg:hidden` (standard Tailwind breakpoint convention); the nav now shows from 1024px where it fits.
+
+### Verified
+- Full audit: **104/104 page audits clean** at 768/1280 (public + all 19 `/app/*` + 12 `/app/admin/*` routes).
+- vitest **518/518**, lint 0 errors (34 baseline warnings), `vite build` clean.
+
 ## [2026-08-11] - Live walk tooling for the post-paste verification (migrations still pending)
 
 ### Added

@@ -54,7 +54,7 @@ export default function Navbar() {
           </div>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-8">
+        <nav className="hidden lg:flex items-center gap-8">
           {NAV_ITEMS.map((item) => (
             <Link
               key={item.href}
@@ -101,7 +101,7 @@ export default function Navbar() {
         </nav>
 
         <button
-          className="md:hidden flex flex-col gap-1.5 p-2"
+          className="lg:hidden flex flex-col gap-1.5 p-2"
           onClick={() => setMobileOpen(!mobileOpen)}
           aria-label="Toggle menu"
           aria-expanded={mobileOpen}
@@ -120,7 +120,7 @@ export default function Navbar() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-parchment/95 backdrop-blur-xl border-b border-stone-light overflow-hidden"
+            className="lg:hidden bg-parchment/95 backdrop-blur-xl border-b border-stone-light overflow-hidden"
           >
             <div className="px-6 py-6 flex flex-col gap-4">
               {NAV_ITEMS.map((item) => (
