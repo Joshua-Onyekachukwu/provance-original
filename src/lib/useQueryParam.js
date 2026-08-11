@@ -48,9 +48,17 @@ import { useLocation, useNavigate } from 'react-router-dom'
 /**
  * Pure extractor: the value from `search` when it passes `validate`, else
  * `defaultValue`. Router-free, so it is usable in tests and non-React code.
+ *
+ * Contract: an ABSENT key always reads as `defaultValue`, even when
+ * `validate(null)` is true. A validate-accepted null would otherwise round-
+ * trip through the writer as 'status=null' and ping-pong the URL forever
+ * (re-derive → default → delete key → absent → null → …). Validators should
+ * reject null (see isValidTeamFilter) and callers that accept null should
+ * rely on this absent-key default instead.
  */
 export function readQueryParam(search, key, validate, defaultValue) {
   const raw = new URLSearchParams(search).get(key)
+  if (raw === null) return defaultValue
   return validate(raw) ? raw : defaultValue
 }
 
@@ -119,7 +127,7 @@ export function useQueryParam({ key, validate, defaultValue, read, serialize }) 
     const params = new URLSearchParams(location.search)
     const serialized = serializeRef.current
       ? serializeRef.current(value)
-      : value === defaultValue
+      : value === defaultValue || value === null || value === undefined
         ? null
         : String(value)
     if (serialized === null) params.delete(key)

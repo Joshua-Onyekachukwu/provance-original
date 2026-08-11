@@ -23,6 +23,8 @@ import {
 import { failJob, getAdminJobs, retryJob } from '../../lib/api.js'
 import { useDemoState } from '../../lib/useDemoState.js'
 import useMockData from '../../lib/useMockData.js'
+import { useQueryParam } from '../../lib/useQueryParam.js'
+import { useResource } from '../../lib/useResource.js'
 
 // ---------------------------------------------------------------------------
 // Presentation meta
@@ -375,19 +377,56 @@ export default function JobsPage() {
   const { toast } = useToast()
   const demoState = useDemoState()
 
-  const { data: rawData, loading, error, refetch } = useMockData(getAdminJobs)
+  // Full-set fetch — the worker panel, status counts, worker filter options,
+  // and header meta all derive from EVERY job, independent of the table's
+  // server-side status filter (a deep link to ?status=failed must not shrink
+  // the utilization panel to just the failed subset).
+  const {
+    data: fullRaw,
+    loading: fullLoading,
+    error: fullError,
+    refetch: refetchFull,
+  } = useMockData(getAdminJobs)
+
+  // URL-backed status (?status=failed) so deep links resolve server-side.
+  // validate rejects null like the TeamFilter contract — an absent ?status=
+  // must read as the defaultValue, never as raw null (a validate-accepted
+  // null would serialize to 'status=null' and ping-pong the URL forever).
+  const [status, setStatus] = useQueryParam({
+    key: 'status',
+    validate: (raw) =>
+      ['all', 'queued', 'processing', 'completed', 'failed'].includes(raw),
+    defaultValue: 'all',
+  })
+
+  // Server-driven table: status/page/pageSize are forwarded to the API, so
+  // /app/admin/jobs?status=failed filters on the backend (and paginates there
+  // too), not just client-side. page stays local state — two single-key URL
+  // params can't update atomically together (see useQueryParam's docblock),
+  // and only ?status= is a shareable deep link.
+  const [page, setPage] = useState(1)
+  const table = useResource(
+    () => getAdminJobs({ status: status === 'all' ? undefined : status, page, pageSize: PAGE_SIZE }),
+    [status, page],
+  )
+  const refetchAll = useCallback(() => {
+    refetchFull()
+    table.reload()
+  }, [refetchFull, table.reload])
 
   const EMPTY_JOBS = useMemo(() => ({ data: [], total: 0 }), [])
-  const data = demoState === 'empty' ? EMPTY_JOBS : rawData
+  const fullData = demoState === 'empty' ? EMPTY_JOBS : fullRaw
+  const tableData = demoState === 'empty' ? EMPTY_JOBS : table.data
 
-  const isLoading = loading || demoState === 'loading'
-  const hasError = Boolean(error) || demoState === 'error'
-  const jobs = useMemo(() => data?.data || [], [data])
+  const isLoading = fullLoading || table.status === 'loading' || demoState === 'loading'
+  const hasError =
+    Boolean(fullError || (table.status === 'error' && table.error)) || demoState === 'error'
+  const jobs = useMemo(() => fullData?.data || [], [fullData])
+  const tableJobs = useMemo(() => tableData?.data || [], [tableData])
+  const serverTotal = tableData?.total ?? 0
 
-  const [status, setStatus] = useState('all')
   const [worker, setWorker] = useState('all')
   const [query, setQuery] = useState('')
-  const [page, setPage] = useState(1)
   const [selectedJob, setSelectedJob] = useState(null)
   const [busyId, setBusyId] = useState(null)
 
@@ -420,10 +459,11 @@ export default function JobsPage() {
     )
   }, [jobs])
 
+  // The worker + search controls are client-side quick refinements over the
+  // current server page (status already arrived filtered from the API).
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return jobs.filter((job) => {
-      if (status !== 'all' && job.status !== status) return false
+    return tableJobs.filter((job) => {
       if (worker !== 'all') {
         if (worker === 'unassigned') {
           if (job.worker) return false
@@ -439,15 +479,15 @@ export default function JobsPage() {
         (job.worker || '').toLowerCase().includes(q)
       )
     })
-  }, [jobs, status, worker, query])
+  }, [tableJobs, worker, query])
 
   const hasActiveFilters = status !== 'all' || worker !== 'all' || query.trim() !== ''
-  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  // Pagination is server-driven: pageCount comes from the API's exact total
+  // (after the status filter), and the visible page is what the server
+  // returned, narrowed by the worker/search quick filters.
+  const pageCount = Math.max(1, Math.ceil(serverTotal / PAGE_SIZE))
   const safePage = Math.min(page, pageCount)
-  const visible = useMemo(
-    () => filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
-    [filtered, safePage],
-  )
+  const visible = filtered
 
   function resetPage() {
     setPage(1)
@@ -469,7 +509,7 @@ export default function JobsPage() {
           description: `${job.id} moved back to the queue for another attempt.`,
           type: 'success',
         })
-        refetch()
+        refetchAll()
       } catch (error) {
         toast('Job could not be re-queued', {
           description: error instanceof Error ? error.message : 'The retry did not complete.',
@@ -479,7 +519,7 @@ export default function JobsPage() {
         setBusyId(null)
       }
     },
-    [toast, refetch],
+    [toast, refetchAll],
   )
 
   const handleFail = useCallback(
@@ -491,7 +531,7 @@ export default function JobsPage() {
           description: `${job.id} stopped and recorded as failed.`,
           type: 'success',
         })
-        refetch()
+        refetchAll()
       } catch (error) {
         toast('Job could not be failed', {
           description: error instanceof Error ? error.message : 'The fail action did not complete.',
@@ -501,7 +541,7 @@ export default function JobsPage() {
         setBusyId(null)
       }
     },
-    [toast, refetch],
+    [toast, refetchAll],
   )
 
   useRegisterCommands(
@@ -669,8 +709,8 @@ export default function JobsPage() {
         title="Verification jobs"
         description="Newest first — status and priority badges per job. Click Inspect for the full detail."
         state={hasError ? 'error' : isLoading ? 'loading' : 'default'}
-        errorDescription={hasError ? (demoState === 'error' ? 'Demo state — forced error for review. This is not a real outage.' : error) : ''}
-        onRetry={refetch}
+        errorDescription={hasError ? (demoState === 'error' ? 'Demo state — forced error for review. This is not a real outage.' : fullError || table.error) : ''}
+        onRetry={refetchAll}
         loadingRows={6}
       >
         {!isLoading && !hasError && (
@@ -821,11 +861,10 @@ export default function JobsPage() {
               </div>
             )}
 
-            {filtered.length > PAGE_SIZE && (
+            {filtered.length > 0 && serverTotal > PAGE_SIZE && (
               <div className="mt-5 flex items-center justify-between border-t border-stone-light pt-4">
                 <p className="text-xs text-charcoal-light">
-                  Showing {Math.min(filtered.length, (safePage - 1) * PAGE_SIZE + PAGE_SIZE)} of{' '}
-                  {filtered.length} jobs
+                  Showing {(safePage - 1) * PAGE_SIZE + filtered.length} of {serverTotal} jobs
                 </p>
                 <div className="flex items-center gap-2">
                   <button

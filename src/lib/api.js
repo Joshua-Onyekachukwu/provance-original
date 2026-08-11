@@ -888,9 +888,12 @@ export function getAdminAuditLogs(params) {
   return request(`/admin/audit-logs${query ? `?${query}` : ''}`)
 }
 
-export function getAdminJobs() {
-  if (USE_MOCK) return mockGetAdminJobs()
-  return request('/admin/jobs')
+export function getAdminJobs(params = {}) {
+  if (USE_MOCK) return mockGetAdminJobs(params)
+  const query = new URLSearchParams(
+    Object.entries(params).filter(([, value]) => value !== undefined && value !== null),
+  ).toString()
+  return request(`/admin/jobs${query ? `?${query}` : ''}`)
 }
 
 export function retryJob(jobId) {

@@ -1064,13 +1064,34 @@ function currentMockActorEmail() {
   return mockUsers[0]?.email || 'system'
 }
 
-export async function mockGetAdminJobs() {
+export async function mockGetAdminJobs(params = {}) {
   await delay()
   maybeError()
-  // Shallow copy: retry/fail mutate the module-level store, and a fresh array
-  // reference on each fetch lets downstream useMemo-derived counts recompute
-  // (statusCounts keys off the array identity).
-  return { data: [...mockAdminJobs], total: mockAdminJobs.length }
+
+  const { status, page = 1, pageSize = 500 } = params
+
+  // Status filter in the page's display dialect ('completed', not the DB
+  // 'complete') — the same values the tabs send and mockAdminJobs stores,
+  // mirroring how the real backend maps the display dialect via JOB_STATUS_DB.
+  // 'all' (or absent) returns every job, like the no-params contract.
+  let rows =
+    status && status !== 'all'
+      ? mockAdminJobs.filter((job) => job.status === status)
+      : [...mockAdminJobs]
+
+  // Pagination matches the backend envelope { data, total, page, pageSize }:
+  // total is the exact count AFTER the status filter (count: 'exact'), and
+  // pageSize defaults to 500 so a no-params fetch still returns the full set
+  // (the Jobs page derives its worker panel + status counts from that).
+  const total = rows.length
+  const safePage = Math.max(1, page)
+  const safePageSize = Math.min(500, Math.max(1, pageSize))
+  const start = (safePage - 1) * safePageSize
+  const data = rows.slice(start, start + safePageSize)
+
+  // Shallow copy semantics preserved: rows is already a fresh array (filter
+  // or spread), so downstream useMemo-derived counts recompute correctly.
+  return { data, total, page: safePage, pageSize: safePageSize }
 }
 
 /**

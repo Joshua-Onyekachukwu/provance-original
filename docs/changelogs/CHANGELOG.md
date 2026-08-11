@@ -1,6 +1,17 @@
 # Provance — Changelog
 
-## [2026-08-10] - Schema-state check now diagnoses project/env mismatch in one command
+## [2026-08-11] - Admin Jobs deep links resolve server-side; useQueryParam loop bug fixed
+
+### Added
+- **`getAdminJobs(params)` now forwards `status`/`page`/`pageSize`** (api.js real path + `mockGetAdminJobs` mock path, mirroring `getAdminReports`), so `/app/admin/jobs?status=failed` filters and paginates on the backend — not just client-side. The mock matches the backend envelope exactly: `{ data, total, page, pageSize }` with the exact total after the status filter (display dialect: `failed`, not DB `fail`), page clamped to ≥ 1, pageSize clamped to ≤ 500, and a no-params fetch still returning the full set (pageSize 500) so downstream full-set derivation keeps working.
+- **JobsPage server-driven table.** `?status=` is URL-backed via `useQueryParam` (validated against the tab dialect), the table refetches through `useResource([status, page])` on filter/page change, and pagination (pageCount, `Showing X of Y`) now derives from the API's exact filtered total. The worker-utilization panel, status counts, and header meta still derive from a separate full-set fetch — a `?status=failed` deep link can't shrink the panel to the failed subset. Tab clicks reset to page 1.
+- **Tests (+13):** `mockAdminJobsParams.test.js` (6 — envelope, status filter + exact total, `all` ≡ absent, pagination disjointness, clamping, empty deep page), `jobsPageDeepLink.test.jsx` (2 — deep link resolves server-side with the Failed tab pressed + every row failed + panel still full-set; absent param falls back to the full ledger), `useQueryParam.test.js` (5 — absent-key contract).
+
+### Fixed
+- **Infinite navigation loop in `useQueryParam` (new hook, discovered by the new render test).** A validator that accepts `null` (as the first version of the Jobs status validator did) made an absent `?status=` read as raw `null`; the writer serialized it to `'status=null'`; the re-derive rejected `'null'`, adopted the default, deleted the key, and the absent key read `null` again — a never-ending ping-pong that pegged a CPU core and hung any page using it. Fixed twice: JobsPage's validator now rejects `null` (TeamFilter contract), and `readQueryParam` now returns `defaultValue` for an absent key unconditionally, with the writer treating `null`/`undefined` as delete — so the loop class can't recur for any caller. All existing `useQueryParam` consumers (team filter, date range) verified unaffected.
+
+### Verified
+- Frontend vitest **508/508** (51 files, +13), `npm run build` clean, oxlint 0 errors.
 
 ### Added
 - **`backend/scripts/validate-migrations.mjs` — project banner + mismatch check.** The one-command gate now prints the Supabase project ref this env probes plus a direct SQL-editor link (`https://supabase.com/dashboard/project/<ref>/sql/new`), and on failure appends a `PROJECT/ENV MISMATCH CHECK` that tells the operator to compare the printed ref with the project id in the SQL Editor's URL bar — closing the gap where migrations pasted into the dashboard "didn't take" because they went to a different project than `backend/.env.local` points at. The applied set doubles as the fingerprint (this project: 0001–0004, 0006).

@@ -121,3 +121,6 @@ Status values: `Open` · `In Progress` · `Done` · `Deferred` · `Declined`
 
 | 2026-08-10 | Schema-state mismatch check | Live run confirms the diagnostic works — project banner names dmhrwdcuwtgscwlaagsa. Once the user pastes the combined block into THAT project, this same command is the re-check: expect all-OK + exit 0, and the mismatch hint disappears | Open |
 | 2026-08-10 | Schema-state mismatch check | Consider adding a --ref-only flag (or a validate:project npm script) that prints just the probed ref + dashboard link for CI scripts that need the project identity without the full table | Open |
+| 2026-08-11 | Admin Jobs deep links | Make ?page= URL-backed too (or solve the two-single-key atomic-update constraint) so a paginated filtered view like ?status=failed&page=2 is fully shareable, mirroring the ?team= + ?from=/?to= pattern | Open |
+| 2026-08-11 | Admin Jobs deep links | Extend the server-side status/page forwarding treatment to the admin Users page (and confirm Audit Logs forwards status already) so role/status deep links resolve server-side like /app/admin/jobs | Open |
+| 2026-08-11 | Admin Jobs deep links | The useQueryParam absent-key loop fix is DOM-tested; do a quick manual dev pass on /app/admin/jobs?status=failed (and a ?team= surface) to confirm the visual state and URL bar stay canonical in the browser | Open |
