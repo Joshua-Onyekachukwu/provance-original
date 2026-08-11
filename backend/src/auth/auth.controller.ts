@@ -7,6 +7,7 @@ import {
   Post,
   Res,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Throttle } from '@nestjs/throttler';
@@ -25,6 +26,7 @@ import {
 import { requestSessionMeta } from '../security/session-meta.util';
 import { AcceptInviteDto } from './dto/accept-invite.dto';
 import { AuthService } from './auth.service';
+import { RefreshLockoutInterceptor } from './refresh-lockout.interceptor';
 import { ConfirmPasswordResetDto } from './dto/confirm-password-reset.dto';
 import { RefreshSessionDto } from './dto/refresh-session.dto';
 import { RequestPasswordResetDto } from './dto/request-password-reset.dto';
@@ -103,6 +105,7 @@ export class AuthController {
 
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
+  @UseInterceptors(RefreshLockoutInterceptor)
   async refreshSession(
     @Res({ passthrough: true }) response: Response,
     @Body() dto: RefreshSessionDto,

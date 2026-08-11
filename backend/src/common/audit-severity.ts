@@ -21,6 +21,10 @@ export const AUDIT_SEVERITY_BY_ACTION: Record<string, string> = {
   // unknown) — the signature of token theft / replay attempts. Surfaced in
   // the Admin Audit Logs page as a high-severity security event.
   'refresh_token_rejected': 'high',
+  // Repeated rejected refresh attempts tripped the refresh lockout — one
+  // high-severity row per episode (written by RefreshLockoutInterceptor),
+  // which also caps the refresh_token_rejected flood.
+  'refresh_lockout': 'high',
   // An owner/admin revoked a member's session(s) — a security action on
   // someone else's devices, written by the org service (audit_logs) and the
   // security service (auth_audit_events feed).

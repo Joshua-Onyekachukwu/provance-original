@@ -1,5 +1,20 @@
 # Provance — Changelog
 
+## [2026-08-11] - Refresh-replay lockout: repeated rejected refresh tokens 429 + one high-severity lockout row
+
+### Added
+- **Failure-triggered lockout on `POST /auth/refresh`** — new `RefreshLockoutInterceptor` (wired onto the refresh route) complements the controller's count-based `@Throttle` (raw volume) with a rejection-keyed defense: N consecutive 401s from one IP within a window trip a short lockout during which refresh is refused with **429 before the handler runs**. Configurable via `REFRESH_LOCKOUT_THRESHOLD` (default 3) / `REFRESH_LOCKOUT_WINDOW_MS` (30s) / `REFRESH_LOCKOUT_DURATION_MS` (60s); a successful refresh clears the key.
+- **One high-severity `refresh_lockout` audit row per episode** — written to `audit_logs` (best-effort, `severity: high`, entity `auth_session`, details carry ip/threshold/failures/lockout window) exactly on the trip, never re-written while locked out, so the episode is marked without adding noise. Because blocked requests never reach the handler, `refresh_token_rejected` rows are capped at the threshold — the flood can't spam the rejection trail.
+- **Pure `RefreshLockoutTracker`** (`refresh-lockout.ts`) — clock-injectable window/threshold/lockout semantics + a tracker-key helper mirroring `ApiThrottlerGuard` (x-forwarded-for → req.ip → socket), unit-tested independently.
+- **Severity map parity** — `refresh_lockout: 'high'` added to the backend `audit-severity.ts` and the mock's `AUDIT_SEVERITY_BY_ACTION`.
+
+### Tests (+10)
+- `refresh-lockout.spec.ts` — 9 tracker tests: threshold trip, lockout duration + self-heal, no re-trip while locked out, window rollover reset, success clears, per-key independence, key resolution.
+- `auth.e2e-spec.ts` — new HTTP-layer leg (threshold pinned to 2 for the suite): sign-in → refresh → two replays of the rotated-out cookie (401 ×2, second trips) → next replay **429** with the lockout message, the handler never called for the blocked request (`refreshSession` ×3), exactly two `refresh_token_rejected` rows and **one** `refresh_lockout` row.
+
+### Verified
+- Backend jest **429/429** (28 suites), `nest build` clean, e2e **76 passed / 2 opt-in skipped / 0 failures**, frontend vitest **518/518**, lint 0 errors (same pre-existing warnings).
+
 ## [2026-08-11] - Session revocations now land in the admin audit trail (session.revoked, high)
 
 ### Added

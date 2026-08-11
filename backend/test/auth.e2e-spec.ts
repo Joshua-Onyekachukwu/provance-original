@@ -24,6 +24,11 @@ Object.assign(process.env, {
   AUTH_COOKIE_SAME_SITE: 'lax',
   AUTH_COOKIE_SECURE: 'false',
   AUTH_COOKIE_MAX_AGE_DAYS: '30',
+  // Failure-triggered lockout: threshold 2 keeps the lockout's 429 reachable
+  // and unambiguous below the auth controller's 5 req/60s volume throttle.
+  REFRESH_LOCKOUT_THRESHOLD: '2',
+  REFRESH_LOCKOUT_WINDOW_MS: '60000',
+  REFRESH_LOCKOUT_DURATION_MS: '60000',
 });
 
 import { INestApplication, ValidationPipe } from '@nestjs/common';
@@ -273,6 +278,9 @@ function clearSupabaseEnv() {
   delete process.env.AUTH_COOKIE_SAME_SITE;
   delete process.env.AUTH_COOKIE_SECURE;
   delete process.env.AUTH_COOKIE_MAX_AGE_DAYS;
+  delete process.env.REFRESH_LOCKOUT_THRESHOLD;
+  delete process.env.REFRESH_LOCKOUT_WINDOW_MS;
+  delete process.env.REFRESH_LOCKOUT_DURATION_MS;
 }
 
 // ---------------------------------------------------------------------------
@@ -467,6 +475,62 @@ describe('Auth cookie session lifecycle (e2e)', () => {
           reuse_suspected: true,
           token_source: 'cookie',
         }),
+      });
+    });
+
+    it('locks out a replay flood: repeated rejected refreshes 429 and write exactly one high-severity lockout row', async () => {
+      // Sign in (issues #1), refresh once (rotates to #2, consumes #1).
+      await http
+        .post('/v1/auth/sign-in')
+        .send({ email: USER.email, password: PASSWORD })
+        .expect(200);
+      await http
+        .post('/v1/auth/refresh')
+        .set('Cookie', cookieHeader('refresh-token-000001'))
+        .send({})
+        .expect(200);
+
+      // Replay the dead token: failure #1…
+      await http
+        .post('/v1/auth/refresh')
+        .set('Cookie', cookieHeader('refresh-token-000001'))
+        .send({})
+        .expect(401);
+      // …failure #2 trips the lockout (threshold pinned to 2 for this suite).
+      await http
+        .post('/v1/auth/refresh')
+        .set('Cookie', cookieHeader('refresh-token-000001'))
+        .send({})
+        .expect(401);
+
+      // The next replay is refused BEFORE the handler runs — the
+      // interceptor's 429, distinguishable from the volume throttle because
+      // this is only the 4th request to the refresh route (limit 5).
+      const blocked = await http
+        .post('/v1/auth/refresh')
+        .set('Cookie', cookieHeader('refresh-token-000001'))
+        .send({})
+        .expect(429);
+      expect(blocked.body.message).toBe('Too many failed refresh attempts. Try again later.');
+
+      // The handler never saw the blocked request.
+      expect(publicClient.auth.refreshSession).toHaveBeenCalledTimes(3);
+
+      // Exactly the two pre-lockout rejections + ONE high-severity lockout
+      // row — the flood cannot spam the rejection trail past the threshold.
+      const rejections = [...admin.auditLogs.values()].filter(
+        (row) => row.action === 'refresh_token_rejected',
+      );
+      expect(rejections).toHaveLength(2);
+      const lockouts = [...admin.auditLogs.values()].filter(
+        (row) => row.action === 'refresh_lockout',
+      );
+      expect(lockouts).toHaveLength(1);
+      expect(lockouts[0]).toMatchObject({
+        actor_email: 'system',
+        severity: 'high',
+        entity_type: 'auth_session',
+        details: expect.objectContaining({ threshold: 2, failures: 2 }),
       });
     });
 

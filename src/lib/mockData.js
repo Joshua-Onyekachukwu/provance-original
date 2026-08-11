@@ -696,6 +696,7 @@ export const AUDIT_SEVERITY_BY_ACTION = {
   'feature_flag.toggled': 'high',
   'new_device_signin': 'high',
   'refresh_token_rejected': 'high',
+  'refresh_lockout': 'high',
   'member_session_revoked': 'high',
   'member_sessions_revoked': 'high',
   'session.revoked': 'high',
