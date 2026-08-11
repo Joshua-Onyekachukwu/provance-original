@@ -21,7 +21,8 @@
     "validate:sessions": "node scripts/validate-session-lifecycle.mjs",
     "validate:monitoring-parity": "node scripts/parity-monitoring.mjs",
     "validate:bullmq": "node scripts/verify-bullmq.mjs",
-    "validate:migrations": "node scripts/validate-migrations.mjs"
+    "validate:migrations": "node scripts/validate-migrations.mjs",
+    "validate:admin-jobs": "node scripts/validate-admin-jobs.mjs"
   },
   "dependencies": {
     "@better-auth/api-key": "1.6.26",

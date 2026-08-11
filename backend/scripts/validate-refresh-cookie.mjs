@@ -57,7 +57,32 @@ const ENV = loadEnv(resolve(here, '../.env.local'));
 
 const SUPABASE_URL = ENV.SUPABASE_URL;
 const SERVICE_ROLE = ENV.SUPABASE_SERVICE_ROLE_KEY;
-const BASE = `http://localhost:${process.env.PORT || ENV.PORT || 4000}`;
+
+// The dev shell injects a foreign PORT env var (this harness's own server),
+// so blindly trusting process.env.PORT points the walk at the wrong server.
+// Candidates are probed in order (shell override, then .env.local, then 4000)
+// and only a real Provance backend — /v1/health with service=provance-backend
+// — is accepted.
+let BASE = null;
+const PORT_CANDIDATES = [...new Set([process.env.PORT, ENV.PORT, 4000].filter(Boolean))];
+
+async function resolveBase() {
+  let lastError = null;
+  for (const port of PORT_CANDIDATES) {
+    const base = `http://localhost:${port}`;
+    try {
+      const res = await fetch(`${base}/v1/health`);
+      const body = await res.json().catch(() => null);
+      if (res.ok && body?.service === 'provance-backend') return base;
+      lastError = `port ${port}: HTTP ${res.status} (${body?.service ?? 'not a Provance backend'})`;
+    } catch (error) {
+      lastError = `port ${port}: ${error.message}`;
+    }
+  }
+  throw new Error(
+    `no Provance backend found — tried ${PORT_CANDIDATES.join(', ')} (${lastError})`,
+  );
+}
 
 const results = [];
 const notes = [];
@@ -176,13 +201,12 @@ async function main() {
     process.exit(2);
   }
 
-  // Warm up the backend.
+  // Locate the real backend (guards against the injected PORT env).
   try {
-    const res = await fetch(`${BASE}/v1/health`);
-    if (!res.ok) throw new Error(`health ${res.status}`);
+    BASE = await resolveBase();
   } catch (error) {
     console.error(
-      `Backend not reachable at ${BASE} — start it (npm run start:dev) before running this script.\n(${error.message})`,
+      `Backend not reachable — start it (npm run start:dev) before running this script.\n(${error.message})`,
     );
     process.exit(2);
   }

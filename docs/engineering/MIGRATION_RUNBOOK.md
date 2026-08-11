@@ -285,6 +285,28 @@ editor for exactly the probed project). The applied set is the fingerprint:
 this project shows `0001, 0002, 0003, 0004, 0006` applied, so a dashboard
 project with a different applied set is not the one the env probes.
 
+### 4. Admin surface walk (after 0008 + 0009 land)
+
+Once `audit_logs` (0008) and `scans.processing_mode` (0009) are applied, the
+admin jobs surface is verifiable end to end with one command (backend must be
+running):
+
+```bash
+cd backend && npm run validate:admin-jobs
+```
+
+Seeds one synthetic `failed` scan, then walks the Admin Jobs contract live:
+`GET /admin/jobs` envelope, `?status=` server-side filter, pagination
+(disjoint pages + exact total), `POST /admin/jobs/:id/retry` (row flips to
+`queued`), and `GET /admin/audit-logs?actor=…&action=scan.retried` showing
+`severity: medium` with the admin actor. The synthetic scan is deleted on
+cleanup; the audit rows are intentionally left. Uses the documented seed
+account `founder.admin@provance.local` (override with `ADMIN_WALK_EMAIL` /
+`ADMIN_WALK_PASSWORD`) and creates it via the GoTrue admin API if it does
+not exist yet. The walk scripts resolve the running backend by probing
+`/v1/health` for `service=provance-backend` (a foreign `PORT` env var from
+the dev shell is ignored).
+
 ---
 
 ## Troubleshooting
