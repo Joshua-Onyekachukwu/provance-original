@@ -1,5 +1,14 @@
 # Provance — Changelog
 
+## [2026-08-11] - Cookie-migration coverage documented in AUTH_HARDENING_MIGRATION.md; controller spec marked as the gate
+
+### What changed
+- `AUTH_HARDENING_MIGRATION.md` now documents the full three-layer regression coverage for the httpOnly cookie migration and marks `auth.controller.spec.ts` as **the gate**:
+  - **Controller layer (gate)** — the 11-test `auth.controller.spec.ts` locks the cookie contract in isolation (set/strip/rotate/clear, `'cookie'` vs `'body'` token-source forwarding, no cookie on failed auth) and is the fast net every `auth.controller.ts` / `cookie-session.util.ts` change must keep green.
+  - **HTTP layer** — `auth.e2e-spec.ts` (7 tests) walks sign-in → Set-Cookie → refresh rotation → rotated-token replay 401 + theft audit → body promotion → sign-out through the real module graph.
+  - **Util layer** — `cookie-session.util.spec.ts` (serialization/read/clear incl. `__Host-` selection).
+- The doc's open-item **refresh-token reuse detection** is marked **shipped** (the `refresh_token_rejected` audit with `reuse_suspected` is asserted by the e2e); the remaining nicety is a transactional alert when `reuse_suspected` is true. Status line updated; related-files list updated.
+
 ## [2026-08-11] - Auth cookie lifecycle locked at the HTTP layer (auth.e2e-spec.ts, +7)
 
 ### Added

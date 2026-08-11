@@ -1,6 +1,6 @@
 # Auth Hardening — httpOnly Cookie Session Migration
 
-Status: **In progress** (backend cookie flow shipped 2026-08-04; frontend migration shipped 2026-08-06)
+Status: **In progress — migration shipped, regression coverage complete** (backend cookie flow shipped 2026-08-04; frontend migration shipped 2026-08-06; controller-layer gate + HTTP-layer e2e landed 2026-08-11)
 
 ## Purpose
 
@@ -57,6 +57,27 @@ be exfiltrated by XSS, and every refresh rotates the session server-side.
   origin binding: Secure + `Path=/` + no Domain). Local HTTP dev keeps the plain name because
   browsers reject `__Host-` cookies on insecure origins.
 
+### 2026-08-11 — Regression coverage (three layers; the controller spec is the gate)
+
+- `backend/src/auth/auth.controller.spec.ts` — **11 controller-layer tests — THE GATE.** Direct
+  `AuthController` instantiation with a mocked `AuthService` locks the controller's cookie contract
+  in isolation: sign-in sets the httpOnly cookie and strips the body refresh token; refresh reads
+  the cookie and rotates it (forwarding `'cookie'` as the token source); body-token fallback when no
+  cookie is present (`'body'` source); sign-out expires **both** cookie names (plain + `__Host-`); and
+  failed sign-in/refresh never set or rotate a cookie. This is the fast, focused net every change to
+  `auth.controller.ts` / `cookie-session.util.ts` must keep green.
+- `backend/test/auth.e2e-spec.ts` — **7 HTTP-layer tests** through the real module graph (real
+  `AuthService`, real guards/pipes/filters) with a mocked Supabase service (rotation-aware public
+  client + stateful admin client): sign-in → `Set-Cookie` flags → refresh-with-cookie rotation →
+  replay of the rotated-out cookie 401s with the `refresh_token_rejected` theft audit → body-token
+  promotion → no-credential 401 → sign-out clearing both cookie names and burning the token.
+- `backend/src/auth/cookie-session.util.spec.ts` — util-layer tests for serialization / reading /
+  clearing, including the `__Host-` vs plain name selection.
+
+**Reuse-detection is shipped and asserted:** a replayed rotated token is rejected with an audit row
+(`refresh_token_rejected`, severity `high`, `reuse_suspected`, `token_source: 'cookie' | 'body'` —
+see `auth.service.ts` `recordRejectedRefresh`), and the e2e replay test asserts it end to end.
+
 ## Deploy order
 
 1. **Backend cookie flow** (already deployed) — nothing more to do for the API.
@@ -104,14 +125,17 @@ be exfiltrated by XSS, and every refresh rotates the session server-side.
 ## Related files
 
 - Backend: `backend/src/auth/auth.service.ts`, `auth.controller.ts`, `cookie-session.util.ts`,
-  `cookie-session.util.spec.ts`, `backend/src/config/env.validation.ts`, `backend/src/main.ts`
+  `cookie-session.util.spec.ts`, `auth.controller.spec.ts` (**gate**), `backend/test/auth.e2e-spec.ts`,
+  `backend/src/config/env.validation.ts`, `backend/src/main.ts`
 - Frontend: `src/lib/api.js`, `src/context/AuthContext.jsx`
 - Reference: `docs/engineering/DEPLOYMENT_AND_AUTH_STRATEGY.md`, `docs/engineering/ADMIN_ACCESS_AND_OPERATIONS.md`
 
 ## Open items
 
-- Refresh-token **reuse detection alerting** (Supabase fires `token_refresh` events; wire an audit
-  action when a rotated token is replayed).
+- ~~Refresh-token **reuse detection alerting**~~ — **shipped 2026-08-11**: a replayed rotated token is
+  rejected and written to the admin trail as `refresh_token_rejected` (high severity,
+  `reuse_suspected`, token source); asserted by `auth.e2e-spec.ts`. Remaining nicety: a real
+  transactional alert (email/Slack) when `reuse_suspected` is true.
 - CSRF token for any future cross-site (SameSite=None) deployment.
 - Session-revocation UI already surfaces real sessions via `GET /security/sessions`; cookie rotation
   means the backend `signOut` path must also be called from that surface.
