@@ -1,6 +1,16 @@
 # Provance — Changelog
 
-## [2026-08-11] - Per-session 'New device' trust signal on the Security page and org sessions drawer
+## [2026-08-11] - Live org-admin two-device revoke walk prepared; apply of 0005 + 0010 remains the user's step
+
+### Added
+- **`backend/scripts/validate-org-session-revoke.mjs` + `npm run validate:org-revoke`** — the one-command live walk of the org member-sessions surface once migrations 0005 (organizations) + 0010 (user_sessions) land: pre-flight probes exactly those two gates, admin sign-in (allowlisted seed account), a throwaway member signed in twice with different User-Agents (two real devices → two ledger rows + tokens), a seeded org (admin = owner, member = member), then `GET /v1/organization/members/:id/sessions` (both rows, team + `isNewDevice`), `DELETE /v1/organization/members/:id/sessions/:sid` (ledger drops to one), and the two-device proof — the revoked token 401s on `/auth/me` while the survivor 200s. Cleanup deletes the member + seeded org (the admin's single membership is enforced — stale walk orgs and leftover member users are purged first so re-runs stay safe).
+- **`MIGRATION_RUNBOOK.md` §5** — documents the org-revoke walk as the post-apply verification for 0005 + 0010.
+
+### Blocked (operator action)
+- Migrations 0005 + 0010 are still **not applied** to `dmhrwdcuwtgscwlaagsa` (5 applied · 14 missing — unchanged). Re-verified this turn: no supabase CLI/link, `DATABASE_URL` still empty in `backend/.env.local`, no access token — the SQL Editor remains the only apply path, or the connection string can be pasted into `DATABASE_URL` and the `pg` client applies them directly. The `.freebuff/combined-0005-0010.sql` block (420 lines, exactly 0005–0010, idempotent) is ready for either path; the walk then runs with `npm run validate:org-revoke`.
+
+### Verified
+- Walk pre-flight live: backend resolved at :4000, exits 2 with the exact missing list (0005 + 0010). Backend build clean.
 
 ### Added
 - **`isNewDevice` on every session view** — a trust signal computed once in `SecurityService.listSessions` (so it flows to `GET /security/settings`, `GET /security/sessions`, and the org `GET /organization/members/:memberId/sessions` drawer alike): a session is badged when its device's FIRST appearance in the user's ledger is within the last 7 days (`NEW_DEVICE_WINDOW_DAYS`). Devices without a meaningful label (empty / the DB `'Unknown device'` default) never badge, and a device used for weeks then revisited stays known.

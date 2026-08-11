@@ -307,6 +307,24 @@ not exist yet. The walk scripts resolve the running backend by probing
 `/v1/health` for `service=provance-backend` (a foreign `PORT` env var from
 the dev shell is ignored).
 
+### 5. Org-admin session revocation walk (after 0005 + 0010 land)
+
+Once `organizations` (0005) and `user_sessions` (0010) are applied, the org
+member-sessions surface is verifiable end to end with one command:
+
+```bash
+cd backend && npm run validate:org-revoke
+```
+
+Signs in the allowlisted org admin, creates a throwaway member, signs it in
+twice with different User-Agents (two real devices → two `user_sessions`
+rows), seeds one org (admin = owner, member = member), then walks
+`GET /organization/members/:id/sessions` (both rows, team + `isNewDevice`),
+`DELETE /organization/members/:id/sessions/:sid` (ledger drops to one), and
+the two-device proof (revoked token 401s on `/auth/me`, the survivor 200s).
+Member user + seeded org are always deleted; the admin account stays.
+Re-runs are safe — stale walk orgs and member users are purged first.
+
 ---
 
 ## Troubleshooting
