@@ -1,0 +1,82 @@
+name: CI — Live cookie contract
+
+# Deploy regression gate for the httpOnly cookie migration. Unlike the
+# in-memory e2e (mocked Supabase), this boots the REAL compiled backend
+# against the REAL Supabase project and asserts the wire contract:
+#   POST /v1/auth/sign-in → Set-Cookie carries HttpOnly + SameSite + Path + Max-Age,
+#   the body omits refreshToken, cookie-only refresh rotates the token, and
+#   replays of rotated-out cookies 401.
+#
+# Runs on push to main (the auto-deploy branch) and manually. Fail-closed:
+# if the Supabase secrets aren't configured the job fails with setup steps
+# instead of silently skipping, so the gate can never go unarmed quietly.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: cookie-live-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-live-cookie:
+    name: Boot real backend · assert cookie contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      PORT: '4000'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: backend/pnpm-lock.yaml
+
+      - name: Install backend dependencies (pnpm 9, matching backend:install)
+        run: npx pnpm@9 install --dir backend --frozen-lockfile
+
+      - name: Build
+        run: npm run backend:build
+
+      - name: Fail loudly if the Supabase secrets aren't configured
+        if: env.SUPABASE_URL == '' || env.SUPABASE_ANON_KEY == '' || env.SUPABASE_SERVICE_ROLE_KEY == ''
+        run: |
+          echo "::error::The live cookie gate needs SUPABASE_URL, SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY secrets (the same values as backend/.env.local). Add them at GitHub → Settings → Secrets and variables → Actions, then re-run this workflow."
+          exit 1
+
+      - name: Boot the real backend (wait for /v1/health)
+        run: |
+          cd backend
+          node dist/main.js > ../cookie-live-backend.log 2>&1 &
+          echo $! > ../cookie-live-backend.pid
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:4000/v1/health >/dev/null 2>&1; then
+              echo "backend healthy after ${i} poll(s)"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::Backend did not become healthy within 60s"
+          tail -40 ../cookie-live-backend.log
+          exit 1
+
+      - name: Assert the cookie contract live (sign-in → Set-Cookie → rotation → replay 401)
+        run: |
+          cd backend
+          node scripts/validate-refresh-cookie.mjs
+
+      - name: Teardown (stop the backend)
+        if: always()
+        run: |
+          if [ -f cookie-live-backend.pid ]; then
+            kill "$(cat cookie-live-backend.pid)" 2>/dev/null || true
+          fi

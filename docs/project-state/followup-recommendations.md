@@ -24,6 +24,7 @@ Status values: `Open` · `In Progress` · `Done` · `Deferred` · `Declined`
 
 | Date | Source task | Recommendation | Status |
 | --- | --- | --- | --- |
+| 2026-08-11 | Live cookie CI gate | Founder setup step: add the `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` secrets (values from `backend/.env.local`) at GitHub → Settings → Secrets and variables → Actions, then trigger `cookie-live.yml` manually once to confirm the gate passes on the branch — until then every main push shows a red X by design (fail-closed) | Open |
 | 2026-08-11 | Live replay verification | The live `refresh_token_rejected` read remains gated: replays 401 (17/17 walk), but `GET /v1/admin/audit-logs` 503s ("Failed to fetch audit logs.") because `audit_logs` (0008) is still unapplied — paste `combined-0005-0020.sql` and the same walk's audit read flips live | Open |
 | 2026-08-11 | Refresh-replay lockout | Consider applying the same failure-triggered lockout to `POST /auth/sign-in` (credential-stuffing bursts), and make the lockout state distributed (Redis) once multiple backend replicas run — today it's per-process in-memory | Open |
 | 2026-08-11 | Refresh-replay lockout | Surface the `refresh_lockout` event on the Admin Audit Logs page's action filter (the severity tone renders already; the filter list may need the new action) | Open |

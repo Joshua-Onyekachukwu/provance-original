@@ -53,7 +53,17 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const ENV = loadEnv(resolve(here, '../.env.local'));
+// Process env wins over .env.local — the CI cookie gate runs this script
+// against a freshly booted backend with the credentials passed as job env
+// (no .env.local exists on a runner). Locally, .env.local still fills in.
+const FILE_ENV = loadEnv(resolve(here, '../.env.local'));
+const ENV = {
+  ...FILE_ENV,
+  ...(process.env.SUPABASE_URL ? { SUPABASE_URL: process.env.SUPABASE_URL } : {}),
+  ...(process.env.SUPABASE_SERVICE_ROLE_KEY
+    ? { SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY }
+    : {}),
+};
 
 const SUPABASE_URL = ENV.SUPABASE_URL;
 const SERVICE_ROLE = ENV.SUPABASE_SERVICE_ROLE_KEY;
@@ -197,7 +207,9 @@ const tokenProbe = async (token) => {
 
 async function main() {
   if (!SUPABASE_URL || !SERVICE_ROLE) {
-    console.error('Missing SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY in backend/.env.local');
+    console.error(
+      'Missing SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY — set them as job env (CI) or in backend/.env.local (local)',
+    );
     process.exit(2);
   }
 

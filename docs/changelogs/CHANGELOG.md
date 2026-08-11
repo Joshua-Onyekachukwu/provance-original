@@ -1,5 +1,15 @@
 # Provance — Changelog
 
+## [2026-08-11] - Live cookie-contract CI gate (boots the real backend against real Supabase)
+
+### Added
+- **`.github/workflows/cookie-live.yml`** — a deploy regression gate for the httpOnly cookie migration, distinct from the in-memory e2e: it builds the backend, **boots the real `dist/main.js`** against the real Supabase project, waits for `/v1/health`, runs `validate-refresh-cookie.mjs`, and tears the backend down. The walk asserts the exact wire contract: sign-in `Set-Cookie` carries `HttpOnly` + `SameSite` + `Path=/` + `Max-Age`, the body **omits `refreshToken`**, cookie-only refresh rotates the token, and replays of rotated-out cookies 401. Runs on **push to main** (the auto-deploy branch) + `workflow_dispatch`.
+- **Fail-closed secret handling** — if `SUPABASE_URL` / `SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` aren't configured as GitHub secrets, the job fails with the exact Settings steps instead of skipping silently, so the gate can never go unarmed quietly.
+- **`validate-refresh-cookie.mjs` now accepts job env** — the walk previously read credentials only from `backend/.env.local` (which doesn't exist on a runner); process env now wins for `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`, with `.env.local` still filling in locally.
+
+### Verified
+- Walk re-run live after the env-merge change: still **17/17 PASS** (syntax check clean). Workflow YAML structure checked against `ci.yml`.
+
 ## [2026-08-11] - Live replay detection: 401 leg verified; row read still gated on 0008
 
 ### Verified
