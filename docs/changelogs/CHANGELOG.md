@@ -1,5 +1,17 @@
 # Provance — Changelog
 
+## [2026-08-11] - Cookie flow verified live against the real backend (17/17 checks)
+
+### Verified
+- Ran `validate-refresh-cookie.mjs` twice against the live :4000 backend + real Supabase project (throwaway GoTrue user, deleted after). **17/17 checks passed** on the wire:
+  - **Sign-in** → HTTP 200, refresh token travels via `Set-Cookie: provance_refresh=…; Path=/; Max-Age=2592000; HttpOnly; SameSite=Lax` (no `Secure` over http — correct for `AUTH_COOKIE_SECURE=false` local), body `refreshToken` **stripped**, access token in the body.
+  - **Refresh with only the cookie** → HTTP 200 with a fresh access token each time and the cookie **rotated** (`…aaz…` → `…qwm…` → `…wb…`); each fresh access token validated through the guarded `GET /v1/security/sessions` route (guard passed — the handler 503s only because `user_sessions` is still missing).
+  - **Rotation invalidation** → after GoTrue's ~20s reuse-grace interval, replaying the original sign-in cookie AND the first-rotation cookie both return **401** — the old credentials are dead on the server.
+- Full report captured at `.freebuff/cookie-walk.json`.
+
+### Notes
+- The walk's reuse-detection audit read was skipped: `audit_logs` (migration 0008) is still not applied to the live project, so `refresh_token_rejected` rows can't be read live yet — the behavior itself is e2e-asserted in `auth.e2e-spec.ts`.
+
 ## [2026-08-11] - Cookie-migration coverage documented in AUTH_HARDENING_MIGRATION.md; controller spec marked as the gate
 
 ### What changed

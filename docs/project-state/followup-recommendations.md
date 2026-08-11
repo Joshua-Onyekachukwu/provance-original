@@ -24,6 +24,8 @@ Status values: `Open` · `In Progress` · `Done` · `Deferred` · `Declined`
 
 | Date | Source task | Recommendation | Status |
 | --- | --- | --- | --- |
+| 2026-08-11 | Live cookie walk | Wire `validate-refresh-cookie.mjs` into package.json as `validate:refresh-cookie` (it exists but is only runnable via `node scripts/…`), so the live walk is one command like the other validate scripts | Open |
+| 2026-08-11 | Live cookie walk | After migration 0008 (audit_logs) lands, re-run the walk to capture the `refresh_token_rejected` reuse-detection rows live — the walk skips that read today with an explicit note | Open |
 | 2026-08-11 | Cookie-migration coverage doc | Wire a transactional alert (email/Slack) when `refresh_token_rejected.reuse_suspected` is true — the audit + e2e assertion shipped, but a real out-of-band alert for suspected token theft is still open | Open |
 | 2026-08-11 | Auth cookie e2e slice | Extend the spec with a secure-deployment variant (AUTH_COOKIE_SECURE=true) asserting the `__Host-provance_refresh` cookie name + `Secure` flag, since only the plain local name is covered today | Open |
 | 2026-08-11 | Auth cookie e2e slice | Add a guarded-surface leg: sign in, then GET /v1/auth/me with the access token (SupabaseAuthGuard overridden like the security spec) to prove the full session round-trip past the cookie boundary | Open |
