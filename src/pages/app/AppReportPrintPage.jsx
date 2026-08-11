@@ -34,7 +34,7 @@ function ReportDataCard({ label, value }) {
   return (
     <div className="rounded-2xl border border-stone-light bg-parchment px-4 py-4">
       <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">{label}</p>
-      <p className="mt-2 text-sm leading-relaxed text-charcoal">{value}</p>
+      <p className="mt-2 break-words text-sm leading-relaxed text-charcoal">{value}</p>
     </div>
   )
 }
@@ -552,7 +552,7 @@ export default function AppReportPrintPage() {
                       </div>
                       <p className="text-sm font-medium text-charcoal">{formatPct(signal.score, 0, 'Pending')}</p>
                     </div>
-                    <p className="mt-3 text-sm text-charcoal-mid">
+                    <p className="mt-3 break-words text-sm text-charcoal-mid">
                       {signal.status_reason || 'No summary available.'}
                     </p>
                   </div>
@@ -595,7 +595,7 @@ export default function AppReportPrintPage() {
                       </div>
                       <p className="text-sm font-medium text-charcoal">{formatPct(signal.score, 0, 'Pending')}</p>
                     </div>
-                    <p className="mt-3 text-sm text-charcoal-mid">
+                    <p className="mt-3 break-words text-sm text-charcoal-mid">
                       {signal.status_reason || 'No summary available.'}
                     </p>
                   </div>
@@ -625,9 +625,9 @@ export default function AppReportPrintPage() {
                   <p className="mt-1 text-xs uppercase tracking-[0.18em] text-charcoal-light">
                     {finding.signalDisplayName} · {finding.severity}
                   </p>
-                  <p className="mt-3 text-sm leading-relaxed text-charcoal-mid">
-                    {finding.description}
-                  </p>
+                <p className="mt-3 break-words text-sm leading-relaxed text-charcoal-mid">
+                  {finding.description}
+                </p>
                 </div>
               ))
             ) : (
@@ -670,7 +670,7 @@ export default function AppReportPrintPage() {
                     </p>
                   </div>
                 </div>
-                <p className="mt-3 text-sm leading-relaxed text-charcoal-mid">
+                <p className="mt-3 break-words text-sm leading-relaxed text-charcoal-mid">
                   {signal.status_reason || 'No status reason provided.'}
                 </p>
               </div>

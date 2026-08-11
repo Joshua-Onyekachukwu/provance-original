@@ -27,7 +27,7 @@ function KeyValueGrid({ items, columns = 'grid-cols-1 md:grid-cols-2' }) {
           <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-charcoal-light">
             {label}
           </div>
-          <div className="mt-2 text-sm leading-relaxed text-charcoal">{value}</div>
+          <div className="mt-2 break-words text-sm leading-relaxed text-charcoal">{value}</div>
         </div>
       ))}
     </div>
@@ -46,7 +46,7 @@ function SignalCard({ item }) {
         </div>
         <p className="font-mono text-sm text-charcoal">{item.score}</p>
       </div>
-      <p className="mt-3 text-sm leading-relaxed text-charcoal-mid">{item.detail}</p>
+      <p className="mt-3 break-words text-sm leading-relaxed text-charcoal-mid">{item.detail}</p>
     </div>
   )
 }
@@ -93,10 +93,10 @@ export default function SampleReportDocument({ compact = false, showPrintControl
                 Report identity
               </div>
               <div className="mt-3 space-y-2 text-sm text-charcoal">
-                <div><span className="font-medium">Report ID:</span> {sampleReportMeta.reportId}</div>
-                <div><span className="font-medium">Verification ID:</span> {sampleReportMeta.verificationId}</div>
-                <div><span className="font-medium">Generated:</span> {formatDateTime(sampleReportMeta.analysisTimestampIso)}</div>
-                <div><span className="font-medium">Methodology:</span> {sampleReportMeta.methodologyVersion}</div>
+                <div className="break-words"><span className="font-medium">Report ID:</span> {sampleReportMeta.reportId}</div>
+                <div className="break-words"><span className="font-medium">Verification ID:</span> {sampleReportMeta.verificationId}</div>
+                <div className="break-words"><span className="font-medium">Generated:</span> {formatDateTime(sampleReportMeta.analysisTimestampIso)}</div>
+                <div className="break-words"><span className="font-medium">Methodology:</span> {sampleReportMeta.methodologyVersion}</div>
               </div>
             </div>
           </div>
@@ -143,7 +143,7 @@ export default function SampleReportDocument({ compact = false, showPrintControl
                       <div className="rounded-full border border-amber/20 bg-amber/10 px-3 py-1.5 text-center font-mono text-[11px] text-amber">
                         {time}
                       </div>
-                      <div className="rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-3 text-sm text-stone">
+                      <div className="min-w-0 break-words rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-3 text-sm text-stone">
                         {step}
                       </div>
                     </div>
@@ -252,7 +252,7 @@ export default function SampleReportDocument({ compact = false, showPrintControl
                     <div className="rounded-full border border-amber/20 bg-amber/10 px-3 py-1.5 text-center font-mono text-[11px] text-amber">
                       {time}
                     </div>
-                    <div className="rounded-2xl border border-stone-light bg-white-warm/92 px-4 py-3 text-sm text-charcoal-mid">
+                    <div className="min-w-0 break-words rounded-2xl border border-stone-light bg-white-warm/92 px-4 py-3 text-sm text-charcoal-mid">
                       {step}
                     </div>
                   </div>

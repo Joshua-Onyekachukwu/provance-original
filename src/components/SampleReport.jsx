@@ -97,7 +97,7 @@ export default function SampleReport() {
                       ].map(([label, value]) => (
                         <div key={label} className="rounded-2xl border border-stone-light/80 bg-white-warm/85 p-3">
                           <div className="text-[10px] font-mono uppercase tracking-[0.16em] text-charcoal-light">{label}</div>
-                          <div className="mt-2 text-sm text-charcoal">{value}</div>
+                          <div className="mt-2 break-words text-sm text-charcoal">{value}</div>
                         </div>
                       ))}
                     </div>
@@ -124,7 +124,7 @@ export default function SampleReport() {
                           <div className="rounded-full border border-amber/20 bg-amber/10 px-3 py-1.5 text-center font-mono text-[11px] text-amber">
                             {time}
                           </div>
-                          <div className="rounded-2xl border border-stone-light/80 bg-parchment/80 px-4 py-3 text-sm text-charcoal-mid">
+                          <div className="min-w-0 break-words rounded-2xl border border-stone-light/80 bg-parchment/80 px-4 py-3 text-sm text-charcoal-mid">
                             {step}
                           </div>
                         </div>

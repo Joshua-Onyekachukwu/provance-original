@@ -1,5 +1,18 @@
 # Provance — Changelog
 
+## [2026-08-11] - Overflow-hidden sweep on public pages + print views: long-string wrap hardening
+
+### Changed
+- **Public report surfaces + print views hardened against the same clip bug class the table sweep fixed.** Unlike the workspace ledgers, these surfaces have no hand-rolled table wrappers — all `overflow-hidden` instances are legitimate (media frames with rounded corners, the ProductShowcase accordion height animation, decorative section clipping, progress-bar tracks), so no `overflow-hidden → overflow-x-auto` conversion applies. The genuine residual risk is **long unbroken strings** (real backend URLs/hashes/filenames/verification IDs) inside the `overflow-hidden` paper frames: a value cell that can't wrap blows the frame wider and gets silently clipped with no scroll.
+- **Proven before fixing** (injected a realistic 160-char CDN URL into a report value cell at 768px): the `.report-paper` scrollWidth ballooned **718px → 1475px** inside its `overflow-hidden` frame — content clipped, no scroll, no wrap.
+- **`break-words` added to every dynamic value cell** — `KeyValueGrid` values, `SignalCard` details, report-identity values (Report ID / Verification ID / Methodology), `MetricCard`-adjacent info cards, `ReportDataCard` values, signal `status_reason` rows (AI + manipulation + signal-by-signal), and key-findings descriptions.
+- **`min-w-0 break-words` added to the timeline `1fr` grid children** (`grid-cols-[52px_1fr]` / `[58px_1fr]`) so long step text can't blow the `1fr` track either.
+- Files: `SampleReportDocument.jsx`, `SampleReport.jsx` (public), `AppReportPrintPage.jsx` (workspace print — the real backend `result_payload` surface, highest risk).
+
+### Verified
+- Same long-string injection re-run: **`paperScroll` stays at 718px** — the value now wraps (cell grew to 136px) instead of clipping.
+- `audit:responsive` **104/104 clean** at 768/1280; vitest **518/518**, lint 0 errors, build clean.
+
 ## [2026-08-11] - Responsive audit gate: audit:responsive + CI job (Playwright, 768/1280)
 
 ### Added
