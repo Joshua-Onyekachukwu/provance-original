@@ -1,6 +1,13 @@
 # Provance — Changelog
 
-## [2026-08-11] - Live admin-jobs walk script; walk scripts hardened against the injected PORT env
+## [2026-08-11] - Live e2e is opt-in: PROVANCE_LIVE_E2E=1; full test:e2e suite green locally
+
+### Fixed
+- **The live invite-accept spec no longer runs by accident.** The spec's old "skip when credentials absent" gate was dead in practice: `AppModule`'s `ConfigModule.forRoot({ envFilePath: ['.env.local', ...] })` loads this checkout's real project credentials into `process.env` the moment the spec imports `AppModule`, so the presence check always passed and the suite wrote org/invite/user rows to the real Supabase project on every local `npm run test:e2e` (its 2 failures were the missing-0005 seed error). The suite is now **opt-in via `PROVANCE_LIVE_E2E=1`** and always skipped otherwise — even when real credentials are in the process env. With the flag set but credentials absent, the spec fails loudly at load time instead of silently skipping. The misleading `import 'dotenv/config'` (which loaded nothing — there is no `backend/.env`) is removed and the gate's contract is documented in the spec header.
+- **Live hooks get a real timeout.** The opt-in `beforeAll`/`afterAll` (live app boot + seed) now run with a 60s hook timeout instead of jest's 5s default, so the live path reports the actual blocker (e.g. `apply supabase/migrations/0005_organization.sql to this project`) rather than timing out mid-boot.
+
+### Verified
+- `npm run test:e2e` (no flag): **68 passed, 2 skipped, 0 failures** — full suite green locally. With `PROVANCE_LIVE_E2E=1`: the suite runs live, boots the app, and fails with the actionable migration-0005 hint (expected until the migrations land). Backend jest **419/419**, `nest build` clean.
 
 ### Added
 - **`backend/scripts/validate-admin-jobs.mjs` + `npm run validate:admin-jobs`** — the one-command live walk of the real `/admin/jobs` surface once migrations 0008 (audit_logs) + 0009 (scans processing columns) land: pre-flight probes for exactly those two gates (same non-head REST pattern as `validate:migrations`), sign-in as the `ADMIN_EMAILS`-allowlisted seed account (`founder.admin@provance.local`, created via the GoTrue admin API when missing; overridable via `ADMIN_WALK_EMAIL`/`ADMIN_WALK_PASSWORD`), seeds one synthetic `failed` scan, then verifies the `GET /admin/jobs` envelope, `?status=failed` server-side filter, pagination (disjoint pages, exact total), `POST /admin/jobs/:id/retry` (row → `queued`, no BullMQ enqueue), and `GET /admin/audit-logs?actor=…&action=scan.retried` → the audit row with the admin actor + `severity: medium` (+ the `?search=<scanId>` path). The synthetic scan is deleted on cleanup; audit rows are intentionally left.

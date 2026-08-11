@@ -1,4 +1,3 @@
-import 'dotenv/config';
 import { createHash, randomBytes } from 'node:crypto';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -10,14 +9,26 @@ import { QueueService } from '../src/queue/queue.service';
 import { SupabaseService } from '../src/supabase/supabase.service';
 
 // ---------------------------------------------------------------------------
-// Live-integration gate
+// Live-integration gate (opt-in)
 //
 // The invite-accept path calls `auth.admin.createUser` (the real Supabase
-// GoTrue admin API), which the table-level mocks cannot fake. So this spec
-// runs against a live Supabase project and is **skipped when credentials are
-// absent** — CI and local runs without a configured project stay green, and
-// `npm run test:e2e` with real env vars exercises the full accept round trip.
+// GoTrue admin API), which the table-level mocks cannot fake — so this suite
+// only ever runs against a live Supabase project. It is **opt-in via
+// PROVANCE_LIVE_E2E=1** and otherwise always skipped, even when real
+// credentials are present in the process env.
+//
+// Why the flag: the AppModule's ConfigModule.forRoot({ envFilePath:
+// ['.env.local', ...] }) loads this checkout's real project credentials into
+// process.env the moment the spec imports AppModule. A mere presence check
+// would therefore run the live suite on every local `npm run test:e2e`
+// (writing org/invite/user rows to the real project) — the env leak this
+// gate removes. Requiring an explicit flag keeps the full suite green by
+// default and confines live runs to operators who opt in. When the flag is
+// set but credentials are missing, the suite fails loudly instead of
+// silently skipping.
 // ---------------------------------------------------------------------------
+
+const LIVE_E2E_FLAG = 'PROVANCE_LIVE_E2E';
 
 const hasSupabaseCredentials = Boolean(
   process.env.SUPABASE_URL?.trim() &&
@@ -25,7 +36,16 @@ const hasSupabaseCredentials = Boolean(
     process.env.SUPABASE_SERVICE_ROLE_KEY?.trim(),
 );
 
-const suite = hasSupabaseCredentials ? describe : describe.skip;
+const liveRequested = process.env[LIVE_E2E_FLAG] === '1';
+
+if (liveRequested && !hasSupabaseCredentials) {
+  throw new Error(
+    `${LIVE_E2E_FLAG}=1 requires SUPABASE_URL, SUPABASE_ANON_KEY, and ` +
+      'SUPABASE_SERVICE_ROLE_KEY (the AppModule loads them from .env.local).',
+  );
+}
+
+const suite = liveRequested ? describe : describe.skip;
 
 type AdminClient = NonNullable<ReturnType<SupabaseService['getAdminClient']>>;
 
@@ -42,6 +62,7 @@ suite('Organization invite accept (live e2e)', () => {
   let inviteId = '';
   let createdUserId = '';
 
+  // Live boot + seed needs more than jest's 5s default hook timeout.
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -108,7 +129,7 @@ suite('Organization invite accept (live e2e)', () => {
       );
     }
     inviteId = invite.id as string;
-  });
+  }, 60_000);
 
   afterAll(async () => {
     // Roll back everything this run created: the auth user first (its FK rows
@@ -120,7 +141,7 @@ suite('Organization invite accept (live e2e)', () => {
       await admin.from('organizations').delete().eq('id', orgId).catch(() => undefined);
     }
     await app?.close();
-  });
+  }, 60_000);
 
   it('accepts the invite: creates the user, joins the roster, marks it accepted', async () => {
     const response = await http
