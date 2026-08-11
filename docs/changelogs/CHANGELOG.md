@@ -1,5 +1,19 @@
 # Provance — Changelog
 
+## [2026-08-11] - Live walk tooling for the post-paste verification (migrations still pending)
+
+### Added
+- **`backend/scripts/validate-live-surfaces.mjs`** (registered as `validate:live-surfaces`) — walks the two surfaces that were 503/404 in real mode while migrations were pending: `GET /v1/notifications` (pagination envelope + `unread-count` badge + mock-parity row fields) and `GET /v1/admin/analytics` (field-by-field shape parity against `mockAnalytics`, hard/soft classification like `parity-monitoring.mjs`). Includes a migration pre-flight (non-head REST probes for `notifications`/`scans.processing_mode`) that exits with the actionable paste hint when 0011/0009 are absent, and the seed-admin sign-in pattern.
+- **`.freebuff/apply-migrations.mjs`** (gitignored scratch tooling, with the byte-verified `combined-0005-0020.sql`) — applies the whole missing set directly over Postgres via `pg` when `DATABASE_URL` is filled into `backend/.env.local`, statement-by-statement with per-statement failure reporting, `--yes` guard, and a `splitStatements` parser verified against the block (dollar-quoted `do $$` body survives as one statement; 88 statements, no merge bugs).
+
+### Verified (pre-paste baseline)
+- `validate-scan-roundtrip.mjs` — fails at initiate with the **actionable 503** ("scans table is missing the idempotency_key column — migration 0019_scan_idempotency.sql not applied"); throwaway user cleaned up.
+- `validate-live-surfaces.mjs` — `PASS backend reachable`, then BLOCKED on `0011 + 0009` with the paste hint (ground truth: 5 applied · 14 missing, unchanged).
+- Lint back to the 34-warning baseline (0 errors); no new warnings from the walk script.
+
+### Note
+- **Migrations cannot be applied from the repo**: `DATABASE_URL` in `backend/.env.local` is empty and there is no Supabase CLI/Management token — the dashboard SQL Editor paste (`.freebuff/combined-0005-0020.sql`) remains the apply channel, or the founder can paste the Supabase connection string into `DATABASE_URL` and the new apply script runs the same block in one command.
+
 ## [2026-08-11] - USE_MOCK env flip: frontend real-mode by default
 
 ### Changed

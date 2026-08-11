@@ -23,7 +23,8 @@
     "validate:bullmq": "node scripts/verify-bullmq.mjs",
     "validate:migrations": "node scripts/validate-migrations.mjs",
     "validate:admin-jobs": "node scripts/validate-admin-jobs.mjs",
-    "validate:org-revoke": "node scripts/validate-org-session-revoke.mjs"
+    "validate:org-revoke": "node scripts/validate-org-session-revoke.mjs",
+    "validate:live-surfaces": "node scripts/validate-live-surfaces.mjs"
   },
   "dependencies": {
     "@better-auth/api-key": "1.6.26",
