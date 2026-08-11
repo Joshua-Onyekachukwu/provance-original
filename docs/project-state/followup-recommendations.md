@@ -24,6 +24,7 @@ Status values: `Open` · `In Progress` · `Done` · `Deferred` · `Declined`
 
 | Date | Source task | Recommendation | Status |
 | --- | --- | --- | --- |
+| 2026-08-11 | Readiness surfaced live | The migrations gate runs 20 sequential REST probes so the first readiness call takes ~15s — either parallelize the probes or note the timeout in the runbook so a slow first call isn't mistaken for a hang | Open |
 | 2026-08-11 | One-paste schema convergence | After pasting `combined-0005-0020.sql`, run every live walk in sequence (readiness → `validate:admin-jobs` → `validate:org-revoke` → `validate:scan-roundtrip`) to confirm each surface flips real, since the single paste unblocks all of them at once | Open |
 | 2026-08-11 | One-paste schema convergence | Migrate the stale `.freebuff/probe_migrations.mjs` (0001–0010, soft "table present" fallback) onto the canonical `migration-health.service.ts` probe list or delete it, so scratch and canonical probes can't disagree (0009 already showed that false-positive) | Open |
 | 2026-08-11 | Org session revocations audited | Add `session_revoked` mock parity to the self-service `mockRevokeSession` (Security page) — the real backend writes it to the feed but the mock still doesn't, so mock mode under-demos the account tab | Open |

@@ -1,5 +1,15 @@
 # Provance — Changelog
 
+## [2026-08-11] - :4000 backend restarted from a fresh build; readiness surfaces checks.migrations live
+
+### What changed
+- Killed the stale :4000 process (PID 9364 — its readiness endpoint returned empty, i.e. it predated the MigrationHealthService wiring), rebuilt, and relaunched from `dist/` with an explicit `PORT=4000` (PID 11580, log at `.freebuff/backend-4000.log`).
+- `GET /v1/health/readiness` now surfaces `checks.migrations` live on startup: `status: degraded` with `migrations.ready: false` and the exact 14-migration missing list (0005, 0007–0009, 0010–0016, 0018–0020) plus the actionable `apply supabase/migrations/...` hint — identical to the `validate:migrations` canonical probe. The other gates read as expected: `supabase` ready, `scansSchema` false (0009), `userSessions` false (0010), `queue` true (REDIS_URL set → BullMQ).
+
+### Verified
+- Fresh build clean; readiness payload field-checked live on :4000.
+- Note: the first readiness call takes ~15s — the migrations gate runs 20 sequential REST probes before responding.
+
 ## [2026-08-11] - One-paste schema convergence verified; runbook verification extended to 0020
 
 ### What changed
