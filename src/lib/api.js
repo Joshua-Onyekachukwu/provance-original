@@ -1,9 +1,25 @@
 // ---------------------------------------------------------------------------
-// Mock mode — set to true while building the frontend-first MVP.
+// Mock mode — env-driven gate between the mock and live API paths.
+//
+//   VITE_USE_MOCK=true   → always mock (explicit opt-in; local demos, or a
+//                          demo deployment before the backend schema lands)
+//   VITE_USE_MOCK=false  → always real (explicit opt-in; the validated
+//                          workflow once the backend is converged)
+//   unset                → mock in dev (`npm run dev`, vitest) so local
+//                          development works without the backend; REAL in
+//                          production builds (`npm run build` → Vercel), so
+//                          every deploy validates against the live API
+//
 // All API functions delegate to mock implementations with realistic data,
-// delays, and occasional error injection for state testing.
+// delays, and occasional error injection for state testing when USE_MOCK is
+// true, and to the live NestJS backend otherwise.
 // ---------------------------------------------------------------------------
-export const USE_MOCK = true
+export const USE_MOCK = (() => {
+  const override = import.meta.env.VITE_USE_MOCK
+  if (override === 'true') return true
+  if (override === 'false') return false
+  return import.meta.env.DEV
+})()
 
 import {
   mockGetCurrentViewer,

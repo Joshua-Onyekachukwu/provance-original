@@ -46,7 +46,7 @@ Provance uses a backend-mediated auth path:
 
 - frontend submits sign-in to the NestJS API
 - NestJS signs in against Supabase Auth
-- the **access token** is returned in the response body and kept in **JS memory only** — the migrated frontend never persists it to localStorage (mock mode `USE_MOCK=true` is the one dev-only exception)
+- the **access token** is returned in the response body and kept in **JS memory only** — the migrated frontend never persists it to localStorage (mock mode is the one dev-only exception: `USE_MOCK` is env-driven via `VITE_USE_MOCK` in `src/lib/api.js`, defaulting to mock in dev and real in production builds)
 - the **refresh token** is transported exclusively in an httpOnly cookie (`provance_refresh`, or `__Host-provance_refresh` when `AUTH_COOKIE_SECURE=true`)
 - every refresh rotates the cookie value (Supabase refresh tokens are single-use), and sign-out burns the token server-side before clearing the cookie
 - on cold boot the frontend performs a silent cookie refresh (`ensureSession`), then hydrates identity, permissions, and profile through `GET /auth/me`

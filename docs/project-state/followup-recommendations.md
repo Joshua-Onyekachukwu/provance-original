@@ -1,6 +1,6 @@
 # Follow-Up Task Log
 
-Last updated: 2026-08-10
+Last updated: 2026-08-11
 
 ## Purpose
 
@@ -24,6 +24,9 @@ Status values: `Open` · `In Progress` · `Done` · `Deferred` · `Declined`
 
 | Date | Source task | Recommendation | Status |
 | --- | --- | --- | --- |
+| 2026-08-11 | USE_MOCK env flip (real-by-default) | Decide the Vercel demo intent: the deployed site is now real-mode by default, so it will render degraded error states on every surface until the `combined-0005-0020.sql` paste lands — if the founder wants the live demo to keep showing mock data meanwhile, set `VITE_USE_MOCK=true` in the Vercel env (production build honors it) | Open |
+| 2026-08-11 | USE_MOCK env flip (real-by-default) | Add a vitest run with `VITE_USE_MOCK=false` to the CI matrix (or a dedicated real-branch suite) so the real API paths get automated coverage instead of only live walks — today no test exercises the real branches | Open |
+| 2026-08-11 | USE_MOCK env flip (real-by-default) | Update the ADR 004 ratification note and any remaining docs that still say "set `USE_MOCK = false` in api.js" — the flip mechanism is now env-driven (sweep done in this task; SCAN_UPLOAD_CONTRACT + status docs updated) | Done |
 | 2026-08-11 | Live cookie CI gate | Founder setup step: add the `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` secrets (values from `backend/.env.local`) at GitHub → Settings → Secrets and variables → Actions, then trigger `cookie-live.yml` manually once to confirm the gate passes on the branch — until then every main push shows a red X by design (fail-closed) | Open |
 | 2026-08-11 | Live replay verification | The live `refresh_token_rejected` read remains gated: replays 401 (17/17 walk), but `GET /v1/admin/audit-logs` 503s ("Failed to fetch audit logs.") because `audit_logs` (0008) is still unapplied — paste `combined-0005-0020.sql` and the same walk's audit read flips live | Open |
 | 2026-08-11 | Refresh-replay lockout | Consider applying the same failure-triggered lockout to `POST /auth/sign-in` (credential-stuffing bursts), and make the lockout state distributed (Redis) once multiple backend replicas run — today it's per-process in-memory | Open |
@@ -70,7 +73,7 @@ Status values: `Open` · `In Progress` · `Done` · `Deferred` · `Declined`
 | 2026-08-10 | Refresh-token reuse detection (`adaae84`) | Throttle `POST /auth/refresh` so repeated rejected refresh tokens (replay attacks) trigger a short lockout + a high-severity audit event, protecting the new rejection trail from noise | Open |
 | 2026-08-10 | Refresh-token reuse detection (`adaae84`) | Live walk of the replay path: sign in, refresh to rotate, replay the old token, and confirm the 401 plus the `refresh_token_rejected` row on `GET /admin/audit-logs` | Open |
 | 2026-08-10 | Deploy check — httpOnly-cookie flow (`4a8de1c`) | Automate the cookie contract check as a CI gate: boot the real backend and assert the sign-in `Set-Cookie` carries `HttpOnly` + `SameSite` and the body omits `refreshToken`, so the migration can't silently regress on deploy | Open |
-| 2026-08-10 | Deploy check — httpOnly-cookie flow (`4a8de1c`) | Flip the frontend to real mode by default (env-driven `USE_MOCK` with a dev fallback) so every future slice is validated against the live API, not the mocks | Open |
+| 2026-08-10 | Deploy check — httpOnly-cookie flow (`4a8de1c`) | Flip the frontend to real mode by default (env-driven `USE_MOCK` with a dev fallback) so every future slice is validated against the live API, not the mocks — **done**: `USE_MOCK` is now `VITE_USE_MOCK`-driven in `src/lib/api.js` (real by default in prod builds, mock fallback in dev, explicit override both ways) | Done |
 | 2026-08-10 | Deploy check — httpOnly-cookie flow (`4a8de1c`) | Apply the pending migrations (0009 + 0010/0011 at minimum) and re-run the live walk — scan upload round-trip, notifications, and admin analytics parity are still 503/404 in real mode | Open |
 | 2026-08-10 | Responsive pass — tablet/desktop audit (`53d9a8e`) | Turn the responsive audit into a repeatable npm script (`audit:responsive`) that fails CI on any page-level overflow or clipped element at 768/1280, making the pass a permanent gate | Open |
 | 2026-08-10 | Responsive pass — tablet/desktop audit (`53d9a8e`) | Extend the `overflow-hidden` → `overflow-x-auto` sweep to the public pages (Sample Report, ProductShowcase, landing sections) and the print views at tablet width | Open |

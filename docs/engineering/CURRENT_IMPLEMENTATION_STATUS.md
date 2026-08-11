@@ -207,8 +207,9 @@ Recently confirmed against the current codebase and environment:
 - Upstash Free is not suitable for always-on worker usage
 - the multi-agent operating model (ADR 003) requires task packets, the review gate,
   and Founder approval before any commit
-- `USE_MOCK` stays `true` through the MVP phase; it flips to `false` as part of
-  Phase 3 backend integration
+- `USE_MOCK` is env-driven (`VITE_USE_MOCK` in `src/lib/api.js`): real by default
+  in production builds, mock fallback in dev — Phase 3 backend integration is
+  complete
 - the current documentation set is richer than its formatting consistency, so normalization remains an active documentation improvement area
 
 ## Important Files

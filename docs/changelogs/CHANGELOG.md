@@ -1,5 +1,16 @@
 # Provance — Changelog
 
+## [2026-08-11] - USE_MOCK env flip: frontend real-mode by default
+
+### Changed
+- **`src/lib/api.js` — `USE_MOCK` is now env-driven instead of a hardcoded `true`.** The gate reads `VITE_USE_MOCK`: `true` → always mock (explicit opt-in; local demos or a demo deployment before the backend schema lands), `false` → always real (explicit opt-in), unset → mock in dev (`npm run dev`, vitest — local development works without the backend) and **real in production builds** (`npm run build` → Vercel), so every deploy validates against the live API, not the mocks.
+- **`.env.example`** — documents the new `VITE_USE_MOCK` flag with all three semantics.
+- **Docs updated to the new mechanism** — ADR 004 (decision + consequences now describe the env gate with real-by-default in prod), `CURRENT_IMPLEMENTATION_STATUS.md` (constraint line), `DEPLOYMENT_AND_AUTH_STRATEGY.md` (mock-mode localStorage exception note), `SCAN_UPLOAD_CONTRACT.md` (step 4 flip instruction + mock-to-real mapping row).
+
+### Verified
+- Vitest **518/518** (mock default preserved — vitest runs in dev mode), lint 0 errors, `vite build` clean.
+- Production bundle inspection: `USE_MOCK` constant folded to `false` (`var q=!1` beside the baked `API_BASE_URL`), confirming the deployed build is real-mode by default while the dev/tooling flows stay mock.
+
 ## [2026-08-11] - Live cookie-contract CI gate (boots the real backend against real Supabase)
 
 ### Added

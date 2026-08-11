@@ -269,9 +269,11 @@ Start it explicitly: `PORT=4000 node dist/main` (and check the log for
    The worker logs `Worker is ready for queue "scan-processing" with concurrency 4.`
    on connect and `Completed scan job <scanId>.` per job.
 
-4. **Flip the frontend to real mode** — set `USE_MOCK = false` in
-   `src/lib/api.js` (and point `VITE_API_BASE_URL` at the backend, e.g.
-   `http://localhost:4000/v1`, in the frontend `.env.local`). Sign in, then run
+4. **Run the frontend in real mode** — production builds default to real
+   (`USE_MOCK` is env-driven via `VITE_USE_MOCK`; see `src/lib/api.js`). For a
+   dev run against the live backend, start vite with `VITE_USE_MOCK=false` and
+   `VITE_API_BASE_URL` pointing at the backend (e.g. `http://localhost:4000/v1`
+   in the frontend `.env.local`). Sign in, then run
    the upload at `/app/uploads` — the page walks create-record → signed upload →
    queue; the queue page polls `getQueueSnapshot`/`listScans` and the scan
    flips to `processing` → `completed` with a verdict as the worker runs.
@@ -300,7 +302,7 @@ cannot flip statuses without the service.
 | `mockSubmitScan` (async → queued) | `POST /scans/:id/submit` + BullMQ enqueue |
 | mock queue polling (`useMockData` loop) | `GET /scans/queue-snapshot` + `GET /scans` |
 | mock report payload (`sampleReportContent.js`) | `result_payload` written by the worker |
-| `USE_MOCK = true` (`src/lib/api.js`) | `USE_MOCK = false` activates all routes |
+| `USE_MOCK` env gate (`src/lib/api.js`) | unset → real in prod / mock in dev; `VITE_USE_MOCK=false` forces real |
 
 ## Notes & gotchas
 

@@ -19,7 +19,13 @@ previews unreliable.
 
 Maintain a single `USE_MOCK` flag in `src/lib/api.js` as the authoritative gate:
 
-- `USE_MOCK = true` is the default for the frontend-first MVP phase.
+- `USE_MOCK` is **env-driven** (`VITE_USE_MOCK`):
+  - `VITE_USE_MOCK=true` → always mock (explicit opt-in; local demos, or a demo
+    deployment before the backend schema lands).
+  - `VITE_USE_MOCK=false` → always real (explicit opt-in; the validated workflow).
+  - unset → mock in dev (`npm run dev`, vitest) so local development works without
+    the backend; **real in production builds** (`npm run build` → Vercel), so every
+    deploy validates against the live API.
 - Every data function in `api.js` routes through the gate: real network call when
   `USE_MOCK = false`, mock implementation when `true`.
 - `mockApi.js` functions mirror real API signatures exactly; `mockData.js` is the
@@ -48,7 +54,8 @@ Maintain a single `USE_MOCK` flag in `src/lib/api.js` as the authoritative gate:
   during the MVP phase.
 - Stateful mock data (e.g. the scan store) must persist under `provance.*` localStorage
   keys with try/catch guards and size caps.
-- `USE_MOCK` flips to `false` as part of the Phase 3 backend integration, not before.
+- `USE_MOCK` flipped to the env-driven gate as part of the Phase 3 backend
+  integration (real by default in production builds, mock fallback in dev).
 
 ## Documentation Updates Required
 
