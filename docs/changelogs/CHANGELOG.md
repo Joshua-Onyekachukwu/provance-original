@@ -1,5 +1,12 @@
 # Provance — Changelog
 
+## [2026-08-11] - Live replay detection: 401 leg verified; row read still gated on 0008
+
+### Verified
+- Re-ran `validate-refresh-cookie.mjs` live (throwaway user, deleted): **17/17 PASS** — sign-in sets the httpOnly cookie, two cookie-only refreshes rotate the token, and replays of **both** rotated-out cookies return **401** after GoTrue's reuse-grace interval.
+- Probed the admin surface as the allowlisted seed account: admin sign-in works (access token issued, body refreshToken stripped), but `GET /v1/admin/audit-logs` returns **503 "Failed to fetch audit logs."** — `audit_logs` (migration 0008) is still not applied to `dmhrwdcuwtgscwlaagsa` (5 applied · 14 missing, unchanged). `recordRejectedRefresh`'s write is best-effort and skipped against the missing table.
+- The `refresh_token_rejected` row contract (severity `high`, `reuse_suspected: true`, `token_source: 'cookie'`) remains asserted in the mocked `auth.e2e-spec.ts` replay test; the live read needs the 0008 paste.
+
 ## [2026-08-11] - Refresh-replay lockout: repeated rejected refresh tokens 429 + one high-severity lockout row
 
 ### Added
