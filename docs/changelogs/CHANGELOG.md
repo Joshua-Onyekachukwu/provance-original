@@ -1,5 +1,14 @@
 # Provance — Changelog
 
+## [2026-08-14] - Proved the grid-cols-1 sweep is visually inert (pixel-diff verification)
+
+### Verified
+- **Overflow probe on the current tree** (which carries the explicit `grid-cols-1` bases): landing + workspace (+ admin) inventory — **215/215 PASS** at 375/768/1280 (and 640/1024), zero overflow/clipped elements.
+- **Pixel-diff of the sweep itself**: built the pre-sweep commit (53d9a8e) and post-sweep commit (bcd8ca8) in git worktrees, captured full-page screenshots of the 9 public pages the sweep touched (plus controls) and 8 workspace pages at 375/768/1280 (51 shots per commit), and pixel-matched every pair:
+  - **Landing: byte-identical — 0.000% diff on all 27 public shots.** The explicit `grid-cols-1` bases changed nothing.
+  - Workspace: only the data-driven pages (`/app/reports`, `/app/reports/:id`, `/sample-report`) showed 0.06–0.9% diffs, and a **same-code double-capture** (same server, same commit, two runs) reproduced the identical magnitude — proving those are mock relative-time/animation timing noise, not the sweep. Remaining sub-0.01% diffs (43–83 px on `/app`, uploads, organization, security, admin) are animation-frame variance.
+- Screenshots + diff overlays saved in `.freebuff/sweep-diff/{pre,post,diff}/` for review (gitignored).
+
 ## [2026-08-14] - gridClassGuard sweep as an explicit CI step
 
 ### Changed
