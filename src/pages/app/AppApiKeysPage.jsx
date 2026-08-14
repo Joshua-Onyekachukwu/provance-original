@@ -57,8 +57,11 @@ export default function AppApiKeysPage() {
   const [isCreating, setIsCreating] = useState(false)
   const [createError, setCreateError] = useState('')
   const [revealedToken, setRevealedToken] = useState(null)
-  const [revokeTarget, setRevokeTarget] = useState(null)
-  const [isRevoking, setIsRevoking] = useState(false)
+  // Armed two-step confirm (same pattern as session revoke / member remove):
+  // first click arms the row, second click executes; revokeBusyId tracks the
+  // in-flight key so the row shows loading state and blocks double submits.
+  const [confirmingRevokeId, setConfirmingRevokeId] = useState(null)
+  const [revokeBusyId, setRevokeBusyId] = useState(null)
   const [localKeys, setLocalKeys] = useState(null)
 
   const status = api.status
@@ -110,22 +113,30 @@ export default function AppApiKeysPage() {
     }
   }
 
-  async function handleRevoke() {
-    if (!revokeTarget) return
-    setIsRevoking(true)
+  function handleRevokeClick(key) {
+    if (confirmingRevokeId !== key.id) {
+      setConfirmingRevokeId(key.id)
+      return
+    }
+    setConfirmingRevokeId(null)
+    void handleRevoke(key)
+  }
+
+  async function handleRevoke(key) {
+    setRevokeBusyId(key.id)
     try {
-      await revokeApiKey(revokeTarget.id)
+      await revokeApiKey(key.id)
       setLocalKeys((current) =>
         (current || api.data?.keys || []).map((k) =>
-          k.id === revokeTarget.id ? { ...k, status: 'revoked' } : k,
+          k.id === key.id ? { ...k, status: 'revoked' } : k,
         ),
       )
-      toast.success(`${revokeTarget.name} revoked`)
-      setRevokeTarget(null)
+      toast.success(`${key.name} revoked`)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Key could not be revoked.')
     } finally {
-      setIsRevoking(false)
+      setRevokeBusyId(null)
+      setConfirmingRevokeId(null)
     }
   }
 
@@ -336,14 +347,35 @@ export default function AppApiKeysPage() {
                           </Button>
                         )}
                         {(key.status === 'active' || key.status === 'expired') && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-rose-600 hover:bg-rose-50"
-                            onClick={() => setRevokeTarget(key)}
-                          >
-                            Revoke
-                          </Button>
+                          <>
+                            {confirmingRevokeId === key.id && revokeBusyId === null && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setConfirmingRevokeId(null)}
+                              >
+                                Cancel
+                              </Button>
+                            )}
+                            <Button
+                              variant={confirmingRevokeId === key.id ? 'danger' : 'ghost'}
+                              size="sm"
+                              loading={revokeBusyId === key.id}
+                              disabled={revokeBusyId === key.id}
+                              className={
+                                confirmingRevokeId === key.id
+                                  ? ''
+                                  : 'text-rose-600 hover:bg-rose-50'
+                              }
+                              onClick={() => handleRevokeClick(key)}
+                            >
+                              {revokeBusyId === key.id
+                                ? 'Revoking…'
+                                : confirmingRevokeId === key.id
+                                  ? 'Confirm revoke?'
+                                  : 'Revoke'}
+                            </Button>
+                          </>
                         )}
                       </div>
                     </td>
@@ -481,37 +513,7 @@ export default function AppApiKeysPage() {
         </form>
       </Drawer>
 
-      {/* ── Revoke confirmation drawer ──────────────────────────────────── */}
-      <Drawer
-        open={Boolean(revokeTarget)}
-        onClose={() => setRevokeTarget(null)}
-        title="Revoke this API key?"
-        description="Requests using this key will stop immediately. You cannot undo this — create a new key if you need access again."
-      >
-        {revokeTarget && (
-          <div className="mt-6 space-y-5">
-            <div className="rounded-2xl border border-stone-light bg-parchment px-4 py-4">
-              <p className="text-sm font-medium text-charcoal">{revokeTarget.name}</p>
-              <p className="mt-1 font-mono text-xs text-charcoal-light">
-                {revokeTarget.prefix}•••••••••••
-              </p>
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="ghost" size="sm" onClick={() => setRevokeTarget(null)}>
-                Keep key
-              </Button>
-              <Button
-                variant="danger"
-                size="sm"
-                disabled={isRevoking}
-                onClick={handleRevoke}
-              >
-                {isRevoking ? 'Revoking...' : 'Revoke key'}
-              </Button>
-            </div>
-          </div>
-        )}
-      </Drawer>
+
     </div>
   )
 }

@@ -61,7 +61,7 @@ function Avatar({ name, size = 'md' }) {
   )
 }
 
-function MemberRow({ member, teams, canManage, isCurrentUser, onRoleChange, onTeamChange, onRemove, onViewSessions, busy }) {
+function MemberRow({ member, teams, canManage, isCurrentUser, onRoleChange, onTeamChange, onRemove, onCancelConfirm, onViewSessions, busy, confirming }) {
   return (
     <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-stone-light bg-parchment px-4 py-4">
       <Avatar name={member.displayName} />
@@ -82,7 +82,7 @@ function MemberRow({ member, teams, canManage, isCurrentUser, onRoleChange, onTe
           <select
             value={member.team || ''}
             onChange={(event) => onTeamChange(member, event.target.value)}
-            disabled={busy === member.id}
+            disabled={busy}
             aria-label={`Team access for ${member.displayName}`}
             className="rounded-xl border border-stone-light bg-white-warm px-3 py-2 text-xs font-medium text-charcoal disabled:opacity-50"
           >
@@ -95,7 +95,7 @@ function MemberRow({ member, teams, canManage, isCurrentUser, onRoleChange, onTe
           <select
             value={member.role}
             onChange={(event) => onRoleChange(member, event.target.value)}
-            disabled={busy === member.id}
+            disabled={busy}
             aria-label={`Role for ${member.displayName}`}
             className="rounded-xl border border-stone-light bg-white-warm px-3 py-2 text-xs font-medium text-charcoal disabled:opacity-50"
           >
@@ -108,20 +108,26 @@ function MemberRow({ member, teams, canManage, isCurrentUser, onRoleChange, onTe
           <Button
             variant="ghost"
             size="sm"
-            disabled={busy === member.id}
+            disabled={busy}
             onClick={() => onViewSessions(member)}
             title={`Review and revoke ${member.displayName}'s active sessions`}
           >
             Sessions
           </Button>
+          {confirming && !busy && (
+            <Button variant="ghost" size="sm" onClick={onCancelConfirm}>
+              Cancel
+            </Button>
+          )}
           <Button
-            variant="ghost"
+            variant={confirming ? 'danger' : 'ghost'}
             size="sm"
-            disabled={busy === member.id}
+            loading={busy}
+            disabled={busy}
             onClick={() => onRemove(member)}
-            className="text-rose-600 hover:bg-rose-50"
+            className={confirming ? '' : 'text-rose-600 hover:bg-rose-50'}
           >
-            Remove
+            {busy ? 'Removing…' : confirming ? 'Confirm remove?' : 'Remove'}
           </Button>
         </div>
       ) : (
@@ -161,6 +167,10 @@ export default function AppOrganizationPage() {
   const [inviteError, setInviteError] = useState('')
   const [isInviting, setIsInviting] = useState(false)
   const [busyId, setBusyId] = useState(null)
+  // Armed two-step confirm for member removal — same pattern as session
+  // revoke / API key revoke: first click arms, second click executes, and the
+  // row shows in-flight loading state while removeMember is pending.
+  const [confirmingRemoveId, setConfirmingRemoveId] = useState(null)
   const [localMembers, setLocalMembers] = useState(null)
   const [localInvites, setLocalInvites] = useState(null)
   // invite.id → absolute accept link, held in memory only: the backend issues
@@ -242,6 +252,7 @@ export default function AppOrganizationPage() {
   }
 
   async function handleTeamChange(member, teamId) {
+    setConfirmingRemoveId(null)
     setBusyId(member.id)
     try {
       await updateMemberTeam(member.id, teamId)
@@ -258,6 +269,7 @@ export default function AppOrganizationPage() {
   }
 
   async function handleRoleChange(member, role) {
+    setConfirmingRemoveId(null)
     setBusyId(member.id)
     try {
       await updateMemberRole(member.id, role)
@@ -272,7 +284,18 @@ export default function AppOrganizationPage() {
     }
   }
 
+  function handleRemoveClick(member) {
+    // First click arms the two-step confirm; second click executes.
+    if (confirmingRemoveId !== member.id) {
+      setConfirmingRemoveId(member.id)
+      return
+    }
+    setConfirmingRemoveId(null)
+    void handleRemove(member)
+  }
+
   async function handleRemove(member) {
+    setConfirmingRemoveId(null)
     setBusyId(member.id)
     try {
       await removeMember(member.id)
@@ -501,9 +524,11 @@ export default function AppOrganizationPage() {
                 canManage={canManage}
                 isCurrentUser={member.id === user?.id}
                 busy={busyId === member.id}
+                confirming={confirmingRemoveId === member.id}
                 onRoleChange={handleRoleChange}
                 onTeamChange={handleTeamChange}
-                onRemove={handleRemove}
+                onRemove={handleRemoveClick}
+                onCancelConfirm={() => setConfirmingRemoveId(null)}
                 onViewSessions={openSessions}
               />
             ))}

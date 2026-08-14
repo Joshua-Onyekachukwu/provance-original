@@ -1,5 +1,17 @@
 # Provance — Changelog
 
+## [2026-08-14] - Armed two-step confirm on Organization member-remove + API Keys revoke
+
+### Changed
+- **Every destructive action now shares the two-step armed confirm with in-flight state** (the same pattern as Security session revoke):
+  - **Organization page member-remove** — the row's Remove button was a single-click delete with no confirmation. It's now armed: first click turns it into a danger "Confirm remove?" with a Cancel button; second click executes; while `removeMember` is pending the button shows `loading` + "Removing…" and the row's controls disable.
+  - **API Keys page revoke** — replaced the modal Drawer confirm with the same inline armed pattern ("Confirm revoke?" + Cancel, then "Revoking…" with loading). Per-key `revokeBusyId` replaces the single boolean, so only the in-flight row shows loading and double-submits are blocked.
+- **Fixed a latent busy-state bug in `MemberRow`**: its `disabled={busy === member.id}` compared a boolean against an id (always false), so the team/role selects, Sessions button, and Remove button never actually disabled during an in-flight request. They now disable on `busy` (the boolean prop), matching the Security pattern. Role/team changes also clear any armed remove state.
+
+### Verified
+- Live browser walk (mock mode, dev server): org first click arms → Cancel reverts → second click removes with toast; API Keys identical for revoke — **6/6 PASS**.
+- vitest **518/518**, lint 0 errors (34 baseline warnings), `vite build` clean.
+
 ## [2026-08-14] - Fix live-site 404s (SPA fallback), Vercel Analytics, custom 404 page, README overhaul
 
 ### Fixed
