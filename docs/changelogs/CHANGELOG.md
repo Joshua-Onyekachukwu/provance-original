@@ -1,5 +1,10 @@
 # Provance — Changelog
 
+## [2026-08-14] - 375px public-page probe re-run (verification only, no code change)
+
+### Verified
+- Re-ran the mobile overflow probes on the remaining public pages at 375px against the current branch: `/docs`, `/resources`, `/benchmark`, `/security`, `/waitlist`, `/signin`, `/reset-password`, `/reset-password/confirm`, `/accept-invite` (plus needle-matched `/app/docs`, `/app/security`, `/app/admin/waitlist`) — **60/60 PASS** at 375/640/768/1024/1280, zero overflow or clipped in-flow elements. The earlier `f8f944c` fixes (DocsPage long-URL headers, etc.) hold, and the new routes since then (404 page) introduced no regressions.
+
 ## [2026-08-14] - Armed two-step confirm on Organization member-remove + API Keys revoke
 
 ### Changed
