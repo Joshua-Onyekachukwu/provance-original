@@ -1,5 +1,6 @@
 import { Routes, Route, Outlet, Navigate, useLocation } from 'react-router-dom'
 import { MotionConfig } from 'framer-motion'
+import { Analytics } from '@vercel/analytics/react'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import ScrollToTop from './components/ScrollToTop'
@@ -85,6 +86,7 @@ export default function App() {
     <ToastProvider>
       <MotionConfig reducedMotion="user">
       <ErrorBoundary>
+      <Analytics />
       <Routes>
       <Route path="/sample-report/print" element={<SampleReportPrintPage />} />
 
