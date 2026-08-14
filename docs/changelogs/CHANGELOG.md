@@ -1,5 +1,17 @@
 # Provance — Changelog
 
+## [2026-08-14] - LivePollIndicator shared across every worker-tracking surface
+
+### Changed
+- **`LivePollIndicator` extracted from the dashboard into the ui kit** (`src/components/ui/LivePollIndicator.jsx`, barrel-exported) and extended to the two remaining polling surfaces so every page tracking worker progress shows the same pulsing emerald "auto-refreshing" chip:
+  - **Queue page** — the Queue posture card's `actions` now render it while either poll is active (`live = queueNeedsPolling(queue.data) || hasActiveScanWork(scans.data)`).
+  - **Report detail pane** (`/app/reports/:scanId`) — the header now shows it while the detail poll is live (`detailLive = scanNeedsPolling(selectedScan)`), i.e. exactly while the pane is auto-refreshing to swap in the report on completion.
+  - Dashboard (ledger + queue-posture cards) now imports the shared component — identical markup, no duplication.
+
+### Verified
+- Live browser walk (mock mode): **4/4 PASS** — Queue page shows the indicator (1), queued-scan detail shows it (1), completed-scan detail hides it (0), dashboard still shows both (2) after the extraction.
+- vitest **525/525**, lint 0 errors, build clean; `audit:responsive` **155/155** across all workspace + admin routes at 375/640/768/1024/1280.
+
 ## [2026-08-14] - gridClassGuard extended: base display tokens for responsive display utilities
 
 ### Changed

@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useTeamScoping } from '../../lib/useTeamScoping.js'
-import { Badge, Card, DataTable, StatCard, useRegisterCommands } from '../../components/ui'
+import { Badge, Card, DataTable, LivePollIndicator, StatCard, useRegisterCommands } from '../../components/ui'
 import ScanStatusBadge from '../../components/app/ScanStatusBadge.jsx'
 import TeamBadge from '../../components/app/TeamBadge.jsx'
 import TeamFilter from '../../components/app/TeamFilter.jsx'
@@ -69,6 +69,10 @@ export default function AppQueuePage() {
   )
 
   const data = queue.data
+  // True while either poll loop is active (queue snapshot or scan ledger has
+  // queued/processing work) — the same condition the 5s polls gate on, so the
+  // live indicator appears only while worker progress is being tracked.
+  const live = queueNeedsPolling(queue.data) || hasActiveScanWork(scans.data)
   const newScanId = location.state?.newScanId || null
   const newScanVisible = scans.data?.some((scan) => scan.id === newScanId)
 
@@ -240,6 +244,7 @@ export default function AppQueuePage() {
         loadingRows={3}
         errorDescription={queue.error}
         onRetry={queue.reload}
+        actions={live ? <LivePollIndicator /> : null}
       >
         {queueView && (
           <>

@@ -24,6 +24,7 @@ export { default as StackedBarChart } from './StackedBarChart'
 export { default as HourlyBarChart } from './HourlyBarChart'
 export { default as DonutChart } from './DonutChart'
 export { default as ChartHoverReadout } from './ChartHoverReadout'
+export { default as LivePollIndicator } from './LivePollIndicator'
 export { ChartAxisLabels } from './ChartHoverReadout'
 export {
   CHART_W,

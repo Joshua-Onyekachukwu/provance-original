@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useTeamScoping } from '../../lib/useTeamScoping.js'
-import { Button, EmptyState, Skeleton, useRegisterCommands, useToast } from '../../components/ui'
+import { Button, EmptyState, LivePollIndicator, Skeleton, useRegisterCommands, useToast } from '../../components/ui'
 import ScanStatusBadge from '../../components/app/ScanStatusBadge.jsx'
 import TeamBadge from '../../components/app/TeamBadge.jsx'
 import TeamFilter from '../../components/app/TeamFilter.jsx'
@@ -111,6 +111,10 @@ export default function AppReportsPage() {
 
 
   const selectedScan = detail.status === 'ready' ? detail.data : null
+  // The detail pane polls GET /scans/:id while the scan is queued/processing
+  // (scanNeedsPolling) so the report swaps in the moment it completes — the
+  // live indicator surfaces exactly that tracking.
+  const detailLive = Boolean(selectedScan) && scanNeedsPolling(selectedScan)
   const selectedVerdict = selectedScan?.result_payload?.verdict
   const selectedSignals = selectedScan?.result_payload?.signals || []
 
@@ -374,6 +378,7 @@ export default function AppReportsPage() {
                   </h3>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
+                  {detailLive && <LivePollIndicator />}
                   <Button
                     {...(USE_MOCK
                       ? { to: `/app/reports/${selectedScan.id}/print` }

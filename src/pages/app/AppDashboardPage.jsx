@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTeamScoping } from '../../lib/useTeamScoping.js'
-import { Badge, Button, Card, DataTable, EmptyState, Skeleton, StackedBarChart, StatCard, Tabs, TrendChart, useRegisterCommands, useToast } from '../../components/ui'
+import { Badge, Button, Card, DataTable, EmptyState, LivePollIndicator, Skeleton, StackedBarChart, StatCard, Tabs, TrendChart, useRegisterCommands, useToast } from '../../components/ui'
 import DemoStateBanner from '../../components/app/DemoStateBanner.jsx'
 import ScanStatusBadge from '../../components/app/ScanStatusBadge.jsx'
 import TeamBadge from '../../components/app/TeamBadge.jsx'
@@ -419,29 +419,9 @@ const LEDGER_COLUMNS = [
   },
 ]
 
-// ---------------------------------------------------------------------------
-// Live polling indicator — pulsing dot + "auto-refreshing" label. Rendered
-// only while the 5s poll loop is active (queued / processing scans exist),
-// so users can see the page is tracking worker progress.
-// ---------------------------------------------------------------------------
-
-function LivePollIndicator() {
-  return (
-    <span
-      role="status"
-      aria-label="Auto-refreshing — tracking worker progress"
-      className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50/80 px-2.5 py-1"
-    >
-      <span className="relative flex h-2 w-2">
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-70" />
-        <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-      </span>
-      <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-emerald-700">
-        auto-refreshing
-      </span>
-    </span>
-  )
-}
+// LivePollIndicator lives in the ui kit (components/ui/LivePollIndicator.jsx)
+// and is shared by the dashboard ledger + queue panels, the Queue page, and
+// the report detail pane.
 
 function LedgerPanel({ scans, onRetry, navigate, pageSize = 5, teamFilter, onTeamFilterChange, teamCounts, live }) {
   const filtered = useMemo(
