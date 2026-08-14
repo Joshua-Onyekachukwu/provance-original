@@ -22,6 +22,25 @@ import path from 'node:path'
 const RESPONSIVE_GRID_COLS_RE = /^(sm|md|lg|xl|2xl):grid-cols-/
 const GATED_GRID_RE = /^(sm|md|lg|xl|2xl):grid$/
 
+// Responsive display-ON utilities — the element *becomes* this display from
+// the breakpoint up (`lg:flex`, `md:grid`, …). Mobile-first intent is only
+// explicit when the base (pre-breakpoint) display is declared alongside it:
+// `hidden lg:flex` (nav), `block md:grid`, `flex xl:flex`, … Without it the
+// element silently relies on the UA default (usually inline for spans, block
+// for divs), which is the same implicit-mobile trap the grid-cols-1 sweep
+// closed for grids.
+const RESPONSIVE_DISPLAY_ON_RE = /^(sm|md|lg|xl|2xl):(flex|grid|inline-flex|inline-grid|block|inline-block)$/
+const BASE_DISPLAY_TOKENS = new Set([
+  'flex',
+  'grid',
+  'inline-flex',
+  'inline-grid',
+  'block',
+  'inline-block',
+  'hidden', // hidden md:flex is the canonical mobile-first pattern
+  'contents',
+])
+
 /**
  * Deliberate multi-column-on-mobile grids. Each entry is the exact className
  * literal, kept here so the guard stays strict everywhere else. If a literal
@@ -73,6 +92,20 @@ export function findGridBaseViolation(literal) {
   return 'responsive grid-cols-* declared without a base grid-cols-1'
 }
 
+/**
+ * Apply the base-display rule to one className literal: a responsive
+ * display-ON utility (`lg:flex`, `md:grid`, …) must be paired with an explicit
+ * base display token (`flex`, `block`, `grid`, `hidden`, …) so the mobile
+ * rendering is stated, not implicit.
+ * Returns the violation reason, or null when the literal is compliant.
+ */
+export function findBaseDisplayViolation(literal) {
+  const tokens = literal.split(/\s+/).filter(Boolean)
+  if (!tokens.some((t) => RESPONSIVE_DISPLAY_ON_RE.test(t))) return null
+  if (tokens.some((t) => BASE_DISPLAY_TOKENS.has(t))) return null
+  return 'responsive display utility (flex/grid/block) without an explicit base display token'
+}
+
 /** Walk a directory recursively and collect { file, line, literal } violations. */
 export function scanGridBaseViolations(dir) {
   const violations = []
@@ -87,7 +120,7 @@ export function scanGridBaseViolations(dir) {
         const lines = fs.readFileSync(full, 'utf8').split('\n')
         lines.forEach((lineText, index) => {
           for (const literal of extractClassNameLiterals(lineText)) {
-            const reason = findGridBaseViolation(literal)
+            const reason = findGridBaseViolation(literal) || findBaseDisplayViolation(literal)
             if (reason) {
               violations.push({
                 file: path.relative(dir, full).replace(/\\/g, '/'),

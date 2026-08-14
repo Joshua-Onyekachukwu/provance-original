@@ -772,7 +772,7 @@ export default function AppShellLayout() {
   return (
     <CommandRegistryProvider>
     <div className="app-shell-surface min-h-screen bg-parchment-light">
-      <div className="min-h-screen lg:grid lg:grid-cols-[300px_minmax(0,1fr)]">
+      <div className="min-h-screen block lg:grid lg:grid-cols-[300px_minmax(0,1fr)]">
         <aside className="border-b border-charcoal-soft bg-charcoal text-parchment lg:min-h-screen lg:border-b-0 lg:border-r">
           <div className="flex flex-col px-4 py-4 sm:px-6 lg:sticky lg:top-0 lg:h-screen lg:px-6 lg:py-6">
             <div className="flex items-center justify-between gap-3">

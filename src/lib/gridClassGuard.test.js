@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest'
 import {
   INTENTIONAL_MOBILE_GRIDS,
   extractClassNameLiterals,
+  findBaseDisplayViolation,
   findGridBaseViolation,
   scanGridBaseViolations,
 } from './gridClassGuard.js'
@@ -51,7 +52,7 @@ describe('findGridBaseViolation', () => {
 
   it('accepts a breakpoint-gated grid (not a grid on mobile)', () => {
     expect(
-      findGridBaseViolation('min-h-screen lg:grid lg:grid-cols-[300px_minmax(0,1fr)]'),
+      findGridBaseViolation('min-h-screen block lg:grid lg:grid-cols-[300px_minmax(0,1fr)]'),
     ).toBeNull()
   })
 
@@ -69,6 +70,37 @@ describe('findGridBaseViolation', () => {
 
   it('flags a responsive custom-track grid missing its base', () => {
     expect(findGridBaseViolation('grid gap-6 lg:grid-cols-[1.05fr_0.95fr]')).toMatch(/grid-cols-1/)
+  })
+})
+
+describe('findBaseDisplayViolation', () => {
+  it('accepts the canonical hidden md:flex nav pattern', () => {
+    expect(findBaseDisplayViolation('hidden md:flex items-center gap-8')).toBeNull()
+  })
+
+  it('accepts a block base under a responsive grid display', () => {
+    expect(findBaseDisplayViolation('min-h-screen block lg:grid lg:grid-cols-[280px_minmax(0,1fr)]')).toBeNull()
+  })
+
+  it('accepts a flex base under a redundant responsive flex', () => {
+    expect(findBaseDisplayViolation('flex items-center gap-2 xl:flex')).toBeNull()
+  })
+
+  it('accepts literals with no responsive display utility at all', () => {
+    expect(findBaseDisplayViolation('grid grid-cols-1 gap-4 md:grid-cols-2')).toBeNull()
+    expect(findBaseDisplayViolation('flex flex-col')).toBeNull()
+  })
+
+  it('flags a responsive flex without any base display token', () => {
+    expect(findBaseDisplayViolation('items-center gap-2 lg:flex')).toMatch(/base display/)
+  })
+
+  it('flags a responsive grid display without any base display token', () => {
+    expect(findBaseDisplayViolation('min-h-screen lg:grid lg:grid-cols-2')).toMatch(/base display/)
+  })
+
+  it('flags a responsive block without any base display token', () => {
+    expect(findBaseDisplayViolation('md:block')).toMatch(/base display/)
   })
 })
 

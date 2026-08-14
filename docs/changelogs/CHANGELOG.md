@@ -1,5 +1,14 @@
 # Provance — Changelog
 
+## [2026-08-14] - gridClassGuard extended: base display tokens for responsive display utilities
+
+### Changed
+- **`gridClassGuard` now enforces mobile-first intent for display utilities, not just grids.** New `findBaseDisplayViolation` rule: any responsive display-ON utility (`lg:flex`, `md:grid`, `xl:block`, `sm:inline-flex`, …) must be paired with an explicit base display token (`flex`, `block`, `grid`, `inline-flex`, `inline-block`, `hidden`, `contents`) in the same className — so `hidden lg:flex` (canonical nav), `block md:grid`, `flex xl:flex` pass, while a bare `lg:flex` or `md:grid` fails with the literal and file:line. Wired into `scanGridBaseViolations` (and therefore the vitest repo-wide test + the `npm run guard:grid` CI step).
+- **Exactly two repo-wide violations existed** — the app shell (`AppShellLayout`) and admin shell (`AdminShell`) breakpoint-gated layouts, now `min-h-screen block lg:grid lg:grid-cols-[…]`: the explicit `block` states the mobile rendering (a div defaults to block, so zero visual change) and composes with the existing gated-grid exception.
+
+### Verified
+- Guard clean repo-wide; unit tests **20/20** (7 new for the base-display rule); full vitest **525/525**; lint 0 errors; build clean; `audit:responsive` **155/155** across all workspace + admin routes at 375/640/768/1024/1280 (one isolated `/app/admin/waitlist` skeleton mid-load flake on the first long walk — not reproducible, unrelated to the change).
+
 ## [2026-08-14] - Proved the grid-cols-1 sweep is visually inert (pixel-diff verification)
 
 ### Verified

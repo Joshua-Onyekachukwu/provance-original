@@ -53,7 +53,7 @@ walk(target)
 const stale = INTENTIONAL_MOBILE_GRIDS.filter((literal) => !allLiterals.has(literal))
 
 if (violations.length === 0 && stale.length === 0) {
-  console.log(`gridClassGuard: ${target} clean — every responsive grid declares a base grid-cols-1.`)
+  console.log(`gridClassGuard: ${target} clean — every responsive grid declares a base grid-cols-1, and every responsive display utility (lg:flex / md:grid / …) declares an explicit base display token.`)
   process.exit(0)
 }
 
