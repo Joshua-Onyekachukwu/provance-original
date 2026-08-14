@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
+import { Analytics } from '@vercel/analytics/react'
 import './index.css'
 import App from './App.jsx'
 import { AuthProvider } from './context/AuthContext.jsx'
@@ -23,6 +24,9 @@ createRoot(document.getElementById('root')).render(
     <BrowserRouter>
       <AuthProvider>
         <App />
+        {/* Vercel Web Analytics — no-op in dev, auto-injects in production
+            builds; data shows up in the Vercel project dashboard. */}
+        <Analytics />
       </AuthProvider>
     </BrowserRouter>
   </StrictMode>,

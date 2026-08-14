@@ -1,5 +1,21 @@
 # Provance — Changelog
 
+## [2026-08-14] - Fix live-site 404s (SPA fallback), Vercel Analytics, custom 404 page, README overhaul
+
+### Fixed
+- **Deep-link / refresh 404s on the Vercel site — root cause fixed.** The SPA had no server-side fallback: Vercel served a platform 404 for any path other than `/` (opening a tab directly, or refreshing an in-app page). Added `vercel.json` with the canonical SPA rewrite (`/(.*) → /index.html`), so every unmatched path mounts the app and the router renders the page (or the custom 404). Verified locally: build → `vite preview` → `/app/activity`, `/nonexistent-route`, and `/` all return 200 `text/html` with the app shell.
+
+### Added
+- **Vercel Web Analytics** — installed `@vercel/analytics` and rendered `<Analytics />` in the app entry (no-op in dev, auto-injects in production builds).
+- **Custom 404 page** (`src/pages/NotFoundPage.jsx`, routed at `*`) — a full landing-quality page in the Hero's visual language: parchment + forensic-grid backdrop with blurred orbs, a giant serif 404 with an italic trust-accented zero and an animated scanning line (auto-disabled by the global `reducedMotion="user"` config), a "Verdict · Not found" badge, the "This signal couldn't be resolved." headline, and 44px-tap-target CTAs (Back to home, View a sample report, Sign in, Docs, Security). Sets `document.title`. Replaces the previous basic placeholder.
+
+### Changed
+- **`README.md` rewritten** to reflect the current product: the 12-page admin console, workspace feature set, NestJS + Supabase + BullMQ stack, the `USE_MOCK` env-driven gate, quality gates (518 vitest, backend jest/e2e, `audit:responsive`), deployment notes (Vercel SPA fallback, Fly backend/worker, Supabase migrations), route inventory, env var pointers, and the docs index.
+
+### Verified
+- vitest **518/518**, lint 0 errors (34 baseline warnings), `vite build` clean.
+- Browser-verified the 404 page at 375px and 1280px: correct title (`Page not found · Provance`), headline, verdict chip, all CTAs, **0px overflow**.
+
 ## [2026-08-14] - Landing touch/pointer audit: 44px tap targets + touch-safe tilt panel
 
 ### Changed
