@@ -194,7 +194,7 @@ export default function SampleReport() {
                         className="group rounded-[1.5rem] border border-stone-light/80 bg-white-warm/90 p-5 shadow-[0_16px_35px_rgba(26,26,26,0.04)]"
                         open={section.title === 'Evidence breakdown'}
                       >
-                        <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
+                        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3">
                           <span className="font-serif text-xl text-charcoal">{section.title}</span>
                           <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-charcoal-light transition-transform duration-200 group-open:rotate-45">
                             +

@@ -87,7 +87,7 @@ export default function Hero() {
               animate="visible"
               custom={5}
               href="#why"
-              className="mt-10 inline-flex items-center gap-2 text-sm font-medium text-charcoal-mid transition-colors hover:text-charcoal"
+              className="mt-10 inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-medium text-charcoal-mid transition-colors hover:text-charcoal"
             >
               See why teams choose Provance
               <span aria-hidden="true" className="text-trust">↓</span>

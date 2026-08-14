@@ -563,7 +563,7 @@ export default function ProductShowcase() {
                     type="button"
                     onClick={replay}
                     disabled={isRunning}
-                    className="ui-focus-ring inline-flex items-center gap-1.5 rounded-full border border-charcoal/15 bg-white-warm px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.16em] text-charcoal transition hover:border-charcoal/35 hover:bg-parchment disabled:cursor-not-allowed disabled:opacity-50"
+                    className="ui-focus-ring inline-flex min-h-11 items-center gap-1.5 rounded-full border border-charcoal/15 bg-white-warm px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.16em] text-charcoal transition hover:border-charcoal/35 hover:bg-parchment disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <svg
                       viewBox="0 0 20 20"

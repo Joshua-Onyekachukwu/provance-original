@@ -42,7 +42,7 @@ export default function Navbar() {
       }`}
     >
       <div className="content-container flex items-center justify-between h-16 md:h-20 px-4 md:px-6">
-        <Link to="/" className="flex items-center gap-2 group">
+        <Link to="/" className="flex items-center gap-2 py-1 group">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-charcoal shadow-[0_10px_30px_rgba(19,22,29,0.18)]">
             <span className="text-parchment text-sm font-serif font-semibold">P</span>
           </div>
@@ -101,7 +101,7 @@ export default function Navbar() {
         </nav>
 
         <button
-          className="lg:hidden flex flex-col gap-1.5 p-2"
+          className="lg:hidden flex h-11 w-11 flex-col items-center justify-center gap-1.5 rounded-lg"
           onClick={() => setMobileOpen(!mobileOpen)}
           aria-label="Toggle menu"
           aria-expanded={mobileOpen}

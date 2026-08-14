@@ -1,5 +1,21 @@
 # Provance — Changelog
 
+## [2026-08-14] - Landing touch/pointer audit: 44px tap targets + touch-safe tilt panel
+
+### Changed
+- **Tap targets brought to ≥44×44px on the landing** (measured at 375px against WCAG 2.5.5):
+  - Navbar mobile hamburger `36×33 → 44×44` (`h-11 w-11` — the most important target on the page) and the logo link gained vertical padding (`36 → 44px` tall).
+  - Hero's "See why teams choose Provance" anchor `20 → 44px` tall (`min-h-11 px-2`).
+  - ProductShowcase "Run demo / Replay" button `32 → 44px` (`min-h-11`).
+  - SampleReport `<summary>` accordion rows `28 → 44px` (`min-h-11`).
+  - Footer nav + legal links `16–19px → 44px` tall (`inline-flex min-h-11 items-center px-2`) — short words like "Docs" also get `px-2` so the full target is 44×44.
+- The one remaining sub-44 target is "See the full pricing model" — an inline link inside a sentence, explicitly exempt from target-size requirements (WCAG 2.5.8 inline exception).
+- **`InteractivePanel` tilt is now touch-safe.** Previously `onMouseMove`/`onMouseLeave` tilt could fire a synthesized mouse-move on tap and never receive the matching mouse-leave, leaving the panel stuck tilted on phones. The tilt is now gated to `(hover: hover) and (pointer: fine)` at mount (no handlers attached on coarse pointers — panel renders flat), on top of the existing `prefers-reduced-motion: reduce` guard.
+
+### Verified
+- Tap-target probe at 375px: every interactive control ≥44×44; **0 hover-only interactions** on the landing (no `onMouseEnter` without `onClick`, no `group-hover` content reveals). `MotionConfig reducedMotion="user"` was already global in `App.jsx`.
+- `audit:responsive` clean across the landing/shell routes at 375/640/768/1024/1280; vitest **518/518**, lint 0 errors (34 baseline warnings), `vite build` clean.
+
 ## [2026-08-14] - Responsive audit extended to 375px (small phone) — five surfaces hardened
 
 ### Changed
