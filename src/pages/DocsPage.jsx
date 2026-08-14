@@ -77,7 +77,7 @@ export default function DocsPage() {
                     <div className="w-2.5 h-2.5 rounded-full bg-white/20" />
                     <div className="w-2.5 h-2.5 rounded-full bg-white/20" />
                   </div>
-                  <span className="ml-3 flex items-center gap-2 text-xs text-stone font-mono">
+                  <span className="ml-3 flex min-w-0 break-words items-center gap-2 text-xs text-stone font-mono">
                     <span className="px-2 py-0.5 bg-emerald-700/50 text-emerald-300 rounded text-[10px] font-bold">POST</span>
                     https://api.provance.io/v1/verify
                   </span>
@@ -105,7 +105,7 @@ export default function DocsPage() {
                     <div className="w-2.5 h-2.5 rounded-full bg-white/20" />
                     <div className="w-2.5 h-2.5 rounded-full bg-white/20" />
                   </div>
-                  <span className="ml-3 flex items-center gap-2 text-xs text-stone font-mono">
+                  <span className="ml-3 flex min-w-0 break-words items-center gap-2 text-xs text-stone font-mono">
                     <span className="px-2 py-0.5 bg-amber-700/50 text-amber-300 rounded text-[10px] font-bold">200</span>
                     Response
                   </span>

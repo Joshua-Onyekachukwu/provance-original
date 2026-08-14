@@ -362,11 +362,14 @@ export default function AppReportsPage() {
           <div className="space-y-6">
             <section className="rounded-3xl border border-stone-light bg-white-warm p-6 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-4">
-                <div>
+                {/* min-w-0 + break-words: real filenames (e.g.
+                    IMG_20260715_143022.jpg) are unbroken strings that blow
+                    the text-3xl header wider than the viewport on phones. */}
+                <div className="min-w-0">
                   <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">
                     Report detail
                   </p>
-                  <h3 className="mt-2 font-serif text-3xl text-charcoal">
+                  <h3 className="mt-2 break-words font-serif text-3xl leading-tight text-charcoal">
                     {selectedScan.original_filename}
                   </h3>
                 </div>

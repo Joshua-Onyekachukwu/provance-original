@@ -121,6 +121,7 @@ const ADMIN_ROUTES = [
 const ALL_ROUTES = [...PUBLIC_ROUTES, ...APP_ROUTES, ...ADMIN_ROUTES];
 
 const VIEWPORTS = [
+  { name: 'phone-375', width: 375, height: 812 },
   { name: 'phone-640', width: 640, height: 1136 },
   { name: 'tablet-768', width: 768, height: 1024 },
   { name: 'laptop-1024', width: 1024, height: 768 },
@@ -314,7 +315,7 @@ async function main() {
     console.error('  overflow/clipped regression — fix the layout or add a scroll container.');
     process.exit(1);
   }
-  console.log('\nresponsive audit passed — no page-level overflow or clipped in-flow elements at 640/768/1024/1280');
+  console.log('\nresponsive audit passed — no page-level overflow or clipped in-flow elements at 375/640/768/1024/1280');
   process.exit(0);
 }
 

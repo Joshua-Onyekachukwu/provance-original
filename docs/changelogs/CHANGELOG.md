@@ -1,5 +1,20 @@
 # Provance — Changelog
 
+## [2026-08-14] - Responsive audit extended to 375px (small phone) — five surfaces hardened
+
+### Changed
+- **`audit:responsive` now walks five viewports** — `phone-375` (375×812) joins 640/768/1024/1280, so the permanent CI gate covers small phones, not just the phone/tablet/laptop/desktop pair. The walk is now 52 routes × 5 viewports = 260 audits.
+
+### Fixed (the 375px run surfaced five real clip bugs — same bug class as the long-string sweep)
+- **`/docs` API-example headers** — non-wrapping flex rows (traffic dots + method badge + long URL text) couldn't shrink at 375; the URL text got `break-words`.
+- **Admin activity feeds (overview + roles + audit-logs via `ActivityRow`)** — the actor email rendered in a bare span (`kwame.boateng@independent-research.africa` ≈ 210px of unbroken text) blew the row past the viewport in narrow columns; now `break-words`.
+- **Resource target chips (Activity page + audit-logs feed)** — `inline-flex` chips sized to their unbroken `resource_id` (`waitlist_application_0007` made a chip 256px wide) couldn't shrink; now `min-w-0 max-w-full` with the id `truncate`d (full id in the `title` tooltip).
+- **Audit-logs filter selects** — native selects size to their longest option, so `flex-wrap` alone couldn't save the row; `max-w-full` caps them at the container on mobile (desktop layout unchanged).
+- **Report detail header (`/app/reports/:id`)** — the `text-3xl` serif filename (`IMG_20260715_143022.jpg`) overflowed +52px; the header row now has `min-w-0` and the filename `break-words`.
+
+### Verified
+- Subset walk over every previously-failing route (docs, activity, all admin pages, report detail + print): **90/90 clean** at 375/640/768/1024/1280; vitest **518/518**, lint 0 errors (34 baseline warnings), `vite build` clean.
+
 ## [2026-08-11] - ProductShowcase wired into the landing (dead code decision: reuse, not archive)
 
 ### Changed

@@ -131,10 +131,16 @@ function ActivityRow({ event, open, onToggle }) {
             <Badge tone={tone} size="sm">
               {meta.label}
             </Badge>
-            {/* Target chip */}
-            <span className="inline-flex items-center gap-1.5 rounded-md border border-stone-light bg-parchment px-2 py-0.5 font-mono text-[11px]">
-              <span className="text-charcoal-light">{resourceLabel(event.resource_type)}</span>
-              {event.resource_id && <span className="text-charcoal">{event.resource_id}</span>}
+            {/* Target chip — min-w-0 + truncate: resource ids like
+                waitlist_application_0007 are unbroken strings that otherwise
+                blow the chip wider than the viewport on narrow columns. */}
+            <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-md border border-stone-light bg-parchment px-2 py-0.5 font-mono text-[11px]">
+              <span className="shrink-0 text-charcoal-light">{resourceLabel(event.resource_type)}</span>
+              {event.resource_id && (
+                <span title={event.resource_id} className="min-w-0 truncate text-charcoal">
+                  {event.resource_id}
+                </span>
+              )}
             </span>
           </span>
         </span>

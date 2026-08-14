@@ -45,7 +45,11 @@ export default function ActivityRow({ event }) {
       {/* Actor + description */}
       <div className="min-w-0 flex-1">
         <p className="text-sm text-charcoal">
-          <span className="font-medium">{event.actor_email || 'system'}</span>
+          {/* break-words: actor emails are unbroken strings (e.g.
+              kwame.boateng@independent-research.africa) that blow the row
+              wider than the viewport in narrow columns — same clip class as
+              the long-string sweep. */}
+          <span className="break-words font-medium">{event.actor_email || 'system'}</span>
         </p>
         <p className="mt-0.5 text-sm text-charcoal-mid truncate">
           {event.description || event.action}

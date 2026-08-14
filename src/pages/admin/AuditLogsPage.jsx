@@ -109,15 +109,23 @@ function AuditRow({ event, open, onToggle }) {
               {shortAction(event.action).toUpperCase()}
             </Badge>
           </span>
-          <span className="mt-1.5 block text-sm text-charcoal">
+          {/* break-words: full actor emails are unbroken strings that blow
+              the row wider than the viewport in narrow columns. */}
+          <span className="mt-1.5 block break-words text-sm text-charcoal">
             <span className="font-medium capitalize">{actorName}</span>
             <span className="text-charcoal-light"> · {event.actor_email}</span>
           </span>
           <span className="mt-1 flex flex-wrap items-center gap-2">
-            {/* Resource target chip */}
-            <span className="inline-flex items-center gap-1.5 rounded-md border border-stone-light bg-parchment px-2 py-0.5 font-mono text-[11px]">
-              <span className="text-charcoal-light">{resourceLabel(event.resource_type)}</span>
-              {event.resource_id && <span className="text-charcoal">{event.resource_id}</span>}
+            {/* Resource target chip — min-w-0 + truncate: ids like
+                waitlist_application_0007 are unbroken strings that otherwise
+                blow the chip wider than the viewport on narrow columns. */}
+            <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-md border border-stone-light bg-parchment px-2 py-0.5 font-mono text-[11px]">
+              <span className="shrink-0 text-charcoal-light">{resourceLabel(event.resource_type)}</span>
+              {event.resource_id && (
+                <span title={event.resource_id} className="min-w-0 truncate text-charcoal">
+                  {event.resource_id}
+                </span>
+              )}
             </span>
           </span>
         </span>
@@ -406,7 +414,7 @@ export default function AuditLogsPage() {
                     setActor(event.target.value)
                     resetPage()
                   }}
-                  className="rounded-xl border border-stone-light bg-parchment px-3 py-2 text-sm text-charcoal"
+                  className="max-w-full rounded-xl border border-stone-light bg-parchment px-3 py-2 text-sm text-charcoal"
                 >
                   <option value="all">All actors</option>
                   {actors.map((value) => (
@@ -426,7 +434,7 @@ export default function AuditLogsPage() {
                     setAction(event.target.value)
                     resetPage()
                   }}
-                  className="rounded-xl border border-stone-light bg-parchment px-3 py-2 text-sm text-charcoal"
+                  className="max-w-full rounded-xl border border-stone-light bg-parchment px-3 py-2 text-sm text-charcoal"
                 >
                   <option value="all">All actions</option>
                   {actions.map((value) => (
@@ -446,7 +454,7 @@ export default function AuditLogsPage() {
                     setResourceType(event.target.value)
                     resetPage()
                   }}
-                  className="rounded-xl border border-stone-light bg-parchment px-3 py-2 text-sm text-charcoal"
+                  className="max-w-full rounded-xl border border-stone-light bg-parchment px-3 py-2 text-sm text-charcoal"
                 >
                   <option value="all">All resources</option>
                   {resourceTypes.map((value) => (
