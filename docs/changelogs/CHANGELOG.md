@@ -1,5 +1,13 @@
 # Provance — Changelog
 
+## [2026-08-14] - gridClassGuard sweep as an explicit CI step
+
+### Changed
+- **The mobile-first grid sweep is now a first-class CI gate.** New `scripts/grid-guard.mjs` (registered as `npm run guard:grid`) runs the repo-wide `scanGridBaseViolations` over `src/` as a standalone fail-closed command — every responsive `grid-cols-*` must declare a base `grid-cols-1` (or be a breakpoint-gated grid / reviewed allowlist entry), plus the stale-allowlist check (allowlisted literals must still exist in the tree). Previously this only ran implicitly inside the vitest suite; the CI frontend job now runs `npm run guard:grid` as its own step on every push/PR alongside lint, vitest, and build.
+
+### Verified
+- `npm run guard:grid` on the repo: clean (exit 0). Fail path proven: a fixture `grid gap-4 md:grid-cols-3` is flagged with file:line + literal, exit 1. Vitest guard tests 13/13, lint 0 errors, build clean.
+
 ## [2026-08-14] - 375px public-page probe re-run (verification only, no code change)
 
 ### Verified

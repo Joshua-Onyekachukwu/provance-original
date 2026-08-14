@@ -21,7 +21,8 @@
     "backend:seed:org": "npm --prefix backend run seed:org",
     "backend:test:e2e": "npm --prefix backend run test:e2e -- --runInBand",
     "check:launch": "npm run check:test && npm run build && npm run backend:build && npm run backend:test:e2e",
-    "audit:responsive": "node scripts/audit-responsive.mjs"
+    "audit:responsive": "node scripts/audit-responsive.mjs",
+    "guard:grid": "node scripts/grid-guard.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.54.0",

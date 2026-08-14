@@ -34,6 +34,13 @@ jobs:
       - name: Test (vitest)
         run: npm test
 
+      - name: Grid class guard (mobile-first sweep)
+        run: npm run guard:grid
+        # Repo-wide static scan: every responsive grid-cols-* must declare an
+        # explicit base grid-cols-1 (or be a breakpoint-gated grid / reviewed
+        # allowlist entry). Runs alongside vitest so a copy-pasted desktop-only
+        # grid className fails CI before it ships.
+
       - name: Build
         run: npm run build
 
