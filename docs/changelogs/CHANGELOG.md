@@ -1,5 +1,15 @@
 # Provance — Changelog
 
+## [2026-08-17] - Live migration check + verified 0005–0020 paste block (ops)
+
+### Changed
+- Re-probed the live Supabase project (`dmhrwdcuwtgscwlaagsa`) via `backend/scripts/validate-migrations.mjs` (same probe list as readiness `checks.migrations`): **5/20 applied; 0005, 0007–0016, 0018–0020 still missing** — including the hard scan gates `0009` (`scans.processing_mode`) and `0019` (`scans.idempotency_key`).
+- Regenerated **`.freebuff/combined-0005-0020.sql`** (906 lines) as the exact ordered paste block — the 15 missing migrations concatenated in dependency order, **byte-verified (normalized) against the source files** in `supabase/migrations/` (injected banners are comment-only).
+- Baselined the pre-migration state: `GET /v1/health/readiness` → `degraded` (migrations/scansSchema/userSessions checks fail with the missing list); `validate-scan-roundtrip.mjs` blocked at `POST /v1/scans` with a 503 naming migration 0019 (throwaway user cleaned up).
+
+### Pending
+- Live scan walk (upload → queue → report) + readiness `ready` — blocked on the user pasting the block in the SQL Editor; rerun both validators once applied.
+
 ## [2026-08-17] - Import-parity guard extended to chartGeometry.js + the ui barrel
 
 ### Changed
