@@ -66,8 +66,14 @@ function DeviceIcon() {
 }
 
 function SessionRow({ session, onRevoke, onCancelConfirm, confirming, busy }) {
+  // Only the armed row carries data-armed-revoke-row — the page's click-away
+  // handler uses it to tell "click inside the armed row" (no reset) from
+  // "click anywhere else" (disarm).
   return (
-    <div className="flex items-center gap-4 rounded-2xl border border-stone-light bg-parchment px-4 py-4">
+    <div
+      className="flex items-center gap-4 rounded-2xl border border-stone-light bg-parchment px-4 py-4"
+      data-armed-revoke-row={confirming ? 'true' : undefined}
+    >
       <DeviceIcon />
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
@@ -157,6 +163,30 @@ export default function AppSecurityPage() {
     setLocalControls(null)
     setConfirmingRevokeId(null)
   }, [settings.status])
+
+  // Click-away / Escape reset for the armed revoke confirm: a half-armed row
+  // must not linger once attention moves elsewhere. Listeners exist only
+  // while a row is armed — any pointer-down outside the armed row (or an
+  // Escape keypress) disarms it. Clicks inside the row, including the
+  // "Confirm revoke?" / Cancel buttons, resolve through their own handlers
+  // and are not intercepted here.
+  useEffect(() => {
+    if (!confirmingRevokeId) return undefined
+    const handlePointerDown = (event) => {
+      if (!event.target.closest?.('[data-armed-revoke-row]')) {
+        setConfirmingRevokeId(null)
+      }
+    }
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') setConfirmingRevokeId(null)
+    }
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [confirmingRevokeId])
 
   const passwordChecks = useMemo(() => {
     if (!passwordPolicy) return []

@@ -1,5 +1,14 @@
 # Provance — Changelog
 
+## [2026-08-17] - Armed-revoke click-away + Escape reset (security page)
+
+### Changed
+- `src/pages/app/AppSecurityPage.jsx` — a half-armed revoke can no longer linger when attention moves elsewhere. While a session row is armed (`confirmingRevokeId` set), two document-level listeners are active: any `pointerdown` outside the armed row, or an `Escape` keypress, disarms it. The armed row carries `data-armed-revoke-row` so clicks *inside* it (the Confirm/Cancel buttons) resolve through their own handlers untouched.
+- New `src/pages/app/appSecurityArmedReset.test.jsx` (5 tests): Escape disarms, pointer-down outside disarms, pointer-down inside keeps it armed, pointer-down on another row's Revoke disarms then re-arms that row, and the armed Confirm click still revokes (no regression).
+
+### Tests
+- vitest **545/545** (5 new), lint 0 errors, build clean; live headless walk **6/6 PASS** (arm → Escape → disarm, arm → click-away → disarm, confirm revoke still removes the row 4→3).
+
 ## [2026-08-17] - Live migration check + verified 0005–0020 paste block (ops)
 
 ### Changed
