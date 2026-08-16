@@ -1,5 +1,16 @@
 # Provance — Changelog
 
+## [2026-08-17] - Import-parity guard extended to chartGeometry.js + the ui barrel
+
+### Changed
+- **Extracted the import-parity guard into a shared core** (`src/lib/importParity.js`): `parseImportMembers` + `createImportParityGuard({ moduleFile, specifierRe, skipPrefixes })` now power the walk/parse machinery once, and `src/lib/scanPresentationParity.js` was rewritten as a thin configuration over it — export surface unchanged, so the existing scanPresentation suite (11 tests) stays green as a behavior-preserving refactor.
+- **`chartGeometryParity.test.js`** — pins the chart geometry module's 13-export public signature (declaration order) and walks every importer in `src/`, asserting each imported name still exists and no namespace/default import shape slipped in.
+- **`uiBarrelParity.test.js`** — pins the ui-primitives barrel's 39-export public signature (`src/components/ui/index.js`) and asserts every importer (30+ workspace/admin pages, incl. `…/ui/index.js` specifier variants) resolves against the barrel surface.
+- **`importParity.test.js`** — unit coverage for the shared core: member parsing (aliases/comments), single-/multi-line extraction, other-module ignores, unsupported-shape flags, and regex statelessness across repeated calls.
+
+### Tests
+- vitest **540/540** (15 new: 9 core + 3 chartGeometry parity + 3 barrel parity), lint 0 errors, `npm run build` clean.
+
 ## [2026-08-14] - LivePollIndicator shared across every worker-tracking surface
 
 ### Changed
