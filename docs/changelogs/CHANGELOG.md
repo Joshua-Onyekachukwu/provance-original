@@ -1,5 +1,15 @@
 # Provance — Changelog
 
+## [2026-08-17] - Drafted the Provance-specific BullMQ/Redis queue skill (docs)
+
+### Changed
+- New **`docs/skills/provance-bullmq-redis-queue/SKILL.md`** (205 lines) — a repo-specific Agent Skill encoding the scan queue conventions, built from `SCAN_UPLOAD_CONTRACT.md` + the actual `queue/` module, `worker.ts`, and `scans.service.ts`:
+  - architecture map (file → responsibility), the enqueue job contract (`jobId: scanId`, `attempts: 3`, exponential backoff 1s, `removeOn*: 100`),
+  - the **retry invariant**: `runScanProcessing` rethrows and leaves the row `processing` between attempts; terminal `failed` only via `markScanFailed` (worker `failed` event on final attempt, or the inline error handler),
+  - the inline no-Redis fallback branch, `createRedisConnection` gotchas (`maxRetriesPerRequest: null` required, Upstash `rediss://` TLS), worker shutdown/observability,
+  - verification paths (`validate:bullmq`, scans-flow e2e, unit spec) and 6 hard rules.
+- No runtime code changed; the skill is a draft for founder review before it moves to `~/.agents/skills/`.
+
 ## [2026-08-17] - Installed the official supabase/agent-skills collection (ops)
 
 ### Changed
