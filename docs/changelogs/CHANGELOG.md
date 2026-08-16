@@ -1,5 +1,15 @@
 # Provance — Changelog
 
+## [2026-08-17] - Live scan walk staging: Redis re-provisioned, worker ready (ops)
+
+### Changed
+- Diagnosed the **expired Upstash Redis** (`ENOTFOUND enjoyed-panda-183888.upstash.io` — the throwaway instance's 3-day window lapsed) and **provisioned a fresh one** via the contract's no-signup endpoint (idempotency-key re-fetch, `adapted-shrew-121173.upstash.io`, expires 2026-08-19). `REDIS_URL` in `backend/.env.local` (gitignored) patched; verified `PONG`.
+- Booted the backend (:4000, health 200) and the **BullMQ worker** (`Worker is ready for queue "scan-processing" with concurrency 4`).
+- Re-probed migrations: **still 14 missing** (0005, 0007–0016, 0018–0020) — `DATABASE_URL` unset, so the SQL Editor is the only application path. The walk attempt blocks exactly as designed: `POST /v1/scans` → 503 naming migration 0019 (`scans.idempotency_key`); throwaway user cleaned up.
+
+### Pending
+- Paste `.freebuff/combined-0005-0020.sql` in the SQL Editor (project `dmhrwdcuwtgscwlaagsa`), then rerun `validate-migrations` + `validate-scan-roundtrip` + readiness — infra is fully staged and waiting.
+
 ## [2026-08-17] - Drafted the Provance-specific NestJS skill (docs)
 
 ### Changed
