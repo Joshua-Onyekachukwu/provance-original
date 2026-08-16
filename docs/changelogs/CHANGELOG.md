@@ -1,5 +1,16 @@
 # Provance — Changelog
 
+## [2026-08-17] - Drafted the Provance-specific NestJS skill (docs)
+
+### Changed
+- New **`docs/skills/provance-nestjs/SKILL.md`** (204 lines) — the last gap from the skills audit. Encodes the repo's actual backend conventions (verified against `main.ts`, `app.module.ts`, the `common/` guards/filter/pipes, `notifications.controller.ts`, DTOs, and the spec/e2e suites):
+  - global wiring (`/v1` prefix, ValidationPipe whitelist+forbidNonWhitelisted, Throttler as global `APP_GUARD`, helmet/CORS/x-request-id, Swagger at `/v1/docs`),
+  - module layout + `SupabaseService` admin-client data access, controller conventions (`SupabaseAuthGuard`+`AdminGuard`, `@CurrentUser`, `ParseIntStrictPipe` ordering),
+  - the `GlobalExceptionFilter` error envelope (string `message` + `details`, 402 `Retry-After`), the `{ data, page, pageSize, total }` pagination envelope,
+  - camelCase `@ApiProperty`-decorated DTO conventions, service rules (best-effort secondary writes, guarded+idempotent transitions, honest nulls),
+  - the three-layer test pattern (service spec, controller spec with real guards via supertest, `test/*.e2e-spec.ts`) and 8 hard rules.
+- No runtime code changed; draft for founder review before it moves to `~/.agents/skills/`.
+
 ## [2026-08-17] - Drafted the Provance-specific BullMQ/Redis queue skill (docs)
 
 ### Changed
