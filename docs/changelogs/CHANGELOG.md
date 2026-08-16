@@ -1,5 +1,13 @@
 # Provance — Changelog
 
+## [2026-08-17] - Installed the official supabase/agent-skills collection (ops)
+
+### Changed
+- Installed the official [supabase/agent-skills](https://github.com/supabase/agent-skills) collection globally into `~/.agents/skills/` via the skills CLI (`add supabase/agent-skills -g -y --copy -s '*' -a antigravity,codex,gemini-cli,kimi-code-cli`):
+  - **`supabase`** (v0.1.2) — the comprehensive skill covering Database, Auth, Edge Functions, Realtime, Storage, Vectors, Cron, Queues, supabase-js/SSR, CLI/MCP, schema + migrations, RLS + security audits, and troubleshooting/logs.
+  - **`supabase-postgres-best-practices`** — the official Supabase-maintained Postgres skill, upgrading the previously-installed copy to the tracked version.
+- No repo code changed; both skills are live in `~/.agents/skills/` and picked up by the runtime (verified via `skills list -g` + folder/SKILL.md inspection).
+
 ## [2026-08-17] - Armed-revoke click-away + Escape reset (security page)
 
 ### Changed
