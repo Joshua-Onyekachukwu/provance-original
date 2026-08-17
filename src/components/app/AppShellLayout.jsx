@@ -893,7 +893,7 @@ export default function AppShellLayout() {
 
         <div className="min-w-0">
           <header className="relative z-30 border-b border-stone-light bg-parchment-light/88 px-5 py-5 backdrop-blur sm:px-8 lg:px-10">
-            <div className="flex items-start justify-between gap-6">
+            <div className="mx-auto flex w-full max-w-7xl items-start justify-between gap-6">
               <div className="min-w-0">
                 <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-charcoal-light">
                   {pageMeta.eyebrow}
@@ -949,7 +949,7 @@ export default function AppShellLayout() {
             </div>
           </header>
 
-          <main className="px-5 py-8 sm:px-8 lg:px-10 lg:py-10">
+          <main className="mx-auto w-full max-w-7xl px-5 py-8 sm:px-8 lg:px-10 lg:py-10">
             {/* Location-keyed so the shell survives a page crash and
                 navigating away resets the boundary. */}
             <ErrorBoundary key={location.pathname}>

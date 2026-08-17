@@ -1,5 +1,15 @@
 # Provance — Changelog
 
+## [2026-08-18] - Workspace top bar mirrors landing's max-w-7xl rhythm
+
+### Changed
+- **`src/components/app/AppShellLayout.jsx`** — the workspace top bar's inner row and the `<main>` content column are now `mx-auto w-full max-w-7xl`, matching the landing navbar pill's wider 1280px centered measure. The header title stays aligned with page content below it (both share the same centered column); the header keeps its border-b strip chrome and the existing `gap-6` rhythm from the landing pill.
+- Landing navbar already at `max-w-7xl` (`Navbar.jsx`) — no change there; this closes the width gap between the two surfaces.
+
+### Verified
+- Live DOM probe at 1720px: header row = 1280px centered (left 370 = 300px sidebar + 70px centering offset), main = same 1280px at the same left → title and content align.
+- `audit:responsive` PASS on app + admin subset at 375/640/768/1024/1280 · build clean · vitest 4/4 (shell-adjacent suite) · lint 0 errors.
+
 ## [2026-08-18] - Export PDF cover seal — verified already shipped
 
 ### Verified
