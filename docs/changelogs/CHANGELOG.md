@@ -1,5 +1,13 @@
 # Provance — Changelog
 
+## [2026-08-17] - validate:bullmq now exercises and asserts the BullMQ retry path live
+
+### Added
+- `verify-bullmq.mjs` rewritten from a happy-path watcher into a **retry-path verification** (the happy path belongs to validate:scan-roundtrip). It inserts a real `queued` scan row, uploads a real 1×1 PNG to its storage path via the storage API, **deletes the object before enqueueing** (so the worker's download is guaranteed to fail on every attempt), enqueues `process-scan` with the service's exact options, then polls the job + row at 1s and asserts the full terminal contract.
+- **Observed live (2026-08-17, real Upstash Redis + running worker):** `job=active → delayed → active → delayed → active → failed` with `attemptsMade` 1 → 2 → 3 (backoff gaps 3.7s/5.5s incl. poll latency), the row landing `failed` with `Failed to download the uploaded asset.` — **8/10 checks PASS**, proving the `attempts: 3` + exponential backoff config and the final-attempt-only failed gate in practice.
+- The 2 remaining checks are **migration-gated**, with pre-flight probes naming the exact fix: `attempts_made`/`max_attempts` on the row (migration 0021, unapplied) and the `scan.failed` audit row in `audit_logs` (migration 0008, unapplied).
+- **Finding:** at least one running worker process is **stale** — its log line `marked failed after retries` exists nowhere in current src/dist (the current code logs `marked failed after X of Y attempts`), so a pre-0021 worker wrote the terminal failure without attempts telemetry. All worker processes must be restarted from the current build once 0021/0008 land.
+
 ## [2026-08-17] - SCAN_UPLOAD_CONTRACT.md gains the verified live BullMQ evidence
 
 ### Added
