@@ -1,5 +1,13 @@
 # Provance — Changelog
 
+## [2026-08-17] - changePassword e2e locks "exactly one ledger row" at the HTTP layer
+
+### Added
+- `security.e2e-spec.ts` changePassword happy-path now asserts the revoke step leaves **exactly one** session ledger row — the current one — locked at both layers: the in-memory store's row count (`passwordApp.sessions.size === 1`) and an HTTP readback (`GET /v1/security/sessions` returns a single `isCurrent: true` row for `s-current`), the exact contract the Security page renders after its `settings.reload()`.
+
+### Verified
+- Backend gates green: jest **454/454**, full e2e **76 pass / 2 skip** (invite-accept live spec is opt-in), `npm run build` clean. Security e2e suite 17/17 including the extended flow.
+
 ## [2026-08-17] - better-auth changePassword revoke-everything-else parity pinned
 
 ### Added

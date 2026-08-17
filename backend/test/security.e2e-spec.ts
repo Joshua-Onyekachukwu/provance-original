@@ -693,6 +693,19 @@ describe('Security flow (e2e)', () => {
       expect(passwordApp.sessions.has('s-other-1')).toBe(false);
       expect(passwordApp.sessions.has('s-other-2')).toBe(false);
       expect(passwordApp.sessions.has('s-current')).toBe(true);
+      // Exactly ONE ledger row survives the change — the current session.
+      // Locked at both layers: the store's row count, and the HTTP readback
+      // (GET /v1/security/sessions returns a single isCurrent row — the exact
+      // contract the Security page renders after its settings.reload()).
+      expect(passwordApp.sessions.size).toBe(1);
+      const ledgerReadback = await passwordHttp
+        .get('/v1/security/sessions')
+        .expect(200);
+      expect(ledgerReadback.body).toHaveLength(1);
+      expect(ledgerReadback.body[0]).toMatchObject({
+        id: 's-current',
+        isCurrent: true,
+      });
       const audit = [...passwordApp.auditEvents.values()].find(
         (row) => row.action === 'password_changed',
       );
