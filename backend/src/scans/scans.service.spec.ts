@@ -685,4 +685,73 @@ describe('ScansService', () => {
       expect(result.totalPages).toBe(1);
     });
   });
+
+  describe('markScanFailed — terminal failure audit', () => {
+    it('writes a scan.failed audit row attributed to the scan owner', async () => {
+      const client = createAdminClient([
+        // getScanByIdOrThrow → the row being failed.
+        { data: scanRow({ status: 'processing' }), error: null },
+        // updateScan → failed write resolves.
+        { data: null, error: null },
+        // Owner email lookup succeeds.
+        { data: { email: 'owner@example.com' }, error: null },
+        // Audit insert resolves.
+        { data: null, error: null },
+      ]);
+      const service = createService(client);
+
+      await service.markScanFailed('scan-1', 'download failed');
+
+      expect(client.insert).toHaveBeenCalledWith({
+        actor_email: 'owner@example.com',
+        action: 'scan.failed',
+        severity: 'high',
+        entity_type: 'scan',
+        entity_id: 'scan-1',
+        details: { failure_reason: 'download failed' },
+      });
+    });
+
+    it('falls back to the system actor when the owner email is unresolvable', async () => {
+      const client = createAdminClient([
+        { data: scanRow({ status: 'processing' }), error: null },
+        { data: null, error: null },
+        // Owner lookup returns no profile (or a profile without an email).
+        { data: null, error: null },
+        { data: null, error: null },
+      ]);
+      const service = createService(client);
+
+      await service.markScanFailed('scan-1', 'boom');
+
+      const insertPayload = (client.insert as jest.Mock).mock.calls[0][0];
+      expect(insertPayload.actor_email).toBe('system');
+      expect(insertPayload.action).toBe('scan.failed');
+    });
+
+    it('never breaks the terminal failed write when the audit insert fails', async () => {
+      const client = createAdminClient([
+        { data: scanRow({ status: 'processing' }), error: null },
+        { data: null, error: null },
+        { data: { email: 'owner@example.com' }, error: null },
+        { error: { message: 'relation "audit_logs" does not exist' } },
+      ]);
+      const service = createService(client);
+
+      await expect(service.markScanFailed('scan-1', 'boom')).resolves.toBeUndefined();
+    });
+
+    it('does not audit when the scan is already terminal (no downgrade)', async () => {
+      const client = createAdminClient([
+        // The row is already complete — markScanFailed must return early
+        // without an update, a profile lookup, or an audit insert.
+        { data: scanRow({ status: 'complete' }), error: null },
+      ]);
+      const service = createService(client);
+
+      await service.markScanFailed('scan-1', 'boom');
+
+      expect(client.insert).not.toHaveBeenCalled();
+    });
+  });
 });

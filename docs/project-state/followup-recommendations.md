@@ -144,7 +144,7 @@ Status values: `Open` · `In Progress` · `Done` · `Deferred` · `Declined`
 
 
 | 2026-08-10 | Worker retry hardening | Once migrations land and the queue is live, prove the retry/backoff in production: enqueue a scan whose asset download fails, watch BullMQ log attempt 1-3 with exponential backoff, and confirm the row lands failed with the reason after the final attempt (the e2e locks the semantics; this is the live confirmation) | Open |
-| 2026-08-10 | Worker retry hardening | Write a scan_failed event to audit_logs from markScanFailed so worker-side terminal failures show up in the Admin Audit Logs page (currently only admin retry/fail actions are audited) | Open |
+| 2026-08-10 | Worker retry hardening | Write a scan_failed event to audit_logs from markScanFailed so worker-side terminal failures show up in the Admin Audit Logs page (currently only admin retry/fail actions are audited) — **done 2026-08-17**: `markScanFailed` now writes a best-effort `scan.failed` audit row (owner email via profiles, `system` fallback; entity `scan`/scanId, `{ failure_reason }`); 4 new unit tests, backend jest 433/433, e2e 76 pass | Done |
 | 2026-08-10 | Worker retry hardening | Consider surfacing attemptsMade/failedReason from the BullMQ job in the admin Jobs page payload so operators can see how many retries a failing scan burned | Open |
 
 

@@ -10,6 +10,7 @@ import { createHash, randomUUID } from 'crypto';
 import * as exifr from 'exifr';
 import { Jimp } from 'jimp';
 import { BillingService } from '../billing/billing.service';
+import { auditSeverity } from '../common/audit-severity';
 import { QueueService } from '../queue/queue.service';
 import { SupabaseService } from '../supabase/supabase.service';
 import { InitiateScanDto } from './dto/initiate-scan.dto';
@@ -70,6 +71,7 @@ export class ScansService {
   private readonly uploadsBucket: string;
   private readonly maxUploadBytes: number;
   private readonly allowedMimeTypes: Set<string>;
+  private readonly auditTable: string;
 
   constructor(
     private readonly supabaseService: SupabaseService,
@@ -99,6 +101,10 @@ export class ScansService {
         .split(',')
         .map((value) => value.trim())
         .filter(Boolean),
+    );
+    this.auditTable = this.configService.get<string>(
+      'SUPABASE_AUDIT_LOGS_TABLE',
+      'audit_logs',
     );
   }
 
@@ -714,6 +720,55 @@ export class ScansService {
       updated_at: new Date().toISOString(),
     });
     this.logger.warn(`Scan ${scanId} marked failed after retries: ${reason}`);
+
+    // Best-effort audit trail: a terminal worker-side failure should surface
+    // in the Admin Audit Logs page like the admin fail/retry actions do. A
+    // missing audit_logs table (migration 0008 not applied) or an unresolved
+    // owner email must never break the failure write itself.
+    await this.recordScanFailedAudit(adminClient, scan, reason);
+  }
+
+  /**
+   * recordScanFailedAudit — best-effort scan.failed audit row for worker /
+   * inline terminal failures. There is no request actor on this path, so the
+   * scan owner's email is the honest attribution when resolvable; otherwise
+   * the 'system' actor convention (the same marker the account feed uses for
+   * system-originated events).
+   */
+  private async recordScanFailedAudit(
+    adminClient: NonNullable<ReturnType<SupabaseService['getAdminClient']>>,
+    scan: ScanRow,
+    reason: string,
+  ) {
+    try {
+      const { data: profile, error: profileError } = await adminClient
+        .from('profiles')
+        .select('email')
+        .eq('id', scan.user_id)
+        .maybeSingle();
+      const actorEmail = !profileError && profile?.email ? profile.email : 'system';
+
+      const { error } = await adminClient.from(this.auditTable).insert({
+        actor_email: actorEmail,
+        action: 'scan.failed',
+        severity: auditSeverity('scan.failed'),
+        entity_type: 'scan',
+        entity_id: scan.id,
+        details: { failure_reason: reason },
+      });
+
+      if (error) {
+        this.logger.warn(
+          `Best-effort scan.failed audit write skipped for scan ${scan.id}: ${error.message}`,
+        );
+      }
+    } catch (auditError) {
+      this.logger.warn(
+        `Best-effort scan.failed audit write skipped for scan ${scan.id}: ${
+          auditError instanceof Error ? auditError.message : 'unknown error'
+        }`,
+      );
+    }
   }
 
   /**

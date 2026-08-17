@@ -1,5 +1,15 @@
 # Provance — Changelog
 
+## [2026-08-17] - Worker terminal failures now surface in the admin audit trail
+
+### Changed
+- `ScansService.markScanFailed` (the terminal-failure writer used by the worker's `failed` event and the inline fallback) now emits a **best-effort `scan.failed` audit row** into `audit_logs` — worker-side failures that previously vanished now appear in the Admin Audit Logs page with the existing `high` severity tone (no frontend change needed: the mock, severity map, and page filter already handle `scan.failed`).
+- Attribution: worker/inline failures have no request actor, so the **scan owner's email** is resolved via `profiles` when available, else the established `'system'` actor convention (same marker the account feed uses). Entity `scan` / `scanId`, details `{ failure_reason }`.
+- Fully best-effort: a missing `audit_logs` table (0008 not applied) or unresolved owner never breaks the terminal failed write — mirrors the `insertAdminAuditEvent` rule.
+
+### Tests
+- 4 new unit tests in `scans.service.spec.ts`: owner-attributed audit row, `system` fallback, audit-insert failure never breaks the failed write, and no audit on the no-downgrade path. Backend jest **433/433**, e2e **76 pass** (scans-flow stateful mock handles the new queries), `nest build` clean. Backend :4000 + worker restarted on the new dist.
+
 ## [2026-08-17] - Live scan walk staging: Redis re-provisioned, worker ready (ops)
 
 ### Changed
