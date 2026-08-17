@@ -1,5 +1,15 @@
 # Provance — Changelog
 
+## [2026-08-17] - Founder migration checklist wired into MIGRATION_RUNBOOK.md
+
+### Added
+- `validate:migrations --runbook` — new mode that emits a **founder-facing checklist**: one click-to-open SQL Editor link per pending migration (pre-filled via the `?query=` param, degraded safely to the right project's blank editor if the dashboard ignores it) plus the full combined paste block (all pending migrations, dependency order, `-- MIGRATION nnnn · file` banners). Output is wrapped in BEGIN/END markers so a regenerate is a clean replace.
+- `MIGRATION_RUNBOOK.md` now carries that checklist at the top (generated, not hand-maintained), covering the live state: project **dmhrwdcuwtgscwlaagsa**, 5 applied / 16 pending (0005, 0007–0021 incl. the seed-only 0017). Title, applied-state line, and expected counts updated to 0003–0021 (`applied: 20 · missing: 0 · skipped: 1` after convergence); the one-shot object check extended with the 0021 attempts columns.
+
+### Verified
+- Regeneration parity: the embedded section is byte-identical to a fresh `--runbook` output (965 lines, modulo CRLF); 16 links, 16 banners, `<details>` pair balanced, `$$` dollar-quoting intact (the embed used a function replacement so SQL `$` sequences can't be mangled).
+- `--no-emit` gate unchanged (exit 1 on the live 15-missing state); live probe still shows 5/20 applied — the walk remains blocked until the block lands on `dmhrwdcuwtgscwlaagsa` specifically (or `DATABASE_URL` is set).
+
 ## [2026-08-17] - Live e2e re-run: invite-accept still blocked (paste not on this project)
 
 ### Verified
