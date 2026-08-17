@@ -23,6 +23,7 @@ set that governs how the product is built.
 - [Important Routes](#important-routes)
 - [Environment Variables](#environment-variables)
 - [Documentation Index](#documentation-index)
+- [Skills](#skills)
 - [Working Rules](#working-rules)
 
 ## Features
@@ -96,7 +97,8 @@ set that governs how the product is built.
 ├── supabase/migrations/  # Ordered SQL migrations 0001–0020
 ├── scripts/              # audit:responsive (Playwright layout gate), smoke, trello
 ├── api/                  # Legacy Hono server (superseded by backend/) — not deployed
-└── docs/                 # Project state, changelogs, engineering standards, decisions
+└── docs/                 # Project state, changelogs, engineering standards, decisions,
+                          #   skills (docs/skills/)
 ```
 
 ## Getting Started
@@ -224,9 +226,37 @@ Start here, in order:
 7. `docs/engineering/DEPLOYMENT_AND_AUTH_STRATEGY.md`
 8. `docs/project-state/followup-recommendations.md` — the running log of
    what's next, appended after every task
+9. `docs/skills/` — Provance-specific agent skills (see [Skills](#skills))
 
 If an older document conflicts with the files above, update the stale document
 and follow the current-state set listed here.
+
+## Skills
+
+Agent skills (SKILL.md conventions) the repo ships and uses. Provance-specific
+skills are drafted under `docs/skills/` — that directory is the source of
+truth — and installed to `~/.agents/skills/` so agent runtimes (Codebuff and
+others that read that directory) surface them on the matching tasks.
+
+| Skill | Source | Installed | Status |
+| --- | --- | --- | --- |
+| `provance-nestjs` | `docs/skills/provance-nestjs/` | `~/.agents/skills/provance-nestjs/` | Live (byte-identical, `skills list -g`) |
+| `provance-bullmq-redis-queue` | `docs/skills/provance-bullmq-redis-queue/` | `~/.agents/skills/provance-bullmq-redis-queue/` | Live (byte-identical, `skills list -g`) |
+| `supabase` + `supabase-postgres-best-practices` | official `supabase/agent-skills` collection | `~/.agents/skills/` | Live (installed via `npx skills add supabase/agent-skills`) |
+
+Install/refresh from the repo copy (byte-identical):
+
+```bash
+mkdir -p ~/.agents/skills/provance-nestjs ~/.agents/skills/provance-bullmq-redis-queue
+cp docs/skills/provance-nestjs/SKILL.md ~/.agents/skills/provance-nestjs/SKILL.md
+cp docs/skills/provance-bullmq-redis-queue/SKILL.md ~/.agents/skills/provance-bullmq-redis-queue/SKILL.md
+npx skills list -g   # verify both register (Source: local)
+```
+
+Other third-party skills (api-design-principles, better-auth-best-practices,
+anti-ui-slop, deploy-to-vercel, …) live in `~/.agents/skills/` as installed;
+the Provance-specific pair above are the repo-owned ones under version
+control.
 
 ## Working Rules
 

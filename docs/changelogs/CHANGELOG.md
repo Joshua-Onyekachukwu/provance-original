@@ -1,5 +1,11 @@
 # Provance — Changelog
 
+## [2026-08-17] - Skills audit close-out: follow-up rows flipped + README skill inventory
+
+### Changed
+- Follow-up log close-out: marked the supabase/agent-skills collection install, the provance-bullmq-redis-queue skill draft+install, and the supabase-skill RLS/Storage audit as Done (the queue-audit D1/D3/D4 rows stay Open — they are the flagged fixes still to ship).
+- README gains a **Skills** section (TOC entry + docs-index row): the two Provance skills (`provance-nestjs`, `provance-bullmq-redis-queue`) sourced from `docs/skills/` and installed to `~/.agents/skills/`, the official `supabase/agent-skills` collection, and the one-command install/refresh snippet.
+
 ## [2026-08-17] - Admin controller spec extended to the remaining paginated routes
 
 ### Added
