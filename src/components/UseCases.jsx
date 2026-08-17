@@ -1,5 +1,7 @@
 import { motion } from 'framer-motion'
 
+const LUXE = [0.32, 0.72, 0, 1]
+
 const cases = [
   {
     title: 'Journalism & Media',
@@ -42,10 +44,10 @@ export default function UseCases() {
           initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}
           className="text-center max-w-2xl mx-auto mb-16"
         >
-          <motion.span variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5 } } }} className="eyebrow eyebrow-dark">
+          <motion.span variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: LUXE } } }} className="eyebrow eyebrow-dark">
             Use Cases
           </motion.span>
-          <motion.h2 variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, delay: 0.1 } } }} className="font-serif text-3xl sm:text-4xl lg:text-5xl mt-4 text-balance">
+          <motion.h2 variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0, transition: { duration: 0.7, delay: 0.08, ease: LUXE } } }} className="font-serif text-3xl sm:text-4xl lg:text-[3.4rem] lg:leading-[1.05] mt-5 text-balance">
             Built for <span className="italic text-trust-soft">real-world</span> verification work.
           </motion.h2>
         </motion.div>
@@ -57,14 +59,18 @@ export default function UseCases() {
               initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: '-60px' }}
-              transition={{ duration: 0.5, delay: i * 0.1, ease: [0.25, 0.1, 0.25, 1] }}
-              className="surface-card-dark p-6 md:p-8 transition-all duration-500 group hover:-translate-y-1"
+              transition={{ duration: 0.7, delay: i * 0.08, ease: LUXE }}
+              className="group"
             >
-              <span className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-trust/10 text-trust-soft">
-                {c.icon}
-              </span>
-              <h3 className="font-serif text-xl mb-3">{c.title}</h3>
-              <p className="text-stone text-sm leading-relaxed">{c.desc}</p>
+              <div className="bezel-shell-dark h-full transition-transform duration-700 ease-luxe group-hover:-translate-y-1">
+                <div className="bezel-core-dark h-full p-6 md:p-8 transition-all duration-700 ease-luxe">
+                  <span className="mb-5 flex h-11 w-11 items-center justify-center rounded-full bg-trust/10 text-trust-soft transition-transform duration-500 ease-luxe group-hover:scale-110">
+                    {c.icon}
+                  </span>
+                  <h3 className="font-serif text-xl mb-3">{c.title}</h3>
+                  <p className="text-stone text-sm leading-relaxed">{c.desc}</p>
+                </div>
+              </div>
             </motion.div>
           ))}
         </div>

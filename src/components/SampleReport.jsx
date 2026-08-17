@@ -4,6 +4,8 @@ import InteractivePanel from './InteractivePanel'
 import { formatDateTime } from './app/scanPresentation.js'
 import { sampleReportMeta } from '../lib/sampleReportContent.js'
 
+const LUXE = [0.32, 0.72, 0, 1]
+
 const reportPreview =
   'https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=close-up%20documentary%20frame%20of%20a%20speaker%20at%20a%20lectern%2C%20professional%20broadcast%20still%2C%20subtle%20newsroom%20lighting%2C%20realistic%20face%2C%20high%20detail%2C%20editorial%20photography&image_size=landscape_16_9'
 
@@ -32,30 +34,30 @@ export default function SampleReport() {
           initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}
           className="text-center max-w-2xl mx-auto mb-12"
         >
-          <motion.span variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5 } } }} className="eyebrow">
+          <motion.span variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: LUXE } } }} className="eyebrow">
             Sample Report
           </motion.span>
-          <motion.h2 variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, delay: 0.1 } } }} className="font-serif text-3xl sm:text-4xl lg:text-5xl mt-4 text-balance text-charcoal">
+          <motion.h2 variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0, transition: { duration: 0.7, delay: 0.08, ease: LUXE } } }} className="font-serif text-3xl sm:text-4xl lg:text-[3.4rem] lg:leading-[1.05] mt-5 text-balance text-charcoal">
             A report built to be reviewed, shared, and defended.
           </motion.h2>
           <motion.p
             variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, delay: 0.18 } } }}
-            className="mt-5 text-lg leading-relaxed text-charcoal-mid"
+            className="mt-6 text-lg leading-relaxed text-charcoal-mid"
           >
             Review the type of report a team can download, circulate internally, and use to
             support a higher-confidence verification decision.
           </motion.p>
         </motion.div>
 
-        <InteractivePanel className="surface-card mx-auto max-w-6xl rounded-[2rem] backdrop-blur-xl">
+        <InteractivePanel className="bezel-shell mx-auto max-w-6xl backdrop-blur-xl">
           <motion.div
             initial={{ opacity: 0, y: 40 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-60px' }}
-            transition={{ duration: 0.7, ease: [0.25, 0.1, 0.25, 1] }}
+            transition={{ duration: 0.8, ease: LUXE }}
             className="relative z-10"
           >
-            <div className="p-6 md:p-8 lg:p-10">
+            <div className="bezel-core p-6 md:p-8 lg:p-10">
               <div className="flex flex-wrap items-start justify-between gap-4 border-b border-stone-light pb-6">
                 <div>
                   <div className="mb-1 text-xs font-mono uppercase tracking-wider text-charcoal-light">FORENSIC ANALYSIS REPORT</div>

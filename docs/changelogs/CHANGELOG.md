@@ -1,5 +1,20 @@
 # Provance — Changelog
 
+## [2026-08-17] - High-end visual design pass on the landing surface (vanguard-architect directive)
+
+### Changed
+- **Typography** — public surfaces now lead with **Plus Jakarta Sans** (premium Google-hosted sans; the skill's banned Inter/Roboto list) via `index.html` + `--font-sans`; Fraunces serif display + IBM Plex Mono eyebrows retained.
+- **Motion** — new `--ease-luxe` (`cubic-bezier(0.32,0.72,0,1)`) replaces `ease`/`ease-in-out` on the Hero, Navbar, WhyProvance, HowItWorks, SampleReport, UseCases, Pricing; hero entry is now a blur-fade-up; buttons get magnetic `active:scale-[0.98]` press + 0.6s luxe easing.
+- **Navbar → Fluid Island** — the header is now a floating rounded-full glass pill detached from the top (`mt-3/4`, centered, `pointer-events` gated) with a full-screen staggered mask-reveal mobile menu (link-by-link `translate-y` delays, body scroll locked, hamburger morphs to X with the middle bar sliding out).
+- **Double-bezel architecture** — new `.bezel-shell`/`.bezel-core` (+ dark variants) nested-enclosure cards (1px gradient hairline shell, inset highlight core, concentric `calc(2rem-1px)` radii) applied to WhyProvance, HowItWorks, UseCases, SampleReport frame, and Pricing; pricing CTA buttons use the button-in-button trailing arrow.
+- **Asymmetric bento** — WhyProvance grid is now `lg:grid-cols-3` with `col-span-2/1/1/2` spans (base `grid-cols-1` retained for the guard).
+- **Grain overlay** — `.grain-overlay` (fixed, pointer-events-none, z-40, 3.5% SVG noise) added to the public layout for physical texture; blur kept to fixed/sticky elements only.
+
+### Verified
+- vitest **592/592** (67 files), lint 0 errors, `npm run build` clean, `guard:grid` clean.
+- **Responsive audit: 260/260** routes × viewports (375/640/768/1024/1280) — no overflow or clipped elements with the new nav/hero/bezel layout.
+- Live preview walk: floating pill nav + staggered mobile menu render and close correctly; body font confirmed Plus Jakarta Sans; no horizontal overflow at 410px.
+
 ## [2026-08-17] - Landing cleanup: removed Live Product Preview, Open Benchmark, and the hero "Image-first early access" pill
 
 ### Changed

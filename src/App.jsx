@@ -66,6 +66,7 @@ function PublicLayout() {
   return (
     <div className="min-h-screen bg-parchment">
       <ScrollToTop />
+      <div aria-hidden="true" className="grain-overlay" />
       <a href="#main-content" className="skip-link">
         Skip to content
       </a>

@@ -22,8 +22,14 @@
   --color-amber-subtle: #f8ecd9;
   --font-app: "Inter", "Manrope", system-ui, -apple-system, sans-serif;
   --font-serif: "Fraunces", Georgia, serif;
-  --font-sans: "Manrope", Inter, system-ui, -apple-system, sans-serif;
+  --font-sans: "Plus Jakarta Sans", "Manrope", Inter, system-ui, -apple-system, sans-serif;
   --font-mono: "IBM Plex Mono", "Fira Code", monospace;
+
+  /* Premium motion — the "luxe" ease from the design system: a hard, fast
+     start that settles with barely any overshoot (skill: never linear/
+     ease-in-out on public surfaces). */
+  --ease-luxe: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-luxe-soft: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* Verdict palette — the hex values live in src/components/app/scanPresentation.js
@@ -202,17 +208,17 @@ summary {
   align-items: center;
   justify-content: center;
   gap: 0.65rem;
-  border-radius: 1rem;
-  padding: 0.95rem 1.5rem;
+  border-radius: 999px;
+  padding: 1rem 1.75rem;
   font-size: 0.92rem;
   font-weight: 700;
   letter-spacing: -0.01em;
   transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease,
-    border-color 0.2s ease,
-    background-color 0.2s ease,
-    color 0.2s ease;
+    transform 0.6s var(--ease-luxe),
+    box-shadow 0.6s var(--ease-luxe),
+    border-color 0.6s var(--ease-luxe),
+    background-color 0.6s var(--ease-luxe),
+    color 0.6s var(--ease-luxe);
 }
 
 .btn-primary {
@@ -222,8 +228,12 @@ summary {
 }
 
 .btn-primary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 22px 48px rgba(47, 91, 234, 0.28);
+  transform: translateY(-2px);
+  box-shadow: 0 26px 55px rgba(47, 91, 234, 0.3);
+}
+
+.btn-primary:active {
+  transform: scale(0.97);
 }
 
 .btn-secondary {
@@ -233,9 +243,13 @@ summary {
 }
 
 .btn-secondary:hover {
-  transform: translateY(-1px);
+  transform: translateY(-2px);
   border-color: rgba(47, 91, 234, 0.22);
   background: rgba(255, 255, 255, 0.94);
+}
+
+.btn-secondary:active {
+  transform: scale(0.97);
 }
 
 .btn-accent {
@@ -245,7 +259,11 @@ summary {
 }
 
 .btn-accent:hover {
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+}
+
+.btn-accent:active {
+  transform: scale(0.97);
 }
 
 .surface-card,
@@ -452,6 +470,69 @@ summary {
 
 .amber-glow {
   box-shadow: 0 0 40px rgba(183, 121, 31, 0.1), 0 0 80px rgba(183, 121, 31, 0.04);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   Premium design layer — double-bezel architecture, luxe easing, grain
+   ══════════════════════════════════════════════════════════════════════ */
+
+.ease-luxe {
+  transition-timing-function: var(--ease-luxe);
+}
+
+/* The "Double-Bezel": a nested enclosure so cards read as machined hardware —
+   an outer hairline shell with its own padding/radius wrapping an inner core
+   with a distinct surface + inset highlight. Concave curves are computed
+   (inner radius = outer minus the shell padding). */
+.bezel-shell {
+  border-radius: 2rem;
+  padding: 1px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.9),
+    rgba(221, 227, 234, 0.6)
+  );
+  box-shadow:
+    0 30px 70px -28px rgba(19, 22, 29, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.bezel-shell-dark {
+  border-radius: 2rem;
+  padding: 1px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.16),
+    rgba(255, 255, 255, 0.04)
+  );
+  box-shadow:
+    0 34px 80px -30px rgba(8, 10, 16, 0.65),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.bezel-core {
+  border-radius: calc(2rem - 1px);
+  background: var(--color-white-warm);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.55);
+}
+
+.bezel-core-dark {
+  border-radius: calc(2rem - 1px);
+  background:
+    linear-gradient(180deg, rgba(28, 34, 48, 0.99), rgba(19, 22, 29, 0.99));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* Subtle fixed film grain over the whole viewport — decorative only. Applied
+   to a fixed, pointer-events-none pseudo-layer so it never scrolls and never
+   blocks interaction (skill: grain only on fixed elements). */
+.grain-overlay {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 /* ══════════════════════════════════════════════════════════════════════

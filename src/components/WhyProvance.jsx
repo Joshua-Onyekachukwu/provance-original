@@ -1,5 +1,7 @@
 import { motion } from 'framer-motion'
 
+const LUXE = [0.32, 0.72, 0, 1]
+
 const reasons = [
   {
     icon: (
@@ -31,6 +33,16 @@ const reasons = [
   },
 ]
 
+// Asymmetric bento spans (lg): the first and last cards open wider so the
+// grid reads as composed editorial blocks, not a uniform matrix. All spans
+// reset to col-span-1 below lg (the grid base is grid-cols-1).
+const SPANS = [
+  'lg:col-span-2',
+  'lg:col-span-1',
+  'lg:col-span-1',
+  'lg:col-span-2',
+]
+
 export default function WhyProvance() {
   return (
     <section id="why" className="section-padding bg-charcoal text-parchment relative overflow-hidden">
@@ -38,35 +50,39 @@ export default function WhyProvance() {
       <div className="content-container relative z-10">
         <motion.div
           initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}
-          className="text-center max-w-2xl mx-auto mb-16"
+          className="text-center max-w-2xl mx-auto mb-20"
         >
-          <motion.span variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5 } } }} className="eyebrow eyebrow-dark">
+          <motion.span variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: LUXE } } }} className="eyebrow eyebrow-dark">
             Why Provance
           </motion.span>
-          <motion.h2 variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, delay: 0.1 } } }} className="font-serif text-3xl sm:text-4xl lg:text-5xl mt-4 text-balance">
+          <motion.h2 variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0, transition: { duration: 0.7, delay: 0.08, ease: LUXE } } }} className="font-serif text-3xl sm:text-4xl lg:text-[3.4rem] lg:leading-[1.05] mt-5 text-balance">
             Trust is earned through <span className="italic text-trust-soft">evidence</span>.
           </motion.h2>
-          <motion.p variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, delay: 0.18 } } }} className="mt-5 text-lg leading-relaxed text-stone max-w-xl mx-auto">
+          <motion.p variants={{ hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0, transition: { duration: 0.7, delay: 0.14, ease: LUXE } } }} className="mt-6 text-lg leading-relaxed text-stone max-w-xl mx-auto">
             Generic detectors return a score. Provance gives teams a structured case file they can
             inspect, discuss, and act on.
           </motion.p>
         </motion.div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 max-w-5xl mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 max-w-6xl mx-auto">
           {reasons.map((r, i) => (
             <motion.div
               key={r.title}
-              initial={{ opacity: 0, y: 24 }}
+              initial={{ opacity: 0, y: 28 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: '-60px' }}
-              transition={{ duration: 0.5, delay: i * 0.1, ease: [0.25, 0.1, 0.25, 1] }}
-              className="surface-card-dark p-6 md:p-8 transition-all duration-500 group hover:-translate-y-1"
+              transition={{ duration: 0.7, delay: i * 0.1, ease: LUXE }}
+              className={`${SPANS[i]}`}
             >
-              <span className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-trust/10 text-trust-soft">
-                {r.icon}
-              </span>
-              <h3 className="font-serif text-xl mb-3">{r.title}</h3>
-              <p className="text-stone text-sm leading-relaxed">{r.desc}</p>
+              <div className="bezel-shell-dark h-full transition-transform duration-700 ease-luxe group-hover:-translate-y-1">
+                <div className="bezel-core-dark group h-full p-6 md:p-8 transition-all duration-700 ease-luxe hover:-translate-y-1">
+                  <span className="mb-5 flex h-11 w-11 items-center justify-center rounded-full bg-trust/10 text-trust-soft transition-transform duration-500 ease-luxe group-hover:scale-110">
+                    {r.icon}
+                  </span>
+                  <h3 className="font-serif text-xl mb-3">{r.title}</h3>
+                  <p className="text-stone text-sm leading-relaxed">{r.desc}</p>
+                </div>
+              </div>
             </motion.div>
           ))}
         </div>
