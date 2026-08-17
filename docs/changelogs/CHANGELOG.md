@@ -1,5 +1,12 @@
 # Provance — Changelog
 
+## [2026-08-17] - validate:migrations auto-emits the missing-migration paste block
+
+### Added
+- `validate-migrations.mjs` now joins the missing migrations' source files (from `supabase/migrations`, in dependency order — the same order the applier uses) into ONE ready-to-paste SQL block and emits it, so a single command both checks the live schema AND produces the exact fix.
+- Three modes: default prints the block to stdout after the missing list (with the dashboard link + `npm run apply:migrations` hint); `--paste-file=<path>` writes it to a file and prints the real path; `--no-emit` suppresses it for quiet CI. Exit code 1 (missing) is preserved in every mode.
+- Block format mirrors the proven `.freebuff/combined-0005-0020.sql` (per-migration `-- MIGRATION <num> · <file>` banner, CRLF→LF + trailing-whitespace normalization) — verified byte-parity against all 14 currently-missing sources (0005, 0007–0016, 0018–0020), 14 sections.
+
 ## [2026-08-17] - Import-parity guards for api.js, mockApi.js, mockData.js
 
 ### Added

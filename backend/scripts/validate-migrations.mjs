@@ -17,13 +17,83 @@
  *   1 — at least one migration is missing (prints the exact missing list,
  *       same format as the readiness detail) or a probe errored
  *
+ * Paste-block auto-emit: when migrations are missing, the script joins the
+ * missing migrations' source files (from supabase/migrations, in dependency
+ * order — the same order the applier uses) into ONE ready-to-paste SQL block
+ * and prints it, so a single command both checks the live schema AND produces
+ * the exact fix. Flags:
+ *   --no-emit             suppress the auto-emitted paste block (quiet CI)
+ *   --paste-file <path>   write the block to a file and print a pointer
+ *                         instead of dumping it to stdout
+ *
  * Run from backend/:  node scripts/validate-migrations.mjs   (or npm run
  * validate:migrations). Requires `npm run build` first (the probe list is
  * compiled from src) and backend/.env.local with SUPABASE_URL +
  * SUPABASE_SERVICE_ROLE_KEY.
  */
 
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+const args = process.argv.slice(2);
+const emitBlock = !args.includes('--no-emit');
+const pasteFileArg = args.find((a) => a.startsWith('--paste-file='))?.split('=')[1];
+
+/**
+ * Normalize one migration's source for the paste block: CRLF → LF, strip
+ * trailing whitespace per line, drop leading/trailing blank lines — the same
+ * normalization the proven `.freebuff/combined-0005-0020.sql` block uses, so
+ * an emitted block and a hand-assembled one stay byte-comparable.
+ */
+const normalizeSql = (sql) =>
+  sql
+    .replace(/\r\n/g, '\n')
+    .replace(/[ \t]+$/gm, '')
+    .replace(/^\n+|\n+$/g, '');
+
+/**
+ * Join the missing migrations' sources into one paste block, dependency order.
+ * Each section mirrors the proven combined-block format: a banner line, the
+ * `-- MIGRATION <num> · <file>` header, then the migration's own content.
+ */
+function buildPasteBlock(missing) {
+  const sections = missing.map((probe) => {
+    const filePath = new URL(`../../supabase/migrations/${probe.file}`, import.meta.url);
+    if (!existsSync(filePath)) {
+      console.error(`  (warn: source file ${probe.file} not found on disk — skipped)`);
+      return null;
+    }
+    const source = normalizeSql(readFileSync(filePath, 'utf8'));
+    return [
+      '-- =====================================================================',
+      `-- MIGRATION ${probe.migration} · ${probe.file}`,
+      '-- =====================================================================',
+      source,
+    ].join('\n');
+  });
+  return `${sections.filter(Boolean).join('\n\n')}\n`;
+}
+
+const emitPasteBlock = (missing) => {
+  if (!emitBlock || missing.length === 0) return;
+  const block = buildPasteBlock(missing);
+
+  if (pasteFileArg) {
+    // Resolve relative to the script's dir (backend/scripts/) — same
+    // convention as the applier's paths — and print the real filesystem path.
+    const outPath = new URL(pasteFileArg, import.meta.url);
+    writeFileSync(outPath, block, 'utf8');
+    console.log(
+      `\nPASTE BLOCK WRITTEN → ${fileURLToPath(outPath)} (${block.split('\n').length} lines, ${missing.length} migrations)`,
+    );
+    return;
+  }
+
+  console.log(`\nPASTE BLOCK — ${missing.length} missing migrations in dependency order`);
+  console.log('(paste into ' + DASHBOARD_URL + ', or set DATABASE_URL and run `npm run apply:migrations`)');
+  console.log('─'.repeat(92));
+  console.log(block.trimEnd());
+};
 
 const env = readFileSync(new URL('../.env.local', import.meta.url), 'utf8');
 const get = (key) => {
@@ -146,4 +216,8 @@ if (errored.length > 0) {
     .join(', ');
   console.log(`\nPROBE ERRORS: ${list}`);
 }
+// The one-command fix: the exact paste block, auto-emitted in the same
+// dependency order the applier (apply-migrations.mjs) and the dashboard
+// paste require.
+emitPasteBlock(missing);
 process.exit(1);
