@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import PageHero from '../components/PageHero.jsx'
+import ReportSummaryCard from '../components/ReportSummaryCard.jsx'
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -86,6 +87,42 @@ export default function ProductPage() {
         </div>
       </section>
 
+      {/* ── Report Showcase ── */}
+      <section className="section-padding bg-parchment relative overflow-hidden">
+        <div className="absolute inset-0 forensic-grid opacity-30" />
+        <div className="content-container relative z-10">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: '-80px' }}
+            className="text-center max-w-2xl mx-auto mb-14"
+          >
+            <motion.span variants={fadeUp} className="eyebrow">Report Showcase</motion.span>
+            <motion.h2 variants={fadeUp} className="font-serif text-3xl sm:text-4xl lg:text-[3.4rem] lg:leading-[1.05] mt-5 text-balance text-charcoal">
+              A report built to be reviewed, shared, and defended.
+            </motion.h2>
+            <motion.p variants={fadeUp} className="mt-6 text-lg leading-relaxed text-charcoal-mid">
+              Every Provance report leads with a clear verdict, the metrics behind it,
+              and the signal-level evidence that holds up under review.
+            </motion.p>
+          </motion.div>
+
+          <ReportSummaryCard />
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.3 }}
+            className="mt-10 text-center"
+          >
+            <Link to="/sample-report" className="btn-primary">
+              View the Full Sample Report
+            </Link>
+          </motion.div>
+        </div>
+      </section>
+
       {/* ── Workflow Readiness ── */}
       <section className="section-padding bg-parchment-light relative overflow-hidden">
         <div className="content-container">
@@ -146,28 +183,51 @@ export default function ProductPage() {
                   <div className="w-2.5 h-2.5 rounded-full bg-white/20" />
                   <div className="w-2.5 h-2.5 rounded-full bg-white/20" />
                 </div>
-                <span className="ml-3 text-xs text-stone font-mono">POST /v1/verify</span>
+                <span className="ml-3 text-xs text-stone font-mono">POST /v1/scans</span>
               </div>
               <div className="p-5 md:p-8">
                 <pre className="text-sm font-mono text-stone leading-relaxed overflow-x-auto">
-                  <code>{`{
+                  <code>{`# 1. Reserve a scan — a signed upload URL is returned
+curl -X POST https://api.provance.io/v1/scans \\
+  -H "Authorization: Bearer <api_key>" \\
+  -H "Content-Type: application/json" \\
+  -H "Idempotency-Key: 7f2c9a1e-4b8d" \\
+  -d '{
+    "originalFilename": "evidence-photo-01.jpg",
+    "mimeType": "image/jpeg",
+    "fileSizeBytes": 2841732,
+    "mediaType": "image"
+  }'
+
+{
+  "scanId": "7f2c9a1e-4b8d-4f6a-9c3e-2a1b5d8f0c11",
+  "status": "awaiting_upload",
+  "bucket": "scan-uploads",
+  "path": "<user-id>/7f2c9a1e/evidence-photo-01.jpg",
+  "signedUrl": "https://<project>.supabase.co/storage/v1/object/upload/..."
+}
+
+# 2. PUT the bytes to signedUrl, then submit to enqueue
+curl -X POST https://api.provance.io/v1/scans/7f2c9a1e-4b8d-4f6a-9c3e-2a1b5d8f0c11/submit \\
+  -H "Authorization: Bearer <api_key>"
+
+# 3. Poll until completed, then read the result
+curl https://api.provance.io/v1/scans/7f2c9a1e-4b8d-4f6a-9c3e-2a1b5d8f0c11
+
+{
   "status": "completed",
-  "verdict": "ai_generated",
-  "confidence": 0.947,
-  "media": {
-    "type": "image",
-    "format": "jpeg",
-    "dimensions": "2048x1536"
-  },
-  "evidences": [
-    {
-      "type": "gan_artifact",
-      "severity": "high",
-      "description": "Grid pattern detected in high-frequency pixels",
-      "heatmap_url": "https://api.provance.io/v1/reports/a3f8c2/heatmap"
-    }
-  ],
-  "report_url": "https://api.provance.io/v1/reports/a3f8c2/download"
+  "verdict": "suspicious",
+  "result_payload": {
+    "verdict": { "class": "suspicious", "confidence": 0.88 },
+    "signals": [
+      {
+        "signal_name": "generative_fingerprint",
+        "status": "elevated",
+        "score": 0.96
+      }
+    ],
+    "report": { "report_id": "PRV-20260710-005" }
+  }
 }`}</code>
                 </pre>
               </div>

@@ -95,7 +95,7 @@ const ADMIN_ROUTES = [
   '/app/admin/settings',
 ];
 
-const PUBLIC_ROUTES = ['/', '/sample-report', '/signin'];
+const PUBLIC_ROUTES = ['/', '/sample-report', '/signin', '/product'];
 
 const ALL_ROUTES = [...APP_ROUTES, ...ADMIN_ROUTES, ...PUBLIC_ROUTES];
 

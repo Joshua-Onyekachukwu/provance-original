@@ -1,5 +1,17 @@
 # Provance — Changelog
 
+## [2026-08-17] - /product report showcase + honest API contract
+
+### Added
+- **`src/components/ReportSummaryCard.jsx`** (new) — the landing's compact "case-file at a glance" card extracted into a shared component (seal, ink band, verdict + 3 metric pills, media frame + top signals, footer linking to /sample-report, children slot for extra content). Both marketing surfaces now speak the same visual language from one implementation.
+- **`src/pages/ProductPage.jsx`** — new **Report Showcase** section (parchment, forensic grid, eyebrow + serif headline) rendering `ReportSummaryCard` with a "View the Full Sample Report" CTA.
+- **Fixed (copy honesty):** the API Path section's fabricated `POST /v1/verify` / `ai_generated` / `heatmap_url` / `gan_artifact` payload is replaced with the real **`POST /v1/scans`** initiate → signed-URL → submit → poll contract (same honest treatment as /docs), including `awaiting_upload`, `Idempotency-Key`, and the real `suspicious` verdict + `result_payload` subset.
+- **`src/pages/ProductPage.test.jsx`** (new) — asserts the seal/verdict/metrics/key-signals render and no fabricated references survive.
+- **`scripts/audit-a11y.mjs`** — `/product` added to the public-route inventory (it was missing, so the page was never a11y-audited).
+
+### Verified
+- vitest 12/12 (ProductPage 2 + SampleReport 10) · build clean · lint 0 errors · `audit:responsive` **5/5** clean on /product at 375–1280 · `audit:a11y` **PASS /product** · live DOM probe: seal renders, zero fabricated refs, real contract live.
+
 ## [2026-08-17] - Seal circular text: seamless ring (no clip seam)
 
 ### Fixed
