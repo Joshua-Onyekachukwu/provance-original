@@ -1,5 +1,12 @@
 # Provance — Changelog
 
+## [2026-08-17] - Live e2e re-run: invite-accept still blocked (paste not on this project)
+
+### Verified
+- Founder reports pasting the 0005+0015 block; `validate:migrations` + direct REST probes on project **dmhrwdcuwtgscwlaagsa** still show 15 missing (organizations.id → PGRST205, organization_invites.token_hash → PGRST205, scans.processing_mode → 42703) and `DATABASE_URL` remains empty in `backend/.env.local`.
+- `PROVANCE_LIVE_E2E=1 npm run test:e2e` → **76 pass / 2 failed**: both failures are the invite-accept live suite's seed (`seed org failed: Could not find the table 'public.organizations' — apply 0005_organization.sql`), confirming the blocker is the schema on this project, not the code.
+- Action: re-check the SQL Editor browser URL bar reads `project/dmhrwdcuwtgscwlaagsa` (the paste likely landed on a different project), then re-paste; DATABASE_URL is still the empty-line alternative.
+
 ## [2026-08-17] - validate-scan-roundtrip proves the worker path via BullMQ job states
 
 ### Added
