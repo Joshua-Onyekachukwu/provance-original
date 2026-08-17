@@ -23,6 +23,7 @@
     "validate:bullmq": "node scripts/verify-bullmq.mjs",
     "validate:migrations": "node scripts/validate-migrations.mjs",
     "apply:migrations": "node scripts/apply-migrations.mjs",
+    "check:migrations": "node scripts/check-migration-convergence.mjs",
     "validate:admin-jobs": "node scripts/validate-admin-jobs.mjs",
     "validate:scan-roundtrip": "node scripts/validate-scan-roundtrip.mjs",
     "validate:org-revoke": "node scripts/validate-org-session-revoke.mjs",

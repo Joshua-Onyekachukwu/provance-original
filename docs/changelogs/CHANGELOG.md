@@ -1,5 +1,23 @@
 # Provance — Changelog
 
+## [2026-08-17] - Migration-convergence CI gate: migration dir must match the runbook manifest
+
+### Added
+- `backend/scripts/check-migration-convergence.mjs` — CI gate that runs the **real applier in dry-run mode** (`apply-migrations.mjs --dry-run`, which lists every `supabase/migrations/*.sql` in dependency order without connecting or needing env) and compares the file set + order against the canonical **Migration Manifest** embedded in `docs/engineering/MIGRATION_RUNBOOK.md`. Fails (exit 1) on: files on disk not in the runbook, files in the runbook not on disk, or same-set reordering. `--fix` regenerates the manifest block in place from the current migration dir; `--runbook <path>` overrides the doc (tests).
+- `npm run check:migrations` script + **CI step** in the backend job (`.github/workflows/ci.yml`), running after build and before jest — a new migration without a runbook regen, or a rename/reorder, now fails CI.
+- `validate-migrations.mjs --runbook` now emits the canonical manifest section (marker-delimited, all 21 files in order) alongside the founder checklist.
+
+### Changed
+- `apply-migrations.mjs` `loadEnv` tolerates a missing `backend/.env.local` so `--dry-run` (and thus the CI gate) works with no env file present.
+- `MIGRATION_RUNBOOK.md` gained the `<!-- BEGIN/END MIGRATION MANIFEST -->` section (CRLF, placed after the intro, before the founder checklist).
+
+### Verified
+- Clean run: `CONVERGED — file set + order match the runbook manifest` (exit 0).
+- Drift paths: missing-file and reorder fixtures both exit 1 with the exact diff + one-command fix.
+- `--fix` re-embeds with the doc's CRLF convention (no mixed EOLs); manifest parity between `--runbook` regen and the embedded block is byte-identical (modulo CRLF).
+- Applier dry-run and the gate both pass with `backend/.env.local` moved aside (CI simulation): 21 files listed, exit 0.
+- Backend gates: jest **454/454**, e2e **76 pass / 2 skip** (live invite spec opt-in), `npm run build` clean.
+
 ## [2026-08-17] - Live scan walk re-check: migrations still not on the probed project
 
 Re-probed before the walk (user reported migrations applied): direct REST probes + the running :4000 backend's readiness both confirm `dmhrwdcuwtgscwlaagsa` is still **5/20** — `organizations` 404 PGRST205 (0005), `user_sessions` 404 (0010), `audit_logs` 404 (0008), `scans.processing_mode` 400 42703 (0009). Readiness stays `degraded` with 15 missing. The block did not land on this project; the full round-trip cannot run until it does. No code changes.

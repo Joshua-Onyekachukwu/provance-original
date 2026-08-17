@@ -103,6 +103,15 @@ jobs:
       - name: Build
         run: npm run backend:build
 
+      - name: Migration convergence (file set + order vs runbook)
+        run: npm --prefix backend run check:migrations
+        # Runs the real applier in --dry-run (no env/DB needed) and compares
+        # the migration file set + order against the canonical manifest
+        # embedded in docs/engineering/MIGRATION_RUNBOOK.md. Fails if a new
+        # migration was added without a runbook regen, a file was renamed/
+        # reordered, or the runbook lists a file that no longer exists. Fix:
+        #   npm --prefix backend run check:migrations -- --fix
+
       - name: Unit tests (jest)
         run: npm --prefix backend test
 

@@ -35,7 +35,15 @@ const ENV_PATH = resolve(here, '../.env.local');
 
 function loadEnv(path) {
   const out = {};
-  for (const line of readFileSync(path, 'utf8').split(/\r?\n/)) {
+  // Tolerate a missing env file — --dry-run must work in CI where
+  // backend/.env.local is absent (it never connects anyway).
+  let text;
+  try {
+    text = readFileSync(path, 'utf8');
+  } catch {
+    return out;
+  }
+  for (const line of text.split(/\r?\n/)) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith('#')) continue;
     const eq = trimmed.indexOf('=');
