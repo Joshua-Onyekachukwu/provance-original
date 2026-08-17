@@ -1,5 +1,19 @@
 # Provance — Changelog
 
+## [2026-08-17] - mockChangePassword revoke-everything-else backfill
+
+### Changed
+- `mockChangePassword` (Security page, mock mode) now mirrors `SecurityService.changePassword` end-to-end instead of only validating: after validation it **revokes every OTHER tracked session** (persists the filter on the module store like single revokes, current session stays signed in), writes one `session.revoked` admin-trail row per revoked device (`details.session_id` + `reason: 'password_change'`), and writes a `password_changed` feed event last so it lands newest-first on top — matching the real write order.
+- `AppSecurityPage.handlePasswordSubmit` now calls `settings.reload()` after a successful change so the ledger visibly drops to the current device in both mock and real mode (the status effect clears the local copy).
+- `password_changed` added to the severity maps (`mockData.js` + `backend/src/common/audit-severity.ts`, both `'low'` — the backend previously fell back to low implicitly) and to the Activity page's `ACTION_META` (label "Password changed" / verb "changed their password" / warning tone).
+- Current-password verification remains format-level in the mock (any 8+ char password is valid for a known account — no stored secret exists to verify against); documented in a comment.
+
+### Tests
+- New `src/lib/changePasswordContract.test.js` (4 tests): revokes every non-current session and keeps only the current one (persisted across calls), writes `session.revoked` per revoked + `password_changed` on top with the right severity/actor, single-session no-op, and validation-before-mutation. Frontend vitest **549/549**, lint 0 errors; backend jest **433/433**, `nest build` clean.
+
+### Verified (live preview)
+- Security page: password change → success message + toast, ledger drops **4 → 1** devices; Activity feed (SPA nav) shows `password_changed` + three `session.revoked` rows on top attributed to the actor. (Mock module state is per page-load by design — mutations persist across SPA navigation, reset on reload like all mock mutations.)
+
 ## [2026-08-17] - Live BullMQ round-trip verified against Upstash Redis
 
 ### Verified

@@ -1285,12 +1285,52 @@ export async function mockGetSecuritySettings() {
 export async function mockChangePassword({ currentPassword, newPassword } = {}) {
   await delay()
   maybeError()
+  // Current-password verification is format-level only: mock auth accepts any
+  // 8+ char password for a known account (see MOCK_TEST_ACCOUNTS), so there is
+  // no stored secret to verify against — the real backend 400s on a mismatch
+  // via signInWithPassword, which the mock cannot replicate without one.
   if (!currentPassword || !newPassword || newPassword.length < 8) {
     throw new Error('New password must be at least 8 characters.')
   }
   if (currentPassword === newPassword) {
     throw new Error('New password must be different from the current password.')
   }
+  // Mirrors SecurityService.changePassword's revoke-everything-else step: every
+  // OTHER tracked session is revoked and its ledger row dropped; the current
+  // session stays signed in. Persisted on the module-level store the same way
+  // mockRevokeSession persists single revocations.
+  const revocable = mockSecuritySettings.activeSessions.filter((s) => !s.isCurrent)
+  mockSecuritySettings.activeSessions = mockSecuritySettings.activeSessions.filter(
+    (s) => s.isCurrent,
+  )
+  // Per-session admin-trail rows — same shape mockRevokeSession writes for a
+  // single revoke, so the feed + admin trail reflect each signed-out device.
+  for (const session of revocable) {
+    mockAuditEvents.unshift({
+      id: `audit_live_${Date.now()}_${String(++mockAuditLiveSeq).padStart(3, '0')}`,
+      actor_email: currentMockActorEmail(),
+      action: 'session.revoked',
+      severity: AUDIT_SEVERITY_BY_ACTION['session.revoked'] || 'high',
+      resource_type: 'auth_session',
+      resource_id: session.id,
+      created_at: new Date().toISOString(),
+      details: { session_id: session.id, reason: 'password_change' },
+    })
+  }
+  // password_changed feed event, written last so it lands newest-first at the
+  // top — the real backend revokes first, then records the audit. Real mode
+  // writes it to auth_audit_events (Activity feed); the mock's shared store
+  // surfaces it in the feed and the admin trail alike.
+  mockAuditEvents.unshift({
+    id: `audit_live_${Date.now()}_${String(++mockAuditLiveSeq).padStart(3, '0')}`,
+    actor_email: currentMockActorEmail(),
+    action: 'password_changed',
+    severity: AUDIT_SEVERITY_BY_ACTION['password_changed'] || 'low',
+    resource_type: 'auth_user',
+    resource_id: mockActorUserId(),
+    created_at: new Date().toISOString(),
+    details: {},
+  })
   return { ok: true }
 }
 

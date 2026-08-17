@@ -40,6 +40,7 @@ const ACTION_META = {
   'api_key.revoked': { label: 'Revoked', verb: 'revoked an API key', tone: 'error' },
   'feature_flag.toggled': { label: 'Toggled', verb: 'toggled a feature flag', tone: 'warning' },
   'role.changed': { label: 'Role changed', verb: 'changed a role', tone: 'info' },
+  'password_changed': { label: 'Password changed', verb: 'changed their password', tone: 'warning' },
   'org.created': { label: 'Created', verb: 'created the organization', tone: 'success' },
   'invite.accepted': { label: 'Accepted', verb: 'accepted an invite', tone: 'success' },
   // Resolved incidents surface from the monitoring feed; severity drives the

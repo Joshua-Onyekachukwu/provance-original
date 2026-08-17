@@ -39,6 +39,9 @@ export const AUDIT_SEVERITY_BY_ACTION: Record<string, string> = {
   // Self-service device revocation feed event (auth_audit_events) — the
   // actor's own device, so medium rather than high.
   'session_revoked': 'medium',
+  // Password change (SecurityService.changePassword → auth_audit_events feed;
+  // the admin trail gets per-session session.revoked rows from the same call).
+  'password_changed': 'low',
   'user.invited': 'medium',
   'waitlist.approved': 'medium',
   'waitlist.deferred': 'medium',

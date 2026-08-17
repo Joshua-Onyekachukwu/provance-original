@@ -231,6 +231,9 @@ export default function AppSecurityPage() {
       setPasswordSuccess('Password updated. Other active sessions have been signed out.')
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
       toast.success('Password updated')
+      // The change revoked every OTHER session — re-sync so the ledger shows
+      // only the current device (the status effect clears the local copy).
+      settings.reload()
     } catch (error) {
       setPasswordError(error instanceof Error ? error.message : 'Password could not be changed.')
     } finally {

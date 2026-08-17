@@ -702,6 +702,9 @@ export const AUDIT_SEVERITY_BY_ACTION = {
   'session.revoked': 'high',
   'user.invited': 'medium',
   'session_revoked': 'medium',
+  // Password change (SecurityService.changePassword → auth_audit_events feed;
+  // the admin trail gets per-session session.revoked rows from the same call).
+  'password_changed': 'low',
   'waitlist.approved': 'medium',
   'waitlist.deferred': 'medium',
   'team.member_added': 'medium',
