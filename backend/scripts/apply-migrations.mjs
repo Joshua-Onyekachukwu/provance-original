@@ -12,6 +12,11 @@
  *   node scripts/apply-migrations.mjs            # apply every migration
  *   node scripts/apply-migrations.mjs --dry-run  # list what WOULD run, no connection
  *   node scripts/apply-migrations.mjs --from 0009  # only 0009 and newer
+ *   node scripts/apply-migrations.mjs --verify   # after applying, auto-run the
+ *                                                # schema probe (validate:migrations)
+ *                                                # and fail if any migration is
+ *                                                # still missing — one command
+ *                                                # applies AND confirms convergence
  *
  * Requires backend/.env.local with DATABASE_URL (the Supabase pooler / direct
  * Postgres connection string from the dashboard → Connect → Session pooler).
@@ -50,6 +55,7 @@ function loadEnv(path) {
 
 const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
+const verifyAfter = args.includes('--verify');
 const fromArg = args.find((a) => a.startsWith('--from='))?.split('=')[1];
 
 const env = loadEnv(ENV_PATH);
@@ -131,7 +137,23 @@ try {
 console.log('─'.repeat(88));
 if (process.exitCode === 0) {
   console.log(`ALL ${appliedCount} MIGRATIONS APPLIED — project ${projectRef} is converged.`);
-  console.log('Re-check with: cd backend && npm run validate:migrations');
+
+  if (verifyAfter) {
+    // One-command convergence: re-probe the live schema so a paste is never
+    // trusted blindly — if the probe reports anything missing, fail loudly.
+    const { spawnSync } = await import('node:child_process');
+    console.log('\nVerifying against the live schema (validate:migrations)...');
+    const verify = spawnSync(
+      process.execPath,
+      [resolve(here, 'validate-migrations.mjs'), '--no-emit'],
+      { stdio: 'inherit', cwd: here },
+    );
+    if (verify.status !== 0) {
+      process.exitCode = 1;
+    }
+  } else {
+    console.log('Re-check with: cd backend && npm run validate:migrations');
+  }
 } else {
   console.log(`Applied ${appliedCount} of ${selected.length} — see the failure above.`);
 }

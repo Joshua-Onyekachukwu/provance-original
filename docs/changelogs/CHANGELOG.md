@@ -1,5 +1,11 @@
 # Provance — Changelog
 
+## [2026-08-17] - apply:migrations gains --verify; DATABASE_URL still the one missing input
+
+### Changed
+- `backend/scripts/apply-migrations.mjs` (wired as `npm run apply:migrations`) gains a `--verify` flag: after applying, it auto-runs `validate:migrations --no-emit` and fails loudly if the live probe reports anything still missing — one command applies AND confirms convergence, no dashboard round-trip.
+- Confirmed the script already applies `supabase/migrations/` in numeric order via pg (`--dry-run` lists all 21 files; `--from=<n>` scopes). The ONLY missing input is the actual `DATABASE_URL` value — the line exists but is empty in `backend/.env.local`, and no connection string exists anywhere in the repo (the `.freebuff/desktop-v2.db` match is the desktop app's SQLite store, not a usable URL).
+
 ## [2026-08-17] - Skills audit close-out: follow-up rows flipped + README skill inventory
 
 ### Changed
