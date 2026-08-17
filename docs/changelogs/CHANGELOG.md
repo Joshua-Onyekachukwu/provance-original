@@ -1,5 +1,18 @@
 # Provance — Changelog
 
+## [2026-08-17] - frontend-design pass: the "Examination" instrument world on the landing
+
+### Changed
+- **Concept — digital instrument → printed case file.** The landing hero, evidence sections, and footer are now a forensic instrument (deep ink `#0a0c12`, phosphor readouts); the Sample Report stays warm paper (parchment + Fraunces) because it *is* the printed artifact. Verdict indicator lights use the product's own `--color-verdict-*` palette from `scanPresentation.js` (`#10b981` authentic / `#f59e0b` suspicious / `#38bdf8` inconclusive), so color carries real meaning.
+- **Type voice.** Public display/body swap from the serif-led look (Plus Jakarta Sans + Fraunces) to **Archivo** (technical grotesk, instrument-panel); `Fraunces` is demoted to paper-only contexts (Sample Report + print pages); `IBM Plex Mono` stays as the evidence voice. `index.html` font load trimmed accordingly.
+- **New tokens** in `index.css` `@theme`: `--color-ink/-panel/-raise`, `--color-phosphor/-dim/-faint`, `--color-hairline`, `--font-display`; new `.instrument-grid` utility (32px phosphor hairlines). App/admin shells untouched (still Inter, Operate register).
+- **Hero rebuilt** as the signature: ink instrument with the claim on the left (system-ready LED eyebrow, Archivo display headline, button-in-button CTAs, mono chips) and the **examination panel** on the right — the same case as the Sample Report below (`PV-A3F8C2-D4`, same SHA-256, authenticity 31/100, AI confidence 94.7%) shown under a sweeping scan band, corner crop marks, a `Zone B2` tamper marker, staggered readout rows with signal bars, and a verdict LED resolving to `Suspicious — requires review`. Stacked on mobile; scan band + LED pulses live in the `prefers-reduced-motion: no-preference` block.
+- **Navbar** adapts: dark glass pill with inverted logo/phosphor text over the ink hero at top-of-home, existing light paper pill on scroll and on all other public pages.
+- **WhyProvance / UseCases** retuned to ink + phosphor with `font-display` headings and a verdict-green accent word; **HowItWorks / Pricing / CLEARAnswers / SampleReport h2** moved to Archivo display (step numbers kept — they encode a real sequence); **Footer** retuned to ink/phosphor with Archivo. WhyProvance copy tightened on the image/video card (no launch overclaim).
+
+### Verification
+- vitest **592/592** (one flaky timing failure on first run, two consecutive clean re-runs), lint 0 errors (36-warning baseline), `npm run build` clean, `guard:grid` clean (checkpoint grid uses a base `grid-cols-2` with no responsive variant), responsive audit **260/260** routes × viewports (375/640/768/1024/1280) — no overflow with the new hero/nav; live preview verified at 412px (Archivo confirmed, `--color-verdict-suspicious` = `#f59e0b` on the LED, 0 overflow offenders).
+
 ## [2026-08-17] - High-end visual design pass on the landing surface (vanguard-architect directive)
 
 ### Changed

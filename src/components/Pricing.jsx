@@ -78,8 +78,8 @@ export default function Pricing() {
           <motion.span variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: LUXE } } }} className="eyebrow">
             Pricing
           </motion.span>
-          <motion.h2 variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0, transition: { duration: 0.7, delay: 0.08, ease: LUXE } } }} className="font-serif text-3xl sm:text-4xl lg:text-[3.4rem] lg:leading-[1.05] mt-5 text-balance text-charcoal">
-            Clear paths into <span className="italic text-trust">Provance</span>.
+          <motion.h2 variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0, transition: { duration: 0.7, delay: 0.08, ease: LUXE } } }} className="font-display text-3xl font-extrabold tracking-[-0.03em] sm:text-4xl lg:text-[3.4rem] lg:leading-[1.05] mt-5 text-balance text-charcoal">
+            Clear paths into <span className="text-trust">Provance</span>.
           </motion.h2>
         </motion.div>
 
@@ -104,7 +104,7 @@ export default function Pricing() {
                       Best for teams
                     </div>
                   )}
-                  <h3 className={`font-serif text-2xl mb-1 ${tier.featured ? 'text-parchment' : 'text-charcoal'}`}>{tier.name}</h3>
+                  <h3 className={`font-display text-xl font-semibold tracking-tight mb-1 ${tier.featured ? 'text-parchment' : 'text-charcoal'}`}>{tier.name}</h3>
                   <div className="flex items-baseline gap-1 mb-1">
                     {tier.price === 'Custom' ? (
                       <span className={`text-3xl font-medium ${tier.featured ? 'text-parchment' : 'text-charcoal'}`}>Custom</span>

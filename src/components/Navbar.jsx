@@ -43,6 +43,13 @@ export default function Navbar() {
     return location.pathname === href
   }
 
+  // Over the ink examination hero (home, unscrolled) the pill inverts to
+  // dark glass with phosphor text; anywhere else it keeps the light paper
+  // pill. The mobile overlay is always light — a paper panel over the dark
+  // instrument reads as the printed case file.
+  const isHome = location.pathname === '/'
+  const darkTop = isHome && !scrolled && !mobileOpen
+
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-50 flex justify-center px-3 pt-3 md:px-6 md:pt-4 ${
@@ -51,18 +58,28 @@ export default function Navbar() {
     >
       <div
         className={`pointer-events-auto flex w-full max-w-6xl items-center justify-between rounded-full border px-4 py-2.5 transition-all duration-700 ease-luxe md:px-5 ${
-          scrolled || mobileOpen
-            ? 'border-stone-light/80 bg-parchment/85 shadow-[0_18px_50px_-18px_rgba(19,22,29,0.18)] backdrop-blur-xl'
-            : 'border-white/60 bg-parchment/40 backdrop-blur-md'
+          darkTop
+            ? 'border-white/10 bg-ink/60 shadow-[0_18px_50px_-18px_rgba(0,0,0,0.55)] backdrop-blur-xl'
+            : scrolled || mobileOpen
+              ? 'border-stone-light/80 bg-parchment/85 shadow-[0_18px_50px_-18px_rgba(19,22,29,0.18)] backdrop-blur-xl'
+              : 'border-white/60 bg-parchment/40 backdrop-blur-md'
         }`}
       >
         <Link to="/" className="group flex items-center gap-2.5 py-1" aria-label="Provance home">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-charcoal shadow-[0_10px_30px_rgba(19,22,29,0.2)] transition-transform duration-500 ease-luxe group-hover:scale-105">
-            <span className="text-parchment text-sm font-serif font-semibold">P</span>
+          <div
+            className={`flex h-9 w-9 items-center justify-center rounded-full transition-transform duration-500 ease-luxe group-hover:scale-105 ${
+              darkTop
+                ? 'bg-phosphor shadow-[0_10px_30px_rgba(0,0,0,0.5)]'
+                : 'bg-charcoal shadow-[0_10px_30px_rgba(19,22,29,0.2)]'
+            }`}
+          >
+            <span className={`text-sm font-display font-bold ${darkTop ? 'text-ink' : 'text-parchment'}`}>P</span>
           </div>
           <div className="flex flex-col leading-none">
-            <span className="font-serif text-[1.3rem] text-charcoal font-semibold tracking-tight">Provance</span>
-            <span className="hidden sm:block text-[10px] font-mono uppercase tracking-[0.22em] text-charcoal-light">
+            <span className={`font-display text-[1.3rem] font-semibold tracking-tight ${darkTop ? 'text-phosphor' : 'text-charcoal'}`}>
+              Provance
+            </span>
+            <span className={`hidden sm:block text-[10px] font-mono uppercase tracking-[0.22em] ${darkTop ? 'text-phosphor-faint' : 'text-charcoal-light'}`}>
               Evidence-first verification
             </span>
           </div>
@@ -74,7 +91,13 @@ export default function Navbar() {
               key={item.href}
               to={item.href}
               className={`text-sm font-medium tracking-wide transition-colors duration-500 ease-luxe ${
-                isActive(item.href) ? 'text-charcoal' : 'text-charcoal-mid hover:text-charcoal'
+                isActive(item.href)
+                  ? darkTop
+                    ? 'text-phosphor'
+                    : 'text-charcoal'
+                  : darkTop
+                    ? 'text-phosphor-dim hover:text-phosphor'
+                    : 'text-charcoal-mid hover:text-charcoal'
               }`}
             >
               {item.label}
@@ -84,7 +107,9 @@ export default function Navbar() {
             <>
               <Link
                 to="/app"
-                className="text-sm tracking-wide text-charcoal-mid hover:text-charcoal transition-colors duration-500 ease-luxe"
+                className={`text-sm tracking-wide transition-colors duration-500 ease-luxe ${
+                  darkTop ? 'text-phosphor-dim hover:text-phosphor' : 'text-charcoal-mid hover:text-charcoal'
+                }`}
               >
                 Dashboard
               </Link>
@@ -100,7 +125,9 @@ export default function Navbar() {
             <>
               <Link
                 to="/signin"
-                className="text-sm tracking-wide text-charcoal-mid hover:text-charcoal transition-colors duration-500 ease-luxe"
+                className={`text-sm tracking-wide transition-colors duration-500 ease-luxe ${
+                  darkTop ? 'text-phosphor-dim hover:text-phosphor' : 'text-charcoal-mid hover:text-charcoal'
+                }`}
               >
                 Sign In
               </Link>
@@ -124,17 +151,17 @@ export default function Navbar() {
           <motion.span
             animate={mobileOpen ? { rotate: 45, y: 6 } : { rotate: 0, y: 0 }}
             transition={{ duration: 0.4, ease: LUXE }}
-            className="block w-5 h-[1.5px] bg-charcoal rounded"
+            className={`block w-5 h-[1.5px] rounded ${darkTop ? 'bg-phosphor' : 'bg-charcoal'}`}
           />
           <motion.span
             animate={mobileOpen ? { opacity: 0, x: -8 } : { opacity: 1, x: 0 }}
             transition={{ duration: 0.3, ease: LUXE }}
-            className="block w-5 h-[1.5px] bg-charcoal rounded"
+            className={`block w-5 h-[1.5px] rounded ${darkTop ? 'bg-phosphor' : 'bg-charcoal'}`}
           />
           <motion.span
             animate={mobileOpen ? { rotate: -45, y: -6 } : { rotate: 0, y: 0 }}
             transition={{ duration: 0.4, ease: LUXE }}
-            className="block w-5 h-[1.5px] bg-charcoal rounded"
+            className={`block w-5 h-[1.5px] rounded ${darkTop ? 'bg-phosphor' : 'bg-charcoal'}`}
           />
         </button>
       </div>

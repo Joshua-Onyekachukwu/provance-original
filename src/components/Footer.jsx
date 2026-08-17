@@ -29,7 +29,7 @@ const legalLinks = [
 
 export default function Footer() {
   return (
-    <footer className="border-t border-white/8 bg-charcoal text-stone">
+    <footer className="border-t border-white/8 bg-ink text-phosphor-dim">
       <div className="content-container px-6 py-12 md:py-16">
         <div className="mb-10 rounded-[1.75rem] border border-white/8 bg-white/[0.03] px-6 py-6 md:px-8 md:py-7">
           <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
@@ -37,10 +37,10 @@ export default function Footer() {
               <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-trust-soft">
                 Ready for early access?
               </p>
-              <h2 className="mt-3 font-serif text-2xl text-parchment sm:text-3xl">
+              <h2 className="mt-3 font-display text-2xl font-semibold tracking-tight text-phosphor sm:text-3xl">
                 Bring evidence-first verification into your workflow.
               </h2>
-              <p className="mt-3 max-w-xl text-sm leading-relaxed text-stone">
+              <p className="mt-3 max-w-xl text-sm leading-relaxed text-phosphor-dim">
                 Join the waitlist for controlled rollout access or start a commercial conversation
                 if your team needs a faster path.
               </p>
@@ -59,27 +59,27 @@ export default function Footer() {
         <div className="grid grid-cols-1 gap-8 md:grid-cols-5">
           <div className="md:col-span-2">
             <div className="mb-4 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-parchment shadow-[0_10px_25px_rgba(0,0,0,0.18)]">
-                <span className="text-charcoal text-sm font-serif font-semibold">P</span>
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-phosphor shadow-[0_10px_25px_rgba(0,0,0,0.35)]">
+                <span className="text-ink text-sm font-display font-bold">P</span>
               </div>
               <div>
-                <span className="font-serif text-xl text-parchment font-medium tracking-tight">Provance</span>
+                <span className="font-display text-xl text-phosphor font-semibold tracking-tight">Provance</span>
                 <p className="mt-1 text-[10px] font-mono uppercase tracking-[0.22em] text-trust-soft">
                   Trust infrastructure for media verification
                 </p>
               </div>
             </div>
-            <p className="max-w-sm text-sm leading-relaxed text-stone">
+            <p className="max-w-sm text-sm leading-relaxed text-phosphor-dim">
               Built for teams that need explainable evidence, professional reports, and a
               more defensible path to reviewing suspicious media.
             </p>
           </div>
           <div>
-            <h4 className="mb-4 text-sm font-semibold text-parchment">Product</h4>
+            <h4 className="mb-4 text-sm font-semibold text-phosphor">Product</h4>
             <ul className="space-y-2.5">
               {productLinks.map((item) => (
                 <li key={item.href}>
-                  <Link to={item.href} className="inline-flex min-h-11 items-center px-2 text-stone text-sm hover:text-parchment transition-colors">
+                  <Link to={item.href} className="inline-flex min-h-11 items-center px-2 text-phosphor-dim text-sm hover:text-phosphor transition-colors">
                     {item.label}
                   </Link>
                 </li>
@@ -87,11 +87,11 @@ export default function Footer() {
             </ul>
           </div>
           <div>
-            <h4 className="mb-4 text-sm font-semibold text-parchment">Company</h4>
+            <h4 className="mb-4 text-sm font-semibold text-phosphor">Company</h4>
             <ul className="space-y-2.5">
               {companyLinks.map((item) => (
                 <li key={item.href}>
-                  <Link to={item.href} className="inline-flex min-h-11 items-center px-2 text-stone text-sm hover:text-parchment transition-colors">
+                  <Link to={item.href} className="inline-flex min-h-11 items-center px-2 text-phosphor-dim text-sm hover:text-phosphor transition-colors">
                     {item.label}
                   </Link>
                 </li>
@@ -99,11 +99,11 @@ export default function Footer() {
             </ul>
           </div>
           <div>
-            <h4 className="mb-4 text-sm font-semibold text-parchment">Resources</h4>
+            <h4 className="mb-4 text-sm font-semibold text-phosphor">Resources</h4>
             <ul className="space-y-2.5">
               {resourceLinks.map((item) => (
                 <li key={item.href}>
-                  <Link to={item.href} className="inline-flex min-h-11 items-center px-2 text-stone text-sm hover:text-parchment transition-colors">
+                  <Link to={item.href} className="inline-flex min-h-11 items-center px-2 text-phosphor-dim text-sm hover:text-phosphor transition-colors">
                     {item.label}
                   </Link>
                 </li>
@@ -111,11 +111,11 @@ export default function Footer() {
             </ul>
           </div>
         </div>
-        <div className="mt-12 flex flex-col gap-4 border-t border-white/10 pt-8 text-xs text-stone/60 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-12 flex flex-col gap-4 border-t border-white/10 pt-8 text-xs text-phosphor-faint sm:flex-row sm:items-center sm:justify-between">
           <span>&copy; 2026 Provance. All rights reserved.</span>
           <div className="flex gap-6">
             {legalLinks.map((item) => (
-              <Link key={item.href} to={item.href} className="inline-flex min-h-11 items-center hover:text-parchment transition-colors">
+              <Link key={item.href} to={item.href} className="inline-flex min-h-11 items-center text-phosphor-faint hover:text-phosphor transition-colors">
                 {item.label}
               </Link>
             ))}
