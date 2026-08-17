@@ -1,4 +1,5 @@
 import { sampleAiDetectionResults, sampleAnalysisScope, sampleAppendix, sampleChainOfCustody, sampleCrossValidationResults, sampleDisclaimer, sampleExecutiveSummary, sampleFrameAnalysis, sampleManipulationIndicators, sampleMediaInformation, sampleMetadataAnalysis, sampleMetrics, sampleModelResults, sampleRecommendedNextSteps, sampleReportCover, sampleReportMeta, sampleReportPreviewImage, sampleReviewerNotes, sampleTechnicalFindings, sampleTimeline, sampleWatermarkAndProvenance } from '../lib/sampleReportContent.js'
+import VerifiedSeal from './VerifiedSeal'
 import { buildReportAppendix } from '../lib/reportAppendix.js'
 import { formatDateTime } from './app/scanPresentation.js'
 
@@ -76,14 +77,21 @@ export default function SampleReportDocument({ compact = false, showPrintControl
 
       {/* Ink brand band — exact mirror of the pdfkit cover header (report-pdf.ts):
           edge-to-edge INK (#23201A) band, uppercase PROVANCE wordmark in PARCHMENT
-          (#F7F4ED) over the VERIFICATION REPORT label in muted gold (#C9C2B4). */}
-      <div className="bg-[#23201A] px-6 py-5 md:px-10 md:py-6">
-        <p className="font-sans text-xl font-bold uppercase tracking-[0.2em] text-[#F7F4ED] md:text-2xl">
-          Provance
-        </p>
-        <p className="mt-1.5 text-[10px] font-medium uppercase tracking-[0.32em] text-[#C9C2B4] md:text-[11px]">
-          Verification report
-        </p>
+          (#F7F4ED) over the VERIFICATION REPORT label in muted gold (#C9C2B4), with
+          the circular Verified with Provance seal (the same stamp the pdfkit
+          export renders) on the right. */}
+      <div className="flex items-center justify-between gap-6 bg-[#23201A] px-6 py-4 md:px-10 md:py-5">
+        <div className="min-w-0">
+          <p className="font-sans text-xl font-bold uppercase tracking-[0.2em] text-[#F7F4ED] md:text-2xl">
+            Provance
+          </p>
+          <p className="mt-1.5 text-[10px] font-medium uppercase tracking-[0.32em] text-[#C9C2B4] md:text-[11px]">
+            Verification report
+          </p>
+        </div>
+        <div className="shrink-0">
+          <VerifiedSeal className="h-14 w-14 md:h-[4.2rem] md:w-[4.2rem]" />
+        </div>
       </div>
 
       <div className={`${compact ? 'p-6 md:p-8 lg:p-10' : 'p-6 md:p-10 lg:p-12'} space-y-8`}>

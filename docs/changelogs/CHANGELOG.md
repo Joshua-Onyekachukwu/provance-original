@@ -1,5 +1,16 @@
 # Provance — Changelog
 
+## [2026-08-17] - Verified with Provance seal extended to the full report cover + export PDF
+
+### Added
+- **`src/components/VerifiedSeal.jsx`** (new) — the circular "Verified with Provance" stamp extracted from the landing card into a shared component (`useId` for collision-safe textPath ids; size is now a caller prop).
+- **`src/components/SampleReportDocument.jsx`** — the seal now sits on the right of the cover's ink brand band, so `/sample-report` and the print page (`/sample-report/print`) carry the same stamp as the landing card.
+- **`backend/src/reports/report-pdf.ts`** — the export PDF cover now renders the same seal: parchment disc + amber ring, circular "VERIFIED WITH PROVANCE •" text, charcoal core, gold check. Drawn with a new `drawCircularText` helper (per-glyph translate + rotate, since this pdfkit build has no `textOnPath`); geometry verified against pdfkit's transform matrix so glyph tops point radially outward and read clockwise like the web SVG.
+- **Tests** — `report-pdf.spec.ts` asserts the seal phrase decodes from the PDF content stream; `SampleReport.test.jsx` cover test now asserts the seal renders on the full document.
+
+### Verified
+- Backend `npx jest src/reports/report-pdf.spec.ts` 5/5 · frontend vitest **607/607** · build clean · lint 0 errors · live DOM probe confirms the seal on `/sample-report` (67×67px in the ink band, circular text href `#_r_0_` from `useId`).
+
 ## [2026-08-17] - VU proposal: per-package scan math + hook-now-tighten-later strategy
 
 ### Changed

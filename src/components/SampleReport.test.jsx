@@ -125,11 +125,14 @@ describe('SampleReportDocument renders the full report content model', () => {
 
   const renderDocument = () => render(<SampleReportDocument />)
 
-  it('renders the branded cover — ink wordmark, verdict banner, report identity', () => {
+  it('renders the branded cover — ink wordmark, seal, verdict banner, report identity', () => {
     renderDocument()
 
     expectVisible('Provance')
     expectVisible('Verification report')
+    // The circular Verified with Provance seal — the same stamp the landing
+    // card and the pdfkit export carry.
+    expect(screen.getByLabelText('Verified with Provance')).toBeInTheDocument()
     expectVisible('Overall verdict')
     expectVisible(sampleReportCover.verdict)
     expectVisible('Report identity')

@@ -136,4 +136,16 @@ describe('generateReportPdf', () => {
     expect(content).toContain('v2.4.1-stable');
     expect(content).toContain('cannot prove original provenance');
   });
+
+  it('renders the circular Verified with Provance seal on the cover', async () => {
+    const document = buildReportDocument(SCAN);
+    const pdf = await generateReportPdf(document);
+    const content = extractContentText(pdf);
+
+    // The seal's circular text is drawn character-by-character (this pdfkit
+    // build has no textOnPath), so assert the phrase decodes contiguously
+    // from the content stream. The gold check is a vector path, not text —
+    // the phrase is the seal's text signature.
+    expect(content).toContain('VERIFIED WITH PROVANCE');
+  });
 });

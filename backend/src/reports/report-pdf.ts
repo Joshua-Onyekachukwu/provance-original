@@ -10,6 +10,9 @@ import PDFDocument from 'pdfkit';
 import type { ReportDocument } from './report-document.js';
 
 const INK = '#23201A';
+const SEAL_INK = '#13161D';
+const SEAL_AMBER = '#B7791F';
+const SEAL_GOLD = '#F0BF6C';
 const MUTED = '#6B6358';
 const LINE = '#D8D2C4';
 const PARCHMENT = '#F7F4ED';
@@ -96,11 +99,87 @@ function signalList(doc: PDFKit.PDFDocument, items: ReportDocument['aiDetectionR
   }
 }
 
+/**
+ * Places `text` along a circle (character by character, since this pdfkit
+ * build has no textOnPath). Each glyph is translated to its position on the
+ * ring and rotated so its top points radially outward — the same clockwise
+ * reading as the SVG textPath seal on the web surfaces. Starts at 12 o'clock.
+ */
+function drawCircularText(
+  doc: PDFKit.PDFDocument,
+  text: string,
+  cx: number,
+  cy: number,
+  radius: number,
+  fontSize: number,
+) {
+  const chars = text.split('');
+  const step = 360 / chars.length;
+  // Small start offset so the text seam doesn't sit dead at 12 o'clock
+  const start = 8;
+  doc.font('Courier-Bold').fontSize(fontSize).fillColor(SEAL_INK);
+  chars.forEach((ch, i) => {
+    // Degrees clockwise from 12 o'clock (y-down space, matching the SVG
+    // textPath which also reads clockwise). pdfkit's rotate() applies
+    // [cos sin -sin cos], which is clockwise-positive in its y-down space,
+    // so a positive angle turns each glyph's top radially outward.
+    const angle = start + i * step;
+    const rad = (angle * Math.PI) / 180;
+    const x = cx + radius * Math.sin(rad);
+    const y = cy - radius * Math.cos(rad);
+    doc.save();
+    doc.translate(x, y);
+    doc.rotate(angle);
+    // Center the single glyph on the ring point (Courier advance ≈ 0.6·size)
+    doc.text(ch, -fontSize / 2, -fontSize / 2, {
+      lineBreak: false,
+      width: fontSize,
+      align: 'center',
+    });
+    doc.restore();
+  });
+}
+
+/**
+ * The circular "Verified with Provance" stamp — the exact geometry of the
+ * web seal (src/components/VerifiedSeal.jsx): parchment disc, amber ring,
+ * ink circular text, charcoal core with a gold check.
+ */
+function renderSeal(doc: PDFKit.PDFDocument, cx: number, cy: number, r: number) {
+  // Parchment disc with amber ring (fillAndStroke paints both in one op)
+  doc.circle(cx, cy, r).lineWidth(1.4).fillAndStroke(PARCHMENT, SEAL_AMBER);
+
+  // Circular text between ring and core — one phrase, sized to read at A4
+  drawCircularText(doc, 'VERIFIED WITH PROVANCE •', cx, cy, r - 5.5, 6.5);
+
+  // Charcoal core
+  doc.circle(cx, cy, r * 0.42).fill(SEAL_INK);
+
+  // Gold check mark (amber-glow), hand-drawn to match the SVG path
+  const s = r * 0.14;
+  doc.save();
+  doc
+    .moveTo(cx - s * 1.1, cy + s * 0.15)
+    .lineTo(cx - s * 0.15, cy + s * 0.85)
+    .lineTo(cx + s * 1.15, cy - s * 0.85);
+  doc
+    .lineWidth(1.8)
+    .lineCap('round')
+    .lineJoin('round')
+    .strokeColor(SEAL_GOLD)
+    .stroke();
+  doc.restore();
+}
+
 function renderCoverHeader(doc: PDFKit.PDFDocument, document: ReportDocument) {
   // Brand band
   doc
     .rect(0, 0, PAGE_W, 74)
     .fill(INK);
+
+  // Verified with Provance seal — right side of the band, same stamp as web
+  renderSeal(doc, PAGE_W - MARGIN - 24, 37, 22);
+
   doc
     .fillColor(PARCHMENT)
     .font('Helvetica-Bold')

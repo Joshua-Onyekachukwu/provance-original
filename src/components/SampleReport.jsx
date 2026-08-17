@@ -1,43 +1,10 @@
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import InteractivePanel from './InteractivePanel'
+import VerifiedSeal from './VerifiedSeal'
 import { sampleAiDetectionResults, sampleReportCover, sampleReportMeta, sampleReportPreviewImage } from '../lib/sampleReportContent.js'
 
 const LUXE = [0.32, 0.72, 0, 1]
-
-/**
- * VerifiedSeal — circular "Verified with Provance" stamp, the brand mark of
- * the report surface. SVG circular text around a charcoal check core; the
- * center disc masks the text seam.
- */
-function VerifiedSeal() {
-  const circleId = 'provance-seal-circle'
-  return (
-    <div
-      role="img"
-      aria-label="Verified with Provance"
-      className="relative z-20 grid h-[4.6rem] w-[4.6rem] place-items-center rounded-full bg-parchment shadow-[0_14px_34px_rgba(19,22,29,0.28)] ring-2 ring-amber/70 md:h-20 md:w-20"
-    >
-      <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full" aria-hidden="true">
-        <defs>
-          <path id={circleId} d="M50,50 m-33,0 a33,33 0 1,1 66,0 a33,33 0 1,1 -66,0" fill="none" />
-        </defs>
-        <text
-          style={{ fill: '#13161d', fontSize: '6.6px', letterSpacing: '1.6px', fontFamily: 'IBM Plex Mono, monospace', fontWeight: 600 }}
-        >
-          <textPath href={`#${circleId}`} startOffset="2%">
-            VERIFIED WITH PROVANCE • VERIFIED WITH PROVANCE •
-          </textPath>
-        </text>
-      </svg>
-      <div className="grid h-9 w-9 place-items-center rounded-full bg-charcoal shadow-inner">
-        <svg className="h-5 w-5 text-amber-glow" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M20 6 9 17l-5-5" />
-        </svg>
-      </div>
-    </div>
-  )
-}
 
 function MetricPill({ label, value }) {
   return (
@@ -124,7 +91,7 @@ export default function SampleReport() {
           {/* Seal sits outside the tilt panel (which clips) so the full circle
               is always visible, overlapping the report's top-right corner. */}
           <div className="absolute -top-8 right-4 z-30 md:-top-9 md:right-10">
-            <VerifiedSeal />
+            <VerifiedSeal className="h-[4.6rem] w-[4.6rem] md:h-20 md:w-20" />
           </div>
 
           <InteractivePanel className="bezel-shell backdrop-blur-xl">
