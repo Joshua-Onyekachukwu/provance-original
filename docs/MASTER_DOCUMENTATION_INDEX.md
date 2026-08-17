@@ -19,6 +19,7 @@
 | Decision Records | `decisions/001` … `decisions/004` | ✅ Current |
 | Unified Design System Master Spec | `design-specs/UNIFIED-DESIGN-SYSTEM.md` | ✅ Current |
 | Premium Design Layer — Tokens & Contracts | `design/PREMIUM_LAYER_TOKENS.md` | ✅ Current |
+| Domain Glossary | `../CONTEXT.md` | ✅ Current |
 | Frontend Architecture (src tree) | `project-state/overall-project-architecture.md` + `engineering/CURRENT_IMPLEMENTATION_STATUS.md` | ✅ Current |
 
 ---

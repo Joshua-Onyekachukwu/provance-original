@@ -1,5 +1,14 @@
 # Provance — Changelog
 
+## [2026-08-17] - CONTEXT.md domain glossary
+
+### Added
+- **`CONTEXT.md`** (repo root) — seeded the domain glossary so future architecture reviews, ADRs, and the codebase-design/grilling skills speak one vocabulary: **Scan** (lifecycle `queued → processing → complete|failed`, `processing_mode` quick/standard/deep), **Verdict** (display dialect `authentic/suspicious/inconclusive` vs classifier classes `likely_authentic/...`; `VERDICT_PALETTE`/`getVerdictMeta` in `scanPresentation.js` is the single source of truth), **Report** (Export PDF vs print-view paths; `result_payload` ≠ rendered document), **Queue** (`scan-processing` BullMQ, inline fallback via `isConfigured()`, job lifecycle, retries/backoff), **Audit Log** (action strings + `AUDIT_SEVERITY_BY_ACTION`), **Session Ledger** (distinct from audit log), **Organization/Team** (roles owner/admin/member, billing meters), **Waitlist**, and **Migrations** (repo-as-truth, verification commands). Includes five vocabulary rules (scan ≠ job, display ≠ class, report ≠ payload, ledger ≠ audit, confidence 0–100).
+- Wired into `docs/MASTER_DOCUMENTATION_INDEX.md` (Architecture & Process table).
+
+### Verified
+- Every term cross-checked against shipped code: `scans.types.ts`, `scans.service.ts` (`buildVerdict`), `scanPresentation.js` (`VERDICT_PALETTE`/`VERDICT_META`), `queue.constants.ts`, `audit-severity.ts`, `waitlist.service.ts`, `organization.service.ts`. Doc-only change; no gates affected. No `CONTEXT.md` or `docs/adr/` existed before — this seeds the vocabulary layer the skills expect.
+
 ## [2026-08-17] - Premium design layer tokens doc
 
 ### Added
