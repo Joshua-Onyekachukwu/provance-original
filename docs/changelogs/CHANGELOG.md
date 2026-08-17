@@ -1,5 +1,11 @@
 # Provance — Changelog
 
+## [2026-08-17] - Dashboard/admin/report review — roadmap drafted (no code changed)
+
+### Planning
+- Full review of the dashboard, all 12 admin pages, the report/PDF pipeline, and the API surface. Findings: dashboard + admin are feature-complete with backend parity and mock fallbacks; the report gap is confirmed (mock/dev mode exports via browser print dialog — the branded server PDF exists only in real mode); the pipeline is image-only; public API is roadmap-only.
+- New doc `docs/engineering/DASHBOARD_ADMIN_REPORT_ROADMAP.md` with a 5-phase founder-review plan: (1) single-path branded PDF export, (2) video+audio verification, (3) public verification API, (4) dashboard value features, (5) admin depth. **Awaiting founder approval — no code shipped this turn.**
+
 ## [2026-08-17] - LivePollIndicator on every remaining polling surface
 
 ### Added
