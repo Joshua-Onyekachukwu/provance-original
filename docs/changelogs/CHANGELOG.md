@@ -1,5 +1,12 @@
 # Provance — Changelog
 
+## [2026-08-17] - Queue skill audit: retry/backoff config cross-checked (flag-only)
+
+### Audit (no code changed)
+- Cross-checked the retry/backoff contract across four sources: `queue.service.ts` (enqueue options), `SCAN_UPLOAD_CONTRACT.md`, the drafted `provance-bullmq-redis-queue` skill, and the e2e assertions (`scans-api` + `scans-flow`).
+- **Consistent:** `jobId: scanId`, `attempts: 3`, exponential backoff 1s, `removeOnComplete/removeOnFail: 100`, job `process-scan` on queue `scan-processing`, worker final-attempt gate `attemptsMade >= attempts`, the "row stays processing between retries" invariant, and `markScanFailed` idempotency — identical in code, contract doc, skill, and `verify-bullmq.mjs`.
+- **Drift flagged (logged as follow-up rows):** (D1) skill snippets stale vs the new `{ attemptsMade, maxAttempts }` third arg; (D2) contract doc schema/migration note omits 0021 even though the failure path now writes it; (D3) the retry shape is asserted nowhere automated — both e2e specs mock `enqueueScanProcessing` and never assert the options object; (D4) the unit spec passes `undefined` for QueueService with no submitScan test, contradicting the skill's "consistent queue mocking" convention.
+
 ## [2026-08-17] - Scan retry telemetry surfaces in the admin Jobs payload
 
 ### Added
