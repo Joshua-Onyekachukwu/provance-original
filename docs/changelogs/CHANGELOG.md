@@ -1,5 +1,15 @@
 # Provance — Changelog
 
+## [2026-08-17] - Sample Report now renders the branded verification report (PDF design)
+
+### Changed
+- **Landing Sample Report section** (`src/components/SampleReport.jsx`): rebuilt to render the full branded verification-report document (`SampleReportDocument`) instead of the hand-rolled editorial panel — the same design the export PDF uses: verdict headline + report identity, metrics grid, executive summary, media information, metadata analysis, AI detection results, manipulation indicators, watermark/provenance, frame analysis, model results, cross-validation, analysis scope, chain of custody, technical findings, recommended next steps, appendices (methodology/limitations), reviewer notes, and disclaimer. Section header + motion/bezel presentation kept; CTA row now offers **Download Sample PDF** (`/sample-report/print`) and **View Full Sample Report**.
+- **`/sample-report` page** (`src/pages/SampleReportPage.jsx`): the hand-rolled panels are replaced by the same full `SampleReportDocument` (PageHero + CTAs kept) — one verification-report design across landing, full page, and print.
+
+### Verified
+- vitest **593/593**, lint 0 errors (36-warning baseline), build clean, `guard:grid` clean (SampleReportDocument grids already carried base `grid-cols-1`).
+- Preview probes: landing `#report` section contains all 27 detail markers (verdict 94.7% / 31/100, FRQ-001 findings, PV-NEWS-1182 custody, SHA-256 hash, appendices, disclaimer) and `/sample-report` renders the same document; no horizontal overflow at phone width. `ForensicMediaFrame` still referenced by AppUploadsPage (dead-code guard green).
+
 ## [2026-08-17] - Supabase credentials wired (new-format keys) + live stack verified
 
 ### Changed
