@@ -1,5 +1,14 @@
 # Provance — Changelog
 
+## [2026-08-17] - SCAN_UPLOAD_CONTRACT.md gains the verified live BullMQ evidence
+
+### Added
+- New "Verified BullMQ evidence (live, 2026-08-17)" section in `docs/engineering/SCAN_UPLOAD_CONTRACT.md`, sourced from the real worker log (`.freebuff/bullmq-worker.log`) rather than code alone:
+  - **Worker concurrency observed:** the boot line `Worker is ready for queue "scan-processing" with concurrency 4` appeared 183 times across restarts; `WORKER_CONCURRENCY` default 4 confirmed; worker refuses to boot without `REDIS_URL` (exit 1).
+  - **Retry behavior observed:** a real job failed at **attempt 2 of 3** (`Failed to download the uploaded asset`) — BullMQ re-queued with exponential backoff per `attempts: 3` / 1s-base config, the scan row stayed `processing` (`will retry`), proving the final-attempt-only `failed` gate and idempotent re-entry.
+  - **Exact validator commands:** `npm run validate:bullmq` (queue path in isolation — inserts a real row, enqueues with the service's exact options, polls job state + row status, prints job counts, deletes the row) and `npm run validate:scan-roundtrip` (full chain incl. report payload + PDF with the parallel 1s BullMQ job watcher asserting job-state ⟺ row-state).
+- Honest scope note: no `Completed scan job` line or `complete` row transition observed live yet — the happy path remains gated on 0009/0019/0021 landing on the probed project; the retry machinery is the proven part.
+
 ## [2026-08-17] - Live scan round-trip walk: verified blocked (schema not on the probed project)
 
 ### Attempted / blocked

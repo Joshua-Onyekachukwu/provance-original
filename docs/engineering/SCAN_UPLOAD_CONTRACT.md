@@ -285,6 +285,70 @@ Start it explicitly: `PORT=4000 node dist/main` (and check the log for
    Verification ID + status transitions are visible in the queue ledger; a
    completed scan opens the report payload (`/app/reports`) and PDF export.
 
+## Verified BullMQ evidence (live, 2026-08-17)
+
+The queue path is not just configured — it has been observed running against
+the live Upstash Redis instance, and the running backend's readiness reports
+`queue.ready: true` whenever `REDIS_URL` is set. The evidence below comes from
+the real worker process (`node dist/worker`) and the `validate:bullmq`
+construction, not from the code alone.
+
+### Worker concurrency (observed in practice)
+
+- `WORKER_CONCURRENCY` (default **4**) drives BullMQ's `concurrency` option.
+  The worker's own boot line was observed **183 times** across worker
+  restarts in the live log (`.freebuff/bullmq-worker.log`):
+
+  ```
+  Worker is ready for queue "scan-processing" with concurrency 4
+  ```
+
+- Without `REDIS_URL` the worker refuses to boot (`REDIS_URL is not
+  configured. Worker cannot start.`, exit 1) — the production path is
+  explicitly Redis-only; the inline fallback is an API-process convenience,
+  not a worker mode.
+
+### Retry behavior observed in practice
+
+A real job failed mid-pipeline and BullMQ retried it exactly per the
+`attempts: 3` + exponential backoff (1s base) config — the two lines are the
+observed contract:
+
+```
+ERROR [ScansService] Scan f4a7eeef-… processing failed (will retry): Failed to download the uploaded asset.
+ERROR [ScanWorker]    Scan job f4a7eeef-… failed (attempt 2 of 3): Failed to download the uploaded asset.
+```
+
+- The job failed at **attempt 2 of 3** — BullMQ re-queued it with backoff
+  instead of failing fast, so `attempts: 3` + exponential backoff are proven
+  in practice, not just in config.
+- The scan **row** stayed `processing` (`will retry`) — the worker only
+  transitions a scan to the terminal `failed` on the **final** attempt via
+  the `attemptsMade >= attempts` gate, so a retry re-enters
+  `processQueuedScan` (the idempotent re-entry guard treats `processing` as
+  safe).
+- The terminal `failed` state persists `attempts_made`/`max_attempts`
+  (migration 0021) and surfaces them in the admin Jobs payload; the inline
+  path records an honest 1/1.
+
+> No `Completed scan job <id>` line or `complete` row transition has been
+> observed live yet: the completion leg (0009/0019/0021 schema) has not
+> landed on the project this env probes (`dmhrwdcuwtgscwlaagsa`), so the
+> upload fails at the asset-download step. What the evidence proves is the
+> retry machinery; the happy path is blocked on migration state (see
+> `docs/engineering/MIGRATION_RUNBOOK.md`).
+
+### Exact validator commands
+
+| Command (from `backend/`) | What it proves |
+| ------------------------- | -------------- |
+| `npm run validate:bullmq` | The queue path in isolation: inserts a real `queued` scan row via the service role, enqueues `process-scan` with the service's **exact** options (`jobId = scanId`, `attempts: 3`, exponential backoff 1s, `removeOnComplete/removeOnFail: 100`), then polls the BullMQ job state + the row status every 2s (25 ticks, printing every change) until `failed`/`completed`, prints `BullMQ job counts`, and deletes the throwaway row. Seeing `waiting → active → …` at the queue level is the proof the separate worker process (not the request lifecycle) claimed the job. |
+| `npm run validate:scan-roundtrip` | The full chain: initiate → signed-URL upload → submit → queue → complete → `GET /v1/reports/:id` payload → `GET /v1/reports/:id/pdf` artifact, with a **parallel BullMQ job watcher** (job state every 1s vs the row's 5s cadence) asserting `job=completed ⟺ row=completed` and `job=failed ⟺ row=failed` — a fast worker can't hide the intermediate `active` state. |
+
+Both scripts need `npm run build` first (they load the queue connection from
+`dist/`), the Supabase trio + `REDIS_URL` in `backend/.env.local`, and a
+running worker for the job to be claimed.
+
 ## Schema
 
 | Table / object | Notes |
