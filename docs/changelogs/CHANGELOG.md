@@ -1,5 +1,14 @@
 # Provance — Changelog
 
+## [2026-08-17] - Premium design layer tokens doc
+
+### Added
+- **`docs/design/PREMIUM_LAYER_TOKENS.md`** — canonical reference for the premium design layer so future public surfaces build against it instead of re-deriving classes: typography (Fraunces display / Plus Jakarta Sans body / IBM Plex Mono data / Inter app-shell, loaded in `index.html`), the full `@theme` color palette, the **luxe ease** (`--ease-luxe` `cubic-bezier(0.32, 0.72, 0, 1)` + the Framer Motion `LUXE` constant + blur fade-up entrance variant), the **double-bezel architecture** (shell/core with computed radii, dark variants, `h-full` equal-height rule, hover-lift pattern), film grain (fixed global layer), spacing rhythm (`section-padding`/`content-container`/header gaps), supporting primitives (eyebrow pills, button-in-button CTAs, stat pills, page-hero chrome), and a **new-surface checklist** (shared PageHero, bezel cards, LUXE motion, `grid-cols-1` base, `guard:grid` + audit gates). Notes the superseded `docs/design/DESIGN_SPEC.md` draft (Instrument Serif values are out of date).
+- Wired into `docs/MASTER_DOCUMENTATION_INDEX.md` (Architecture & Process table).
+
+### Verified
+- All token values cross-checked against `src/index.css` (source of truth) and the shipped components — `LUXE` constant present in 12+ components, `ease-luxe` used 33×, fonts confirmed in `index.html`. Doc-only change; no gates affected.
+
 ## [2026-08-17] - High-end design language extended to all remaining public pages
 
 ### Changed
