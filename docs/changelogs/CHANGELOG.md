@@ -1,5 +1,16 @@
 # Provance — Changelog
 
+## [2026-08-17] - Live BullMQ round-trip verified against Upstash Redis
+
+### Verified
+- Provisioned Upstash Redis instance (`adapted-shrew-121173.upstash.io`, expires 2026-08-19) wired into `backend/.env.local` `REDIS_URL`; PING → PONG confirmed.
+- Booted backend :4000 + worker (`start:worker`): `Worker is ready for queue "scan-processing" with concurrency 4`.
+- `npm run validate:bullmq` proved the **real BullMQ path**, not the inline fallback: inserted a `queued` scan row, enqueued via the real Queue with the service's exact options (jobId=scanId, attempts 3, exponential backoff), and watched the worker claim it — queue states `delayed → active → failed`, row `queued → processing → failed`. Worker log shows the retry machinery live (`failed (attempt 2 of 3)`); the failure reason (`Failed to download the uploaded asset`) is expected since the throwaway verification row has no real file in storage. Throwaway row cleaned up.
+- The full app-path round-trip remains blocked only on the schema: migrations 0009/0013/0019 still not applied (see the applier + paste-block follow-ups).
+
+### Notes
+- Redis + backend + worker are running as background processes for the live walk.
+
 ## [2026-08-17] - One-command migration applier (`apply:migrations`)
 
 ### Added
