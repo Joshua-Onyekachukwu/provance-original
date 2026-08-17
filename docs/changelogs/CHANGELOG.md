@@ -1,5 +1,10 @@
 # Provance — Changelog
 
+## [2026-08-17] - A11y audit re-verification (no changes needed)
+
+### Verified
+- `npm run audit:a11y` re-run after the responsive pass: **34/34 routes structurally clean, zero contrast advisories** — the gate state from the cascade-fix commit (`2b2c260`) holds; no new no-name / img-alt / label / focus-visibility issues introduced by subsequent landing work.
+
 ## [2026-08-17] - Responsive verification: landing Sample Report section at 375/768/1280
 
 ### Verified (no changes needed)
