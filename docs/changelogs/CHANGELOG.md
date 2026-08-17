@@ -1,5 +1,13 @@
 # Provance — Changelog
 
+## [2026-08-17] - Component-reachability guard (no more silent dead code)
+
+### Added
+- `src/lib/componentReferences.js` + `src/lib/componentReferences.test.js` — a repo-wide vitest guard that every component under `src/components/` (except `ui/`, governed by its own barrel-parity contract) is **transitively reachable** from a file outside the components dir. Roots are src files outside `src/components/`; the BFS propagates through live components, so a component imported only by another dead component is still surfaced (no false "1 importer" confidence). Matching covers path imports (`from './X.jsx'`) and identifier/barrel imports (`import { X } from './index.js'`), with comment stripping so a leftover `// import X from …` hint can never count as a reference. `REFERENCE_EXCEPTIONS` allowlist + a stale-entry check keep intentional exceptions honest.
+
+### Verified
+- **Green baseline**: all 36 non-ui components are reachable today (TrustBar would have been caught before it was wired). Mutation-tested: a temporary orphaned component was flagged (`components/OrphanProbe.jsx`). 7 new tests (matchers, comment stripping incl. `https://` survival, repo-wide scan, stale exceptions). Full vitest **556/556**, lint 0 errors.
+
 ## [2026-08-17] - TrustBar wired into the landing under the Hero
 
 ### Changed
