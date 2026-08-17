@@ -1,5 +1,14 @@
 # Provance — Changelog
 
+## [2026-08-18] - Seal on report cover + PDF export — verified already shipped
+
+### Verified
+- Requested stamp on both the full `SampleReportDocument` cover and the pdfkit export was implemented in `eee7e0e` and is intact on disk:
+  - **Web cover** (`src/components/SampleReportDocument.jsx`) — ink band is a flex row with the PROVANCE wordmark left and the shared `VerifiedSeal` right (`h-14 w-14 md:h-[4.2rem] md:w-[4.2rem]`); covers `/sample-report` and `/sample-report/print`.
+  - **PDF export** (`backend/src/reports/report-pdf.ts`) — `renderCoverHeader` calls `renderSeal` at `PAGE_W - MARGIN - 24, 37` (radius 22): parchment disc, amber ring, per-glyph `drawCircularText` "VERIFIED WITH PROVANCE •", charcoal core, gold check — same right-of-wordmark placement as web.
+- Gates: backend jest 5/5 (asserts the circular phrase decodes from the content stream) · frontend vitest 10/10 (asserts the seal renders on the document cover).
+- No code changes needed this pass.
+
 ## [2026-08-18] - Workspace top bar mirrors landing's max-w-7xl rhythm
 
 ### Changed
