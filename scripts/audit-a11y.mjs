@@ -200,17 +200,19 @@ function probeStructure() {
   }
 
   // 4. Contrast sample (advisory). NOTE: Tailwind v4 emits oklch() for its
-  //    default palette, so palette-based colors (rose/sky/amber …) parse as
-  //    null here and fall through to the opaque-ancestor walk — treat any
-  //    finding whose bg is a sibling/ancestor as unverified; the hex tokens
-  //    (charcoal/parchment…) are measured exactly.
+  //    default palette, so palette-based colors (rose/sky/amber …) don't
+  //    parse as rgba() here. When an element's OWN background is set but
+  //    unparseable we cannot measure it — we skip the element rather than
+  //    fall through to a false ancestor reading. When the own background is
+  //    semi-transparent rgba, we composite it over the nearest opaque layer
+  //    below (so glass buttons / 90% parchment tiles measure truthfully).
   const parseColor = (str) => {
     const m = /rgba?\(([^)]+)\)/.exec(str);
     if (!m) return null;
     const parts = m[1].split(',').map((s) => Number(s.trim()));
-    if (parts.length >= 4 && parts[3] === 0) return null; // fully transparent
-    if (parts.length === 4 && parts[3] < 1) return null; // semi-transparent — skip
-    return [parts[0], parts[1], parts[2]];
+    if (parts.length < 3) return null;
+    const alpha = parts.length === 4 ? parts[3] : 1;
+    return [parts[0], parts[1], parts[2], alpha];
   };
   const lum = ([r, g, b]) => {
     const f = (c) => {
@@ -223,16 +225,37 @@ function probeStructure() {
     const [l1, l2] = [lum(a), lum(b)].sort((x, y) => y - x);
     return (l1 + 0.05) / (l2 + 0.05);
   };
-  const nearestOpaqueBg = (el) => {
+  // Returns the effective opaque background an element's text sits on, or
+  // null when it can't be resolved (own bg unparseable, or a gradient stops
+  // the walk). Semi-transparent rgba layers are composited bottom-up.
+  const resolveBg = (el) => {
+    const layers = []; // { rgb: [r,g,b], alpha } from element upward
     let p = el;
     while (p && p !== document.documentElement) {
       const s = getComputedStyle(p);
-      if (s.backgroundImage !== 'none') return null; // can't resolve — skip
-      const c = parseColor(s.backgroundColor);
-      if (c) return c;
+      if (s.backgroundImage !== 'none') break; // gradient — can't resolve further
+      const raw = s.backgroundColor;
+      if (raw && raw !== 'rgba(0, 0, 0, 0)' && raw !== 'transparent') {
+        const c = parseColor(raw);
+        if (c) layers.push({ rgb: [c[0], c[1], c[2]], alpha: c[3] });
+        else return null; // own bg set but unparseable (oklch etc.) — can't measure
+      }
       p = p.parentElement;
     }
-    return null;
+    if (!layers.length) return null;
+    // Composite from the bottom-most opaque layer upward.
+    let rgb = layers[layers.length - 1].rgb.slice();
+    let alpha = layers[layers.length - 1].alpha;
+    for (let i = layers.length - 2; i >= 0; i -= 1) {
+      const { rgb: top, alpha: a } = layers[i];
+      rgb = [
+        Math.round(top[0] * a + rgb[0] * (1 - a)),
+        Math.round(top[1] * a + rgb[1] * (1 - a)),
+        Math.round(top[2] * a + rgb[2] * (1 - a)),
+      ];
+      alpha = a + alpha * (1 - a);
+    }
+    return alpha >= 1 ? rgb : null;
   };
 
   const seen = new Set();
@@ -250,7 +273,7 @@ function probeStructure() {
     if (!directText) continue;
     const s = getComputedStyle(el);
     const color = parseColor(s.color);
-    const bg = nearestOpaqueBg(el);
+    const bg = resolveBg(el);
     if (!color || !bg) continue;
     const fontSize = parseFloat(s.fontSize) || 16;
     const bold = parseInt(s.fontWeight, 10) >= 700;

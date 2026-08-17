@@ -1,5 +1,15 @@
 # Provance — Changelog
 
+## [2026-08-17] - A11y audit re-run: btn-* cascade fix + honest contrast sampler
+
+### Fixed
+- **`src/index.css`** — `.btn-primary/.btn-secondary/.btn-accent` (and hover/active states) moved into `@layer components`. They were unlayered, and in Tailwind v4 unlayered author CSS beats layered utilities — so every utility override on a button **silently never applied**: the Footer/About `Request Demo` dark-section glass treatment (`text-parchment` + `bg-white/[0.06]`) rendered as a white pill with charcoal text (contrast 1:1 on the charcoal footer), and the Navbar's `px-6 py-2.5` pill sizing was dead code. Verified via computed styles: footer button now resolves parchment text on the 6% glass (≈13:1), navbar CTA resolves `10px 24px` padding.
+- **`scripts/audit-a11y.mjs`** — the contrast sampler now **composites** semi-transparent rgba backgrounds against the nearest opaque backdrop instead of treating them as transparent and walking to a false ancestor (which fabricated 1:1 findings on glass buttons, `bg-parchment/90` avatar tiles, and oklch badge backgrounds). When an element's own background is set but unparseable (Tailwind v4 oklch), it now skips rather than misreports.
+
+### Verified
+- `npm run audit:a11y` — **34/34 routes structurally clean, ZERO contrast advisories** (previously 43, mostly false positives)
+- `audit:responsive` **260/260** clean at 375–1280 · `npm run build` clean · `npm run lint` 0 errors · vitest 18/18 on the touched Button/SampleReport suites
+
 ## [2026-08-17] - Usage-unit billing proposal (VUs)
 
 ### Added
