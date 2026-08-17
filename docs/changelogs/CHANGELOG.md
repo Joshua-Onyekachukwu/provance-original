@@ -1,5 +1,15 @@
 # Provance — Changelog
 
+## [2026-08-17] - Mock security mutations persist across reloads
+
+### Added
+- `mockApi.js` now persists the mock security mutations (revoked sessions, password-change audit rows) to `localStorage['provance.mock.securityMutations.v1']` as a **delta** — the revoked session ids plus the live audit rows the mutations created — and replays it at module init over the freshly-seeded (time-relative) mock, the same survival guarantee the auth session and scan store get.
+- Wired into all four mutation paths: `mockRevokeSession` (single revoke), `mockChangePassword` (revoke-everything-else: every other session revoked + per-device `session.revoked` + `password_changed` rows), `mockRevokeMemberSession` and `mockRevokeMemberSessions` (org drawer). On reload the Security page, the Activity feed/admin trail, and the org session drawer all restore the revoked set; audit rows re-appear newest-first, deduped by id. Sign-in control toggles (2FA etc.) are intentionally not persisted — the demo contract is revoke-everything-else continuity.
+- `securityMutationsPersistence.test.js` — 5 tests locking the persistence contract with a `vi.resetModules()` reload simulation: revoke → localStorage record, fresh-load restore (incl. the owner org-drawer ledger), revoke-everything-else across reload, member-session replay, and corrupt-storage fallback to the pristine seed.
+
+### Verified
+- Full frontend gates green: vitest **588/588** (66 files, +5 new), `npm run lint` 0 errors, `npm run build` clean. Existing mock-behavior suites unaffected (changePasswordContract, memberSessions, mockApiParity, newDeviceSignin, mockNoise — 28/28 targeted).
+
 ## [2026-08-17] - Founder migration checklist wired into MIGRATION_RUNBOOK.md
 
 ### Added

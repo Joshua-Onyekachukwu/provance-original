@@ -461,6 +461,96 @@ function persistScanStore() {
 
 let mockScanStore = loadScanStore() || [...mockScans]
 
+// ---------------------------------------------------------------------------
+// Security mutation persistence (revoked sessions + live audit rows)
+//
+// The Security page's mock mutations (mockRevokeSession, mockChangePassword,
+// mockRevokeMemberSession(s)) mutate module-level mock state that would
+// otherwise reset on a full page reload. Persisted as a DELTA — the revoked
+// session ids plus the live audit rows those mutations created — so a reload
+// re-applies them over the freshly-seeded (time-relative) mock data, exactly
+// like the auth session and the scan store survive reloads. Sign-in control
+// toggles (2FA etc.) are intentionally NOT persisted: the demo contract is
+// revoke-everything-else continuity, and toggles re-seed fresh.
+// ---------------------------------------------------------------------------
+
+const SECURITY_MUTATIONS_KEY = 'provance.mock.securityMutations.v1'
+
+function loadSecurityMutations() {
+  try {
+    const raw = window.localStorage.getItem(SECURITY_MUTATIONS_KEY)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (
+        parsed &&
+        Array.isArray(parsed.revokedSessionIds) &&
+        Array.isArray(parsed.auditEvents)
+      ) {
+        return parsed
+      }
+    }
+  } catch {
+    // Corrupt or unavailable storage — fall through to a fresh record.
+  }
+  return null
+}
+
+const securityMutations = loadSecurityMutations() || { revokedSessionIds: [], auditEvents: [] }
+
+function persistSecurityMutations() {
+  try {
+    window.localStorage.setItem(SECURITY_MUTATIONS_KEY, JSON.stringify(securityMutations))
+  } catch {
+    // Storage unavailable (or stubbed without setItem in tests) — keep
+    // working with the in-memory delta for the rest of the session.
+  }
+}
+
+/**
+ * Replay the persisted security mutations over the freshly-seeded mock state
+ * (runs at module init, like loadScanStore). Filtering by revoked id is
+ * idempotent and audit rows are deduped by id, so re-running is safe.
+ */
+function replaySecurityMutations() {
+  if (securityMutations.revokedSessionIds.length > 0) {
+    const revoked = new Set(securityMutations.revokedSessionIds)
+    mockSecuritySettings.activeSessions = mockSecuritySettings.activeSessions.filter(
+      (s) => !revoked.has(s.id),
+    )
+    // The owner's org-drawer ledger shares the Security page's rows, and
+    // member revocations live in their own ledgers — keep every surface
+    // consistent on reload.
+    for (const memberId of Object.keys(mockMemberSessionsByUserId)) {
+      mockMemberSessionsByUserId[memberId] = mockMemberSessionsByUserId[memberId].filter(
+        (s) => !revoked.has(s.id),
+      )
+    }
+  }
+  if (securityMutations.auditEvents.length > 0) {
+    const existing = new Set(mockAuditEvents.map((e) => e.id))
+    // Persisted events are stored oldest-first (mutation order); re-prepend
+    // newest-first so the feed stays ordered, skipping any already applied.
+    const pending = securityMutations.auditEvents.filter((e) => !existing.has(e.id))
+    if (pending.length > 0) mockAuditEvents.unshift(...pending.slice().reverse())
+  }
+}
+
+/**
+ * Track one security audit event in both the live feed and the persisted
+ * delta. Prepend to the feed (newest-first contract) and push to the delta
+ * (oldest-first; replayed newest-first on reload).
+ */
+function trackSecurityAuditEvent(event) {
+  mockAuditEvents.unshift(event)
+  securityMutations.auditEvents.push(event)
+}
+
+function trackRevokedSession(sessionId) {
+  securityMutations.revokedSessionIds.push(sessionId)
+}
+
+replaySecurityMutations()
+
 function newestScanId() {
   const max = mockScanStore.reduce((acc, scan) => {
     const n = Number(scan.id.replace(/\D/g, '')) || 0
@@ -1297,8 +1387,8 @@ export async function mockChangePassword({ currentPassword, newPassword } = {}) 
   }
   // Mirrors SecurityService.changePassword's revoke-everything-else step: every
   // OTHER tracked session is revoked and its ledger row dropped; the current
-  // session stays signed in. Persisted on the module-level store the same way
-  // mockRevokeSession persists single revocations.
+  // session stays signed in. Tracked in the persisted security-mutation delta
+  // (like mockRevokeSession) so the revoked set + audit rows survive reloads.
   const revocable = mockSecuritySettings.activeSessions.filter((s) => !s.isCurrent)
   mockSecuritySettings.activeSessions = mockSecuritySettings.activeSessions.filter(
     (s) => s.isCurrent,
@@ -1306,7 +1396,8 @@ export async function mockChangePassword({ currentPassword, newPassword } = {}) 
   // Per-session admin-trail rows — same shape mockRevokeSession writes for a
   // single revoke, so the feed + admin trail reflect each signed-out device.
   for (const session of revocable) {
-    mockAuditEvents.unshift({
+    trackRevokedSession(session.id)
+    trackSecurityAuditEvent({
       id: `audit_live_${Date.now()}_${String(++mockAuditLiveSeq).padStart(3, '0')}`,
       actor_email: currentMockActorEmail(),
       action: 'session.revoked',
@@ -1321,7 +1412,7 @@ export async function mockChangePassword({ currentPassword, newPassword } = {}) 
   // top — the real backend revokes first, then records the audit. Real mode
   // writes it to auth_audit_events (Activity feed); the mock's shared store
   // surfaces it in the feed and the admin trail alike.
-  mockAuditEvents.unshift({
+  trackSecurityAuditEvent({
     id: `audit_live_${Date.now()}_${String(++mockAuditLiveSeq).padStart(3, '0')}`,
     actor_email: currentMockActorEmail(),
     action: 'password_changed',
@@ -1331,6 +1422,7 @@ export async function mockChangePassword({ currentPassword, newPassword } = {}) 
     created_at: new Date().toISOString(),
     details: {},
   })
+  persistSecurityMutations()
   return { ok: true }
 }
 
@@ -1341,15 +1433,16 @@ export async function mockRevokeSession(sessionId) {
   if (!current) throw new Error('Session not found.')
   if (current.isCurrent) throw new Error('You cannot revoke the current session.')
   // Persist the revocation in the module-level mock so it survives navigation
-  // away and back, matching how 2FA/setting toggles persist.
+  // away and back, AND in the localStorage delta so it survives full reloads.
   mockSecuritySettings.activeSessions = mockSecuritySettings.activeSessions.filter(
     (s) => s.id !== sessionId,
   )
+  trackRevokedSession(sessionId)
   // Surface the revocation in the audit trail + Activity feed — mirrors the
   // real backend's session.revoked admin-trail write on self-service revoke
   // (SecurityService.recordAdminTrail). Prepend so the newest event lands
   // first, matching the newest-first feed contract.
-  mockAuditEvents.unshift({
+  trackSecurityAuditEvent({
     id: `audit_live_${Date.now()}_${String(++mockAuditLiveSeq).padStart(3, '0')}`,
     actor_email: currentMockActorEmail(),
     action: 'session.revoked',
@@ -1359,6 +1452,7 @@ export async function mockRevokeSession(sessionId) {
     created_at: new Date().toISOString(),
     details: { session_id: sessionId },
   })
+  persistSecurityMutations()
   return { ok: true, sessionId }
 }
 
@@ -1742,11 +1836,12 @@ export async function mockRevokeMemberSession(memberId, sessionId) {
     throw new Error('You cannot revoke the current session.')
   }
   mockMemberSessionsByUserId[memberId] = sessions.filter((s) => s.id !== sessionId)
+  trackRevokedSession(sessionId)
   // Surface the revocation in the audit trail + Activity feed (mirrors the
   // real backend: SecurityService writes member_session_revoked to the feed
   // and the org service writes the admin-trail row). Prepend so the newest
   // event lands first, matching the newest-first feed contract.
-  mockAuditEvents.unshift({
+  trackSecurityAuditEvent({
     id: `audit_live_${Date.now()}_${String(++mockAuditLiveSeq).padStart(3, '0')}`,
     actor_email: currentMockActorEmail(),
     action: 'member_session_revoked',
@@ -1756,6 +1851,7 @@ export async function mockRevokeMemberSession(memberId, sessionId) {
     created_at: new Date().toISOString(),
     details: { member_id: memberId, session_id: sessionId },
   })
+  persistSecurityMutations()
   return { ok: true, memberId, sessionId }
 }
 
@@ -1774,9 +1870,10 @@ export async function mockRevokeMemberSessions(memberId) {
   const actorId = mockActorUserId()
   const revocable = sessions.filter((session, index) => !(memberId === actorId && index === 0))
   mockMemberSessionsByUserId[memberId] = sessions.filter((session) => !revocable.includes(session))
+  for (const session of revocable) trackRevokedSession(session.id)
   // One summary audit row per batch carrying the revoked count — mirrors the
   // real backend's member_sessions_revoked write on revoke-all.
-  mockAuditEvents.unshift({
+  trackSecurityAuditEvent({
     id: `audit_live_${Date.now()}_${String(++mockAuditLiveSeq).padStart(3, '0')}`,
     actor_email: currentMockActorEmail(),
     action: 'member_sessions_revoked',
@@ -1786,6 +1883,7 @@ export async function mockRevokeMemberSessions(memberId) {
     created_at: new Date().toISOString(),
     details: { member_id: memberId, revoked: revocable.length },
   })
+  persistSecurityMutations()
   return { ok: true, memberId, revoked: revocable.length }
 }
 
