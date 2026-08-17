@@ -1,5 +1,13 @@
 # Provance — Changelog
 
+## [2026-08-17] - E2E suite re-verified; invite-accept block prepared (founder gate)
+
+### Verified
+- Full e2e suite (hermetic, live suite opt-in): **76 passed, 2 skipped** (78 total — the 2 skipped are the live invite-accept suite, gated behind `PROVANCE_LIVE_E2E=1`). All 6 hermetic suites green; the suite has grown past the earlier 67-test figure.
+
+### Blocked on founder action
+- The invite-accept live suite cannot pass yet: migration **0005** (`organizations`/`organization_invites`) is still missing on `dmhrwdcuwtgscwlaagsa` (14 migrations missing per `validate:migrations`), and its seed also inserts `token_hash` (migration **0015**). No PG connection string exists in the repo (`DATABASE_URL=` is empty), so application requires the founder: paste `.freebuff/combined-0005-0015.sql` (198 lines, byte-verified verbatim against both sources) in the SQL Editor for the project, or paste the Session-pooler connection string into `backend/.env.local` so `npm run apply:migrations -- --from=0005` works.
+
 ## [2026-08-17] - mockChangePassword revoke-everything-else backfill
 
 ### Changed
