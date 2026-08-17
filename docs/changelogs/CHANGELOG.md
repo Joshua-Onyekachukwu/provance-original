@@ -1,5 +1,13 @@
 # Provance — Changelog
 
+## [2026-08-17] - VU proposal: per-package scan math + hook-now-tighten-later strategy
+
+### Changed
+- **`docs/engineering/USAGE_CREDITS_PROPOSAL.md`** — §3 rewritten as a per-package scan-count table (what each package actually buys per month at Quick/Standard/Deep: Starter 10k/1k/100, Pro 100k/10k/1k, Team 300k/30k/3k scans) with a realistic-burn note (~30 standard/day ≈ under 10% of Pro). New **§9 Monetization strategy — hook now, tighten later** (founder direction): current rates stay for growth, the revenue dial is per-scan VU cost raised over time (illustrative 10×: Quick 10 / Standard 100 / Deep 1,000), with pacing principle (abundant early, burnable) and tighten triggers (authority milestones, live top-ups, abuse data). §8 decisions updated: Pro allowance kept at 100,000 for now; tighten cadence added as decision 6.
+
+### Verified
+- Doc-only change — no code, no gates affected. Logged in follow-up log.
+
 ## [2026-08-17] - A11y audit re-verification (no changes needed)
 
 ### Verified

@@ -45,20 +45,25 @@ can't "use the system over and over again" for free, but a normal workflow
 never feels metered: 100,000 VUs/month ≈ 10,000 standard scans or ≈ 1,000 deep
 investigations.
 
-## 3. Package tiers (workspace)
+## 3. Package tiers (workspace) — what a user can actually do
 
-Suggested allowances — the founder sets the final dial; per-VU economics are
-the real lever, not the headline number.
+Rates (current dial, §2): **Quick 1 VU · Standard 10 VU · Deep 100 VU**.
+Read the table as *how many scans each package buys per month* at each depth:
 
-| Package | Price | VUs / month | ≈ Standard scans | ≈ Deep scans |
-| --- | --- | --- | --- | --- |
-| Starter | $0 | 10,000 | 1,000 | 100 |
-| **Pro** | $49 | **100,000** (your number) | 10,000 | 1,000 |
-| Team | $199 | 300,000 | 30,000 | 3,000 |
-| Enterprise | custom | committed block | — | — |
+| Package | Price | VUs / mo | ≈ Quick scans | ≈ Standard scans | ≈ Deep scans |
+| --- | --- | --- | --- | --- | --- |
+| Starter (free) | $0 | 10,000 | 10,000 | 1,000 | 100 |
+| **Pro** | $49 | **100,000** | 100,000 | 10,000 | 1,000 |
+| Team | $199 | 300,000 | 300,000 | 30,000 | 3,000 |
+| Enterprise | custom | committed block | — | — | — |
 
 Per-VU implied price at Pro: $49 / 100,000 = **$0.00049/VU** — cheap enough to
 feel abundant for normal review, expensive enough to stop abuse at scale.
+
+**Realistic burn feel (why this hooks users):** a busy reviewer running
+~30 standard scans/day ≈ 900/mo ≈ 9,000 VU — under 10% of Pro's allowance.
+Normal workflows essentially never hit the cap at these rates; the allowance
+feels generous, which is the point during the growth phase (see §9).
 
 ## 4. Mechanics
 
@@ -137,14 +142,44 @@ one story: "VUs are VUs — the dashboard and the API drink from the same meter.
 3. **API metering + spend caps** — keyed calls deduct VUs; per-key caps/limits.
 4. **Rollover + enterprise committed blocks** — billing-engine work, last.
 
+## 9. Monetization strategy — hook now, tighten later (founder direction)
+
+The growth play is deliberate: **give users a lot now to build authority and
+lock usage habits; make money later by tightening the dial.** The current
+rates/allowances (§2–3) stay as-is for the growth phase. The dial that turns
+revenue lives in the per-scan VU cost — the plan is to *raise* VU per scan
+over time (and/or cut allowances), not the price tag.
+
+**The tightening dial (illustrative, not scheduled):**
+
+| Depth | Today (hook) | Tightened (monetize, e.g. 10×) |
+| --- | --- | --- |
+| Quick | 1 VU | 10 VU |
+| Standard | 10 VU | 100 VU |
+| Deep | 100 VU | 1,000 VU |
+
+Same Pro allowance (100,000 VU) under the tightened dial: 10,000 quick / 1,000
+standard / 100 deep — a heavy user finishes the month and buys top-ups or waits
+for the next cycle. **Pacing principle:** the allowance should feel abundant
+early in the cycle and *burnable* — "finish, but not too fast" — so top-ups
+and cycle resets become the natural rhythm instead of a hard wall.
+
+**When to tighten (triggers):** (a) authority/trust milestones are reached
+(case studies, live API customers), (b) the ledger + metering slice is live and
+top-ups exist (Stripe), (c) per-seat/per-key spend data shows abuse patterns.
+Each tighten is a config change (cost table), not a migration — the ledger
+records the rate applied per scan, so historical usage stays auditable.
+
 ## 8. Open decisions for the founder
 
 1. **Unit name** — VUs (recommended), Credits, Scans, or something else?
-2. **Pro allowance** — keep 100,000 VUs ($0.00049/VU) or recalibrate
-   (e.g. 50,000 VUs ≈ $0.001/VU)?
+2. **Pro allowance** — **kept at 100,000 VUs for now (founder-confirmed)**;
+   recalibration (e.g. 50,000 ≈ $0.001/VU) is a later tighten, not this release
 3. **Overage default** — hard stop (recommended), auto top-up, or soft degrade?
 4. **Rollover** — roll unused VUs up to 1× monthly, or no rollover (strict use-it-or-lose-it)?
 5. **Failed scans** — 0 VU charge on failure (recommended) vs charge-on-submit with refund?
+6. **Tighten cadence** — no date set; triggers in §9. Confirm when growth
+   milestones hit so the dial moves deliberately, never silently
 
 ## Related
 
