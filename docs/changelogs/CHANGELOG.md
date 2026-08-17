@@ -1,5 +1,10 @@
 # Provance — Changelog
 
+## [2026-08-17] - Fix flaky armed-confirm test (fireEvent → userEvent)
+
+### Fixed
+- `src/pages/app/appSecurityArmedReset.test.jsx` — the armed-revoke suite flaked ~1-in-5 runs (armRow's click sometimes never armed, failing tests 1/2/4 at random under load). `fireEvent.click` was racing React's commit in jsdom; switched every click to `userEvent.click` (full pointer sequence + act flushing) and added a deterministic wait for the post-disarm re-render before clicking the other row. Stress-tested: 12/12 consecutive runs green, full suite 560/560, lint + build clean.
+
 ## [2026-08-17] - Mobile touch audit: 44px tap targets on the landing nav
 
 ### Fixed

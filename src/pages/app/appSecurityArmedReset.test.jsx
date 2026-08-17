@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { AuthProvider } from '../../context/AuthContext.jsx'
 import { ToastProvider } from '../../components/ui'
@@ -83,8 +84,8 @@ const cancelButton = () => screen.queryByRole('button', { name: 'Cancel' })
 const pointerDownAt = (element) =>
   element.dispatchEvent(new Event('pointerdown', { bubbles: true }))
 
-async function armRow(index) {
-  fireEvent.click(revokeButtons()[index])
+async function armRow(user, index) {
+  await user.click(revokeButtons()[index])
   await waitFor(() => expect(confirmButton()).toBeTruthy())
 }
 
@@ -94,9 +95,10 @@ beforeEach(() => {
 
 describe('armed revoke reset', () => {
   it('Escape disarms a half-armed revoke', async () => {
+    const user = userEvent.setup()
     renderPage()
     await waitFor(() => expect(revokeButtons().length).toBe(3))
-    await armRow(1)
+    await armRow(user, 1)
     expect(confirmButton()).toBeTruthy()
 
     fireEvent.keyDown(document, { key: 'Escape' })
@@ -106,9 +108,10 @@ describe('armed revoke reset', () => {
   })
 
   it('a pointer-down outside the armed row disarms it', async () => {
+    const user = userEvent.setup()
     renderPage()
     await waitFor(() => expect(revokeButtons().length).toBe(3))
-    await armRow(1)
+    await armRow(user, 1)
     expect(confirmButton()).toBeTruthy()
 
     pointerDownAt(document.body)
@@ -118,9 +121,10 @@ describe('armed revoke reset', () => {
   })
 
   it('a pointer-down inside the armed row keeps it armed', async () => {
+    const user = userEvent.setup()
     renderPage()
     await waitFor(() => expect(revokeButtons().length).toBe(3))
-    await armRow(1)
+    await armRow(user, 1)
     expect(confirmButton()).toBeTruthy()
 
     pointerDownAt(confirmButton())
@@ -130,9 +134,10 @@ describe('armed revoke reset', () => {
   })
 
   it("pointer-down on another row's Revoke disarms this row, and the click re-arms the other", async () => {
+    const user = userEvent.setup()
     renderPage()
     await waitFor(() => expect(revokeButtons().length).toBe(3))
-    await armRow(1)
+    await armRow(user, 1)
     expect(confirmButton()).toBeTruthy()
 
     // Pointer-down lands on sess_003's Revoke — outside sess_002's armed row.
@@ -141,17 +146,21 @@ describe('armed revoke reset', () => {
     pointerDownAt(revokeButtons()[1])
     await waitFor(() => expect(confirmButton()).toBeNull())
 
-    // The click then arms sess_003 instead.
-    fireEvent.click(revokeButtons()[1])
+    // Wait for the disarm re-render to fully land — all three rows show
+    // "Revoke" again — before clicking, so the click can never race a
+    // pending state update. sess_003 is the last row (index 2).
+    await waitFor(() => expect(revokeButtons().length).toBe(3))
+    await user.click(revokeButtons()[2])
     await waitFor(() => expect(confirmButton()).toBeTruthy())
   })
 
   it('still revokes on the armed confirm click (no behavior regression)', async () => {
+    const user = userEvent.setup()
     renderPage()
     await waitFor(() => expect(revokeButtons().length).toBe(3))
-    await armRow(1)
+    await armRow(user, 1)
 
-    fireEvent.click(confirmButton())
+    await user.click(confirmButton())
 
     await waitFor(() => expect(revokeSession).toHaveBeenCalledWith('sess_002'))
     await waitFor(() => expect(screen.queryByText('Safari on iPhone')).toBeNull())
