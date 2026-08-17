@@ -1,5 +1,16 @@
 # Provance — Changelog
 
+## [2026-08-17] - Migration-convergence checker: banner ↔ filename + content-level verification
+
+### Added
+- `backend/scripts/check-migration-convergence.mjs` now also validates the runbook's **combined paste block at the content level**, not just the file set/order: every `-- MIGRATION nnnn · <file>.sql` banner inside the fenced ```sql block must (a) carry the nnnn prefix that matches its filename (a banner claiming `0006 · 0005_organization.sql` is caught), and (b) have the SQL underneath it byte-match (normalized: CR-stripped, trailing-whitespace-stripped) the on-disk migration file it claims — so a hand-edited, content-swapped, or mislabeled section fails CI instead of silently applying the wrong SQL. New `--runbook <path>` flag lets the checker run against any runbook copy (used by the negative-path probe).
+
+### Verified
+- Positive path: `node scripts/check-migration-convergence.mjs` exits **0** — `CONVERGED — file set, order, and combined-block banners match the runbook` (21 files on disk · 21 documented · 16 banner sections content-verified).
+- Negative path (temp broken runbook): banner mislabel (`0006 · 0005_organization.sql`) **and** a content swap inside the 0016 section both caught — exit **1** with `DRIFT: combined-block banner/content mismatch (content-level mislabel)` listing each offending section and the one-command `--fix`.
+- CRLF/EOL artifacts are CR-stripped before comparison (a lone `\r` before the closing fence no longer masquerades as drift; real content changes still mismatch).
+- Backend jest **470/470**.
+
 ## [2026-08-17] - Pre-walk project-identity guard on validate:scan-roundtrip
 
 ### Added

@@ -17,9 +17,16 @@
  *   3. Fails if the set OR the order drifted: a new migration file without a
  *      runbook regen, a renamed/reordered file, or a file the runbook lists
  *      that no longer exists on disk.
+ *   4. Content-level banner check on the runbook's combined paste block: every
+ *      `-- MIGRATION nnnn · <file>.sql` banner inside the fenced ```sql block
+ *      must (a) carry the nnnn prefix that matches its filename, and (b) have
+ *      the SQL underneath it byte-match (normalized) the on-disk migration
+ *      file it claims — so a hand-edited or content-swapped section is caught
+ *      too, not just set/order drift.
  *
- * Exit codes: 0 = converged (file set + order match the runbook) · 1 = drift
- * (prints the exact diff + the one-command fix) · 2 = env/usage error.
+ * Exit codes: 0 = converged (file set + order + combined-block banners match
+ * the runbook) · 1 = drift (prints the exact diff + the one-command fix) ·
+ * 2 = env/usage error.
  *
  * Flags:
  *   --fix     regenerate the manifest section IN PLACE from the current
@@ -49,7 +56,30 @@ const APPLIER = new URL('./apply-migrations.mjs', import.meta.url);
 const BEGIN = '<!-- BEGIN MIGRATION MANIFEST';
 const END = '<!-- END MIGRATION MANIFEST -->';
 
+// Banner header inside the runbook's combined paste block — the same format
+// validate-migrations.mjs buildPasteBlock emits:
+//   -- =====================================================================
+//   -- MIGRATION 0005 · 0005_organization.sql
+//   -- =====================================================================
+const BANNER_RE = /^-- MIGRATION\s+(\d{4})\s*·\s*([0-9A-Za-z_]+\.sql)\s*$/gm;
+
 const out = (...parts) => console.log(...parts);
+
+/**
+ * Normalize one migration's SQL the same way validate-migrations.mjs does
+ * when it emits the paste block (CRLF → LF, strip trailing whitespace per
+ * line, drop leading/trailing blank lines) so a banner's content and the
+ * on-disk file are byte-comparable.
+ */
+const normalizeSql = (sql) =>
+  sql
+    // CR is pure whitespace in SQL — strip every \r (CRLF → LF, and a lone
+    // trailing CR that a CRLF-written runbook can leave before the closing
+    // fence) so harmless EOL artifacts never masquerade as content drift,
+    // while real content changes still mismatch.
+    .replace(/\r/g, '')
+    .replace(/[ \t]+$/gm, '')
+    .replace(/^\n+|\n+$/g, '');
 
 function parseManifest(text) {
   const start = text.indexOf(BEGIN);
@@ -140,10 +170,104 @@ const missing = diskFiles.filter((f) => !manifestSet.has(f)); // on disk, not do
 const extra = manifestFiles.filter((f) => !diskSet.has(f)); // documented, not on disk
 const orderDrift = JSON.stringify(diskFiles) !== JSON.stringify(manifestFiles);
 
+// 4. Content-level banner check on the combined paste block: banner nnnn
+// prefix ↔ filename, and the SQL under each banner ↔ the on-disk file.
+function checkCombinedBlock(text) {
+  const bannerIndex = text.indexOf('-- MIGRATION');
+  if (bannerIndex === -1) return null;
+
+  // The block is the ```sql fence that contains the banners (the runbook
+  // also has other fences — bash + a sample query).
+  const fenceStart = text.lastIndexOf('```sql', bannerIndex);
+  const contentStart = fenceStart === -1 ? -1 : text.indexOf('\n', fenceStart) + 1;
+  const fenceEnd = text.indexOf('\n```', bannerIndex);
+  if (contentStart === -1 || fenceEnd === -1 || fenceEnd <= contentStart) return null;
+  const block = text.slice(contentStart, fenceEnd);
+
+  const banners = [];
+  let match;
+  while ((match = BANNER_RE.exec(block)) !== null) {
+    banners.push({
+      number: match[1],
+      file: match[2],
+      index: match.index,
+      length: match[0].length,
+    });
+  }
+
+  if (banners.length === 0) {
+    return {
+      present: true,
+      count: 0,
+      issues: [{ file: '(combined block)', detail: 'no -- MIGRATION banners inside the fenced SQL block' }],
+    };
+  }
+
+  const issues = [];
+  for (let i = 0; i < banners.length; i += 1) {
+    const banner = banners[i];
+
+    // (a) nnnn prefix must match the filename it claims.
+    if (!banner.file.startsWith(`${banner.number}_`)) {
+      issues.push({
+        file: banner.file,
+        detail: `banner number ${banner.number} does not match the filename prefix — banner says ${banner.number} · ${banner.file}`,
+      });
+    }
+
+    // (b) The SQL under this banner must byte-match the on-disk file.
+    const start = banner.index + banner.length;
+    const end = i + 1 < banners.length ? banners[i + 1].index : block.length;
+    let section = block.slice(start, end);
+    // Strip the section's own leading separator (-- ====…, emitted right
+    // after the banner) AND the next section's opener separator that ends up
+    // at the tail of this slice, so only the migration's own SQL remains.
+    section = section
+      .replace(/^\s*--\s*={5,}.*(?:\r?\n|$)/, '')
+      .replace(/\s*--\s*={5,}\s*$/, '');
+    const sectionSql = normalizeSql(section);
+
+    const filePath = new URL(`../../supabase/migrations/${banner.file}`, import.meta.url);
+    let diskSql = null;
+    try {
+      diskSql = normalizeSql(readFileSync(filePath, 'utf8'));
+    } catch {
+      issues.push({
+        file: banner.file,
+        detail: 'banner references a migration file that does not exist on disk',
+      });
+      continue;
+    }
+    if (sectionSql !== diskSql) {
+      issues.push({
+        file: banner.file,
+        detail: 'SQL under the banner does not match supabase/migrations/' + banner.file + ' (content-level mislabel)',
+      });
+    }
+  }
+
+  return { present: true, count: banners.length, issues };
+}
+
+const combined = checkCombinedBlock(runbookText);
+
 out(`Migration convergence check — ${diskFiles.length} files on disk · ${manifestFiles.length} documented`);
+if (combined) {
+  out(
+    `Combined-block banners — ${combined.count} sections` +
+      (combined.count > 0 && combined.issues.length === 0 ? ' · content verified' : ''),
+  );
+}
 out('─'.repeat(80));
-if (missing.length === 0 && extra.length === 0 && !orderDrift) {
-  out('CONVERGED — file set + order match the runbook manifest.');
+
+const bannerIssues = combined ? combined.issues : [];
+
+if (missing.length === 0 && extra.length === 0 && !orderDrift && bannerIssues.length === 0) {
+  if (combined && combined.count === 0) {
+    out('CONVERGED — file set + order match, but the combined block has no banner sections.');
+  } else {
+    out('CONVERGED — file set, order, and combined-block banners match the runbook.');
+  }
   process.exit(0);
 }
 
@@ -159,6 +283,12 @@ if (orderDrift && missing.length === 0 && extra.length === 0) {
   out('DRIFT: same file set, different order:');
   out(`  disk:     ${diskFiles.join(', ')}`);
   out(`  runbook:  ${manifestFiles.join(', ')}`);
+}
+if (bannerIssues.length) {
+  out('DRIFT: combined-block banner/content mismatch (content-level mislabel):');
+  for (const issue of bannerIssues) {
+    out(`  ${issue.file} — ${issue.detail}`);
+  }
 }
 out('');
 out('Fix (one command): cd backend && npm run check:migrations -- --fix');
