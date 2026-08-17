@@ -1,5 +1,13 @@
 # Provance — Changelog
 
+## [2026-08-17] - Usage-unit billing proposal (VUs)
+
+### Added
+- **`docs/engineering/USAGE_CREDITS_PROPOSAL.md`** — founder-review proposal replacing the flat monthly scan-count quota with a metered **VU (Verification Unit)** ledger: per-depth unit costs (quick 1 / standard 10 / deep 100), deduct-on-complete with failed scans = 0, monthly allowances with bounded rollover (≤1×), mid-cycle top-up packs, three overage modes (hard stop default / auto top-up / soft degrade), the existing ≥85% warning chip + projection extended to units, and the API/fintech volume-price ladder + per-key spend caps + enterprise committed blocks. Includes a what-exists-vs-what's-new table, a 4-step rollout order (ledger first, no payment code needed), and 5 open decisions for the Founder. Builds on the ratified `BILLING_AND_ENTITLEMENTS_CONTRACT.md`.
+
+### Verified
+- Doc-only change — no code, no gates affected. Follow-up log updated with the proposal row + rollout next-steps.
+
 ## [2026-08-17] - Copy-honesty pass: /security + /benchmark overclaims fixed
 
 ### Changed
