@@ -37,7 +37,7 @@ const cases = [
 
 export default function UseCases() {
   return (
-    <section id="cases" className="section-padding bg-ink text-phosphor relative overflow-hidden">
+    <section id="cases" className="section-padding bg-charcoal text-parchment relative overflow-hidden">
       <div className="absolute inset-0 forensic-grid opacity-[0.04]" />
       <div className="content-container relative z-10">
         <motion.div
@@ -47,8 +47,8 @@ export default function UseCases() {
           <motion.span variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: LUXE } } }} className="eyebrow eyebrow-dark">
             Use Cases
           </motion.span>
-          <motion.h2 variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0, transition: { duration: 0.7, delay: 0.08, ease: LUXE } } }} className="font-display text-3xl font-extrabold tracking-[-0.03em] sm:text-4xl lg:text-[3.4rem] lg:leading-[1.05] mt-5 text-balance">
-            Built for <span className="text-trust-soft">real-world</span> verification work.
+          <motion.h2 variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0, transition: { duration: 0.7, delay: 0.08, ease: LUXE } } }} className="font-serif text-3xl sm:text-4xl lg:text-[3.4rem] lg:leading-[1.05] mt-5 text-balance">
+            Built for <span className="italic text-trust-soft">real-world</span> verification work.
           </motion.h2>
         </motion.div>
 
@@ -67,8 +67,8 @@ export default function UseCases() {
                   <span className="mb-5 flex h-11 w-11 items-center justify-center rounded-full bg-trust/10 text-trust-soft transition-transform duration-500 ease-luxe group-hover:scale-110">
                     {c.icon}
                   </span>
-                  <h3 className="font-display text-lg font-semibold tracking-tight mb-3">{c.title}</h3>
-                  <p className="text-phosphor-dim text-sm leading-relaxed">{c.desc}</p>
+                  <h3 className="font-serif text-xl mb-3">{c.title}</h3>
+                  <p className="text-stone text-sm leading-relaxed">{c.desc}</p>
                 </div>
               </div>
             </motion.div>

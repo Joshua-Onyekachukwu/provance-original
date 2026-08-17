@@ -1,5 +1,15 @@
 # Provance — Changelog
 
+## [2026-08-17] - Revert the frontend-design "Examination" pass (Founder request)
+
+### Changed
+- **Reverted** the frontend-design pass (commit `96973ea`): the Hero is back to the parchment/serif version (`b88e703` state), and the font stack is back to **Plus Jakarta Sans + Manrope** for public surfaces (Archivo removed from `index.html` + `index.css`; `--font-display` token removed; `--font-sans` restored).
+- The nav, WhyProvance, UseCases, HowItWorks, Pricing, SampleReport, CLEARAnswers, and Footer are all restored to the matching `b88e703` state so the page stays coherent (the dark-glass nav variant only existed for the ink hero).
+- `git diff b88e703` on all reverted files is **empty** — the working tree is byte-identical to the previously-approved high-end pass.
+
+### Verification
+- vitest **592/592**, lint 0 errors (36-warning baseline), `npm run build` clean, `guard:grid` clean. The restored state previously passed the 260/260 responsive audit when first committed (`b88e703`).
+
 ## [2026-08-17] - find-skills discovery for the Founder
 
 ### Added

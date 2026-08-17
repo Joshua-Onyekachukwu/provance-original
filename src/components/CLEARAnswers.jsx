@@ -19,8 +19,8 @@ export default function CLEARAnswers() {
           <motion.span variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5 } } }} className="eyebrow">
             Frequently Asked Questions
           </motion.span>
-          <motion.h2 variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, delay: 0.1 } } }} className="font-display text-3xl font-extrabold tracking-[-0.03em] sm:text-4xl lg:text-5xl mt-4 text-balance text-charcoal">
-            Everything you need to <span className="text-trust">know</span>.
+          <motion.h2 variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, delay: 0.1 } } }} className="font-serif text-3xl sm:text-4xl lg:text-5xl mt-4 text-balance text-charcoal">
+            Everything you need to <span className="italic text-trust">know</span>.
           </motion.h2>
         </motion.div>
 
@@ -35,7 +35,7 @@ export default function CLEARAnswers() {
               className="surface-card group overflow-hidden open:border-trust/18 transition-all duration-300"
             >
               <summary className="flex items-center justify-between px-6 py-5 cursor-pointer list-none">
-                <span className="font-display text-base font-medium text-charcoal pr-4">{item.q}</span>
+                <span className="font-serif text-lg text-charcoal pr-4">{item.q}</span>
                 <svg className="w-5 h-5 text-charcoal-light shrink-0 group-open:rotate-180 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>

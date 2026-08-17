@@ -22,7 +22,7 @@ export default function HowItWorks() {
           <motion.span variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: LUXE } } }} className="eyebrow">
             How It Works
           </motion.span>
-          <motion.h2 variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0, transition: { duration: 0.7, delay: 0.08, ease: LUXE } } }} className="mt-5 font-display text-3xl font-extrabold tracking-[-0.03em] text-balance text-charcoal sm:text-4xl lg:text-[3.4rem] lg:leading-[1.05]">
+          <motion.h2 variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0, transition: { duration: 0.7, delay: 0.08, ease: LUXE } } }} className="mt-5 font-serif text-3xl text-balance text-charcoal sm:text-4xl lg:text-[3.4rem] lg:leading-[1.05]">
             From upload to a report your team can defend.
           </motion.h2>
           <motion.p variants={{ hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0, transition: { duration: 0.7, delay: 0.14, ease: LUXE } } }} className="mt-6 text-lg leading-relaxed text-[#3f3f46]">
@@ -48,12 +48,12 @@ export default function HowItWorks() {
                 <InteractivePanel className="bezel-shell h-full backdrop-blur-xl">
                   <div className="bezel-core relative z-10 h-full p-6 md:p-8 text-center lg:text-left">
                     <div className="mb-5 flex items-center justify-between">
-                      <span className="font-display text-5xl sm:text-6xl text-trust/20 font-extrabold leading-none">{step.num}</span>
+                      <span className="font-serif text-5xl sm:text-6xl text-trust/16 font-bold leading-none">{step.num}</span>
                       <span className="rounded-full border border-trust/14 bg-trust-soft/70 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.16em] text-trust-strong">
                         Step {i + 1}
                       </span>
                     </div>
-                    <h3 className="font-display text-xl sm:text-2xl font-semibold tracking-tight text-charcoal mb-3">{step.title}</h3>
+                    <h3 className="font-serif text-xl sm:text-2xl text-charcoal mb-3">{step.title}</h3>
                     <p className="text-charcoal-mid text-sm leading-relaxed max-w-sm">{step.desc}</p>
                   </div>
                 </InteractivePanel>

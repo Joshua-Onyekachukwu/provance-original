@@ -29,7 +29,7 @@ const reasons = [
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.5 6.75h15m-15 5.25h15m-15 5.25h9" /></svg>
     ),
     title: 'Image And Video Coverage',
-    desc: 'Image-first for early access, with the same evidence-led workflow extending to video as it rolls out.',
+    desc: 'Start with image-first early access now and extend the same evidence-led workflow into richer video review over time.',
   },
 ]
 
@@ -45,7 +45,7 @@ const SPANS = [
 
 export default function WhyProvance() {
   return (
-    <section id="why" className="section-padding bg-ink text-phosphor relative overflow-hidden">
+    <section id="why" className="section-padding bg-charcoal text-parchment relative overflow-hidden">
       <div className="absolute inset-0 forensic-grid opacity-[0.04]" />
       <div className="content-container relative z-10">
         <motion.div
@@ -55,10 +55,10 @@ export default function WhyProvance() {
           <motion.span variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: LUXE } } }} className="eyebrow eyebrow-dark">
             Why Provance
           </motion.span>
-          <motion.h2 variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0, transition: { duration: 0.7, delay: 0.08, ease: LUXE } } }} className="font-display text-3xl font-extrabold tracking-[-0.03em] sm:text-4xl lg:text-[3.4rem] lg:leading-[1.05] mt-5 text-balance">
-            Trust is earned through <span className="text-(--color-verdict-authentic)">evidence</span>.
+          <motion.h2 variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0, transition: { duration: 0.7, delay: 0.08, ease: LUXE } } }} className="font-serif text-3xl sm:text-4xl lg:text-[3.4rem] lg:leading-[1.05] mt-5 text-balance">
+            Trust is earned through <span className="italic text-trust-soft">evidence</span>.
           </motion.h2>
-          <motion.p variants={{ hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0, transition: { duration: 0.7, delay: 0.14, ease: LUXE } } }} className="mt-6 text-lg leading-relaxed text-phosphor-dim max-w-xl mx-auto">
+          <motion.p variants={{ hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0, transition: { duration: 0.7, delay: 0.14, ease: LUXE } } }} className="mt-6 text-lg leading-relaxed text-stone max-w-xl mx-auto">
             Generic detectors return a score. Provance gives teams a structured case file they can
             inspect, discuss, and act on.
           </motion.p>
@@ -79,8 +79,8 @@ export default function WhyProvance() {
                   <span className="mb-5 flex h-11 w-11 items-center justify-center rounded-full bg-trust/10 text-trust-soft transition-transform duration-500 ease-luxe group-hover:scale-110">
                     {r.icon}
                   </span>
-                  <h3 className="font-display text-lg font-semibold tracking-tight mb-3">{r.title}</h3>
-                  <p className="text-phosphor-dim text-sm leading-relaxed">{r.desc}</p>
+                  <h3 className="font-serif text-xl mb-3">{r.title}</h3>
+                  <p className="text-stone text-sm leading-relaxed">{r.desc}</p>
                 </div>
               </div>
             </motion.div>

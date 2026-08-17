@@ -20,36 +20,14 @@
   --color-amber-light: #d69a42;
   --color-amber-glow: #f0bf6c;
   --color-amber-subtle: #f8ecd9;
-
-  /* Instrument world — the dark analysis face of the public site. The
-     landing hero, evidence sections, and footer are the instrument; the
-     warm parchment tokens below are the printed case-file paper (Sample
-     Report + print pages). Verdict indicator colors are NOT declared here:
-     they come from VERDICT_PALETTE in scanPresentation.js via
-     applyVerdictPalette() at boot (--color-verdict-* / --color-tone-*). */
-  --color-ink: #0a0c12;
-  --color-ink-panel: #0f131c;
-  --color-ink-raise: #151a26;
-  --color-phosphor: #edf1f7;
-  --color-phosphor-dim: #a5aebf;
-  --color-phosphor-faint: #7b8494;
-  --color-hairline: #242b3a;
-
-  --font-app: "Inter", system-ui, -apple-system, sans-serif;
-  /* Fraunces is the PRINTED REPORT voice — reserved for the paper artifact
-     (Sample Report + print pages), never the instrument surfaces. */
+  --font-app: "Inter", "Manrope", system-ui, -apple-system, sans-serif;
   --font-serif: "Fraunces", Georgia, serif;
-  /* Archivo is the instrument display/body voice for public surfaces. */
-  --font-display: "Archivo", "Inter", system-ui, -apple-system, sans-serif;
-  --font-sans: "Archivo", "Inter", system-ui, -apple-system, sans-serif;
+  --font-sans: "Plus Jakarta Sans", "Manrope", Inter, system-ui, -apple-system, sans-serif;
   --font-mono: "IBM Plex Mono", "Fira Code", monospace;
 
   /* Premium motion — the "luxe" ease from the design system: a hard, fast
      start that settles with barely any overshoot (skill: never linear/
-     ease-in-out on public surfaces).
-
-     NOTE: keep the luxe easing (it passed review), but the visual world is
-     now the instrument/paper duality — see the frontend-design pass. */
+     ease-in-out on public surfaces). */
   --ease-luxe: cubic-bezier(0.32, 0.72, 0, 1);
   --ease-luxe-soft: cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -488,15 +466,6 @@ summary {
     linear-gradient(rgba(190, 197, 208, 0.18) 1px, transparent 1px),
     linear-gradient(90deg, rgba(190, 197, 208, 0.18) 1px, transparent 1px);
   background-size: 40px 40px;
-}
-
-/* Instrument grid — fine phosphor hairlines for the dark analysis surfaces
-   (hero examination frame, evidence sections). Purely decorative. */
-.instrument-grid {
-  background-image:
-    linear-gradient(rgba(237, 241, 247, 0.055) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(237, 241, 247, 0.055) 1px, transparent 1px);
-  background-size: 32px 32px;
 }
 
 .amber-glow {
