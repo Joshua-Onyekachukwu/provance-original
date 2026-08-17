@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import SampleReport from './SampleReport'
+import SampleReportDocument from './SampleReportDocument'
 import { buildReportAppendix } from '../lib/reportAppendix.js'
 import {
   sampleAiDetectionResults,
@@ -27,15 +28,90 @@ import {
   sampleWatermarkAndProvenance,
 } from '../lib/sampleReportContent.js'
 
-/**
- * The landing Sample Report section renders the full branded
- * verification-report document (SampleReportDocument, non-compact), so every
- * content-model export in sampleReportContent.js must appear on the landing.
- * This suite walks the model key-by-key and asserts each one lands in the DOM.
- */
-describe('SampleReport (landing section) renders the full report content model', () => {
-  // Tolerates a value appearing in more than one section (e.g. the
-  // methodology version shows in both the report and the appendix).
+// ─────────────────────────────────────────────────────────────────────────
+// Landing Sample Report section — the compact teaser. It must show the
+// report's headline content (seal, verdict, metrics, key signals) without
+// dumping the full document (which lives on /sample-report).
+// ─────────────────────────────────────────────────────────────────────────
+describe('SampleReport (landing section) — compact verification summary', () => {
+  it('renders the circular Verified with Provance seal and the branded ink band', () => {
+    render(
+      <MemoryRouter>
+        <SampleReport />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByLabelText('Verified with Provance')).toBeInTheDocument()
+    expect(screen.getByText('Provance')).toBeInTheDocument()
+    expect(screen.getByText('Verification report — sample')).toBeInTheDocument()
+  })
+
+  it('shows the verdict headline and the three headline metrics', () => {
+    render(
+      <MemoryRouter>
+        <SampleReport />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('Overall verdict')).toBeInTheDocument()
+    expect(screen.getByText(sampleReportCover.verdict)).toBeInTheDocument()
+    expect(screen.getByText('Confidence')).toBeInTheDocument()
+    expect(screen.getByText(sampleReportCover.confidenceScore)).toBeInTheDocument()
+    expect(screen.getByText('Authenticity')).toBeInTheDocument()
+    expect(screen.getByText(sampleReportCover.authenticityScore)).toBeInTheDocument()
+    expect(screen.getByText('Risk')).toBeInTheDocument()
+    expect(screen.getByText(sampleReportCover.riskLevel)).toBeInTheDocument()
+  })
+
+  it('shows the key signal rows and the media frame', () => {
+    render(
+      <MemoryRouter>
+        <SampleReport />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('Key signals')).toBeInTheDocument()
+    for (const item of sampleAiDetectionResults.slice(0, 3)) {
+      expect(screen.getByText(item.label)).toBeInTheDocument()
+      expect(screen.getByText(item.score)).toBeInTheDocument()
+    }
+    expect(screen.getByAltText('Representative frame from the analyzed sample media.')).toBeInTheDocument()
+    expect(screen.getByText('Sample media')).toBeInTheDocument()
+  })
+
+  it('links through to the full report and stays compact (no deep sections)', () => {
+    render(
+      <MemoryRouter>
+        <SampleReport />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText(sampleReportCover.fileName)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /See the full report/ })).toHaveAttribute('href', '/sample-report')
+    expect(screen.getByRole('link', { name: /Download Sample PDF/ })).toHaveAttribute('href', '/sample-report/print')
+    expect(screen.getByRole('link', { name: /View Full Sample Report/ })).toHaveAttribute('href', '/sample-report')
+
+    // Compact by design — the deep report sections belong to /sample-report.
+    for (const sectionLabel of [
+      'Media information',
+      'Metadata analysis',
+      'AI detection results',
+      'Technical findings',
+      'Recommended next steps',
+      'Appendix',
+      'Reviewer notes',
+      'Disclaimer',
+    ]) {
+      expect(screen.queryByText(sectionLabel), `"${sectionLabel}" should not render on the landing`).not.toBeInTheDocument()
+    }
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────
+// Full report document (the /sample-report surface) — every content-model
+// export in sampleReportContent.js must render here.
+// ─────────────────────────────────────────────────────────────────────────
+describe('SampleReportDocument renders the full report content model', () => {
   const expectVisible = (text) => {
     expect(screen.getAllByText(text).length, `expected "${text}" in the document`).toBeGreaterThan(0)
   }
@@ -47,20 +123,15 @@ describe('SampleReport (landing section) renders the full report content model',
     }
   }
 
-  it('renders the branded cover — ink wordmark, verdict banner, report identity', () => {
-    render(
-      <MemoryRouter>
-        <SampleReport />
-      </MemoryRouter>,
-    )
+  const renderDocument = () => render(<SampleReportDocument />)
 
-    // Ink brand band (mirror of the pdfkit cover header)
+  it('renders the branded cover — ink wordmark, verdict banner, report identity', () => {
+    renderDocument()
+
     expectVisible('Provance')
     expectVisible('Verification report')
-    // Verdict banner + headline
     expectVisible('Overall verdict')
     expectVisible(sampleReportCover.verdict)
-    // Report identity card
     expectVisible('Report identity')
     expectVisible(sampleReportMeta.reportId)
     expectVisible(sampleReportMeta.verificationId)
@@ -68,11 +139,7 @@ describe('SampleReport (landing section) renders the full report content model',
   })
 
   it('renders the executive summary, media information, metadata, and risk sections', () => {
-    render(
-      <MemoryRouter>
-        <SampleReport />
-      </MemoryRouter>,
-    )
+    renderDocument()
 
     expectVisible('Executive summary')
     expectVisible(sampleExecutiveSummary.summary)
@@ -88,11 +155,7 @@ describe('SampleReport (landing section) renders the full report content model',
   })
 
   it('renders the timeline, version information, and the AI signal sections', () => {
-    render(
-      <MemoryRouter>
-        <SampleReport />
-      </MemoryRouter>,
-    )
+    renderDocument()
 
     expectVisible('Timeline of analysis')
     for (const [, step] of sampleTimeline) expectVisible(step)
@@ -113,11 +176,7 @@ describe('SampleReport (landing section) renders the full report content model',
   })
 
   it('renders provenance, frame analysis, model, cross-validation, and scope sections', () => {
-    render(
-      <MemoryRouter>
-        <SampleReport />
-      </MemoryRouter>,
-    )
+    renderDocument()
 
     expectVisible('Watermark and provenance checks')
     expectRows(sampleWatermarkAndProvenance)
@@ -139,11 +198,7 @@ describe('SampleReport (landing section) renders the full report content model',
   })
 
   it('renders technical findings, next steps, appendix, reviewer notes, and the disclaimer', () => {
-    render(
-      <MemoryRouter>
-        <SampleReport />
-      </MemoryRouter>,
-    )
+    renderDocument()
 
     expectVisible('Technical findings')
     for (const item of sampleTechnicalFindings) {
@@ -173,11 +228,7 @@ describe('SampleReport (landing section) renders the full report content model',
   })
 
   it('renders the key metrics grid from the content model', () => {
-    render(
-      <MemoryRouter>
-        <SampleReport />
-      </MemoryRouter>,
-    )
+    renderDocument()
 
     for (const metric of sampleMetrics) {
       expectVisible(metric.label)

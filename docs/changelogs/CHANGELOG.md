@@ -1,5 +1,14 @@
 # Provance — Changelog
 
+## [2026-08-17] - Landing Sample Report section redesigned as a compact verification summary
+
+### Changed
+- **`src/components/SampleReport.jsx`** — the landing Sample Report section no longer dumps the full report document; it's now a short, compact **case-file teaser** that shows the capability without the details. The card keeps the pdfkit-style ink band (PROVANCE / VERIFICATION REPORT — SAMPLE), the verdict headline with tone rule, three headline metric pills (Confidence / Authenticity / Risk from `sampleReportCover`), the sample media frame with a "Sample media" tag, the top three AI-detection signal rows, and a report-identity footer with a "See the full report" link. At the card's top-right sits the new **circular "Verified with Provance" seal** — an SVG textPath ring ("VERIFIED WITH PROVANCE •") around a charcoal disc with a gold check, overlapping the card edge like a verification stamp. The full document is unchanged at `/sample-report` and `/sample-report/print`.
+- **`src/components/SampleReport.test.jsx`** retargeted to 10 tests: a compact-teaser suite (seal via `getByLabelText('Verified with Provance')`, ink band, verdict, metric pills, signal rows, CTAs, and assertions that the deep sections — Media information, Metadata analysis, AI detection results, Technical findings, Appendix, Reviewer notes, Disclaimer — do **not** render on the landing) plus the full content-model walk now rendering `SampleReportDocument` directly (the `/sample-report` surface), so completeness is still pinned at the component that owns it.
+
+### Verified
+- vitest **607/607** (68 files, 10 report tests); `audit:responsive` **260/260** clean at 375/640/768/1024/1280 including the new card; `audit:a11y` **34/34** routes clean (seal exposed as `role="img"` + `aria-label`, no new findings); `npm run build` clean; lint 0 errors. Preview verified: seal geometry overlaps the card top-right (74px circle, circular text + check rendered).
+
 ## [2026-08-17] - Accessibility audit gate + landing sample-report coverage
 
 ### Added
