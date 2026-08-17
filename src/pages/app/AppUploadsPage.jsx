@@ -4,12 +4,17 @@ import {
   Button,
   Card,
   EmptyState,
+  LivePollIndicator,
   useRegisterCommands,
   useToast,
 } from '../../components/ui'
 import ForensicMediaFrame from '../../components/ForensicMediaFrame.jsx'
-import { formatFileSize } from '../../components/app/scanPresentation.js'
-import { USE_MOCK, initiateScan, submitScan } from '../../lib/api.js'
+import {
+  formatFileSize,
+  scanNeedsPolling,
+} from '../../components/app/scanPresentation.js'
+import { USE_MOCK, getScan, initiateScan, submitScan } from '../../lib/api.js'
+import { useResource } from '../../lib/useResource.js'
 import { supabase } from '../../lib/supabase.js'
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
@@ -262,6 +267,28 @@ export default function AppUploadsPage() {
     }, 2000)
     return () => window.clearTimeout(timer)
   }, [phase, activeScanId, skipAutoNav, navigate, deduplicated])
+
+  // Live status tracking of the submitted scan: while it is queued /
+  // processing, GET /scans/:id refreshes every 5s so the status panel
+  // reflects real worker progress (and the live dot shows it is tracking) —
+  // same pattern as the report detail pane. Polling idles once the scan
+  // completes or fails.
+  const activeScan = useResource(
+    () =>
+      activeScanId
+        ? getScan(activeScanId).then((r) => r?.scan || r)
+        : Promise.resolve(null),
+    [activeScanId],
+    {
+      pollMs: 5000,
+      pollWhen: (state) => scanNeedsPolling(state.data),
+    },
+  )
+  const scanLive = Boolean(
+    activeScan.status === 'ready' &&
+      activeScan.data &&
+      scanNeedsPolling(activeScan.data),
+  )
 
   // Dev-only demo affordance (inert in production builds): ?demo=file seeds a
   // sample image so the upload flow can be exercised without a native file
@@ -587,6 +614,7 @@ export default function AppUploadsPage() {
                     ? 'Verification could not start'
                     : 'Moving through the pipeline'
               }
+              actions={scanLive ? <LivePollIndicator /> : null}
               description={
                 phase === 'queued'
                   ? deduplicated

@@ -15,7 +15,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-export default function useMockData(mockFn, params = null) {
+export default function useMockData(mockFn, params = null, options = {}) {
   const [state, setState] = useState({
     data: null,
     loading: true,
@@ -24,6 +24,12 @@ export default function useMockData(mockFn, params = null) {
 
   const paramsRef = useRef(params)
   paramsRef.current = params
+
+  const pollMs = options.pollMs || 0
+  const pollWhenRef = useRef(options.pollWhen)
+  pollWhenRef.current = options.pollWhen
+  const stateRef = useRef(state)
+  stateRef.current = state
 
   const isMountedRef = useRef(true)
   const fetchIdRef = useRef(0)
@@ -77,6 +83,54 @@ export default function useMockData(mockFn, params = null) {
       isMountedRef.current = false
     }
   }, [execute])
+
+  // ── Silent background polling (optional, pollMs > 0) ─────────────────────
+  // Same contract as useResource's poll: swaps fresh data in place without
+  // ever flashing the loading state, and keeps last-known-good data if a poll
+  // fails — so a live panel (e.g. admin monitoring) can track worker progress
+  // without flickering or blanking on a transient error.
+  const poll = useCallback(async () => {
+    fetchIdRef.current += 1
+    const thisFetchId = fetchIdRef.current
+    try {
+      const result = await mockFn(paramsRef.current ?? {})
+      if (isMountedRef.current && thisFetchId === fetchIdRef.current) {
+        setState({ data: result, loading: false, error: null })
+      }
+    } catch {
+      if (isMountedRef.current && thisFetchId === fetchIdRef.current) {
+        // Keep last-known-good — a transient poll failure must not flip a
+        // live panel into its error state.
+        setState((prev) => ({ ...prev, error: null }))
+      }
+    }
+  }, [mockFn])
+
+  useEffect(() => {
+    if (!pollMs || pollMs <= 0) return undefined
+
+    let cancelled = false
+    let inFlight = false
+
+    const tick = async () => {
+      if (cancelled || inFlight) return
+      const gate = pollWhenRef.current
+      if (gate && !gate(stateRef.current)) return
+      inFlight = true
+      try {
+        await poll()
+      } finally {
+        inFlight = false
+      }
+    }
+
+    const interval = window.setInterval(tick, pollMs)
+    return () => {
+      cancelled = true
+      window.clearInterval(interval)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pollMs, poll])
 
   return {
     data: state.data,

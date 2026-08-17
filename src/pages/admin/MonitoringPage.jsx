@@ -14,6 +14,7 @@ import {
 import {
   Button,
   HourlyBarChart,
+  LivePollIndicator,
   StatCard,
   TrendChart,
   useRegisterCommands,
@@ -89,7 +90,7 @@ function PanelSkeleton({ rows = 4 }) {
 // Queue health (headline stats + shared HourlyBarChart primitive)
 // ---------------------------------------------------------------------------
 
-function QueueHealthPanel({ queue }) {
+function QueueHealthPanel({ queue, live = false }) {
   const hourly = useMemo(() => queue?.hourly_series || [], [queue?.hourly_series])
   // Series max — kept here only to gate the chart block below (the
   // HourlyBarChart primitive recomputes it internally).
@@ -122,9 +123,15 @@ function QueueHealthPanel({ queue }) {
           </p>
           <p className="mt-1 text-sm text-charcoal-mid">Backlog and worker cadence over 12h</p>
         </div>
-        <span className="rounded-full bg-stone-light/50 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.16em] text-charcoal-mid">
-          Job queue
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full bg-stone-light/50 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.16em] text-charcoal-mid">
+            Job queue
+          </span>
+          {/* The monitoring feed polls every 5s while loaded — the live dot
+              mirrors the queue/scan surfaces so every auto-refreshing admin
+              panel reads the same way. */}
+          {live && <LivePollIndicator />}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -510,7 +517,13 @@ export default function MonitoringPage() {
   const navigate = useNavigate()
   const demoState = useDemoState()
 
-  const { data: rawMonitoring, loading, error, refetch } = useMockData(getMonitoring)
+  // Live monitoring: the feed refreshes silently every 5s (no loading flash,
+  // last-known-good on a failed poll) so the queue-health panel tracks real
+  // worker cadence — the live dot shows the surface is auto-refreshing, same
+  // as the workspace queue/dashboard/report surfaces.
+  const { data: rawMonitoring, loading, error, refetch } = useMockData(getMonitoring, null, {
+    pollMs: 5000,
+  })
 
   // ── Demo-state forcing (dev-only, ?state=loading|empty|error) ─────────────
   const monitoring = useMemo(() => {
@@ -728,7 +741,7 @@ export default function MonitoringPage() {
 
       {/* ── Queue health + database performance ────────────────────────────── */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <QueueHealthPanel queue={queueHealth} />
+        <QueueHealthPanel queue={queueHealth} live={Boolean(monitoring)} />
         <DBPerformancePanel db={dbPerformance} />
       </div>
 

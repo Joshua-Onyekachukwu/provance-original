@@ -1,5 +1,19 @@
 # Provance — Changelog
 
+## [2026-08-17] - LivePollIndicator on every remaining polling surface
+
+### Added
+- `AppHistoryPage` — the ledger's existing 5s poll now shows the indicator: `actions={live ? <LivePollIndicator /> : null}` on the Card, gated by the same `hasActiveScanWork` predicate the poll runs under (hidden when the queue drains).
+- `AppUploadsPage` — the status panel now live-tracks the submitted scan: a `useResource` on `getScan(activeScanId)` polls every 5s while the scan is queued/processing (same `scanNeedsPolling` gate as the report detail pane), with the indicator in the Upload status card.
+- `MonitoringPage` — the feed now polls silently every 5s (`useMockData(..., { pollMs: 5000 })`), with the indicator beside the queue-health panel's Job queue chip.
+- `src/lib/useMockData.js` — new optional third `options` argument: `pollMs` runs a silent background poll (no loading flash, keeps last-known-good on a failed poll — same contract as `useResource`), plus an optional `pollWhen` gate.
+
+### Tests
+- `useMockData.test.jsx` — 3 tests locking the poll contract: silent in-place swap without a loading flash, last-known-good on a failed poll, and no polling when `pollMs` is omitted (backwards compatible).
+
+### Verified
+- Headless probe at 1280px: indicator renders on `/app/uploads` during the `?demo=start` flow, on `/app/history` once a queued scan exists (matches the dashboard's data-gated behavior), and on `/app/admin/monitoring`. Responsive audit subset **15/15** clean at 375–1280; vitest **563/563**; lint 0 errors; build clean.
+
 ## [2026-08-17] - Merged dev into main — milestone live on Vercel
 
 ### Shipped to main (founder-approved)

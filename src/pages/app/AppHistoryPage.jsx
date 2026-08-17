@@ -1,6 +1,12 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Badge, Card, DataTable, useRegisterCommands } from '../../components/ui'
+import {
+  Badge,
+  Card,
+  DataTable,
+  LivePollIndicator,
+  useRegisterCommands,
+} from '../../components/ui'
 import ScanStatusBadge from '../../components/app/ScanStatusBadge.jsx'
 import TeamBadge from '../../components/app/TeamBadge.jsx'
 import TeamFilter from '../../components/app/TeamFilter.jsx'
@@ -87,6 +93,10 @@ export default function AppHistoryPage() {
     demoState,
     { emptyData: [] },
   )
+  // The ledger's 5s poll runs only while queued/processing scans exist — the
+  // indicator mirrors exactly that, so the surface signals when it is
+  // tracking worker progress (same pattern as the dashboard/queue/reports).
+  const live = hasActiveScanWork(scans.data)
 
   // Team scoping — shared with the dashboard/reports/queue via ?team=.
   const { teamFilter, setTeamFilter, teamCounts, filteredScans, isTeamScoped } = useTeamScoping({
@@ -147,6 +157,7 @@ export default function AppHistoryPage() {
         eyebrow="Verification ledger"
         title="Latest verification activity"
         description="Your newest uploads — filename, status, verdict, team, and report ID before opening the full report."
+        actions={live ? <LivePollIndicator /> : null}
       >
         <div className="flex flex-wrap items-end justify-between gap-3">
           <TeamFilter counts={teamCounts} value={teamFilter} onChange={setTeamFilter} />
