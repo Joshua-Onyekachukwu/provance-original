@@ -1,5 +1,17 @@
 # Provance — Changelog
 
+## [2026-08-17] - Live scan round-trip walk: verified blocked (schema not on the probed project)
+
+### Attempted / blocked
+- Founder reports "migrations are applied"; the full live walk (validate:scan-roundtrip → BullMQ worker → queued → processing → complete → report payload → PDF) was attempted but is **blocked at step 0**: live direct REST probes on `dmhrwdcuwtgscwlaagsa` (the only Supabase project both `backend/.env.local` and `.env.local` point at) still return `organizations.id → 404 PGRST205`, `scans.processing_mode → 400 42703`, `user_sessions.id → 404 PGRST205`; readiness confirms `degraded` with 15 missing migrations (0009/0010 hard gates). The applied-set fingerprint is unchanged (0001–0004, 0006), so no new paste has landed on this project.
+- `DATABASE_URL` still empty in `backend/.env.local`; `REDIS_URL` set (queue.ready: true on the running :4000 backend).
+
+### Unblock (either)
+1. Re-paste the combined block (`.freebuff/combined-missing.sql`, or regenerate via `npm run validate:migrations -- --paste-file`) into the SQL Editor of **project/dmhrwdcuwtgscwlaagsa** specifically — check the browser URL bar; or
+2. Set `DATABASE_URL` and run `npm run apply:migrations -- --verify` (one command, no dashboard).
+
+Then: `npm run validate:migrations` → `npm run start:worker` → `npm run validate:scan-roundtrip` (walks initiate → signed upload → submit → queued → processing → complete → `GET /v1/reports/:id` payload → `GET /v1/reports/:id/pdf` artifact, with the BullMQ job watcher).
+
 ## [2026-08-17] - changePassword e2e locks "exactly one ledger row" at the HTTP layer
 
 ### Added
