@@ -1,5 +1,17 @@
 # Provance — Changelog
 
+## [2026-08-17] - One-command migration applier (`apply:migrations`)
+
+### Added
+- `backend/scripts/apply-migrations.mjs` — reads `supabase/migrations/*.sql` in numeric order and executes each file as a single multi-statement query via `pg` (simple-query mode, so `DO` blocks run verbatim), replacing the dashboard SQL-Editor paste loop. Flags: `--dry-run` (preview without a DB), `--from=<NNNN>` (apply only a suffix). Stops at the first failure so dependency order holds; prints the project ref from `SUPABASE_URL` as a wrong-project guard. Idempotent guards in the migrations make the whole set safe to re-run.
+- `npm run apply:migrations` in `backend/package.json`; runbook section added to `docs/engineering/MIGRATION_RUNBOOK.md`.
+
+### Notes
+- Dry-run verified (20 migrations listed in order; `--from=0019` filter correct). **`DATABASE_URL` is still unset in `backend/.env.local`**, so the live apply is blocked until the founder pastes the Supabase connection string — the SQL-Editor paste loop (or `.freebuff/combined-0005-0020.sql`) remains the only path until then.
+
+### Tests
+- `npm run apply:migrations -- --dry-run` exercises file discovery, ordering, and arg parsing; the real apply path is pending `DATABASE_URL`.
+
 ## [2026-08-17] - Worker terminal failures now surface in the admin audit trail
 
 ### Changed

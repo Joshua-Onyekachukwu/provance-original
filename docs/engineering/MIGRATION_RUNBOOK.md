@@ -67,6 +67,33 @@ Numeric order **is** the correct order. The only real dependencies:
    migration first) and re-run.
 5. Run that migration's verification check below, then move to the next file.
 
+## Faster path: one-command applier (`apply:migrations`)
+
+As of **2026-08-17** there is a CLI alternative that replaces the per-file
+paste loop — no dashboard round-trip needed once `DATABASE_URL` is set:
+
+```bash
+cd backend
+npm run apply:migrations            # apply every migration in numeric order
+npm run apply:migrations -- --dry-run   # preview what WOULD run (no DB needed)
+npm run apply:migrations -- --from=0009  # only 0009 and newer
+```
+
+- **Requires** `DATABASE_URL` in `backend/.env.local` (dashboard → **Connect**
+  → **Session pooler** connection string, or a direct
+  `db.<ref>.supabase.co:5432` URL). Until that's set, the SQL Editor paste
+  loop above (or the combined block) is the only path.
+- Reads `supabase/migrations/*.sql` in numeric order and executes each file
+  as one multi-statement query via `pg` (simple-query mode), so `DO` blocks
+  and multi-statement files run verbatim. Idempotent guards make the whole
+  set safe to re-run.
+- Stops at the **first failure** so dependencies stay ordered; exit code 1
+  names the failing file and its first error line. Re-run after fixing.
+- Prints the project ref from `SUPABASE_URL` so a wrong-project
+  `DATABASE_URL` is visible before anything runs.
+- Re-verify afterwards: `npm run validate:migrations` (expect 20/20) and
+  `curl http://localhost:4000/v1/health/readiness` (expect `ready`).
+
 ---
 
 ## 0003 — `admin_ops.sql`

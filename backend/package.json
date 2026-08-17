@@ -22,6 +22,7 @@
     "validate:monitoring-parity": "node scripts/parity-monitoring.mjs",
     "validate:bullmq": "node scripts/verify-bullmq.mjs",
     "validate:migrations": "node scripts/validate-migrations.mjs",
+    "apply:migrations": "node scripts/apply-migrations.mjs",
     "validate:admin-jobs": "node scripts/validate-admin-jobs.mjs",
     "validate:org-revoke": "node scripts/validate-org-session-revoke.mjs",
     "validate:live-surfaces": "node scripts/validate-live-surfaces.mjs"
