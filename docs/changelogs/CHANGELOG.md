@@ -1,5 +1,16 @@
 # Provance — Changelog
 
+## [2026-08-17] - Migration-convergence gate: pure logic extracted + jest spec
+
+### Added
+- **`backend/src/health/migration-convergence.ts`** — the parse/diff logic of the CI gate (`check:migrations`) is now a pure, unit-tested module: `parseManifest` / `buildManifestBlock` (manifest block round-trip), `diffFileSets` (missing/extra/orderDrift), `normalizeSql` (CR/EOL-agnostic SQL normalization), and `checkCombinedBlock` (banner-number ↔ filename + content-byte-match verification) with the filesystem **injected** as a `readFile(file) → string | null` callback so every branch is testable without disk I/O.
+- **`backend/src/health/migration-convergence.spec.ts`** — 18 tests following the notifications.service.spec.ts convention (fixture factories at top, plan-style inputs, describe per function): manifest parse null/missing-marker/inverted-marker, build↔parse round-trip with LF + CRLF, diffFileSets drift cases, and the full checkCombinedBlock matrix (pass, number-prefix mismatch, content swap, missing file, CRLF-noise tolerance, empty-banner fence).
+- **`backend/scripts/check-migration-convergence.mjs`** is now a thin IO + output shell: it shells out to the applier dry-run, reads the runbook, and delegates all logic to the module (imported from `dist/`, matching the `validate-migrations.mjs` pattern — with a friendly "run `npm run build` first" error when dist is missing). CI already runs `backend:build` before `check:migrations`, so the gate order is unchanged.
+
+### Verified
+- New spec: **18/18**; full backend jest **488/488** (470 + 18).
+- `check:migrations` positive path exits **0** (CONVERGED, 16 banner sections content-verified); negative path (mislabeled 0005 banner) exits **1** with the prefix mismatch; `--fix` regenerates the manifest on a temp runbook copy and re-converges. CI-style invocation (`npm --prefix backend run check:migrations`) verified.
+
 ## [2026-08-17] - validate:migrations: manifest-vs-live expectation cross-check
 
 ### Added
