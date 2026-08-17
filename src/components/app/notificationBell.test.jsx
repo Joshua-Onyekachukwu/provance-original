@@ -147,4 +147,21 @@ describe('notification bell deep links', () => {
       expect(screen.queryAllByText(/tap to view details/)).toHaveLength(0),
     )
   })
+
+  it('anchors the feed panel directly under the bell at every width', async () => {
+    renderShell('/app')
+
+    const bell = await waitFor(() => {
+      const button = screen.getByRole('button', { name: UNREAD_LABEL })
+      expect(unreadCount(button)).toBe(8)
+      return button
+    })
+    fireEvent.click(bell)
+
+    // The panel is positioned under the trigger (absolute right-0 top-full),
+    // not as a detached fixed sheet elsewhere on the page.
+    const panel = await screen.findByRole('dialog', { name: 'Notifications' })
+    expect(panel.className).toMatch(/absolute right-0 top-full/)
+    expect(panel.className).not.toMatch(/fixed inset-x-4 top-\[6rem\]/)
+  })
 })

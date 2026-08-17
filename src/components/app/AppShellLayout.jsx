@@ -466,7 +466,7 @@ function NotificationBell() {
     <Popover
       role="dialog"
       ariaLabel="Notifications"
-      desktopClassName="sm:w-[380px]"
+      desktopClassName="w-[min(calc(100vw_-_6rem),380px)] sm:w-[380px]"
       trigger={({ open, triggerRef, isOpen }) => (
         <button
           ref={triggerRef}
@@ -575,7 +575,7 @@ function AvatarMenu() {
     <Popover
       role="menu"
       ariaLabel="Account menu"
-      desktopClassName="sm:w-[280px]"
+      desktopClassName="w-[min(calc(100vw_-_6rem),280px)] sm:w-[280px]"
       trigger={({ open, triggerRef, isOpen }) => (
         <button
           ref={triggerRef}

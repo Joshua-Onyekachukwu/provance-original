@@ -63,7 +63,9 @@ function VerdictBadge({ scan }) {
 }
 
 function ConfidenceBar({ score }) {
-  const pct = Math.max(0, Math.min(100, score))
+  // score is the 0..1 confidence ratio from the report payload; the bar and
+  // tone thresholds work on the 0..100 percentage.
+  const pct = Math.max(0, Math.min(100, score * 100))
   const color = pct >= 80 ? 'bg-emerald-400' : pct >= 50 ? 'bg-amber-400' : 'bg-rose-400'
 
   return (

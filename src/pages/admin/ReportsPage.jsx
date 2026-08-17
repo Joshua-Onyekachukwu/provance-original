@@ -4,7 +4,12 @@ import { Badge, Button, Card, EmptyState, useRegisterCommands } from '../../comp
 import AdminPageHeader from '../../components/admin/AdminPageHeader.jsx'
 import TeamBadge from '../../components/app/TeamBadge.jsx'
 import TeamFilter from '../../components/app/TeamFilter.jsx'
-import { formatDateTime, getTeamMeta, getVerdictMeta } from '../../components/app/scanPresentation.js'
+import {
+  formatDateTime,
+  formatPct,
+  getTeamMeta,
+  getVerdictMeta,
+} from '../../components/app/scanPresentation.js'
 import { getAdminReports } from '../../lib/api.js'
 import { mockOrganizations } from '../../lib/mockData.js'
 import { useDemoState } from '../../lib/useDemoState.js'
@@ -65,7 +70,7 @@ function ReportDetail({ report }) {
             {team.short}
           </Badge>
           <span className="rounded-md border border-stone-light bg-white-warm px-2 py-0.5 font-mono text-[11px] text-charcoal-mid">
-            {report.confidence_score ?? '—'}% confidence
+            {formatPct(report.confidence_score, 0, '—')} confidence
           </span>
         </div>
       </div>
@@ -106,14 +111,14 @@ function ReportDetail({ report }) {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="min-w-0 break-words text-sm font-medium text-charcoal">{signal.label}</span>
                 <span className="shrink-0 font-mono text-xs text-charcoal-mid tabular-nums">
-                  {signal.confidence}%
+                  {formatPct(signal.confidence, 0, '—')}
                 </span>
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-stone-light">
                   <span
                     className="block h-full rounded-full bg-charcoal"
-                    style={{ width: `${Math.min(100, Math.max(0, signal.confidence || 0))}%` }}
+                    style={{ width: `${Math.min(100, Math.max(0, (signal.confidence || 0) * 100))}%` }}
                   />
                 </span>
                 <Badge tone={signalTone(signal.finding)} size="sm" className="break-words">
@@ -414,11 +419,11 @@ export default function ReportsPage() {
                               <span className="h-1.5 w-16 overflow-hidden rounded-full bg-stone-light">
                                 <span
                                   className="block h-full rounded-full bg-charcoal"
-                                  style={{ width: `${Math.min(100, Math.max(0, report.confidence_score || 0))}%` }}
+                                  style={{ width: `${Math.min(100, Math.max(0, (report.confidence_score || 0) * 100))}%` }}
                                 />
                               </span>
                               <span className="text-xs tabular-nums text-charcoal-mid">
-                                {report.confidence_score ?? '—'}%
+                                {formatPct(report.confidence_score, 0, '—')}
                               </span>
                             </span>
                           </td>

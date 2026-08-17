@@ -125,7 +125,10 @@ export function formatDate(value, fallback = '—') {
  */
 export function formatPct(decimal, digits = 0, fallback = '—') {
   if (decimal == null || !Number.isFinite(decimal)) return fallback
-  return `${(decimal * 100).toFixed(digits)}%`
+  // Confidence-style ratios are 0..1 by contract (SIGNAL_SCHEMA_SPEC). Clamp
+  // so a mis-scaled source can never render above 100% — a 0..100 value fed
+  // in by mistake shows 100%, not 6900%.
+  return `${Math.min(100, decimal * 100).toFixed(digits)}%`
 }
 
 /**

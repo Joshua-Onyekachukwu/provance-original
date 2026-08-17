@@ -570,37 +570,106 @@ export const mockScans = Array.from({ length: 25 }, (_, i) => {
   const status = statuses[i % statuses.length]
   const verdict = status === 'completed' ? verdicts[i % verdicts.length] : null
 
+  // Completed seeds carry the full report-payload contract the detail pane
+  // consumes — a verdict object (display_label / confidence_score 0..1 /
+  // signal counts), a report reference, and per-signal analysis entries —
+  // matching buildMockCompletedScanPayload and the real worker's
+  // buildAnalysisResultPayload, so seeded reports render identically to
+  // freshly completed ones.
+  const verdictClass =
+    verdict === 'suspicious'
+      ? 'suspicious'
+      : verdict === 'inconclusive'
+        ? 'inconclusive'
+        : 'likely_authentic'
+  // 0..1 ratio — the report-payload contract (renderers multiply by 100).
+  const confidenceScore = Math.round(55 + (i % 4) * 10) / 100
   const resultPayload =
     status === 'completed'
       ? {
           payload_version: '1.0.0',
+          verdict: {
+            class: verdictClass,
+            display_label:
+              verdictClass === 'suspicious'
+                ? 'Suspicious'
+                : verdictClass === 'inconclusive'
+                  ? 'Inconclusive'
+                  : 'Likely Authentic',
+            display_color:
+              verdictClass === 'suspicious'
+                ? '#b45309'
+                : verdictClass === 'inconclusive'
+                  ? '#6b6b6b'
+                  : '#0f766e',
+            confidence_score: confidenceScore,
+            confidence_level:
+              confidenceScore >= 0.75 ? 'high' : confidenceScore >= 0.55 ? 'moderate' : 'low',
+            signal_count_total: 4,
+            signal_count_completed: 4,
+            primary_contributing_signals:
+              verdictClass === 'suspicious' ? ['frequency_domain', 'temporal_continuity'] : [],
+            plain_language_summary:
+              verdictClass === 'suspicious'
+                ? 'Strong synthetic indicators were detected across multiple signals. The result benefits from human review before any high-stakes decision.'
+                : verdictClass === 'likely_authentic'
+                  ? 'File integrity checks are stable and no strong anomaly cluster was detected. The result still benefits from human review before any high-stakes decision.'
+                  : 'Signals returned mixed or insufficient evidence to reach a confident conclusion. Further review is recommended.',
+          },
+          report: {
+            report_id: `PRV-202607${String(15 + Math.floor(i / 2)).padStart(2, '0')}-${String(30 + i).padStart(3, '0')}`,
+            generated_at: status === 'completed' ? daysAgo(Math.floor(i / 2), (i % 24) + 2) : null,
+          },
           signals: [
             {
-              model: 'generative-fingerprint-v2',
-              confidence: Math.round(40 + Math.random() * 50),
-              label: 'Generative fingerprint analysis',
-              verdict: Math.random() > 0.5 ? 'synthetic_indicators' : 'natural_origin',
+              signal_id: 'file_integrity',
+              signal_display_name: 'File Integrity',
+              signal_category: 'Integrity',
+              methodology_version: 'v2',
+              status: verdictClass === 'suspicious' ? 'flagged' : 'clear',
+              status_reason:
+                verdictClass === 'suspicious'
+                  ? 'Header mismatch: the declared MIME type does not match the file signature.'
+                  : 'File hash matches the declared original; no tampering detected.',
+              findings: [],
             },
             {
-              model: 'frequency-domain-v1',
-              confidence: Math.round(30 + Math.random() * 55),
-              label: 'Frequency-domain analysis',
-              verdict: Math.random() > 0.5 ? 'anomaly_detected' : 'no_anomaly',
+              signal_id: 'metadata_forensics',
+              signal_display_name: 'Metadata Forensics',
+              signal_category: 'Metadata',
+              methodology_version: 'v3',
+              status: verdictClass === 'suspicious' ? 'flagged' : 'clear',
+              status_reason:
+                verdictClass === 'suspicious'
+                  ? 'Creation path and edit history do not fully reconcile.'
+                  : 'EXIF chain is consistent with the declared capture time and device.',
+              findings: [],
             },
             {
-              model: 'metadata-integrity-v3',
-              confidence: Math.round(50 + Math.random() * 45),
-              label: 'Metadata integrity check',
-              verdict: Math.random() > 0.5 ? 'incomplete_metadata' : 'verified_metadata',
+              signal_id: 'frequency_domain',
+              signal_display_name: 'Frequency-Domain Analysis',
+              signal_category: 'Signal Processing',
+              methodology_version: 'v1',
+              status: verdictClass === 'suspicious' ? 'anomaly_detected' : 'clear',
+              status_reason:
+                verdictClass === 'suspicious'
+                  ? 'Synthetic patterning detected around facial edges and backdrop gradients.'
+                  : 'No synthetic patterning detected in the spectral profile.',
+              findings: [],
             },
             {
-              model: 'continuity-v2',
-              confidence: Math.round(20 + Math.random() * 60),
-              label: 'Frame continuity analysis',
-              verdict: Math.random() > 0.5 ? 'continuity_break' : 'consistent',
+              signal_id: 'temporal_continuity',
+              signal_display_name: 'Temporal Continuity',
+              signal_category: 'Temporal',
+              methodology_version: 'v2',
+              status: verdictClass === 'suspicious' ? 'continuity_break' : 'clear',
+              status_reason:
+                verdictClass === 'suspicious'
+                  ? 'Frame continuity breaks in the final segment of the uploaded clip.'
+                  : 'Frame flow is continuous across the clip.',
+              findings: [],
             },
           ],
-          report_id: `PRV-202607${String(15 + Math.floor(i / 2)).padStart(2, '0')}-${String(30 + i).padStart(3, '0')}`,
         }
       : null
 
@@ -630,31 +699,32 @@ export const mockReports = Array.from({ length: 15 }, (_, i) => {
   const signals = [
     {
       model: 'generative-fingerprint-v2',
-      confidence: Math.round(60 + Math.random() * 35),
+      // 0..1 ratio — the report-signal contract (renderers multiply by 100).
+      confidence: Math.round(60 + Math.random() * 35) / 100,
       label: 'Generative fingerprint analysis',
       finding: Math.random() > 0.4 ? 'Model signature detected' : 'No known model match',
     },
     {
       model: 'frequency-domain-v1',
-      confidence: Math.round(40 + Math.random() * 50),
+      confidence: Math.round(40 + Math.random() * 50) / 100,
       label: 'Frequency-domain analysis',
       finding: Math.random() > 0.5 ? 'Anomalous spectral energy' : 'Normal frequency distribution',
     },
     {
       model: 'metadata-integrity-v3',
-      confidence: Math.round(50 + Math.random() * 45),
+      confidence: Math.round(50 + Math.random() * 45) / 100,
       label: 'Metadata integrity',
       finding: Math.random() > 0.5 ? 'Metadata chain incomplete' : 'Metadata verified',
     },
     {
       model: 'watermark-provenance-v1',
-      confidence: Math.round(20 + Math.random() * 65),
+      confidence: Math.round(20 + Math.random() * 65) / 100,
       label: 'Watermark & provenance',
       finding: Math.random() > 0.6 ? 'No trusted credential located' : 'C2PA manifest present',
     },
     {
       model: 'temporal-continuity-v2',
-      confidence: Math.round(30 + Math.random() * 55),
+      confidence: Math.round(30 + Math.random() * 55) / 100,
       label: 'Temporal continuity',
       finding: Math.random() > 0.4 ? 'Continuity break detected' : 'Continuous motion flow',
     },
@@ -674,7 +744,8 @@ export const mockReports = Array.from({ length: 15 }, (_, i) => {
     org_id: ownerUser.org_id,
     report_id: `PRV-202607${String(15 + Math.floor(i / 2)).padStart(2, '0')}-${String(30 + i).padStart(3, '0')}`,
     verdict,
-    confidence_score: Math.round(60 + Math.random() * 35),
+    // 0..1 ratio — the report-payload contract (renderers multiply by 100).
+    confidence_score: Math.round(60 + Math.random() * 35) / 100,
     signals: selectedSignals,
     created_at: daysAgo(Math.floor(i / 2), i % 24),
   }

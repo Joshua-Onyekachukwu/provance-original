@@ -668,7 +668,8 @@ function buildMockCompletedScanPayload(scan) {
     { class: 'inconclusive', display_label: 'Inconclusive', color: '#6b6b6b' },
   ]
   const pick = verdictClasses[Math.floor(Math.random() * verdictClasses.length)]
-  const confidenceScore = Math.round(45 + Math.random() * 50)
+  // 0..1 ratio — the report-payload contract (formatPct multiplies by 100).
+  const confidenceScore = Math.round(45 + Math.random() * 50) / 100
   const signals = [
     {
       signal_id: 'file_integrity',
@@ -726,7 +727,7 @@ function buildMockCompletedScanPayload(scan) {
       display_label: pick.display_label,
       display_color: pick.color,
       confidence_score: confidenceScore,
-      confidence_level: confidenceScore >= 75 ? 'high' : confidenceScore >= 55 ? 'moderate' : 'low',
+      confidence_level: confidenceScore >= 0.75 ? 'high' : confidenceScore >= 0.55 ? 'moderate' : 'low',
       signal_count_total: signals.length,
       signal_count_completed: signals.length,
       primary_contributing_signals: signals

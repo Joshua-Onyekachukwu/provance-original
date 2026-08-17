@@ -447,11 +447,23 @@ export default function AppReportsPage() {
                   <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">
                     Media preview
                   </p>
-                  <img
-                    src={selectedScan.asset_preview_url}
-                    alt={selectedScan.original_filename}
-                    className="mt-4 max-h-[24rem] w-full rounded-2xl object-contain"
-                  />
+                  {selectedScan.mime_type?.startsWith('video/') ? (
+                    <video
+                      src={selectedScan.asset_preview_url}
+                      controls
+                      preload="metadata"
+                      className="mt-4 max-h-[24rem] w-full rounded-2xl bg-charcoal"
+                      aria-label={selectedScan.original_filename}
+                    >
+                      Your browser does not support embedded video playback.
+                    </video>
+                  ) : (
+                    <img
+                      src={selectedScan.asset_preview_url}
+                      alt={selectedScan.original_filename}
+                      className="mt-4 max-h-[24rem] w-full rounded-2xl object-contain"
+                    />
+                  )}
                 </div>
               )}
             </section>

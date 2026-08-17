@@ -149,6 +149,7 @@ describe('formatPct', () => {
     expect(formatPct(0.0009, 2)).toBe('0.09%')
   })
 
+
   it('rounds to the nearest digit boundary', () => {
     expect(formatPct(1 / 3)).toBe('33%')
     expect(formatPct(2 / 3)).toBe('67%')
@@ -166,8 +167,16 @@ describe('formatPct', () => {
     expect(formatPct(0.125, 2)).toBe('12.50%')
   })
 
-  it('does not clamp values outside 0..1', () => {
-    expect(formatPct(1.5)).toBe('150%')
+  it('clamps values above 1 so nothing ever renders over 100%', () => {
+    // Founder requirement: no percentage may read above 100%. A 0..100
+    // value fed in by mistake (the old mock scale) must show 100%, not
+    // 6900% — the 0..1 contract is multiplied by 100 and capped.
+    expect(formatPct(1.5)).toBe('100%')
+    expect(formatPct(69)).toBe('100%')
+    expect(formatPct(1)).toBe('100%')
+    expect(formatPct(0.94)).toBe('94%')
+    // Only the top is clamped; a negative ratio is out-of-contract and stays
+    // visible so a scale bug upstream is still noticeable.
     expect(formatPct(-0.25)).toBe('-25%')
   })
 })

@@ -1,5 +1,17 @@
 # Provance — Changelog
 
+## [2026-08-17] - Verification Reports polish (confidence scale, seed payloads, popover anchoring, video preview)
+
+### Fixed
+- **Confidence score scale (the 6900% bug)**: the report-payload contract defines `confidence_score` as a **0–1 ratio** (renderers multiply by 100), but the mock generators emitted 0–100 — `formatPct` then produced 6000–9500%. Normalized every generator to 0–1: `mockApi.buildMockCompletedScanPayload`, `mockData.mockReports` (+ its per-signal `confidence`), and the completed-scan seed payload. `formatPct` now also clamps at 100% so nothing can ever render above 100% again (reversed the old deliberate no-clamp contract per Founder requirement; test updated). Dashboard `ConfidenceBar` and admin `ReportsPage` renderers use the ratio correctly.
+- **Seed scans now carry the full report payload**: completed seed scans in `mockData.js` emitted a stale signals-only shape (top-level `report_id`, 0–100 confidence, no `verdict` object) — the detail pane rendered "Pending" for them. Rewrote the seed to the real worker's `buildAnalysisResultPayload` contract (verdict object with display_label / confidence_score / confidence_level / signal counts / plain_language_summary, `report.report_id`, 4 contract-shaped signals) so seeded reports render identically to freshly completed ones.
+- **Popover anchoring (bell + avatar)**: `Popover` defaults now anchor the panel directly below the trigger (right-aligned) at every width instead of the old fixed top-bar sheet — the notifications and account menus open under their icons. Header dropdown widths are viewport-adaptive (`w-[min(calc(100vw_-_6rem),380px)]` etc.) so the panel stays fully on-screen at phone widths.
+- **Video preview on the report detail**: `asset_preview_url` renders a `<video controls>` for video mimes (was image-only).
+
+### Verified
+- Frontend gates: vitest **593/593** (incl. new popover-anchor assertion in the bell test + formatPct clamp tests), lint 0 errors (36-warning baseline), build clean, `guard:grid` clean.
+- Preview walk: report detail for `scan_006` (Suspicious) shows verdict **Suspicious · Confidence 65%** (was Pending/6900%), 4/4 signals with full statuses, Report ID present; notification dialog measured at 410px viewport: 314px wide, x=14, right edge flush with the bell — under the icon, no clip.
+
 ## [2026-08-17] - Revert the frontend-design "Examination" pass (Founder request)
 
 ### Changed

@@ -20,18 +20,18 @@ import { computeTransformOrigin } from './popoverOrigin'
  *   - focus moves into the panel on open and returns to the trigger on close
  *
  * Positioning is fully controlled by the caller through mobileClassName /
- * desktopClassName (desktop classes carry `sm:` prefixes, mirroring the
- * shell's responsive bottom-sheet → anchored-panel pattern). Defaults match
- * the header dropdowns: a mobile sheet under the top bar, an end-aligned
- * panel below the trigger on sm+.
+ * desktopClassName (desktop classes carry `sm:` prefixes). Defaults anchor
+ * the panel directly below the trigger, right-aligned to it, at every width
+ * — the panel appears under the icon/button that opened it, never as a
+ * detached sheet elsewhere on the page.
  *
  * Props:
  *   trigger   — render prop ({ open, close, toggle, isOpen, triggerRef }) => node
  *   children  — panel content; render prop ({ close }) => node or static node
  *   role      — accessibility role for the panel (dialog | menu | tooltip | …)
  *   ariaLabel — accessible name for the panel
- *   mobileClassName  — mobile positioning (default: fixed inset-x-4 top-[6rem])
- *   desktopClassName — sm+ anchored positioning + width
+ *   mobileClassName  — base positioning (default: absolute right-0 top-full mt-2)
+ *   desktopClassName — sm+ overrides + width
  *   className — extra classes appended to the panel
  *   onOpenChange — optional (nextOpen) => void callback
  */
@@ -40,8 +40,8 @@ export default function Popover({
   children,
   role = 'dialog',
   ariaLabel,
-  mobileClassName = 'fixed inset-x-4 top-[6rem]',
-  desktopClassName = 'sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2',
+  mobileClassName = 'absolute right-0 top-full mt-2',
+  desktopClassName = 'sm:left-auto sm:right-0 sm:top-full sm:mt-2',
   className = '',
   onOpenChange = null,
 }) {
