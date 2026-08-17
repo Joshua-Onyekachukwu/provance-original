@@ -1,5 +1,15 @@
 # Provance — Changelog
 
+## [2026-08-17] - ProductShowcase signal-tone fix (found during live walk)
+
+### Fixed
+- `src/components/ProductShowcase.jsx` — `signalTone` matched the ok-regex before the warn-regex, so `complete` matched inside **"incomplete"**: "Metadata chain incomplete" rendered green (should be amber), the metadata bar was green, SIGNAL AGREEMENT inflated to 75% (should be 50%), and the flagged count read 1 instead of 2.
+- Extracted the matcher into `src/lib/showcaseTone.js` (fixed: `incomplete` → warn checked first; `no X` ok-rule narrowed to anomaly-type phrases so "No trusted credential located" stays warn) with `showcaseTone.test.js`.
+
+### Verified
+- 11 new tests; full vitest **560/560**, lint 0 errors.
+- Live walk in the preview: full cycle queued → signals resolve → report-ready → verdict chip + per-signal findings render end to end; after fix, SIGNAL AGREEMENT reads 50%, flagged count reads 2, "Metadata chain incomplete" renders amber.
+
 ## [2026-08-17] - Component-reachability guard (no more silent dead code)
 
 ### Added

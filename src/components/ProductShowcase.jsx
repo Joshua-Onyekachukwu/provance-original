@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import InteractivePanel from './InteractivePanel'
 import ForensicMediaFrame from './ForensicMediaFrame'
 import { mockReports } from '../lib/mockData.js'
+import { TONE_BAR, TONE_LABEL, signalTone } from '../lib/showcaseTone.js'
 
 // ---------------------------------------------------------------------------
 // Demo dataset — the interactive showcase is driven by a real entry from the
@@ -49,15 +50,6 @@ const SCHEDULE = {
   settle: 950, // gap between the last signal and the "complete" state
 }
 
-function signalTone(finding) {
-  const text = finding || ''
-  if (/(no |verified|consistent|present|normal|match|complete)/i.test(text)) return 'ok'
-  if (/(detected|incomplete|anomal|break|signature|located)/i.test(text)) return 'warn'
-  return 'neutral'
-}
-
-const TONE_BAR = { ok: 'bg-emerald-500', warn: 'bg-amber', neutral: 'bg-amber-light' }
-const TONE_LABEL = { ok: 'No anomaly flagged', warn: 'Anomaly flagged', neutral: 'Under review' }
 
 // ---------------------------------------------------------------------------
 // In-view detection — fires once when the section enters the viewport.
