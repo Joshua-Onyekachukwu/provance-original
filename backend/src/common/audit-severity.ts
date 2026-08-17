@@ -25,6 +25,10 @@ export const AUDIT_SEVERITY_BY_ACTION: Record<string, string> = {
   // high-severity row per episode (written by RefreshLockoutInterceptor),
   // which also caps the refresh_token_rejected flood.
   'refresh_lockout': 'high',
+  // Repeated rejected sign-in credentials tripped the sign-in lockout — one
+  // high-severity row per episode (written by SignInLockoutInterceptor),
+  // marking a credential-stuffing burst on the admin trail.
+  'signin_lockout': 'high',
   // An owner/admin revoked a member's session(s) — a security action on
   // someone else's devices, written by the org service (audit_logs) and the
   // security service (auth_audit_events feed).

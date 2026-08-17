@@ -29,6 +29,12 @@ Object.assign(process.env, {
   REFRESH_LOCKOUT_THRESHOLD: '2',
   REFRESH_LOCKOUT_WINDOW_MS: '60000',
   REFRESH_LOCKOUT_DURATION_MS: '60000',
+  // The sign-in lockout stays OFF in hermetic e2e: this suite deliberately
+  // stacks several 401 sign-in attempts against the same account/IP (the
+  // rejected-credentials + missing-credential legs), which would trip the
+  // per-client lockout and 429 the later VALID sign-ins. The lockout's own
+  // semantics are unit-tested in sign-in-lockout.spec.ts.
+  SIGNIN_LOCKOUT_ENABLED: 'false',
 });
 
 import { INestApplication, ValidationPipe } from '@nestjs/common';

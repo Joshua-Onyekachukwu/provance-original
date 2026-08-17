@@ -50,6 +50,12 @@ const SHORT_ACTION_TONES = {
   'waitlist reviewed': 'neutral',
   'member session revoked': 'danger',
   'member sessions revoked': 'danger',
+  // Feed-action form (auth_audit_events writes session_revoked; the admin
+  // trail uses the dotted session.revoked → 'revoked' above).
+  'session revoked': 'danger',
+  // refresh_lockout / signin_lockout — the failure-keyed lockout episodes
+  // written by the auth interceptors (high severity).
+  lockout: 'danger',
 }
 
 function shortAction(action) {
@@ -168,9 +174,46 @@ function AuditRow({ event, open, onToggle }) {
               <dd className="mt-1 text-xs text-charcoal">{formatDateTime(event.created_at)}</dd>
             </div>
           </dl>
+          {hasDetails(event.details) && (
+            <div className="mt-4 border-t border-stone-light pt-4">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-charcoal-light">
+                Details
+              </p>
+              <dl className="mt-2 grid grid-cols-1 gap-x-8 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                {Object.entries(event.details)
+                  .filter(([, value]) => value !== null && value !== undefined && value !== '')
+                  .map(([key, value]) => (
+                    <div key={key} className="min-w-0">
+                      <dt className="truncate text-[11px] uppercase tracking-[0.18em] text-charcoal-light">
+                        {key.replace(/_/g, ' ')}
+                      </dt>
+                      {/* break-words: detail values can carry long unbroken ids /
+                          reasons (session ids, ip addresses, reasons) — the same
+                          hardening the row's resource chip got. */}
+                      <dd className="mt-0.5 break-words font-mono text-xs text-charcoal">
+                        {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                      </dd>
+                    </div>
+                  ))}
+              </dl>
+            </div>
+          )}
         </div>
       )}
     </div>
+  )
+}
+
+/** True when the event carries structured details worth rendering (a member
+ * revoke's count/session ids, a lockout's ip/failures, a rejection's
+ * reuse_suspected flag, ...). Empty/undefined details render nothing. */
+function hasDetails(details) {
+  return Boolean(
+    details &&
+      typeof details === 'object' &&
+      Object.values(details).some(
+        (value) => value !== null && value !== undefined && value !== '',
+      ),
   )
 }
 

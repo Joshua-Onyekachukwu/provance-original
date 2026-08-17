@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Badge,
   Button,
@@ -62,8 +62,14 @@ function Avatar({ name, size = 'md' }) {
 }
 
 function MemberRow({ member, teams, canManage, isCurrentUser, onRoleChange, onTeamChange, onRemove, onCancelConfirm, onViewSessions, busy, confirming }) {
+  // Only the armed row carries data-armed-member-row — the page's click-away
+  // handler uses it to tell "click inside the armed row" (no reset) from
+  // "click anywhere else" (disarm), mirroring the security page's revoke row.
   return (
-    <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-stone-light bg-parchment px-4 py-4">
+    <div
+      className="flex flex-wrap items-center gap-4 rounded-2xl border border-stone-light bg-parchment px-4 py-4"
+      data-armed-member-row={confirming ? 'true' : undefined}
+    >
       <Avatar name={member.displayName} />
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
@@ -207,6 +213,30 @@ export default function AppOrganizationPage() {
   const seatsUsed = members.length
   const seatsTotal = profile?.seats || seatsUsed
   const seatsFull = seatsUsed >= seatsTotal
+
+  // Click-away / Escape reset for the armed remove confirm: a half-armed row
+  // must not linger once attention moves elsewhere. Listeners exist only
+  // while a row is armed — any pointer-down outside the armed row (or an
+  // Escape keypress) disarms it. Clicks inside the row, including the
+  // "Confirm remove?" / Cancel buttons, resolve through their own handlers.
+  // Same contract as the security page's session-revoke reset.
+  useEffect(() => {
+    if (!confirmingRemoveId) return undefined
+    const handlePointerDown = (event) => {
+      if (!event.target.closest?.('[data-armed-member-row]')) {
+        setConfirmingRemoveId(null)
+      }
+    }
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') setConfirmingRemoveId(null)
+    }
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [confirmingRemoveId])
 
   function openInvite() {
     if (!inviteTeam && teams.length > 0) setInviteTeam(teams[0].id)

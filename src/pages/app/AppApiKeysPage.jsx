@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Badge,
   Button,
@@ -78,6 +78,30 @@ export default function AppApiKeysPage() {
     [keys],
   )
   const scopeCount = useMemo(() => scopes.length, [scopes])
+
+  // Click-away / Escape reset for the armed revoke confirm: a half-armed row
+  // must not linger once attention moves elsewhere. Listeners exist only
+  // while a row is armed — any pointer-down outside the armed row (or an
+  // Escape keypress) disarms it. Clicks inside the row, including the
+  // "Confirm revoke?" / Cancel buttons, resolve through their own handlers.
+  // Same contract as the security page's session-revoke reset.
+  useEffect(() => {
+    if (!confirmingRevokeId) return undefined
+    const handlePointerDown = (event) => {
+      if (!event.target.closest?.('[data-armed-revoke-row]')) {
+        setConfirmingRevokeId(null)
+      }
+    }
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') setConfirmingRevokeId(null)
+    }
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [confirmingRevokeId])
 
   function closeCreate() {
     setCreateOpen(false)
@@ -310,7 +334,11 @@ export default function AppApiKeysPage() {
               </thead>
               <tbody className="divide-y divide-stone-light bg-white-warm">
                 {keys.map((key) => (
-                  <tr key={key.id} className="transition-colors hover:bg-parchment/70">
+                  <tr
+                    key={key.id}
+                    className="transition-colors hover:bg-parchment/70"
+                    data-armed-revoke-row={confirmingRevokeId === key.id ? 'true' : undefined}
+                  >
                     <td className="px-4 py-3.5">
                       <p className="font-medium text-charcoal">{key.name}</p>
                       <p className="mt-0.5 font-mono text-xs text-charcoal-light">

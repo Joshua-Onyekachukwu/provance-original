@@ -13,7 +13,8 @@ import {
   formatFileSize,
   scanNeedsPolling,
 } from '../../components/app/scanPresentation.js'
-import { USE_MOCK, getScan, initiateScan, submitScan } from '../../lib/api.js'
+import { USE_MOCK, getBilling, getScan, initiateScan, submitScan } from '../../lib/api.js'
+import ScanQuotaWarningChip from '../../components/ScanQuotaWarningChip.jsx'
 import { useResource } from '../../lib/useResource.js'
 import { supabase } from '../../lib/supabase.js'
 
@@ -133,6 +134,11 @@ export default function AppUploadsPage() {
   // instantly with a reused payload, so the panel + CTA shift from the queue
   // story to the reuse story.
   const [deduplicated, setDeduplicated] = useState(null)
+  // Billing usage (scansUsed/scansLimit) — the same resolveUsage source of
+  // truth as the dashboard's ≥85% quota chip and the initiateScan 402 gate,
+  // so the warning the user sees on this page always agrees with the quota
+  // the backend enforces at submit time.
+  const billing = useResource(() => getBilling())
 
   const isBusy = !['idle', 'error', 'queued'].includes(phase)
 
@@ -431,6 +437,11 @@ export default function AppUploadsPage() {
           Every submission becomes a verification record that lands in the queue
           the moment it is uploaded.
         </p>
+        {billing.data?.profile?.usage && (
+          <div className="mt-5">
+            <ScanQuotaWarningChip usage={billing.data.profile.usage} />
+          </div>
+        )}
       </section>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.5fr_1fr]">

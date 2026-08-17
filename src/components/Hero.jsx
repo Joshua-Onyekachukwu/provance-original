@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 
 const fadeUp = {
@@ -11,13 +11,18 @@ const fadeUp = {
 }
 
 export default function Hero() {
+  // The infinite pulse blob is decorative motion — under prefers-reduced-motion
+  // it renders as a static glow (no opacity/scale keyframes), while the
+  // one-shot fadeUp entrance animations still run (they are short, non-looping
+  // opacity/translate transitions).
+  const prefersReducedMotion = useReducedMotion()
   return (
     <section className="relative overflow-hidden bg-parchment pt-24 md:pt-28 lg:pt-32">
       <div className="absolute inset-0 forensic-grid opacity-30" />
       <div className="absolute inset-0 hero-gradient" />
       <motion.div
         aria-hidden="true"
-        animate={{ opacity: [0.45, 0.68, 0.45], scale: [1, 1.04, 1] }}
+        animate={prefersReducedMotion ? undefined : { opacity: [0.45, 0.68, 0.45], scale: [1, 1.04, 1] }}
         transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
         className="absolute left-1/2 top-24 h-72 w-72 -translate-x-1/2 rounded-full bg-trust/10 blur-3xl"
       />

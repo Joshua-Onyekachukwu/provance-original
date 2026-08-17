@@ -6,6 +6,7 @@ import DemoStateBanner from '../../components/app/DemoStateBanner.jsx'
 import ScanStatusBadge from '../../components/app/ScanStatusBadge.jsx'
 import TeamBadge from '../../components/app/TeamBadge.jsx'
 import TeamFilter from '../../components/app/TeamFilter.jsx'
+import ScanQuotaWarningChip from '../../components/ScanQuotaWarningChip.jsx'
 import {
   VERDICT_CHART_SEGMENTS,
   VERDICT_META,
@@ -19,7 +20,6 @@ import {
   hasActiveScanWork,
   queueNeedsPolling,
 } from '../../components/app/scanPresentation.js'
-import { scanQuotaPct } from '../../lib/scanQuota.js'
 import { useAuth } from '../../context/AuthContext.jsx'
 import {
   getActivityLogs,
@@ -51,37 +51,6 @@ function formatAction(action) {
     .replaceAll('.', ' ')
     .replaceAll('_', ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase())
-}
-
-/**
- * ScanQuotaWarningChip — dashboard-level banner linking to Billing when the
- * workspace is at or above 85% of its monthly scan quota. Tones escalate:
- * 85–99% warning, 100%+ danger (exhausted).
- */
-export function ScanQuotaWarningChip({ usage }) {
-  const pct = scanQuotaPct(usage)
-  if (pct == null || pct < 85) return null
-
-  const exhausted = pct >= 100
-  const tone = exhausted ? 'danger' : 'warning'
-  const toneClasses = {
-    warning: 'border-amber-300/60 bg-amber-50 text-amber-800',
-    danger: 'border-rose-300/60 bg-rose-50 text-rose-800',
-  }
-
-  return (
-    <Link
-      to="/app/billing"
-      className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors hover:brightness-[0.98] ${toneClasses[tone]}`}
-    >
-      <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" aria-hidden="true">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
-      </svg>
-      {exhausted
-        ? 'Monthly scan quota exhausted — view billing'
-        : `${pct}% of monthly scan quota used — view billing`}
-    </Link>
-  )
 }
 
 // ---------------------------------------------------------------------------
@@ -766,15 +735,23 @@ function NotificationsFeedBody({ notifications, onRetry, readIds, onNotification
         emptyDescription="Scan completions, team activity, billing, and security alerts will appear here."
       />
       {notifications.status === 'ready' && unread.length > 0 && (
-        <div className="divide-y divide-stone-light">
-          {unread.slice(0, 4).map((notification) => (
-            <NotificationPreviewRow
-              key={notification.id}
-              notification={notification}
-              onClick={() => onNotificationClick(notification)}
-            />
-          ))}
-        </div>
+        <>
+          <div className="divide-y divide-stone-light">
+            {unread.slice(0, 4).map((notification) => (
+              <NotificationPreviewRow
+                key={notification.id}
+                notification={notification}
+                onClick={() => onNotificationClick(notification)}
+              />
+            ))}
+          </div>
+          <Link
+            to="/app/notifications"
+            className="ui-focus-ring mt-1 block w-full rounded-xl px-4 py-2 text-center text-xs font-medium text-charcoal-mid transition hover:bg-parchment hover:text-charcoal"
+          >
+            View all {unread.length} unread notification{unread.length === 1 ? '' : 's'}
+          </Link>
+        </>
       )}
     </>
   )

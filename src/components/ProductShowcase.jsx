@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import InteractivePanel from './InteractivePanel'
 import ForensicMediaFrame from './ForensicMediaFrame'
 import { mockReports } from '../lib/mockData.js'
@@ -450,14 +450,19 @@ export default function ProductShowcase() {
   const [resolvedCount, setResolvedCount] = useState(0)
   const [expandedSignal, setExpandedSignal] = useState(null)
   const [runId, setRunId] = useState(0)
+  // The demo is timing-driven (queued → signals resolving on a schedule) —
+  // under prefers-reduced-motion it must not auto-play. It stays available
+  // through the manual Run demo / Replay button, so a reduced-motion visitor
+  // can still step through the cycle on their own terms.
+  const prefersReducedMotion = useReducedMotion()
 
   // Auto-start the scan cycle when the section scrolls into view.
   useEffect(() => {
-    if (inView && !autoStartedRef.current) {
+    if (inView && !autoStartedRef.current && !prefersReducedMotion) {
       autoStartedRef.current = true
       setRunId((current) => current + 1)
     }
-  }, [inView])
+  }, [inView, prefersReducedMotion])
 
   // Run the cycle: queued → analyzing (signals resolve one by one) → complete.
   useEffect(() => {

@@ -26,6 +26,7 @@
     "validate:admin-jobs": "node scripts/validate-admin-jobs.mjs",
     "validate:scan-roundtrip": "node scripts/validate-scan-roundtrip.mjs",
     "validate:org-revoke": "node scripts/validate-org-session-revoke.mjs",
+    "validate:refresh-cookie": "node scripts/validate-refresh-cookie.mjs",
     "validate:live-surfaces": "node scripts/validate-live-surfaces.mjs"
   },
   "dependencies": {

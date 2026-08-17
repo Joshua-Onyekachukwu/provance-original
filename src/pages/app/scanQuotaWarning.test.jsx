@@ -3,10 +3,11 @@ import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { scanQuotaPct } from '../../lib/scanQuota.js'
-import { ScanQuotaWarningChip } from './AppDashboardPage.jsx'
+import ScanQuotaWarningChip from '../../components/ScanQuotaWarningChip.jsx'
 
 /**
- * Scan-quota warning tests — the dashboard's ≥85% utilization chip:
+ * Scan-quota warning tests — the shared ≥85% utilization chip (dashboard
+ * hero + Uploads page both render it from the same resolveUsage source):
  *
  * - scanQuotaPct is a pure 0..100 computation from the billing usage shape
  *   (scansUsed / scansLimit), returning null when no usable limit exists.

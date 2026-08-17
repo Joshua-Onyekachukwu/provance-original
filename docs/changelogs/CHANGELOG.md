@@ -1,5 +1,24 @@
 # Provance — Changelog
 
+## [2026-08-17] - Follow-up log triage + closed gap batch (armed resets, quota chip, sign-in lockout)
+
+### Triage
+- Audited the full `followup-recommendations.md` log against the code and flipped 9 verified-stale rows to `Done` (roles controller gap, `session_revoked` severity parity, `mockRevokeSession` audit parity, cookie CI gate, idempotency-key probe, LivePollIndicator sweep + queue/report-detail rows, org/API-key armed confirms, `validate:scan-roundtrip` wiring). Kept the founder-blocked rows (migration paste, `DATABASE_URL`, Upstash expiry, GH secrets) Open with current notes.
+
+### Added
+- `src/components/ScanQuotaWarningChip.jsx` — shared ≥85% quota chip extracted from the dashboard (was inline in `AppDashboardPage`); now rendered by the **Uploads page** too (new `getBilling` resource), so the surface where the user hits the limit shows the same warning that agrees with the `initiateScan` 402 gate.
+- Dashboard notifications feed: "View all N unread notifications" link to `/app/notifications` under the `unread.slice(0, 4)` preview.
+- Armed-confirm click-away/Escape reset on the **Organization page** (member remove, `data-armed-member-row`) and **API Keys page** (key revoke, `data-armed-revoke-row` on the table row) — the same `pointerdown`/`Escape` document-listener disarm the security page ships, so no half-armed destructive confirm lingers.
+- Admin Audit Logs: the event drawer now renders structured `details` (revoked counts, session ids, lockout ip/failures, reasons) with `break-words` hardening; `lockout` and `session revoked` short-action tones added to the badge map.
+- **`SignInLockoutInterceptor`** — failure-keyed lockout for `POST /auth/sign-in` (credential-stuffing protection), reusing the shared `RefreshLockoutTracker`: 5 consecutive 401s within a window trip a 429 + one high-severity `signin_lockout` audit row per episode; successful sign-in clears the key; `SIGNIN_LOCKOUT_ENABLED=false` escape hatch for hermetic e2e (pinned in `auth.e2e-spec.ts`). Env keys documented in the follow-up log (`.env.example` is tool-blocked); 8 new unit tests.
+- `prefers-reduced-motion` gating: the Hero's infinite pulse blob renders as a static glow, and the ProductShowcase demo no longer auto-plays (manual Run demo / Replay still works) — closing the last a11y follow-ups from the touch audit.
+- `validate:refresh-cookie` npm script wired (script existed but was only runnable via `node scripts/…`).
+- `src/lib/pollParity.test.jsx` — 3 tests asserting `useResource` and `useMockData` share identical `pollMs`/`pollWhen` silent-poll semantics.
+
+### Verified
+- Backend: build OK, jest **441/441**, e2e **76 pass / 2 skip** (with the shell's stray `PORT=0` unset — see follow-up row on pinning PORT in the e2e setup).
+- Frontend: vitest **566/566**, lint 0 errors, build clean, `audit:responsive` **155/155**.
+
 ## [2026-08-17] - Dashboard/admin/report review — roadmap drafted (no code changed)
 
 ### Planning

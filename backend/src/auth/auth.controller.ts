@@ -27,6 +27,7 @@ import { requestSessionMeta } from '../security/session-meta.util';
 import { AcceptInviteDto } from './dto/accept-invite.dto';
 import { AuthService } from './auth.service';
 import { RefreshLockoutInterceptor } from './refresh-lockout.interceptor';
+import { SignInLockoutInterceptor } from './sign-in-lockout.interceptor';
 import { ConfirmPasswordResetDto } from './dto/confirm-password-reset.dto';
 import { RefreshSessionDto } from './dto/refresh-session.dto';
 import { RequestPasswordResetDto } from './dto/request-password-reset.dto';
@@ -71,6 +72,7 @@ export class AuthController {
 
   @Post('sign-in')
   @HttpCode(HttpStatus.OK)
+  @UseInterceptors(SignInLockoutInterceptor)
   async signIn(
     @Res({ passthrough: true }) response: Response,
     @Body() dto: SignInDto,
