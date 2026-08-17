@@ -35,10 +35,10 @@ export default function SecurityPage() {
                 {
                   title: 'Retention Policies',
                   items: [
-                    'Set retention windows around account, workflow, and review needs',
-                    'Apply deletion rules with clear access and approval boundaries',
+                    'Retention windows are on the roadmap — the policy will be published before rollout',
+                    'Deletion rules will ship with clear access and approval boundaries',
                     'Keep uploads and artifacts behind private storage controls',
-                    'Use explicit retention rules for higher-trust workflows',
+                    'Explicit retention rules for higher-trust workflows are planned',
                   ],
                 },
                 {
@@ -99,11 +99,11 @@ export default function SecurityPage() {
                   desc: 'Record meaningful workflow events with timestamps, actor identity, and enough context to support investigation and review.',
                 },
                 {
-                  title: 'Export & Integration',
-                  desc: 'Export, integration, and retention controls keep review workflows easier to manage across teams and clients.',
+                  title: 'Export & Integration (planned)',
+                  desc: 'Audit export and integration controls are on the roadmap; the trail is reviewable in the workspace today.',
                 },
                 {
-                  title: 'Compliance Ready',
+                  title: 'Compliance Direction',
                   desc: 'Compliance and evidence posture start with a clean audit foundation, documented controls, and review-ready records.',
                 },
               ].map((item, i) => (
@@ -143,11 +143,11 @@ export default function SecurityPage() {
                 <span className="ml-3 text-xs text-stone font-mono">audit-log | tail -f</span>
               </div>
               <div className="p-5 md:p-6 font-mono text-xs leading-relaxed space-y-2 overflow-x-auto">
-                <div className="text-stone">2026-06-25T10:23:14Z  VERIFY  user:jdoe@newsroom.io  status:completed  verdict:ai_generated  confidence:0.947</div>
-                <div className="text-stone">2026-06-25T10:22:58Z  REPORT  user:jdoe@newsroom.io  action:download  report:a3f8c2-d4  format:pdf</div>
-                <div className="text-stone">2026-06-25T10:22:30Z  API     service:webhook-001     method:POST  endpoint:/v1/verify  status:200</div>
-                <div className="text-stone">2026-06-25T10:21:15Z  CONFIG  admin:asmith@provance.io action:update_retention  from:90d  to:365d</div>
-                <div className="text-amber/60">2026-06-25T10:20:00Z  AUTH    user:asmith@provance.io  action:login  method:saml  status:success</div>
+                <div className="text-stone">2026-06-25T10:23:14Z  VERIFY  user:jdoe@newsroom.io  status:completed  verdict:suspicious  confidence:0.69</div>
+                <div className="text-stone">2026-06-25T10:22:58Z  REPORT  user:jdoe@newsroom.io  action:download  report:PRV-7F2C9A1E  format:pdf</div>
+                <div className="text-stone">2026-06-25T10:22:30Z  API     user:jdoe@newsroom.io  method:POST  endpoint:/v1/scans  status:201</div>
+                <div className="text-stone">2026-06-25T10:21:15Z  CONFIG  admin:asmith@provance.io action:settings.updated  field:notification_preferences</div>
+                <div className="text-amber/60">2026-06-25T10:20:00Z  AUTH    user:asmith@provance.io  action:login  method:email_password  status:success</div>
               </div>
               </div>
             </motion.div>
@@ -163,7 +163,7 @@ export default function SecurityPage() {
             <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }} className="text-center mb-14">
               <motion.span variants={fadeUp} className="eyebrow eyebrow-dark">Enterprise Readiness</motion.span>
               <motion.h2 variants={fadeUp} className="font-serif text-3xl sm:text-4xl lg:text-[3.4rem] lg:leading-[1.05] mt-5 text-balance">
-                Built for the <span className="italic text-trust-soft">enterprise</span>.
+                Enterprise-grade trust, <span className="italic text-trust-soft">phased in</span>.
               </motion.h2>
             </motion.div>
 

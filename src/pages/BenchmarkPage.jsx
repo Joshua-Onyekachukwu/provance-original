@@ -297,7 +297,8 @@ export default function BenchmarkPage() {
             >
               Standard models forced a binary Real/Fake choice for nearly every asset — and got
               confidently wrong on compressed media and SOTA generators. Provance's weighted
-              multi-signal algorithm held Trust-Weighted Accuracy at 1.00 on the gold subset.
+              multi-signal algorithm scored Trust-Weighted Accuracy of 1.00 on the V0.1 gold
+              subset (100 assets) — a research benchmark, not a live-product guarantee.
             </motion.p>
           </motion.div>
 
@@ -401,7 +402,7 @@ export default function BenchmarkPage() {
               },
               {
                 title: 'Zero forced verdicts',
-                desc: 'Standard models committed to Real or Fake for nearly every asset. Provance correctly held 0 assets as Inconclusive when signals disagreed — protecting newsrooms from citing false results.',
+                desc: 'Standard models committed to Real or Fake for nearly every asset. Provance correctly held 0 assets as Inconclusive when signals disagreed — the design goal for newsroom review workflows.',
                 tone: 'bg-emerald-500',
               },
               {

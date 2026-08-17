@@ -1,5 +1,14 @@
 # Provance — Changelog
 
+## [2026-08-17] - Copy-honesty pass: /security + /benchmark overclaims fixed
+
+### Changed
+- **`src/pages/SecurityPage.jsx`** — the audit-log mockup now shows only events the product actually emits: `verdict:suspicious confidence:0.69` (real display verdict + the classifier's 0.52–0.78 confidence range) replaces the fabricated `ai_generated 0.947`; the webhook/`/v1/verify` row becomes a real `POST /v1/scans 201`; `action:update_retention` → `action:settings.updated`; `method:saml` → `method:email_password`; the report id is a real `PRV-` format. "Export & Integration" → "Export & Integration (planned)"; "Compliance Ready" → "Compliance Direction"; the Data Retention column is re-framed as roadmap ("Retention windows are on the roadmap — the policy will be published before rollout", "Deletion rules will ship with clear access and approval boundaries", "Explicit retention rules … are planned"); hero "Built for the enterprise." → "Enterprise-grade trust, phased in.".
+- **`src/pages/BenchmarkPage.jsx`** — two wording nits (the data itself is real): "held Trust-Weighted Accuracy at 1.00 on the gold subset" → "scored Trust-Weighted Accuracy of 1.00 on the V0.1 gold subset (100 assets) — a research benchmark, not a live-product guarantee"; "protecting newsrooms from citing false results" → "the design goal for newsroom review workflows".
+
+### Verified
+- `npm run build` clean, lint 0 errors, `audit:responsive` **15/15** clean on /security + /benchmark routes at 375/640/768/1024/1280. Zero fabricated refs remain on /security (`saml`, `update_retention`, `webhook-001`, `/v1/verify`, `ai_generated`); no test asserts any of the changed strings. With the /docs rewrite (already landed), every recommendation in `docs/engineering/PUBLIC_COPY_OVERCLAIM_AUDIT.md` is now applied.
+
 ## [2026-08-17] - Navbar width + bigger, polished landing report card
 
 ### Changed
