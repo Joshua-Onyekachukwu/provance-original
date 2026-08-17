@@ -1,149 +1,71 @@
 /**
- * useMockData.js — React hook for loading mock data with realistic state transitions.
+ * useMockData.js — mock-mode loader hook, now a thin adapter over useResource.
  *
- * Usage:
- *   const { data, loading, error, refetch } = useMockData(mockApiFunction, params)
+ * useResource is the app's single polling engine (one implementation of the
+ * load / reload / poll / refresh state machine, visibility pause, in-flight
+ * guards, last-known-good). This hook adapts the mock dialect to it:
  *
- * State machine:
+ *   const { data, loading, error, refetch, refresh } = useMockData(mockApiFunction, params)
+ *
+ * Two seams make the collapse possible:
+ *
+ * 1. Loader seam — the mock's `(params) => promise` signature is wrapped into
+ *    the engine's `() => promise` seam. Params are read from a ref at call
+ *    time (never part of the engine deps), so an inline params object that
+ *    changes identity per render cannot retrigger the load — callers that
+ *    change params call `refetch()` explicitly, exactly like the pre-collapse
+ *    contract (see AnalyticsPage's team filter).
+ * 2. Vocabulary seam — the engine's `{ status, data, error, reload, refresh }`
+ *    is mapped back to the mock dialect `{ data, loading, error, refetch,
+ *    refresh }`:
+ *    - `loading` ⇔ `status === 'loading'`
+ *    - `error` is `null` on success (mock dialect) instead of `''`
+ *    - `refetch` ⇔ `reload` with `keepDataOnReload` (mock refetch keeps the
+ *      previous data while loading; the real-mode reload blanks by design)
+ *    - `refresh` ⇔ the engine's manual silent tick (same last-known-good
+ *      semantics as the old poll)
+ *    - fallback error text keeps the mock dialect ('An unexpected error
+ *      occurred.') via the engine's `errorMessage` option
+ *
+ * State machine (unchanged from the pre-collapse mock contract):
  *   Initial:     { data: null, loading: true,  error: null }
  *   Success:     { data,       loading: false, error: null }
- *   Error:       { data: null, loading: false, error: 'message' }
+ *   Error:       { data: prev, loading: false, error: 'message' }
  *   Refetching:  { data: prev, loading: true,  error: null }
  *
- * refetch() reloads from the same source, preserving previous data while loading.
- * refresh() (when pollMs is set) is the manual twin of a poll tick — silent
- * in-place swap, no loading flash, last-known-good on failure — for the live
- * indicator's tap-to-refresh affordance (see useResource's refresh contract).
+ * Polling (`pollMs` > 0) is the engine's silent background loop: in-place
+ * data swap, no loading flash, last-known-good on failure, pauses while the
+ * tab is hidden — identical to real-mode useResource, which is the point
+ * (see pollParity.test.jsx). `refresh()` is the manual twin of a poll tick.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useRef } from 'react'
+import { useResource } from './useResource'
 
 export default function useMockData(mockFn, params = null, options = {}) {
-  const [state, setState] = useState({
-    data: null,
-    loading: true,
-    error: null,
-  })
-
+  // Params live in a ref and are read at call time — never an engine dep —
+  // preserving the old contract where a params identity change does not
+  // auto-reload; callers call refetch() explicitly.
   const paramsRef = useRef(params)
   paramsRef.current = params
 
-  const pollMs = options.pollMs || 0
-  const pollWhenRef = useRef(options.pollWhen)
-  pollWhenRef.current = options.pollWhen
-  const stateRef = useRef(state)
-  stateRef.current = state
+  // Loader seam: wrap the mock's (params) => promise into the engine's
+  // () => promise. An object is passed even when no params were given, so
+  // mock loaders using destructuring defaults like `({ page = 1 } = {})`
+  // behave identically (a bare null would throw mid-destructure).
+  const loader = useCallback(() => mockFn(paramsRef.current ?? {}), [mockFn])
 
-  const isMountedRef = useRef(true)
-  const fetchIdRef = useRef(0)
-
-  const execute = useCallback(
-    async (isRefetch = false) => {
-      fetchIdRef.current += 1
-      const thisFetchId = fetchIdRef.current
-
-      if (!isRefetch) {
-        setState({ data: null, loading: true, error: null })
-      } else {
-        setState((prev) => ({ data: prev.data, loading: true, error: null }))
-      }
-
-      try {
-        // Pass an object even when no params were given: mock loaders use
-        // destructuring defaults like `({ page = 1 } = {})`, which only kick
-        // in for `undefined` — a bare `null` would throw mid-destructure.
-        const result = await mockFn(paramsRef.current ?? {})
-
-        if (!isMountedRef.current || thisFetchId !== fetchIdRef.current) {
-          return
-        }
-
-        setState({ data: result, loading: false, error: null })
-      } catch (err) {
-        if (!isMountedRef.current || thisFetchId !== fetchIdRef.current) {
-          return
-        }
-
-        setState({
-          data: null,
-          loading: false,
-          error: err.message || 'An unexpected error occurred.',
-        })
-      }
-    },
-    [mockFn],
-  )
-
-  const refetch = useCallback(() => {
-    execute(true)
-  }, [execute])
-
-  useEffect(() => {
-    isMountedRef.current = true
-    execute(false)
-
-    return () => {
-      isMountedRef.current = false
-    }
-  }, [execute])
-
-  // ── Silent background polling (optional, pollMs > 0) ─────────────────────
-  // Same contract as useResource's poll: swaps fresh data in place without
-  // ever flashing the loading state, and keeps last-known-good data if a poll
-  // fails — so a live panel (e.g. admin monitoring) can track worker progress
-  // without flickering or blanking on a transient error.
-  const poll = useCallback(async () => {
-    fetchIdRef.current += 1
-    const thisFetchId = fetchIdRef.current
-    try {
-      const result = await mockFn(paramsRef.current ?? {})
-      if (isMountedRef.current && thisFetchId === fetchIdRef.current) {
-        setState({ data: result, loading: false, error: null })
-      }
-    } catch {
-      if (isMountedRef.current && thisFetchId === fetchIdRef.current) {
-        // Keep last-known-good — a transient poll failure must not flip a
-        // live panel into its error state.
-        setState((prev) => ({ ...prev, error: null }))
-      }
-    }
-  }, [mockFn])
-
-  useEffect(() => {
-    if (!pollMs || pollMs <= 0) return undefined
-
-    let cancelled = false
-    let inFlight = false
-
-    const tick = async () => {
-      if (cancelled || inFlight) return
-      const gate = pollWhenRef.current
-      if (gate && !gate(stateRef.current)) return
-      inFlight = true
-      try {
-        await poll()
-      } finally {
-        inFlight = false
-      }
-    }
-
-    const interval = window.setInterval(tick, pollMs)
-    return () => {
-      cancelled = true
-      window.clearInterval(interval)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pollMs, poll])
+  const resource = useResource(loader, [mockFn], {
+    ...options,
+    keepDataOnReload: true,
+    errorMessage: 'An unexpected error occurred.',
+  })
 
   return {
-    data: state.data,
-    loading: state.loading,
-    error: state.error,
-    refetch,
-    // refresh = the silent poll tick, exposed for the live indicator's
-    // tap-to-refresh affordance: same in-place swap semantics as useResource's
-    // refresh (no loading flash, last-known-good on failure). refetch() stays
-    // for Retry buttons, which re-enter the loading state.
-    refresh: poll,
+    data: resource.data,
+    loading: resource.status === 'loading',
+    error: resource.error || null,
+    refetch: resource.reload,
+    refresh: resource.refresh,
   }
 }

@@ -1,5 +1,15 @@
 # Provance — Changelog
 
+## [2026-08-17] - useResource/useMockData collapsed into one polling engine
+
+### Changed
+- **`src/lib/useResource.js` is now the single polling engine.** Added two engine options that exist solely to preserve the mock dialect: `keepDataOnReload` (mock `refetch()` keeps prior data through the loading state and on reload failure — real-mode `reload()` still blanks by design) and `errorMessage` (fallback error text; mock passes 'An unexpected error occurred.').
+- **`src/lib/useMockData.js` rewritten as a thin adapter over `useResource`** (no polling logic of its own): the mock's `(params) => promise` loader is wrapped into the engine's `() => promise` seam with params read from a ref at call time (never an engine dep — an inline params object identity change can't retrigger the load), and the status vocabulary is mapped back to the mock dialect (`loading` ⇔ `status === 'loading'`, `error` null on success, `refetch` ⇔ `reload` with keep-data, `refresh` ⇔ the engine's manual silent tick). Bonus: mock-mode polls now inherit the engine's tab-hidden pause, which the old mock poll lacked.
+- **New loader-seam tests** in `useMockData.test.jsx`: params-destructuring-defaults seam (loader always receives `{}` when params are null — `({ page = 1 } = {})` defaults keep working), params pass-through, `refetch()` keeps previous data while reloading (deterministic deferred), and `refetch()` keeps last-known-good data when the reload rejects (one deliberate contract upgrade — the old mock blanked data on refetch failure, inconsistent with its own poll/refresh semantics).
+
+### Verified
+- `useResource` (7) + `useMockData` (9) + `pollParity` (3) = **19/19**; full vitest **597/597** (67 files); `npm run build` clean; lint 0 errors. `pollParity.test.jsx` kept as-is — it now guards a single engine through two vocabulary adapters, which is exactly the drift it was written to prevent. All 6 mock consumers (Settings/Roles/Reports/Monitoring/Jobs/Analytics) and 48 real-mode consumers unchanged.
+
 ## [2026-08-17] - CONTEXT.md domain glossary
 
 ### Added

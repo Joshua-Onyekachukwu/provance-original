@@ -53,6 +53,22 @@
  * forcing (?state=empty|error via withDemoOverride) does not idle the polls
  * — they continue underneath while the forced display wins. Inert in
  * production builds, where ?state= is not read.
+ *
+ * ── One engine, two vocabularies ─────────────────────────────────────────
+ * This hook is the single polling engine for the app. useMockData is a thin
+ * adapter over it (mock loader wrapped into the () => promise seam, params
+ * read from a ref at call time) that maps this status vocabulary back to the
+ * mock dialect ({ loading, refetch }) — so real mode and mock mode can never
+ * drift: one implementation of the poll loop, two return shapes. See
+ * useMockData.js and pollParity.test.jsx.
+ *
+ * Two engine options exist solely to preserve the mock dialect:
+ * - `keepDataOnReload` (default false): when true, reload()/deps-triggered
+ *   reloads keep the previous data while re-entering the loading state
+ *   (the mock's refetch semantics). Real-mode reload blanks data by design.
+ * - `errorMessage` (default 'Failed to load.'): the fallback error string
+ *   when a thrown error carries no message. useMockData passes the mock
+ *   dialect's 'An unexpected error occurred.'.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -71,10 +87,24 @@ export function useResource(loader, deps = [], options = {}) {
   const pollWhenRef = useRef(options.pollWhen)
   pollWhenRef.current = options.pollWhen
   const pollMs = options.pollMs || 0
+  // Mock-dialect options (see header): keep prior data through a reload, and
+  // the fallback error string when a thrown error has no message.
+  const keepDataOnReloadRef = useRef(options.keepDataOnReload === true)
+  keepDataOnReloadRef.current = options.keepDataOnReload === true
+  const errorMessageRef = useRef(options.errorMessage || 'Failed to load.')
+  errorMessageRef.current = options.errorMessage || 'Failed to load.'
 
   useEffect(() => {
     let cancelled = false
-    setState({ status: 'loading', data: null, error: '' })
+    // Capture the pre-reload data once: with keepDataOnReload the mock's
+    // refetch semantics keep prior data through the loading state (and on a
+    // reload failure, where the panel must not blank to null).
+    const previousData = keepDataOnReloadRef.current ? stateRef.current.data : null
+    setState((prev) => ({
+      status: 'loading',
+      data: keepDataOnReloadRef.current ? prev.data : null,
+      error: '',
+    }))
 
     Promise.resolve()
       .then(() => loaderRef.current())
@@ -85,8 +115,8 @@ export function useResource(loader, deps = [], options = {}) {
         if (!cancelled) {
           setState({
             status: 'error',
-            data: null,
-            error: error?.message || 'Failed to load.',
+            data: keepDataOnReloadRef.current ? previousData : null,
+            error: error?.message || errorMessageRef.current,
           })
         }
       })
