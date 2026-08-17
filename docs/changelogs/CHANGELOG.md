@@ -1,5 +1,11 @@
 # Provance — Changelog
 
+## [2026-08-17] - Responsive verification: landing Sample Report section at 375/768/1280
+
+### Verified (no changes needed)
+- `audit:responsive` re-run after the button-cascade CSS fix: **260/260 page audits clean** at 375/640/768/1024/1280, including `/` (landing Sample Report section), `/sample-report`, and `/sample-report/print`.
+- DOM probe at 375 confirms the section collapses correctly: every multi-col grid drops to single column below `md`, the 3-metric pill row stays 3-across, the verification seal renders at full 74px, and zero elements overflow the viewport (the longer stacked height ~2823px at 375 vs ~1835px at 1280 is the expected mobile-first single-column collapse, not clipping).
+
 ## [2026-08-17] - A11y audit re-run: btn-* cascade fix + honest contrast sampler
 
 ### Fixed
