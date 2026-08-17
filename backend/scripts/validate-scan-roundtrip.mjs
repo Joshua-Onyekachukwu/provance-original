@@ -13,6 +13,11 @@
  *   5. Poll GET /v1/scans/:scanId on the frontend's 5s cadence until the
  *      worker flips it to `completed` (display dialect) or `failed`;
  *      record the observed transition chain.
+ *   5b. In parallel, poll the BullMQ job state (jobId = scanId) at a finer
+ *       cadence and assert the worker path specifically: the job must be
+ *       observed in `active` (claimed by the worker, NOT inline) and end in
+ *       `completed`/`failed` matching the row — skipped with a note when
+ *       REDIS_URL is unset (inline fallback mode has no queue to watch).
  *   6. GET /v1/reports/:scanId → the signal-by-signal report payload,
  *      and GET /v1/reports/:scanId/pdf → a real application/pdf artifact.
  *   7. GET /v1/scans/queue-snapshot reflects the completed scan.
@@ -26,20 +31,27 @@
  * users with the same email prefix are purged first.
  *
  * Contract observations (inline-vs-BullMQ processing path, observed status
- * transitions, 402 quota behavior) are printed as notes so mismatches are
- * explicit, not buried.
+ * transitions, job-level states, 402 quota behavior) are printed as notes
+ * so mismatches are explicit, not buried.
  *
  * Usage:  node scripts/validate-scan-roundtrip.mjs
  * Requires: backend/.env.local with SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY
  *           (+ SUPABASE_ANON_KEY for the signed-URL upload), and the backend
- *           running on PORT (default 4000).
+ *           running on PORT (default 4000). For the job-level leg, REDIS_URL
+ *           and a built backend (dist/queue/queue.connection.js) are needed.
  */
 
 import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 import { createClient } from '@supabase/supabase-js';
+
+// BullMQ is required via createRequire so the job-level watcher reuses the
+// backend's own dependency + connection helper (same pattern as
+// verify-bullmq.mjs).
+const require = createRequire(import.meta.url);
 
 const here = dirname(fileURLToPath(import.meta.url));
 const ENV = loadEnv(resolve(here, '../.env.local'));
@@ -47,6 +59,8 @@ const ENV = loadEnv(resolve(here, '../.env.local'));
 const SUPABASE_URL = ENV.SUPABASE_URL;
 const SERVICE_ROLE = ENV.SUPABASE_SERVICE_ROLE_KEY;
 const ANON_KEY = ENV.SUPABASE_ANON_KEY;
+const REDIS_URL = ENV.REDIS_URL?.trim() || null;
+const QUEUE_NAME = ENV.SCAN_PROCESSING_QUEUE_NAME || 'scan-processing';
 
 // The dev shell injects a foreign PORT env var (this harness's own server),
 // so blindly trusting process.env.PORT points the walk at the wrong server.
@@ -82,7 +96,25 @@ const ONE_PX_PNG = Buffer.from(
 );
 
 const POLL_INTERVAL_MS = 5_000; // matches the frontend's useResource cadence
+const JOB_POLL_INTERVAL_MS = 1_000; // finer cadence so a fast worker can't hide 'active'
 const POLL_TIMEOUT_MS = 120_000;
+
+// BullMQ job watcher (jobId = scanId contract from QueueService.enqueueScanProcessing).
+// Built lazily so the walk still runs in inline mode (REDIS_URL unset) — the
+// job-level checks are then skipped with a note, matching verify-bullmq.mjs.
+let queueClient = null;
+let queueClientError = null;
+if (REDIS_URL) {
+  try {
+    const { Queue } = require('bullmq');
+    const { createRedisConnection } = require('../dist/queue/queue.connection.js');
+    queueClient = new Queue(QUEUE_NAME, {
+      connection: createRedisConnection(REDIS_URL),
+    });
+  } catch (error) {
+    queueClientError = error;
+  }
+}
 
 const results = [];
 const notes = [];
@@ -299,24 +331,92 @@ async function main() {
     const submit = await apiFetch(`/v1/scans/${scanId}/submit`, { method: 'POST', token });
     check('POST /v1/scans/:id/submit → 202 (queued)', submit.status === 202, `HTTP ${submit.status} ${JSON.stringify(submit.body)}`);
 
-    // ── 7. Poll until the worker completes (frontend 5s cadence) ──
+    // ── 7. Poll until the worker completes ──
+    // Row leg: the frontend's 5s cadence (every 5th 1s tick). Job leg: every
+    // 1s tick so a fast worker can't hide the 'active' state that proves the
+    // worker (not the request lifecycle) processed the job.
     const observed = [];
+    const jobStates = [];
     const startedAt = Date.now();
     let finalRow = null;
+    let ticks = 0;
     while (Date.now() - startedAt < POLL_TIMEOUT_MS) {
-      const poll = await apiFetch(`/v1/scans/${scanId}`, { token });
-      if (poll.status === 200 && poll.body) {
-        const status = poll.body.status;
-        if (!observed.includes(status)) observed.push(status);
-        if (status === 'completed' || status === 'failed') {
-          finalRow = poll.body;
-          break;
+      if (ticks % 5 === 0) {
+        const poll = await apiFetch(`/v1/scans/${scanId}`, { token });
+        if (poll.status === 200 && poll.body) {
+          const status = poll.body.status;
+          if (!observed.includes(status)) observed.push(status);
+          if (status === 'completed' || status === 'failed') {
+            finalRow = poll.body;
+            break;
+          }
         }
       }
-      await sleep(POLL_INTERVAL_MS);
+
+      if (queueClient && !queueClientError) {
+        try {
+          const job = await queueClient.getJob(scanId);
+          const state = job ? await job.getState() : 'gone';
+          if (!jobStates.includes(state)) jobStates.push(state);
+        } catch (jobError) {
+          queueClientError = jobError;
+        }
+      }
+
+      ticks += 1;
+      await sleep(JOB_POLL_INTERVAL_MS);
+    }
+
+    // The row is updated before the BullMQ 'completed' event fires, so the
+    // job may still be 'active' at the row break — one final read captures
+    // the terminal job state.
+    let finalJobState = null;
+    if (queueClient && !queueClientError) {
+      try {
+        const job = await queueClient.getJob(scanId);
+        finalJobState = job ? await job.getState() : 'gone';
+        if (finalJobState && !jobStates.includes(finalJobState)) {
+          jobStates.push(finalJobState);
+        }
+      } catch {
+        // Row checks already captured the outcome; job-level detail is best-effort.
+      }
+    }
+    if (queueClient) {
+      await queueClient.close().catch(() => {});
     }
 
     const okFinal = finalRow?.status === 'completed';
+
+    // ── 7b. Job-level assertions (the worker path, not inline) ──
+    if (REDIS_URL && queueClientError) {
+      check('BullMQ job watcher available', false, `queue client failed: ${queueClientError.message}`);
+    } else if (REDIS_URL) {
+      check(
+        'BullMQ job observed via the queue API (jobId = scanId)',
+        jobStates.length > 0 && finalJobState !== null,
+        `states seen: ${jobStates.join(' → ') || '(none)'}`,
+      );
+      check(
+        'job-level chain proves the worker path (active claimed)',
+        jobStates.includes('active'),
+        `observed: ${jobStates.join(' → ') || '(none)'}`,
+      );
+      check(
+        'job-level terminal state matches the row outcome',
+        (finalJobState === 'completed') === okFinal &&
+          (finalJobState === 'failed') === (finalRow?.status === 'failed'),
+        `job=${finalJobState} row=${finalRow?.status ?? '(none)'}`,
+      );
+      if (!jobStates.includes('waiting')) {
+        note('job was already claimed when the watcher first polled — "waiting" not observed at the 1s cadence');
+      } else {
+        note(`job-level chain observed: ${jobStates.join(' → ')}`);
+      }
+    } else {
+      note('REDIS_URL unset — inline fallback path; job-level (BullMQ) assertion skipped');
+    }
+
     check(
       'worker drives scan to completed via polling',
       okFinal,

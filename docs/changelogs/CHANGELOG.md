@@ -1,5 +1,14 @@
 # Provance — Changelog
 
+## [2026-08-17] - validate-scan-roundtrip proves the worker path via BullMQ job states
+
+### Added
+- The round-trip walk now polls the BullMQ job in parallel with the row: job state every 1s (finer than the row's 5s frontend cadence so a fast worker can't hide `active`), row every 5th tick. New checks assert the job is observed via the queue API (`jobId = scanId`), the chain includes `active` (claimed by the worker, NOT inline), and the job's terminal state (`completed`/`failed`) matches the row outcome; a final read captures the terminal job state since the row updates before the BullMQ `completed` event fires.
+- Job-level leg is skipped with a note when `REDIS_URL` is unset (inline fallback has no queue to watch) and fails loudly if the queue client can't build; `SCAN_PROCESSING_QUEUE_NAME` respected. Requires the backend's `dist/queue/queue.connection.js` (built via `npm run build`).
+
+### Verified
+- Syntax valid; no-backend path still fails fast against the live backend (503 with the 0019 hint — migrations still pending); Queue + createRedisConnection resolve from the script's `../dist` path.
+
 ## [2026-08-17] - apply:migrations gains --verify; DATABASE_URL still the one missing input
 
 ### Changed
