@@ -1,5 +1,13 @@
 # Provance — Changelog
 
+## [2026-08-17] - TrustBar wired into the landing under the Hero
+
+### Changed
+- `TrustBar` (previously unreferenced dead code) is now rendered on the landing page directly under the Hero — it is a finished benchmark-claims panel (trust-weighted accuracy 1.00, 0.0% FPR, gold-catalog count) with CTAs to the live `/benchmark` and `/benchmark#catalog` routes, so it serves as the landing's measurable social proof instead of being archived. Decision mirrors ProductShowcase (reuse, not archive) and closes the last dead-code follow-up row.
+
+### Verified
+- Renders correctly at phone (stats stack, CTAs stack) and tablet widths in the live preview; lint 0 errors; grid guard + ui barrel parity 23/23; responsive audit: `/` PASS at phone-375 and tablet-768 (the remaining audit FAILs are headless-Chromium page crashes hitting public routes too — environmental, not from this change).
+
 ## [2026-08-17] - E2E suite re-verified; invite-accept block prepared (founder gate)
 
 ### Verified
