@@ -1,5 +1,9 @@
 # Provance — Changelog
 
+## [2026-08-17] - Live scan walk re-check: migrations still not on the probed project
+
+Re-probed before the walk (user reported migrations applied): direct REST probes + the running :4000 backend's readiness both confirm `dmhrwdcuwtgscwlaagsa` is still **5/20** — `organizations` 404 PGRST205 (0005), `user_sessions` 404 (0010), `audit_logs` 404 (0008), `scans.processing_mode` 400 42703 (0009). Readiness stays `degraded` with 15 missing. The block did not land on this project; the full round-trip cannot run until it does. No code changes.
+
 ## [2026-08-17] - validate:bullmq now exercises and asserts the BullMQ retry path live
 
 ### Added
