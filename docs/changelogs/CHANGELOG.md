@@ -1,5 +1,11 @@
 # Provance — Changelog
 
+## [2026-08-17] - Provance skills installed globally + registered with the skills CLI
+
+### Added
+- Installed `provance-nestjs` into `~/.agents/skills/` (byte-identical to `docs/skills/provance-nestjs/SKILL.md`); `provance-bullmq-redis-queue` confirmed already installed and byte-identical.
+- Verified both register with `skills list -g` (skills CLI v1.5.22, Source: local, both listed with valid frontmatter name/description).
+
 ## [2026-08-17] - Supabase skill activation: RLS/Storage guidance added to the scans contract
 
 ### Changed
