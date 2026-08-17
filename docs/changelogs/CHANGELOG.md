@@ -1,5 +1,15 @@
 # Provance — Changelog
 
+## [2026-08-17] - Supabase credentials wired (new-format keys) + live stack verified
+
+### Changed
+- **Env setup (backend + frontend, both gitignored)**: swapped the old-format JWT anon/service keys for the new-format Supabase keys in `backend/.env.local` (`SUPABASE_ANON_KEY` ← `sb_publishable_…`, `SUPABASE_SERVICE_ROLE_KEY` ← `sb_secret_…`) and `.env.local` (`VITE_SUPABASE_ANON_KEY` ← `sb_publishable_…`); added `SUPABASE_JWKS_URL` to the backend. Project ref is `dmhrwdcuwtgscwlaagsa` — unchanged and matching in both files.
+- **Verified live**: REST probe with the publishable key (anon) → 200; with the secret key (service role) → 200 returning real rows; JWKS endpoint → 200 with 1 key.
+- **Stack restarted**: backend rebuilt (`nest build`) and restarted on :4000 with the new keys (readiness `checks.supabase.ready: true`); BullMQ worker started (`PORT=4000 node dist/worker.js`) — **Worker is ready for queue "scan-processing" with concurrency 4** (REDIS_URL Upstash). Frontend dev server on :4400 already points at `http://localhost:4000/v1`.
+
+### Not done (blocker)
+- Migrations still 5/19 applied — missing `0005, 0007–0016, 0018–0021` (readiness `checks.migrations` + `checks.scansSchema`/`userSessions` flag them; 0009/0019 hard-gate scan upload). Applying needs either `DATABASE_URL` in `backend/.env.local` (then `npm run apply:migrations -- --verify`) or the dashboard SQL Editor paste — the connection string was not part of this credential set.
+
 ## [2026-08-17] - Verification Reports polish (confidence scale, seed payloads, popover anchoring, video preview)
 
 ### Fixed
