@@ -1,5 +1,13 @@
+import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import PageHero from '../components/PageHero.jsx'
+
+const LUXE = [0.32, 0.72, 0, 1]
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 24, filter: 'blur(6px)' },
+  visible: (i = 0) => ({ opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 0.85, delay: 0.08 * i, ease: LUXE } }),
+}
 
 const featuredResources = [
   {
@@ -93,31 +101,47 @@ export default function ResourcesPage() {
           </div>
 
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.1fr_0.9fr]">
-            <Link
-              to={featuredResources[0].href}
-              className="surface-card group relative overflow-hidden p-0 transition hover:-translate-y-1"
+            <motion.div
+              initial={{ opacity: 0, y: 28 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-60px' }}
+              transition={{ duration: 0.7, ease: LUXE }}
+              className="group"
             >
-              <div className="relative p-8 md:p-10">
-                <div className="absolute right-0 top-0 h-28 w-28 rounded-full bg-trust/10 blur-2xl transition-transform duration-300 group-hover:scale-110" />
-                <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-charcoal-light">Featured destination</p>
-                <p className="mt-4 font-serif text-3xl text-charcoal">{featuredResources[0].title}</p>
-                <p className="mt-4 max-w-lg text-sm leading-relaxed text-charcoal-mid">{featuredResources[0].desc}</p>
-                <div className="mt-8 inline-flex rounded-full border border-stone-light bg-white px-4 py-2 font-mono text-[11px] uppercase tracking-[0.16em] text-charcoal-mid">
-                  Explore now
+              <Link to={featuredResources[0].href} className="block h-full">
+                <div className="bezel-shell h-full transition-transform duration-700 ease-luxe group-hover:-translate-y-1">
+                  <div className="bezel-core relative h-full p-8 md:p-10">
+                    <div className="absolute right-0 top-0 h-28 w-28 rounded-full bg-trust/10 blur-2xl transition-transform duration-500 ease-luxe group-hover:scale-110" />
+                    <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-charcoal-light">Featured destination</p>
+                    <p className="mt-4 font-serif text-3xl text-charcoal">{featuredResources[0].title}</p>
+                    <p className="mt-4 max-w-lg text-sm leading-relaxed text-charcoal-mid">{featuredResources[0].desc}</p>
+                    <div className="mt-8 inline-flex rounded-full border border-stone-light bg-white px-4 py-2 font-mono text-[11px] uppercase tracking-[0.16em] text-charcoal-mid">
+                      Explore now
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </Link>
+              </Link>
+            </motion.div>
 
             <div className="grid gap-5">
-              {featuredResources.slice(1).map((item) => (
-              <Link
+              {featuredResources.slice(1).map((item, i) => (
+              <motion.div
                 key={item.href}
-                to={item.href}
-                className="surface-card p-7 transition hover:-translate-y-1"
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-60px' }}
+                transition={{ duration: 0.7, delay: 0.08 * (i + 1), ease: LUXE }}
+                className="group"
               >
-                <p className="font-serif text-2xl text-charcoal">{item.title}</p>
-                <p className="mt-3 text-sm leading-relaxed text-charcoal-mid">{item.desc}</p>
-              </Link>
+                <Link to={item.href} className="block h-full">
+                  <div className="bezel-shell h-full transition-transform duration-700 ease-luxe group-hover:-translate-y-1">
+                    <div className="bezel-core h-full p-7">
+                      <p className="font-serif text-2xl text-charcoal">{item.title}</p>
+                      <p className="mt-3 text-sm leading-relaxed text-charcoal-mid">{item.desc}</p>
+                    </div>
+                  </div>
+                </Link>
+              </motion.div>
               ))}
             </div>
           </div>
@@ -128,22 +152,46 @@ export default function ResourcesPage() {
         <div className="absolute inset-0 forensic-grid opacity-[0.04]" />
         <div className="content-container relative z-10">
           <div className="mx-auto mb-12 max-w-2xl text-center">
-            <span className="eyebrow eyebrow-dark">Knowledge Areas</span>
-            <h2 className="mt-4 font-serif text-3xl text-balance sm:text-4xl">
+            <motion.span
+              initial={{ opacity: 0, y: 12 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, ease: LUXE }}
+              className="eyebrow eyebrow-dark"
+            >
+              Knowledge Areas
+            </motion.span>
+            <motion.h2
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.7, delay: 0.08, ease: LUXE }}
+              className="mt-5 font-serif text-3xl text-balance sm:text-4xl lg:text-[3.4rem] lg:leading-[1.05]">
               The topics we want Provance to be known for.
-            </h2>
+            </motion.h2>
           </div>
 
           <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
-            {knowledgeAreas.map((area) => (
-              <div key={area.title} className="surface-card-dark p-6">
-                <h3 className="font-serif text-xl text-parchment">{area.title}</h3>
-                <ul className="feature-list mt-5 text-sm leading-relaxed text-stone">
-                  {area.items.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              </div>
+            {knowledgeAreas.map((area, i) => (
+              <motion.div
+                key={area.title}
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-60px' }}
+                transition={{ duration: 0.7, delay: i * 0.08, ease: LUXE }}
+                className="group"
+              >
+                <div className="bezel-shell-dark h-full transition-transform duration-700 ease-luxe group-hover:-translate-y-1">
+                  <div className="bezel-core-dark h-full p-6">
+                    <h3 className="font-serif text-xl text-parchment">{area.title}</h3>
+                    <ul className="feature-list mt-5 text-sm leading-relaxed text-stone">
+                      {area.items.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -151,40 +199,46 @@ export default function ResourcesPage() {
 
       <section className="section-padding bg-parchment-light">
         <div className="content-container grid grid-cols-1 gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
-          <div className="surface-card relative overflow-hidden p-8 md:p-10">
-            <div className="absolute left-[-2rem] top-[-2rem] h-24 w-24 rounded-full bg-amber/10 blur-2xl" />
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-charcoal-light">Why this page matters</p>
-            <h2 className="mt-4 font-serif text-3xl text-charcoal">Resources should build authority, not fill space.</h2>
-            <p className="mt-5 text-sm leading-relaxed text-charcoal-mid">
-              The goal of this page is to show that Provance is becoming a serious authority in explainable media verification. That means practical guides, standards awareness, research direction, and product materials that help visitors understand the problem space as well as the product itself.
-            </p>
-            <p className="mt-4 text-sm leading-relaxed text-charcoal-mid">
-              Over time, this section can support search visibility, strengthen trust, and give buyers, evaluators, and design partners more reasons to return even before full product access opens.
-            </p>
+          <div className="bezel-shell relative h-full">
+            <div className="bezel-core relative h-full overflow-hidden p-8 md:p-10">
+              <div className="absolute left-[-2rem] top-[-2rem] h-24 w-24 rounded-full bg-amber/10 blur-2xl" />
+              <p className="font-mono text-xs uppercase tracking-[0.2em] text-charcoal-light">Why this page matters</p>
+              <h2 className="mt-4 font-serif text-3xl text-charcoal">Resources should build authority, not fill space.</h2>
+              <p className="mt-5 text-sm leading-relaxed text-charcoal-mid">
+                The goal of this page is to show that Provance is becoming a serious authority in explainable media verification. That means practical guides, standards awareness, research direction, and product materials that help visitors understand the problem space as well as the product itself.
+              </p>
+              <p className="mt-4 text-sm leading-relaxed text-charcoal-mid">
+                Over time, this section can support search visibility, strengthen trust, and give buyers, evaluators, and design partners more reasons to return even before full product access opens.
+              </p>
+            </div>
           </div>
 
           <div className="grid gap-5">
-            <div className="surface-card-muted p-8 md:p-10">
-              <p className="font-mono text-xs uppercase tracking-[0.2em] text-charcoal-light">Learning path</p>
-              <ul className="feature-list mt-5 text-sm leading-relaxed text-charcoal-mid">
-                <li>Start with the methodology page to understand evidence and confidence framing.</li>
-                <li>Review the sample report to see how outputs are packaged for serious workflows.</li>
-                <li>Use the docs page to understand how API access and integration direction fit into the product.</li>
-                <li>Read the security page for the trust and control posture behind the platform.</li>
-              </ul>
+            <div className="bezel-shell">
+              <div className="bezel-core p-8 md:p-10">
+                <p className="font-mono text-xs uppercase tracking-[0.2em] text-charcoal-light">Learning path</p>
+                <ul className="feature-list mt-5 text-sm leading-relaxed text-charcoal-mid">
+                  <li>Start with the methodology page to understand evidence and confidence framing.</li>
+                  <li>Review the sample report to see how outputs are packaged for serious workflows.</li>
+                  <li>Use the docs page to understand how API access and integration direction fit into the product.</li>
+                  <li>Read the security page for the trust and control posture behind the platform.</li>
+                </ul>
+              </div>
             </div>
 
-            <div className="surface-card p-8 md:p-10">
-              <p className="font-mono text-xs uppercase tracking-[0.2em] text-charcoal-light">
-                Editorial direction
-              </p>
-              <h2 className="mt-4 font-serif text-3xl text-charcoal">
-                A resource library should feel like part of the product story.
-              </h2>
-              <p className="mt-5 text-sm leading-relaxed text-charcoal-mid">
-                The goal is to make Provance feel informed, current, and trustworthy
-                before a visitor ever enters the application.
-              </p>
+            <div className="bezel-shell">
+              <div className="bezel-core p-8 md:p-10">
+                <p className="font-mono text-xs uppercase tracking-[0.2em] text-charcoal-light">
+                  Editorial direction
+                </p>
+                <h2 className="mt-4 font-serif text-3xl text-charcoal">
+                  A resource library should feel like part of the product story.
+                </h2>
+                <p className="mt-5 text-sm leading-relaxed text-charcoal-mid">
+                  The goal is to make Provance feel informed, current, and trustworthy
+                  before a visitor ever enters the application.
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -200,16 +254,27 @@ export default function ResourcesPage() {
           </div>
 
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-            {roadmapResources.map((item) => (
-              <div key={item.title} className="surface-card p-6">
-                <div className="flex items-center justify-between gap-4">
-                  <h3 className="font-serif text-xl text-charcoal">{item.title}</h3>
-                  <span className="rounded-full border border-stone-light bg-parchment px-3 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-charcoal-light">
-                    {item.status}
-                  </span>
+            {roadmapResources.map((item, i) => (
+              <motion.div
+                key={item.title}
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-60px' }}
+                transition={{ duration: 0.7, delay: (i % 2) * 0.08, ease: LUXE }}
+                className="group"
+              >
+                <div className="bezel-shell h-full transition-transform duration-700 ease-luxe group-hover:-translate-y-1">
+                  <div className="bezel-core h-full p-6">
+                    <div className="flex items-center justify-between gap-4">
+                      <h3 className="font-serif text-xl text-charcoal">{item.title}</h3>
+                      <span className="rounded-full border border-stone-light bg-parchment px-3 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-charcoal-light">
+                        {item.status}
+                      </span>
+                    </div>
+                    <p className="mt-4 text-sm leading-relaxed text-charcoal-mid">{item.desc}</p>
+                  </div>
                 </div>
-                <p className="mt-4 text-sm leading-relaxed text-charcoal-mid">{item.desc}</p>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>

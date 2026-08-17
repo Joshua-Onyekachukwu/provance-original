@@ -1,6 +1,9 @@
 import { useState } from 'react'
+import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { requestPasswordReset } from '../lib/api.js'
+
+const LUXE = [0.32, 0.72, 0, 1]
 
 export default function RequestPasswordResetPage() {
   const [email, setEmail] = useState('')
@@ -26,7 +29,13 @@ export default function RequestPasswordResetPage() {
       <section className="section-padding bg-parchment relative overflow-hidden">
         <div className="absolute inset-0 forensic-grid opacity-30" />
         <div className="content-container relative z-10 max-w-3xl">
-          <div className="surface-card p-8 md:p-10">
+          <motion.div
+            initial={{ opacity: 0, y: 28, filter: 'blur(6px)' }}
+            animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            transition={{ duration: 0.85, ease: LUXE }}
+            className="bezel-shell"
+          >
+            <div className="bezel-core p-8 md:p-10">
             <h1 className="font-serif text-4xl text-charcoal text-balance">
               Request a password reset
             </h1>
@@ -80,7 +89,8 @@ export default function RequestPasswordResetPage() {
                 </button>
               </form>
             )}
-          </div>
+            </div>
+          </motion.div>
         </div>
       </section>
     </div>

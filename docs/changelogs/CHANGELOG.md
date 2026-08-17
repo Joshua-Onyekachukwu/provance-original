@@ -1,5 +1,17 @@
 # Provance — Changelog
 
+## [2026-08-17] - High-end design language extended to all remaining public pages
+
+### Changed
+- **Every remaining public page now matches the landing's premium layer.** `PageHero` (shared by `/docs`, `/resources`, `/benchmark`, `/security`, `/waitlist`, `/signin`, `/reset-password`, `/reset-password/confirm`) upgraded to the LUXE cubic-bezier `[0.32, 0.72, 0, 1]` with blur fade-up entrance and the landing headline scale (`xl:text-[4.4rem]`), so every public hero animates identically to the landing Hero.
+- **Cards converted from flat `surface-card` to the double-bezel architecture** (`bezel-shell`/`bezel-core`, with `bezel-shell-dark`/`bezel-core-dark` on charcoal sections): docs quick-start + webhook cards and the two API code panels, resources featured/learning-path/roadmap cards and the charcoal knowledge-area grid, benchmark metric cards, comparison bars, error-analysis cards, catalog panels (type/source/difficulty) and the V0.2 banner, security retention/data-handling columns, audit cards + audit-log mockup, and the enterprise grid, waitlist what-to-expect/faster-path cards + form, sign-in access card + form, and both reset-password cards. All grids keep explicit base `grid-cols-1` (mobile-first) with the card hover-lift (`group-hover:-translate-y-1`) and LUXE transitions.
+- **Section headers** upgraded to the landing scale (`font-serif … lg:text-[3.4rem] lg:leading-[1.05]`) with the eyebrow pill pattern already in place.
+
+### Verified
+- vitest **593/593**, lint 0 errors (41 warnings baseline), `npm run build` clean, `guard:grid` clean (every responsive grid declares base `grid-cols-1`).
+- Responsive audit subset **55/55 clean** across the reworked routes at 375/640/768/1024/1280 — no page-level overflow or clipped in-flow elements.
+- Preview DOM probes: /docs 7 light + 2 dark bezel shells + upgraded h1; /signin access card + bezel form; /security 3 light + 9 dark shells with the audit-log mockup wrapped. (Note: public pages need no sign-in; the shell/server on :4400 serves them directly.)
+
 ## [2026-08-17] - Public pages copy audit (pre-MVP overclaims)
 
 ### Added

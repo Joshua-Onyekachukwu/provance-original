@@ -2,9 +2,11 @@ import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import PageHero from '../components/PageHero.jsx'
 
+const LUXE = [0.32, 0.72, 0, 1]
+
 const fadeUp = {
-  hidden: { opacity: 0, y: 24 },
-  visible: (i = 0) => ({ opacity: 1, y: 0, transition: { duration: 0.6, delay: 0.1 * i, ease: [0.25, 0.1, 0.25, 1] } }),
+  hidden: { opacity: 0, y: 24, filter: 'blur(6px)' },
+  visible: (i = 0) => ({ opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 0.85, delay: 0.1 * i, ease: LUXE } }),
 }
 
 export default function DocsPage() {
@@ -22,7 +24,7 @@ export default function DocsPage() {
           <div className="max-w-4xl mx-auto">
             <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }} className="text-center mb-14">
               <motion.span variants={fadeUp} className="eyebrow">Quick Start</motion.span>
-              <motion.h2 variants={fadeUp} className="font-serif text-3xl sm:text-4xl mt-4 text-balance text-charcoal">
+              <motion.h2 variants={fadeUp} className="font-serif text-3xl sm:text-4xl lg:text-[3.4rem] lg:leading-[1.05] mt-5 text-balance text-charcoal">
                 Verify media in <span className="italic text-trust">three lines</span>.
               </motion.h2>
             </motion.div>
@@ -35,15 +37,19 @@ export default function DocsPage() {
               ].map((item, i) => (
                 <motion.div
                   key={item.title}
-                  initial={{ opacity: 0, y: 16 }}
+                  initial={{ opacity: 0, y: 24 }}
                   whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: i * 0.1 }}
-                  className="surface-card p-6 text-center"
+                  viewport={{ once: true, margin: '-60px' }}
+                  transition={{ duration: 0.7, delay: i * 0.1, ease: LUXE }}
+                  className="group"
                 >
-                  <span className="text-amber font-mono text-xs uppercase tracking-[0.2em] mb-3 block">{item.icon}</span>
-                  <h3 className="font-serif text-lg text-charcoal mb-2">{item.title}</h3>
-                  <p className="text-charcoal-mid text-sm leading-relaxed">{item.desc}</p>
+                  <div className="bezel-shell h-full transition-transform duration-700 ease-luxe group-hover:-translate-y-1">
+                    <div className="bezel-core h-full p-6 text-center">
+                      <span className="text-amber font-mono text-xs uppercase tracking-[0.2em] mb-3 block">{item.icon}</span>
+                      <h3 className="font-serif text-lg text-charcoal mb-2">{item.title}</h3>
+                      <p className="text-charcoal-mid text-sm leading-relaxed">{item.desc}</p>
+                    </div>
+                  </div>
                 </motion.div>
               ))}
             </div>
@@ -58,7 +64,7 @@ export default function DocsPage() {
           <div className="max-w-4xl mx-auto">
             <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }} className="text-center mb-12">
               <motion.span variants={fadeUp} className="eyebrow eyebrow-dark">API Reference</motion.span>
-              <motion.h2 variants={fadeUp} className="font-serif text-3xl sm:text-4xl mt-4 text-balance">
+              <motion.h2 variants={fadeUp} className="font-serif text-3xl sm:text-4xl lg:text-[3.4rem] lg:leading-[1.05] mt-5 text-balance">
                 `POST /v1/verify` <span className="italic text-trust-soft">endpoint</span>.
               </motion.h2>
             </motion.div>
@@ -70,8 +76,15 @@ export default function DocsPage() {
               className="space-y-6"
             >
               {/* Request Example */}
-              <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
-                <div className="flex items-center gap-2 px-5 py-3 border-b border-white/10 bg-white/5">
+              <motion.div
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-60px' }}
+                transition={{ duration: 0.7, ease: LUXE }}
+                className="bezel-shell-dark"
+              >
+                <div className="bezel-core-dark overflow-hidden">
+                  <div className="flex items-center gap-2 px-5 py-3 border-b border-white/10 bg-white/5">
                   <div className="flex gap-1.5">
                     <div className="w-2.5 h-2.5 rounded-full bg-white/20" />
                     <div className="w-2.5 h-2.5 rounded-full bg-white/20" />
@@ -95,11 +108,19 @@ export default function DocsPage() {
   }'`}</code>
                   </pre>
                 </div>
-              </div>
+                </div>
+              </motion.div>
 
               {/* Response Example */}
-              <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
-                <div className="flex items-center gap-2 px-5 py-3 border-b border-white/10 bg-white/5">
+              <motion.div
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-60px' }}
+                transition={{ duration: 0.7, delay: 0.1, ease: LUXE }}
+                className="bezel-shell-dark"
+              >
+                <div className="bezel-core-dark overflow-hidden">
+                  <div className="flex items-center gap-2 px-5 py-3 border-b border-white/10 bg-white/5">
                   <div className="flex gap-1.5">
                     <div className="w-2.5 h-2.5 rounded-full bg-white/20" />
                     <div className="w-2.5 h-2.5 rounded-full bg-white/20" />
@@ -146,7 +167,8 @@ export default function DocsPage() {
 }`}</code>
                   </pre>
                 </div>
-              </div>
+                </div>
+              </motion.div>
             </motion.div>
           </div>
         </div>
@@ -158,7 +180,7 @@ export default function DocsPage() {
           <div className="max-w-4xl mx-auto">
             <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }} className="text-center mb-12">
               <motion.span variants={fadeUp} className="eyebrow">Webhooks</motion.span>
-              <motion.h2 variants={fadeUp} className="font-serif text-3xl sm:text-4xl mt-4 text-balance text-charcoal">
+              <motion.h2 variants={fadeUp} className="font-serif text-3xl sm:text-4xl lg:text-[3.4rem] lg:leading-[1.05] mt-5 text-balance text-charcoal">
                 Async verification via <span className="italic text-trust">webhooks</span>.
               </motion.h2>
               <motion.p variants={fadeUp} className="mt-4 text-charcoal-mid text-sm max-w-lg mx-auto">
@@ -192,22 +214,26 @@ export default function DocsPage() {
               ].map((item, i) => (
                 <motion.div
                   key={item.title}
-                  initial={{ opacity: 0, y: 16 }}
+                  initial={{ opacity: 0, y: 24 }}
                   whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.4, delay: i * 0.06 }}
-                  className="surface-card p-6"
+                  viewport={{ once: true, margin: '-60px' }}
+                  transition={{ duration: 0.7, delay: i * 0.08, ease: LUXE }}
+                  className="group"
                 >
-                  <h3 className="font-serif text-lg text-charcoal mb-2">{item.title}</h3>
-                  <p className="text-charcoal-mid text-sm leading-relaxed mb-3">{item.desc}</p>
-                  <ul className="space-y-1.5">
-                    {item.items.map((li) => (
-                      <li key={li} className="flex items-center gap-2 text-xs text-charcoal-mid font-mono">
-                        <span className="w-1 h-1 bg-amber rounded-full shrink-0" />
-                        {li}
-                      </li>
-                    ))}
-                  </ul>
+                  <div className="bezel-shell h-full transition-transform duration-700 ease-luxe group-hover:-translate-y-1">
+                    <div className="bezel-core h-full p-6">
+                      <h3 className="font-serif text-lg text-charcoal mb-2">{item.title}</h3>
+                      <p className="text-charcoal-mid text-sm leading-relaxed mb-3">{item.desc}</p>
+                      <ul className="space-y-1.5">
+                        {item.items.map((li) => (
+                          <li key={li} className="flex items-center gap-2 text-xs text-charcoal-mid font-mono">
+                            <span className="w-1 h-1 bg-amber rounded-full shrink-0" />
+                            {li}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
                 </motion.div>
               ))}
             </div>

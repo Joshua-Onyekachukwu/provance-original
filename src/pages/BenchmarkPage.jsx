@@ -1,12 +1,15 @@
 import { motion } from 'framer-motion'
 import PageHero from '../components/PageHero.jsx'
 
+const LUXE = [0.32, 0.72, 0, 1]
+
 const fadeUp = {
-  hidden: { opacity: 0, y: 24 },
+  hidden: { opacity: 0, y: 24, filter: 'blur(6px)' },
   visible: (i = 0) => ({
     opacity: 1,
     y: 0,
-    transition: { duration: 0.6, delay: 0.08 * i, ease: [0.25, 0.1, 0.25, 1] },
+    filter: 'blur(0px)',
+    transition: { duration: 0.85, delay: 0.08 * i, ease: LUXE },
   }),
 }
 
@@ -114,8 +117,9 @@ function ComparisonBar({ metric, index }) {
     <motion.div
       variants={fadeUp}
       custom={index}
-      className="rounded-2xl border border-stone-light bg-white-warm/85 p-5"
+      className="bezel-shell"
     >
+      <div className="bezel-core p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="font-serif text-base text-charcoal">{metric.label}</p>
         {improved && (
@@ -139,7 +143,7 @@ function ComparisonBar({ metric, index }) {
               initial={{ width: 0 }}
               whileInView={{ width: `${standardPct}%` }}
               viewport={{ once: true, margin: '-60px' }}
-              transition={{ duration: 0.9, delay: 0.15, ease: [0.25, 0.1, 0.25, 1] }}
+              transition={{ duration: 0.9, delay: 0.15, ease: LUXE }}
               className="h-2.5 rounded-full bg-stone"
             />
           </div>
@@ -156,11 +160,12 @@ function ComparisonBar({ metric, index }) {
               initial={{ width: 0 }}
               whileInView={{ width: `${provancePct}%` }}
               viewport={{ once: true, margin: '-60px' }}
-              transition={{ duration: 0.9, delay: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+              transition={{ duration: 0.9, delay: 0.3, ease: LUXE }}
               className="h-2.5 rounded-full bg-gradient-to-r from-trust to-trust-strong"
             />
           </div>
         </div>
+      </div>
       </div>
     </motion.div>
   )
@@ -174,7 +179,8 @@ function TypeBreakdown() {
   const total = CATALOG_TYPES.reduce((sum, item) => sum + item.value, 0)
 
   return (
-    <div className="rounded-2xl border border-stone-light bg-white-warm/85 p-5">
+    <div className="bezel-shell">
+      <div className="bezel-core p-5">
       <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-charcoal-light">
         Ground-truth composition
       </p>
@@ -187,7 +193,7 @@ function TypeBreakdown() {
             initial={{ width: 0 }}
             whileInView={{ width: `${(item.value / total) * 100}%` }}
             viewport={{ once: true, margin: '-60px' }}
-            transition={{ duration: 0.9, ease: [0.25, 0.1, 0.25, 1] }}
+            transition={{ duration: 0.9, ease: LUXE }}
             className={`h-3.5 ${item.tone}`}
           />
         ))}
@@ -208,6 +214,7 @@ function TypeBreakdown() {
       <p className="mt-4 border-t border-stone-light pt-3 font-mono text-[10px] uppercase tracking-[0.16em] text-charcoal-light">
         Format split · JPEG {CATALOG_FORMATS[0].value} / PNG {CATALOG_FORMATS[1].value}
       </p>
+      </div>
     </div>
   )
 }
@@ -216,30 +223,32 @@ function SourceBreakdown() {
   const max = Math.max(...CATALOG_SOURCES.map((item) => item.value))
 
   return (
-    <div className="rounded-2xl border border-stone-light bg-white-warm/85 p-5">
-      <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-charcoal-light">
-        Source distribution
-      </p>
-      <p className="mt-2 font-serif text-xl text-charcoal">Where the assets came from.</p>
+    <div className="bezel-shell">
+      <div className="bezel-core p-5">
+        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-charcoal-light">
+          Source distribution
+        </p>
+        <p className="mt-2 font-serif text-xl text-charcoal">Where the assets came from.</p>
 
-      <div className="mt-5 space-y-3">
-        {CATALOG_SOURCES.map((item, index) => (
-          <div key={item.label}>
-            <div className="mb-1 flex items-center justify-between text-xs">
-              <span className="text-charcoal-mid">{item.label}</span>
-              <span className="font-mono tabular-nums text-charcoal">{item.value}</span>
+        <div className="mt-5 space-y-3">
+          {CATALOG_SOURCES.map((item, index) => (
+            <div key={item.label}>
+              <div className="mb-1 flex items-center justify-between text-xs">
+                <span className="text-charcoal-mid">{item.label}</span>
+                <span className="font-mono tabular-nums text-charcoal">{item.value}</span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-stone-light/80">
+                <motion.div
+                  initial={{ width: 0 }}
+                  whileInView={{ width: `${(item.value / max) * 100}%` }}
+                  viewport={{ once: true, margin: '-60px' }}
+                  transition={{ duration: 0.8, delay: 0.05 * index, ease: LUXE }}
+                  className="h-2 rounded-full bg-amber/80"
+                />
+              </div>
             </div>
-            <div className="h-2 overflow-hidden rounded-full bg-stone-light/80">
-              <motion.div
-                initial={{ width: 0 }}
-                whileInView={{ width: `${(item.value / max) * 100}%` }}
-                viewport={{ once: true, margin: '-60px' }}
-                transition={{ duration: 0.8, delay: 0.05 * index, ease: [0.25, 0.1, 0.25, 1] }}
-                className="h-2 rounded-full bg-amber/80"
-              />
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   )
@@ -278,7 +287,7 @@ export default function BenchmarkPage() {
             </motion.span>
             <motion.h2
               variants={fadeUp}
-              className="mt-5 font-serif text-3xl text-balance text-charcoal sm:text-4xl"
+              className="mt-5 font-serif text-3xl text-balance text-charcoal sm:text-4xl lg:text-[3.4rem] lg:leading-[1.05]"
             >
               The <span className="italic text-amber">honesty gap</span>, measured.
             </motion.h2>
@@ -300,12 +309,14 @@ export default function BenchmarkPage() {
               return (
                 <motion.div
                   key={metric.label}
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 24 }}
                   whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: i * 0.08 }}
-                  className="surface-card p-5"
+                  viewport={{ once: true, margin: '-60px' }}
+                  transition={{ duration: 0.7, delay: i * 0.08, ease: LUXE }}
+                  className="group"
                 >
+                  <div className="bezel-shell h-full transition-transform duration-700 ease-luxe group-hover:-translate-y-1">
+                    <div className="bezel-core h-full p-5">
                   <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-charcoal-light">
                     {metric.label}
                   </p>
@@ -325,6 +336,8 @@ export default function BenchmarkPage() {
                   <p className="mt-2 text-sm text-charcoal-mid">
                     Standard: {metric.format(metric.standard)}
                   </p>
+                    </div>
+                  </div>
                 </motion.div>
               )
             })}
@@ -340,7 +353,7 @@ export default function BenchmarkPage() {
             <motion.span variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} className="eyebrow eyebrow-dark">
               Results Chart
             </motion.span>
-            <motion.h2 variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} className="mt-5 font-serif text-3xl text-balance sm:text-4xl">
+            <motion.h2 variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} className="mt-5 font-serif text-3xl text-balance sm:text-4xl lg:text-[3.4rem] lg:leading-[1.05]">
               Standard detector vs. <span className="italic text-amber">Provance V0.1</span>.
             </motion.h2>
             <motion.p variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} className="mt-5 text-base leading-relaxed text-stone">
@@ -369,7 +382,7 @@ export default function BenchmarkPage() {
             <motion.span variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} className="eyebrow">
               Error Analysis
             </motion.span>
-            <motion.h2 variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} className="mt-5 font-serif text-3xl text-balance text-charcoal sm:text-4xl">
+            <motion.h2 variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} className="mt-5 font-serif text-3xl text-balance text-charcoal sm:text-4xl lg:text-[3.4rem] lg:leading-[1.05]">
               Where standard detectors <span className="italic text-rose-600">get it wrong</span>.
             </motion.h2>
           </div>
@@ -399,17 +412,21 @@ export default function BenchmarkPage() {
             ].map((item, i) => (
               <motion.div
                 key={item.title}
-                initial={{ opacity: 0, y: 16 }}
+                initial={{ opacity: 0, y: 24 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: i * 0.08 }}
-                className="surface-card p-6"
+                viewport={{ once: true, margin: '-60px' }}
+                transition={{ duration: 0.7, delay: i * 0.08, ease: LUXE }}
+                className="group"
               >
-                <div className="flex items-center gap-2.5">
-                  <span className={`h-2 w-2 rounded-full ${item.tone}`} />
-                  <h3 className="font-serif text-lg text-charcoal">{item.title}</h3>
+                <div className="bezel-shell h-full transition-transform duration-700 ease-luxe group-hover:-translate-y-1">
+                  <div className="bezel-core h-full p-6">
+                    <div className="flex items-center gap-2.5">
+                      <span className={`h-2 w-2 rounded-full ${item.tone}`} />
+                      <h3 className="font-serif text-lg text-charcoal">{item.title}</h3>
+                    </div>
+                    <p className="mt-3 text-sm leading-relaxed text-charcoal-mid">{item.desc}</p>
+                  </div>
                 </div>
-                <p className="mt-3 text-sm leading-relaxed text-charcoal-mid">{item.desc}</p>
               </motion.div>
             ))}
           </div>
@@ -423,7 +440,7 @@ export default function BenchmarkPage() {
             <motion.span variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} className="eyebrow">
               Provance-1000 Catalog
             </motion.span>
-            <motion.h2 variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} className="mt-5 font-serif text-3xl text-balance text-charcoal sm:text-4xl">
+            <motion.h2 variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} className="mt-5 font-serif text-3xl text-balance text-charcoal sm:text-4xl lg:text-[3.4rem] lg:leading-[1.05]">
               The gold subset, <span className="italic text-trust">inspectable</span>.
             </motion.h2>
             <motion.p variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} className="mt-5 text-base leading-relaxed text-charcoal-mid">
@@ -437,7 +454,8 @@ export default function BenchmarkPage() {
             <TypeBreakdown />
 
             <div className="grid gap-5">
-              <div className="rounded-2xl border border-stone-light bg-white-warm/85 p-5">
+              <div className="bezel-shell">
+                <div className="bezel-core p-5">
                 <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-charcoal-light">
                   Difficulty tiers
                 </p>
@@ -463,6 +481,7 @@ export default function BenchmarkPage() {
                     </motion.div>
                   ))}
                 </div>
+                </div>
               </div>
 
               <SourceBreakdown />
@@ -475,8 +494,9 @@ export default function BenchmarkPage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
-            className="mt-8 rounded-[1.75rem] border border-amber/20 bg-amber-subtle/60 p-6 md:p-8"
+            className="mt-8 bezel-shell"
           >
+            <div className="bezel-core p-6 md:p-8">
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div className="max-w-2xl">
                 <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-amber">
@@ -501,6 +521,7 @@ export default function BenchmarkPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
                 </svg>
               </a>
+            </div>
             </div>
           </motion.div>
         </div>

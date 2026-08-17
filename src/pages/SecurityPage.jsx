@@ -2,9 +2,11 @@ import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import PageHero from '../components/PageHero.jsx'
 
+const LUXE = [0.32, 0.72, 0, 1]
+
 const fadeUp = {
-  hidden: { opacity: 0, y: 24 },
-  visible: (i = 0) => ({ opacity: 1, y: 0, transition: { duration: 0.6, delay: 0.1 * i, ease: [0.25, 0.1, 0.25, 1] } }),
+  hidden: { opacity: 0, y: 24, filter: 'blur(6px)' },
+  visible: (i = 0) => ({ opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 0.85, delay: 0.1 * i, ease: LUXE } }),
 }
 
 export default function SecurityPage() {
@@ -23,7 +25,7 @@ export default function SecurityPage() {
           <div className="max-w-4xl mx-auto">
             <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }} className="text-center mb-14">
               <motion.span variants={fadeUp} className="eyebrow eyebrow-dark">Data Retention</motion.span>
-              <motion.h2 variants={fadeUp} className="font-serif text-3xl sm:text-4xl mt-4 text-balance">
+              <motion.h2 variants={fadeUp} className="font-serif text-3xl sm:text-4xl lg:text-[3.4rem] lg:leading-[1.05] mt-5 text-balance">
                 Your data, <span className="italic text-trust-soft">your control</span>.
               </motion.h2>
             </motion.div>
@@ -51,23 +53,27 @@ export default function SecurityPage() {
               ].map((col, i) => (
                 <motion.div
                   key={col.title}
-                  initial={{ opacity: 0, y: 16 }}
+                  initial={{ opacity: 0, y: 24 }}
                   whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: i * 0.1 }}
-                  className="surface-card-dark p-6 md:p-8"
+                  viewport={{ once: true, margin: '-60px' }}
+                  transition={{ duration: 0.7, delay: i * 0.1, ease: LUXE }}
+                  className="group"
                 >
-                  <h3 className="font-serif text-xl text-parchment mb-4">{col.title}</h3>
-                  <ul className="space-y-3">
-                    {col.items.map((item) => (
-                      <li key={item} className="flex items-start gap-3 text-sm text-stone">
-                        <svg className="w-4 h-4 shrink-0 text-amber mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
+                  <div className="bezel-shell-dark h-full transition-transform duration-700 ease-luxe group-hover:-translate-y-1">
+                    <div className="bezel-core-dark h-full p-6 md:p-8">
+                      <h3 className="font-serif text-xl text-parchment mb-4">{col.title}</h3>
+                      <ul className="space-y-3">
+                        {col.items.map((item) => (
+                          <li key={item} className="flex items-start gap-3 text-sm text-stone">
+                            <svg className="w-4 h-4 shrink-0 text-amber mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
                 </motion.div>
               ))}
             </div>
@@ -81,7 +87,7 @@ export default function SecurityPage() {
           <div className="max-w-4xl mx-auto">
             <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }} className="text-center mb-14">
               <motion.span variants={fadeUp} className="eyebrow">Audit Logs</motion.span>
-              <motion.h2 variants={fadeUp} className="font-serif text-3xl sm:text-4xl mt-4 text-balance text-charcoal">
+              <motion.h2 variants={fadeUp} className="font-serif text-3xl sm:text-4xl lg:text-[3.4rem] lg:leading-[1.05] mt-5 text-balance text-charcoal">
                 Every action, <span className="italic text-trust">recorded</span>.
               </motion.h2>
             </motion.div>
@@ -103,26 +109,31 @@ export default function SecurityPage() {
               ].map((item, i) => (
                 <motion.div
                   key={item.title}
-                  initial={{ opacity: 0, y: 12 }}
+                  initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.4, delay: i * 0.08 }}
-                  className="surface-card p-6 md:p-8"
+                  viewport={{ once: true, margin: '-60px' }}
+                  transition={{ duration: 0.7, delay: i * 0.08, ease: LUXE }}
+                  className="group"
                 >
-                  <h3 className="font-serif text-xl text-charcoal mb-2">{item.title}</h3>
-                  <p className="text-charcoal-mid text-sm leading-relaxed">{item.desc}</p>
+                  <div className="bezel-shell transition-transform duration-700 ease-luxe group-hover:-translate-y-1">
+                    <div className="bezel-core p-6 md:p-8">
+                      <h3 className="font-serif text-xl text-charcoal mb-2">{item.title}</h3>
+                      <p className="text-charcoal-mid text-sm leading-relaxed">{item.desc}</p>
+                    </div>
+                  </div>
                 </motion.div>
               ))}
             </div>
 
             {/* Audit log mockup */}
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.3 }}
-              className="mt-8 bg-charcoal rounded-xl border border-white/10 overflow-hidden"
+              viewport={{ once: true, margin: '-60px' }}
+              transition={{ duration: 0.7, delay: 0.3, ease: LUXE }}
+              className="mt-8 bezel-shell-dark"
             >
+              <div className="bezel-core-dark overflow-hidden">
               <div className="flex items-center gap-2 px-5 py-3 border-b border-white/10 bg-white/5">
                 <div className="flex gap-1.5">
                   <div className="w-2.5 h-2.5 rounded-full bg-white/20" />
@@ -138,6 +149,7 @@ export default function SecurityPage() {
                 <div className="text-stone">2026-06-25T10:21:15Z  CONFIG  admin:asmith@provance.io action:update_retention  from:90d  to:365d</div>
                 <div className="text-amber/60">2026-06-25T10:20:00Z  AUTH    user:asmith@provance.io  action:login  method:saml  status:success</div>
               </div>
+              </div>
             </motion.div>
           </div>
         </div>
@@ -150,7 +162,7 @@ export default function SecurityPage() {
           <div className="max-w-4xl mx-auto">
             <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }} className="text-center mb-14">
               <motion.span variants={fadeUp} className="eyebrow eyebrow-dark">Enterprise Readiness</motion.span>
-              <motion.h2 variants={fadeUp} className="font-serif text-3xl sm:text-4xl mt-4 text-balance">
+              <motion.h2 variants={fadeUp} className="font-serif text-3xl sm:text-4xl lg:text-[3.4rem] lg:leading-[1.05] mt-5 text-balance">
                 Built for the <span className="italic text-trust-soft">enterprise</span>.
               </motion.h2>
             </motion.div>
@@ -166,14 +178,18 @@ export default function SecurityPage() {
               ].map((item, i) => (
                 <motion.div
                   key={item.title}
-                  initial={{ opacity: 0, y: 16 }}
+                  initial={{ opacity: 0, y: 24 }}
                   whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.4, delay: i * 0.06 }}
-                  className="surface-card-dark p-6 transition-all duration-300 hover:-translate-y-1"
+                  viewport={{ once: true, margin: '-60px' }}
+                  transition={{ duration: 0.7, delay: i * 0.06, ease: LUXE }}
+                  className="group"
                 >
-                  <h3 className="font-serif text-lg text-parchment mb-2">{item.title}</h3>
-                  <p className="text-stone text-sm leading-relaxed">{item.desc}</p>
+                  <div className="bezel-shell-dark h-full transition-transform duration-700 ease-luxe group-hover:-translate-y-1">
+                    <div className="bezel-core-dark h-full p-6">
+                      <h3 className="font-serif text-lg text-parchment mb-2">{item.title}</h3>
+                      <p className="text-stone text-sm leading-relaxed">{item.desc}</p>
+                    </div>
+                  </div>
                 </motion.div>
               ))}
             </div>

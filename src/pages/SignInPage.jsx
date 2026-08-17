@@ -3,6 +3,8 @@ import { motion } from 'framer-motion'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 
+const LUXE = [0.32, 0.72, 0, 1]
+
 const TEST_ACCOUNTS = [
   { id: 'admin', email: 'founder.admin@provance.local', label: 'Admin account' },
   { id: 'member', email: 'founder.test@provance.local', label: 'Member account' },
@@ -110,21 +112,33 @@ export default function SignInPage() {
               access in controlled cohorts.
               </motion.p>
 
-              <div className="surface-card mt-8 p-6">
-                <h2 className="font-serif text-2xl text-charcoal">Access model</h2>
-                <ul className="feature-list mt-4 text-sm text-charcoal-mid">
-                  <li>Waitlist review and approvals</li>
-                  <li>Invite-based account activation</li>
-                  <li>Email verification and secure session handling</li>
-                  <li>Protected access to the verification workspace</li>
-                </ul>
-              </div>
+              <motion.div
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.28, duration: 0.7, ease: LUXE }}
+              >
+                <div className="bezel-shell mt-8">
+                  <div className="bezel-core p-6">
+                    <h2 className="font-serif text-2xl text-charcoal">Access model</h2>
+                    <ul className="feature-list mt-4 text-sm text-charcoal-mid">
+                      <li>Waitlist review and approvals</li>
+                      <li>Invite-based account activation</li>
+                      <li>Email verification and secure session handling</li>
+                      <li>Protected access to the verification workspace</li>
+                    </ul>
+                  </div>
+                </div>
+              </motion.div>
             </div>
 
-            <form
+            <motion.form
+              initial={{ opacity: 0, y: 28 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, duration: 0.7, ease: LUXE }}
               onSubmit={handleSubmit}
-              className="surface-card p-8"
+              className="bezel-shell"
             >
+              <div className="bezel-core p-8">
               <label className="block">
                 <span className="text-sm font-medium text-charcoal">Work email</span>
                 <input
@@ -187,7 +201,8 @@ export default function SignInPage() {
                   <p className="text-sm text-rose-700">{errorMessage}</p>
                 </div>
               )}
-            </form>
+              </div>
+            </motion.form>
           </div>
         </div>
       </section>

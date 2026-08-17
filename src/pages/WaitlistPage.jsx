@@ -1,7 +1,10 @@
 import { useState } from 'react'
+import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { submitWaitlistApplication } from '../lib/api'
 import PageHero from '../components/PageHero.jsx'
+
+const LUXE = [0.32, 0.72, 0, 1]
 
 const initialForm = {
   name: '',
@@ -60,37 +63,60 @@ export default function WaitlistPage() {
       <section className="section-padding bg-parchment-light">
         <div className="content-container grid grid-cols-1 gap-8 lg:grid-cols-[0.95fr_1.05fr] items-start">
           <div className="space-y-6">
-            <div className="surface-card p-8">
-              <p className="font-mono text-xs uppercase tracking-[0.2em] text-amber">
-                What to expect
-              </p>
-              <ul className="mt-5 space-y-3 text-sm text-charcoal-mid">
-                <li>Priority for high-trust professional workflows</li>
-                <li>Invite-based access in controlled cohorts</li>
-                <li>Future email verification and approval routing</li>
-                <li>Account activation and onboarding after approval</li>
-              </ul>
-            </div>
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-60px' }}
+              transition={{ duration: 0.7, ease: LUXE }}
+            >
+              <div className="bezel-shell">
+                <div className="bezel-core p-8">
+                  <p className="font-mono text-xs uppercase tracking-[0.2em] text-amber">
+                    What to expect
+                  </p>
+                  <ul className="mt-5 space-y-3 text-sm text-charcoal-mid">
+                    <li>Priority for high-trust professional workflows</li>
+                    <li>Invite-based access in controlled cohorts</li>
+                    <li>Future email verification and approval routing</li>
+                    <li>Account activation and onboarding after approval</li>
+                  </ul>
+                </div>
+              </div>
+            </motion.div>
 
-            <div className="surface-card-muted p-8">
-              <h2 className="font-serif text-2xl text-charcoal">Need a faster path?</h2>
-              <p className="mt-3 text-sm leading-relaxed text-charcoal-mid">
-                If you already have an urgent workflow or want to explore design-partner
-                access, use the contact page so we can route you correctly.
-              </p>
-              <Link
-                to="/contact"
-                className="btn-secondary mt-5"
-              >
-                Request a demo or design-partner conversation
-              </Link>
-            </div>
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-60px' }}
+              transition={{ duration: 0.7, delay: 0.1, ease: LUXE }}
+            >
+              <div className="bezel-shell">
+                <div className="bezel-core p-8">
+                  <h2 className="font-serif text-2xl text-charcoal">Need a faster path?</h2>
+                  <p className="mt-3 text-sm leading-relaxed text-charcoal-mid">
+                    If you already have an urgent workflow or want to explore design-partner
+                    access, use the contact page so we can route you correctly.
+                  </p>
+                  <Link
+                    to="/contact"
+                    className="btn-secondary mt-5"
+                  >
+                    Request a demo or design-partner conversation
+                  </Link>
+                </div>
+              </div>
+            </motion.div>
           </div>
 
-          <form
+          <motion.form
+            initial={{ opacity: 0, y: 28 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-60px' }}
+            transition={{ duration: 0.7, delay: 0.05, ease: LUXE }}
             onSubmit={handleSubmit}
-            className="surface-card p-8"
+            className="bezel-shell"
           >
+            <div className="bezel-core p-8">
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
               <label className="block">
                 <span className="text-sm font-medium text-charcoal">Full name</span>
@@ -182,7 +208,8 @@ export default function WaitlistPage() {
                 </p>
               </div>
             )}
-          </form>
+            </div>
+          </motion.form>
         </div>
       </section>
     </div>

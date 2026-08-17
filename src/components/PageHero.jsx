@@ -1,12 +1,17 @@
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 
+// The luxe ease from the design system (matches Hero/WhyProvance/etc.) — a
+// hard, fast start that settles without overshoot.
+const LUXE = [0.32, 0.72, 0, 1]
+
 const fadeUp = {
-  hidden: { opacity: 0, y: 24 },
+  hidden: { opacity: 0, y: 24, filter: 'blur(6px)' },
   visible: (i = 0) => ({
     opacity: 1,
     y: 0,
-    transition: { duration: 0.6, delay: 0.08 * i, ease: [0.25, 0.1, 0.25, 1] },
+    filter: 'blur(0px)',
+    transition: { duration: 0.85, delay: 0.08 * i, ease: LUXE },
   }),
 }
 
@@ -72,14 +77,14 @@ export default function PageHero({
             <motion.h1
               variants={fadeUp}
               custom={eyebrow ? 1 : 0}
-              className={`${eyebrow ? 'mt-5' : ''} font-serif text-4xl text-balance text-charcoal sm:text-5xl lg:text-6xl`}
+              className={`${eyebrow ? 'mt-5' : ''} font-serif text-4xl text-balance text-charcoal sm:text-5xl lg:text-6xl xl:text-[4.4rem] xl:leading-[1.02]`}
             >
               {title}
             </motion.h1>
             <motion.p
               variants={fadeUp}
               custom={eyebrow ? 2 : 1}
-              className={`mt-6 text-lg leading-relaxed text-charcoal-mid ${centered ? 'mx-auto max-w-2xl' : 'max-w-2xl'}`}
+              className={`mt-6 text-lg leading-relaxed text-charcoal-mid text-pretty ${centered ? 'mx-auto max-w-2xl' : 'max-w-2xl'}`}
             >
               {description}
             </motion.p>
