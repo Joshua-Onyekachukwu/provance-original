@@ -69,6 +69,7 @@ function createConfigMock() {
 }
 
 function createServiceMock() {
+  const envelope = { data: [], total: 0, page: 1, pageSize: 20, totalPages: 1 };
   return {
     listJobs: jest.fn().mockResolvedValue({
       data: [],
@@ -83,6 +84,12 @@ function createServiceMock() {
     failJob: jest
       .fn()
       .mockResolvedValue({ ok: true, job: { id: 'job-1', status: 'failed' } }),
+    listAdminReports: jest.fn().mockResolvedValue({ ...envelope, pageSize: 20 }),
+    listUsers: jest.fn().mockResolvedValue({ ...envelope, pageSize: 20 }),
+    listAuditLogs: jest.fn().mockResolvedValue({ ...envelope, pageSize: 100 }),
+    listOrganizations: jest
+      .fn()
+      .mockResolvedValue([{ id: 'org-1', name: 'Provance Internal' }]),
   };
 }
 
@@ -369,5 +376,239 @@ describe('AdminController jobs routes (HTTP layer)', () => {
     expect(lastStatus).toBe(429);
     // The first 30 were allowed through to the service.
     expect(service.listJobs).toHaveBeenCalledTimes(30);
+  });
+});
+
+describe('AdminController paginated admin routes (HTTP layer)', () => {
+  let app: INestApplication;
+  let server: App;
+  let service: ReturnType<typeof createServiceMock>;
+
+  beforeEach(async () => {
+    ({ app, service } = await createTestApp());
+    server = app.getHttpServer() as unknown as App;
+  });
+
+  afterEach(async () => {
+    await app.close();
+  });
+
+  // ── Route metadata ───────────────────────────────────────────────────────
+
+  it('declares the paginated routes as GETs with their paths', () => {
+    const reports = Reflect.getMetadata(
+      PATH_METADATA,
+      AdminController.prototype.listAdminReports,
+    );
+    const reportsVerb = Reflect.getMetadata(
+      METHOD_METADATA,
+      AdminController.prototype.listAdminReports,
+    );
+    const users = Reflect.getMetadata(
+      PATH_METADATA,
+      AdminController.prototype.listUsers,
+    );
+    const usersVerb = Reflect.getMetadata(
+      METHOD_METADATA,
+      AdminController.prototype.listUsers,
+    );
+    const auditLogs = Reflect.getMetadata(
+      PATH_METADATA,
+      AdminController.prototype.listAuditLogs,
+    );
+    const auditLogsVerb = Reflect.getMetadata(
+      METHOD_METADATA,
+      AdminController.prototype.listAuditLogs,
+    );
+    const orgs = Reflect.getMetadata(
+      PATH_METADATA,
+      AdminController.prototype.listOrganizations,
+    );
+    const orgsVerb = Reflect.getMetadata(
+      METHOD_METADATA,
+      AdminController.prototype.listOrganizations,
+    );
+
+    expect(reports).toBe('reports');
+    expect(users).toBe('users');
+    expect(auditLogs).toBe('audit-logs');
+    expect(orgs).toBe('organizations');
+    // All four are plain GET reads (default 200).
+    expect(reportsVerb).toBe(RequestMethod.GET);
+    expect(usersVerb).toBe(RequestMethod.GET);
+    expect(auditLogsVerb).toBe(RequestMethod.GET);
+    expect(orgsVerb).toBe(RequestMethod.GET);
+  });
+
+  // ── Query parsing (strict → DefaultValuePipe → ParseIntPipe + raw strings) ──
+
+  it('attaches strict → DefaultValuePipe(1|20) → ParseIntPipe to reports page/pageSize and leaves team raw', () => {
+    // listAdminReports has no @CurrentUser: page is index 0, pageSize 1,
+    // team 2.
+    const args =
+      Reflect.getMetadata(ROUTE_ARGS_METADATA, AdminController, 'listAdminReports') ??
+      {};
+
+    const page = args[`${RouteParamtypes.QUERY}:0`];
+    const pageSize = args[`${RouteParamtypes.QUERY}:1`];
+    const team = args[`${RouteParamtypes.QUERY}:2`];
+
+    expect(page.data).toBe('page');
+    expect(page.pipes[0]).toBeInstanceOf(ParseIntStrictPipe);
+    expect(page.pipes[1]).toBeInstanceOf(DefaultValuePipe);
+    expect(page.pipes[2]).toBe(ParseIntPipe);
+    expect(
+      (page.pipes[1] as unknown as { defaultValue: number }).defaultValue,
+    ).toBe(1);
+    expect(pageSize.data).toBe('pageSize');
+    expect(
+      (pageSize.pipes[1] as unknown as { defaultValue: number }).defaultValue,
+    ).toBe(20);
+    // team is a raw string passthrough (the service validates the sentinel).
+    expect(team.data).toBe('team');
+    expect(team.pipes).toEqual([]);
+  });
+
+  it('attaches strict → DefaultValuePipe(1|100) → ParseIntPipe to audit-logs page/pageSize and leaves filters raw', () => {
+    const args =
+      Reflect.getMetadata(ROUTE_ARGS_METADATA, AdminController, 'listAuditLogs') ??
+      {};
+
+    const page = args[`${RouteParamtypes.QUERY}:0`];
+    const pageSize = args[`${RouteParamtypes.QUERY}:1`];
+
+    expect(page.data).toBe('page');
+    expect(page.pipes[0]).toBeInstanceOf(ParseIntStrictPipe);
+    expect(page.pipes[1]).toBeInstanceOf(DefaultValuePipe);
+    expect(page.pipes[2]).toBe(ParseIntPipe);
+    expect(
+      (page.pipes[1] as unknown as { defaultValue: number }).defaultValue,
+    ).toBe(1);
+    expect(pageSize.data).toBe('pageSize');
+    expect(
+      (pageSize.pipes[1] as unknown as { defaultValue: number }).defaultValue,
+    ).toBe(100);
+    // The five filter params (severity/actor/action/resourceType/search) are
+    // raw string passthroughs — indices 2..6.
+    for (let i = 2; i <= 6; i += 1) {
+      const filter = args[`${RouteParamtypes.QUERY}:${i}`];
+      expect(filter.pipes).toEqual([]);
+    }
+  });
+
+  // ── Forwarding to the service ────────────────────────────────────────────
+
+  it('forwards page/pageSize/team on GET /admin/reports', async () => {
+    const res = await request(server)
+      .get('/v1/admin/reports?page=2&pageSize=5&team=team-1')
+      .set('Authorization', 'Bearer valid-token');
+
+    expect(res.status).toBe(200);
+    expect(service.listAdminReports).toHaveBeenCalledWith({
+      page: 2,
+      pageSize: 5,
+      team: 'team-1',
+    });
+    // The pagination envelope passes through untouched.
+    expect(res.body).toEqual({
+      data: [],
+      total: 0,
+      page: 1,
+      pageSize: 20,
+      totalPages: 1,
+    });
+  });
+
+  it('defaults reports page/pageSize when omitted (team stays undefined)', async () => {
+    await request(server)
+      .get('/v1/admin/reports')
+      .set('Authorization', 'Bearer valid-token');
+
+    expect(service.listAdminReports).toHaveBeenCalledWith({
+      page: 1,
+      pageSize: 20,
+      team: undefined,
+    });
+  });
+
+  it('forwards page/pageSize/team on GET /admin/users', async () => {
+    const res = await request(server)
+      .get('/v1/admin/users?page=3&pageSize=25&team=team-2')
+      .set('Authorization', 'Bearer valid-token');
+
+    expect(res.status).toBe(200);
+    expect(service.listUsers).toHaveBeenCalledWith({
+      page: 3,
+      pageSize: 25,
+      team: 'team-2',
+    });
+  });
+
+  it('forwards every filter on GET /admin/audit-logs', async () => {
+    const res = await request(server)
+      .get(
+        '/v1/admin/audit-logs?page=2&pageSize=50&severity=high&actor=ops%40provance.local&action=role.changed&resourceType=role&search=lockout',
+      )
+      .set('Authorization', 'Bearer valid-token');
+
+    expect(res.status).toBe(200);
+    expect(service.listAuditLogs).toHaveBeenCalledWith({
+      page: 2,
+      pageSize: 50,
+      severity: 'high',
+      actor: 'ops@provance.local',
+      action: 'role.changed',
+      resourceType: 'role',
+      search: 'lockout',
+    });
+  });
+
+  it('forwards nothing on GET /admin/organizations (no query params)', async () => {
+    const res = await request(server)
+      .get('/v1/admin/organizations')
+      .set('Authorization', 'Bearer valid-token');
+
+    expect(res.status).toBe(200);
+    expect(service.listOrganizations).toHaveBeenCalledTimes(1);
+    expect(service.listOrganizations).toHaveBeenCalledWith();
+    expect(res.body).toEqual([{ id: 'org-1', name: 'Provance Internal' }]);
+  });
+
+  // ── Malformed-number rejection (the strict-pipe contract) ────────────────
+
+  it('rejects a non-numeric reports page with 400 and never calls the service', async () => {
+    const res = await request(server)
+      .get('/v1/admin/reports?page=abc')
+      .set('Authorization', 'Bearer valid-token');
+
+    expect(res.status).toBe(400);
+    expect(service.listAdminReports).not.toHaveBeenCalled();
+  });
+
+  it('rejects a non-numeric audit-logs pageSize with 400 and never calls the service', async () => {
+    const res = await request(server)
+      .get('/v1/admin/audit-logs?pageSize=2.5')
+      .set('Authorization', 'Bearer valid-token');
+
+    expect(res.status).toBe(400);
+    expect(service.listAuditLogs).not.toHaveBeenCalled();
+  });
+
+  // ── Guard presence (class-level guards cover every route) ────────────────
+
+  it('401s on /admin/reports without an Authorization header', async () => {
+    const res = await request(server).get('/v1/admin/reports');
+
+    expect(res.status).toBe(401);
+    expect(service.listAdminReports).not.toHaveBeenCalled();
+  });
+
+  it('403s on /admin/audit-logs for a non-admin account', async () => {
+    const res = await request(server)
+      .get('/v1/admin/audit-logs')
+      .set('Authorization', 'Bearer non-admin-token');
+
+    expect(res.status).toBe(403);
+    expect(service.listAuditLogs).not.toHaveBeenCalled();
   });
 });

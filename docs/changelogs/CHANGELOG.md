@@ -1,5 +1,14 @@
 # Provance — Changelog
 
+## [2026-08-17] - Admin controller spec extended to the remaining paginated routes
+
+### Added
+- New `AdminController paginated admin routes (HTTP layer)` describe block in `admin.controller.spec.ts` (12 tests), following the notifications controller-spec reference pattern the provance-nestjs skill encodes.
+- Locks route paths/verbs for `GET /admin/reports`, `/admin/users`, `/admin/audit-logs`, `/admin/organizations`; the strict→DefaultValuePipe→ParseIntPipe query wiring (reports/users 1|20, audit-logs 1|100) with `team`/filter params left as raw string passthroughs; envelope pass-through; malformed-number 400s that never reach the service; and class-level guard coverage (401 no-header, 403 non-admin) on the new routes.
+
+### Verified
+- backend jest **454/454** (28 admin controller tests), e2e **76 pass / 2 skip**, `npm run build` clean.
+
 ## [2026-08-17] - Provance skills installed globally + registered with the skills CLI
 
 ### Added
