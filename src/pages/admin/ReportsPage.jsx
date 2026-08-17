@@ -47,12 +47,17 @@ function ReportDetail({ report }) {
     <div className="space-y-5">
       <div className="rounded-2xl border border-stone-light bg-parchment/70 p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <span className="font-mono text-xs text-charcoal">{report.report_id}</span>
+          {/* min-w-0 + break-words: real backend ids (report/scan UUIDs) are
+              unbroken strings that would blow the drawer card wider than the
+              viewport on phones (drawer is w-full up to max-w-xl). */}
+          <div className="min-w-0">
+            <span className="block break-words font-mono text-xs text-charcoal">{report.report_id}</span>
+          </div>
           <Badge tone={verdict.tone} size="sm">
             {verdict.label}
           </Badge>
         </div>
-        <p className="mt-2 text-sm text-charcoal-mid">
+        <p className="mt-2 break-words text-sm text-charcoal-mid">
           Scan <span className="font-mono text-charcoal">{report.scan_id}</span>
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -66,21 +71,21 @@ function ReportDetail({ report }) {
       </div>
 
       <dl className="grid grid-cols-1 gap-x-8 gap-y-3 text-sm sm:grid-cols-2">
-        <div>
+        <div className="min-w-0">
           <dt className="text-[11px] uppercase tracking-[0.18em] text-charcoal-light">Report</dt>
-          <dd className="mt-1 font-mono text-xs text-charcoal">{report.report_id}</dd>
+          <dd className="mt-1 break-words font-mono text-xs text-charcoal">{report.report_id}</dd>
         </div>
-        <div>
+        <div className="min-w-0">
           <dt className="text-[11px] uppercase tracking-[0.18em] text-charcoal-light">Verdict</dt>
-          <dd className="mt-1 text-charcoal">{verdict.label}</dd>
+          <dd className="mt-1 break-words text-charcoal">{verdict.label}</dd>
         </div>
-        <div>
+        <div className="min-w-0">
           <dt className="text-[11px] uppercase tracking-[0.18em] text-charcoal-light">Team</dt>
-          <dd className="mt-1 text-charcoal">{team.name}</dd>
+          <dd className="mt-1 break-words text-charcoal">{team.name}</dd>
         </div>
-        <div>
+        <div className="min-w-0">
           <dt className="text-[11px] uppercase tracking-[0.18em] text-charcoal-light">Organization</dt>
-          <dd className="mt-1 text-charcoal">{orgNameById(report)}</dd>
+          <dd className="mt-1 break-words text-charcoal">{orgNameById(report)}</dd>
         </div>
         <div>
           <dt className="text-[11px] uppercase tracking-[0.18em] text-charcoal-light">Generated</dt>
@@ -99,19 +104,19 @@ function ReportDetail({ report }) {
               className="rounded-2xl border border-stone-light bg-parchment/60 p-3.5"
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-sm font-medium text-charcoal">{signal.label}</span>
-                <span className="font-mono text-xs text-charcoal-mid tabular-nums">
+                <span className="min-w-0 break-words text-sm font-medium text-charcoal">{signal.label}</span>
+                <span className="shrink-0 font-mono text-xs text-charcoal-mid tabular-nums">
                   {signal.confidence}%
                 </span>
               </div>
-              <div className="mt-2 flex items-center gap-2">
+              <div className="mt-2 flex flex-wrap items-center gap-2">
                 <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-stone-light">
                   <span
                     className="block h-full rounded-full bg-charcoal"
                     style={{ width: `${Math.min(100, Math.max(0, signal.confidence || 0))}%` }}
                   />
                 </span>
-                <Badge tone={signalTone(signal.finding)} size="sm">
+                <Badge tone={signalTone(signal.finding)} size="sm" className="break-words">
                   {signal.finding}
                 </Badge>
               </div>

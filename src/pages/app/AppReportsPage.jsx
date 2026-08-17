@@ -22,7 +22,9 @@ function ReportMetaItem({ label, value }) {
   return (
     <div className="rounded-2xl border border-stone-light bg-parchment px-4 py-4">
       <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">{label}</p>
-      <p className="mt-2 text-sm text-charcoal">{value}</p>
+      {/* break-words: real backend ids (scan UUIDs, report ids) are unbroken
+          strings that would blow the meta card wider than the viewport. */}
+      <p className="mt-2 break-words text-sm text-charcoal">{value}</p>
     </div>
   )
 }
@@ -295,8 +297,8 @@ export default function AppReportsPage() {
                     }`}
                   >
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-medium text-charcoal">{scan.original_filename}</p>
+                      <div className="min-w-0">
+                        <p className="break-words text-sm font-medium text-charcoal">{scan.original_filename}</p>
                         <p className="mt-1 text-xs text-charcoal-mid">
                           {formatScanTimestamp(scan.created_at)}
                         </p>
@@ -424,7 +426,7 @@ export default function AppReportsPage() {
                     </svg>
                     Reused from a prior verification
                   </p>
-                  <p className="mt-1.5 text-xs leading-relaxed text-charcoal-mid">
+                  <p className="mt-1.5 break-words text-xs leading-relaxed text-charcoal-mid">
                     This file is byte-identical to an earlier upload — the evidence payload from scan{' '}
                     <span className="font-mono font-medium text-charcoal">
                       {selectedScan.result_payload.deduplicated_from.source_scan_id}
@@ -456,7 +458,7 @@ export default function AppReportsPage() {
 
             <section className="rounded-3xl border border-stone-light bg-white-warm p-6 shadow-sm">
               <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">Verdict</p>
-              <h3 className="mt-3 font-serif text-3xl text-charcoal">
+              <h3 className="mt-3 break-words font-serif text-3xl text-charcoal">
                 {selectedVerdict?.display_label || 'Pending'}
               </h3>
               <p className="mt-3 text-sm leading-relaxed text-charcoal-mid">
@@ -506,11 +508,11 @@ export default function AppReportsPage() {
                       className="rounded-2xl border border-stone-light bg-parchment px-4 py-4"
                     >
                       <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-medium text-charcoal">
+                        <div className="min-w-0">
+                          <p className="break-words text-sm font-medium text-charcoal">
                             {signal.signal_display_name}
                           </p>
-                          <p className="mt-1 text-xs text-charcoal-mid">
+                          <p className="mt-1 break-words text-xs text-charcoal-mid">
                             {signal.signal_category}. Methodology {signal.methodology_version}
                           </p>
                         </div>
@@ -518,7 +520,7 @@ export default function AppReportsPage() {
                           {signal.status}
                         </span>
                       </div>
-                      <p className="mt-3 text-sm text-charcoal-mid">
+                      <p className="mt-3 break-words text-sm text-charcoal-mid">
                         {signal.status_reason || 'No status reason provided.'}
                       </p>
                       {signal.findings?.length > 0 && (
@@ -528,8 +530,8 @@ export default function AppReportsPage() {
                               key={finding.finding_id}
                               className="rounded-2xl border border-stone-light bg-white-warm px-4 py-3"
                             >
-                              <p className="text-sm font-medium text-charcoal">{finding.label}</p>
-                              <p className="mt-1 text-sm text-charcoal-mid">{finding.description}</p>
+                              <p className="break-words text-sm font-medium text-charcoal">{finding.label}</p>
+                              <p className="mt-1 break-words text-sm text-charcoal-mid">{finding.description}</p>
                             </div>
                           ))}
                         </div>

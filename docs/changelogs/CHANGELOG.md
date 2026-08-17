@@ -1,5 +1,15 @@
 # Provance — Changelog
 
+## [2026-08-17] - break-words/min-w-0 hardening on report surfaces
+
+### Fixed
+- `src/pages/app/AppReportsPage.jsx` — extended the long-string hardening beyond the detail header to every other backend-string surface: `ReportMetaItem` values (scan/report UUIDs), the list-row filename, the verdict `display_label` heading, the dedup banner's mono scan/report ids, and signal/finding text (display name, methodology version, status reason, finding label/description) now carry `min-w-0`/`break-words` so real unbroken strings can't blow cards wider than the viewport.
+- `src/pages/admin/ReportsPage.jsx` — hardened the report detail drawer the same way: drawer summary card report_id + scan_id, the dl rows (report/verdict/team/organization), and signal rows (label + finding Badge) all got `min-w-0`/`break-words`; confidence spans are `shrink-0` and the bar+badge row wraps.
+
+### Verified
+- Full vitest **560/560**, lint 0 errors, build clean.
+- Responsive audit subset green: **20/20** page audits clean for `/app/reports` (+ dynamic scan routes) and `/app/admin/reports` at 375/640/768/1024/1280.
+
 ## [2026-08-17] - ProductShowcase signal-tone fix (found during live walk)
 
 ### Fixed
