@@ -1,5 +1,14 @@
 # Provance — Changelog
 
+## [2026-08-17] - Supabase skill activation: RLS/Storage guidance added to the scans contract
+
+### Changed
+- Activated the installed `supabase` agent-skill (v0.1.2) on the scans upload contract and patched `docs/engineering/SCAN_UPLOAD_CONTRACT.md` with a new **RLS, Data API exposure, and key posture** section:
+  - Clarified the app never depends on table RLS — every scan read/write goes through the service-role admin client; the frontend's only direct Supabase surface is the signed-URL storage upload (anon key, `VITE_SUPABASE_ANON_KEY` only; the service key lives only in `backend/.env.local`).
+  - Flagged the Apr-2026 Data API auto-exposure breaking change (enforced on all projects 2026-10-30): `scans` has owner-scoped RLS policies but **no GRANTs** — intentional today, but any future client-side reads need table exposure + `GRANT` to `authenticated` first.
+  - Pinned the policy shape (0002_scans.sql) as the recommended pattern (`TO authenticated`, UPDATE with both `USING` and `WITH CHECK`), and documented that `provance-uploads` intentionally has **no `storage.objects` RLS policies** (signed-token access only) plus the upsert-needs-INSERT+SELECT+UPDATE trap for future direct reads.
+- Also closed the queue-audit **D2** drift while in the doc: the schema table now lists `file_hash_sha256` (0013), `idempotency_key` (0019), and `attempts_made`/`max_attempts` (0021), and the required-migrations note names 0013/0019/0021 alongside 0002/0009.
+
 ## [2026-08-17] - Queue skill audit: retry/backoff config cross-checked (flag-only)
 
 ### Audit (no code changed)

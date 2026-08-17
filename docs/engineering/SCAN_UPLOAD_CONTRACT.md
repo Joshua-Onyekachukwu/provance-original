@@ -202,11 +202,14 @@ Table-name overrides (all default to the migration names): `SUPABASE_SCANS_TABLE
 (comma-separated allow-list; defaults include `localhost:3000/3001/5173`).
 
 The Supabase migration set must be applied **before** real mode works —
-`0002_scans.sql` (scans table + `scan_status` + storage bucket) and
+`0002_scans.sql` (scans table + `scan_status` + storage bucket),
 `0009_scan_processing.sql` (`processing_mode`, `team_id`, `completed_at`
-columns + status indexes). If 0009 is missing, the service returns a
-`503` with an actionable hint (schema error `42703`/`PGRST204` → "migration
-0009 not applied").
+columns + status indexes), `0013_scan_dedup.sql` (`file_hash_sha256`),
+`0019_scan_idempotency.sql` (`idempotency_key`), and
+`0021_scan_attempts.sql` (`attempts_made`, `max_attempts`). If 0009 is
+missing, the service returns a `503` with an actionable hint (schema error
+`42703`/`PGRST204` → "migration 0009 not applied"); the same hint names the
+other migrations by column (e.g. `attempts_made` → 0021) on the failure path.
 
 > For the full step-by-step (0003–0010, dependency order, per-migration
 > verification) see `docs/engineering/MIGRATION_RUNBOOK.md`.
@@ -286,13 +289,45 @@ Start it explicitly: `PORT=4000 node dist/main` (and check the log for
 
 | Table / object | Notes |
 | -------------- | ----- |
-| `public.scans` | `id` uuid PK, `user_id`, `status` `scan_status` enum, `original_filename`, `mime_type`, `file_size_bytes`, `storage_bucket`, `storage_path`, `result_payload` jsonb, `failure_reason`, `processing_mode` (0009), `team_id` (0009), `completed_at` (0009), `created_at`/`updated_at` |
-| `storage.buckets.provance-uploads` | private, 50 MB file-size limit, allow-listed image MIME types |
+| `public.scans` | `id` uuid PK, `user_id`, `status` `scan_status` enum, `original_filename`, `mime_type`, `file_size_bytes`, `storage_bucket`, `storage_path`, `result_payload` jsonb, `failure_reason`, `processing_mode` (0009), `team_id` (0009), `completed_at` (0009), `file_hash_sha256` (0013), `idempotency_key` (0019), `attempts_made`/`max_attempts` (0021), `created_at`/`updated_at` |
+| `storage.buckets.provance-uploads` | private, 50 MB file-size limit, allow-listed image MIME types; no `storage.objects` RLS policies — signed-token access only |
 
-RLS: the `scans` table is owner-scoped for select/insert/update by
-`auth.uid() = user_id`. The backend uses the service-role admin client
-(bypasses RLS) for status transitions, so direct Supabase access sees rows but
-cannot flip statuses without the service.
+### RLS, Data API exposure, and key posture
+
+**The app never depends on table RLS for its own flow.** Every scan read/write
+goes through the NestJS backend, which uses the **service-role admin client**
+(bypasses RLS) for status transitions; the frontend's only direct Supabase
+surface is the signed-URL storage upload. The owner-scoped policies below are
+defense-in-depth for hypothetical direct Data API access — not a gate on the
+real pipeline.
+
+- **Key posture (hard rule):** the frontend ships only the **anon key**
+  (`VITE_SUPABASE_ANON_KEY`, `src/lib/supabase.js`). The service-role key
+  exists only in `backend/.env.local` (`SUPABASE_SERVICE_ROLE_KEY`). Never
+  add the service key to a public client.
+- **Data API exposure trap (breaking change, Apr 2026):** tables in the
+  `public` schema are **no longer auto-exposed** to the Data API — exposure is
+  opt-in and enforced on all projects from 2026-10-30. The migrations create
+  RLS policies on `scans` but issue **no `GRANT` to `anon`/`authenticated`**.
+  That is intentional: the app routes all reads/writes through the service
+  role, so no grant is needed today. If a future feature reads `scans`
+  directly from a client (or the project's Data API settings change), expose
+  the table and `GRANT` the `authenticated` role first — then the policies
+  below actually bite.
+- **Policy shape (0002_scans.sql) — matches the recommended pattern:**
+  `TO authenticated` (not the deprecated `auth.role()`), SELECT + INSERT + an
+  UPDATE with **both `USING` and `WITH CHECK`** pinned to `auth.uid() = user_id`.
+  Keep this shape in future migrations; an UPDATE without `WITH CHECK` lets a
+  user reassign `user_id`, and an UPDATE without a SELECT policy silently
+  updates 0 rows.
+- **Storage: no `storage.objects` RLS policies by design.** The bucket is
+  private and access is **token-only** — uploads via signed upload URLs
+  (`createSignedUploadUrl` + `uploadToSignedUrl`, `upsert: false`) and reads
+  via signed preview URLs (`createSignedUrl`). Storage RLS does not apply to
+  signed-token access, so none is configured. If a future feature reads
+  objects with the anon client directly, remember the upsert trap: granting
+  only INSERT allows new uploads but **file replacement silently fails** —
+  upsert needs INSERT + SELECT + UPDATE.
 
 ## Mock-to-real mapping
 
