@@ -1,5 +1,10 @@
 # Provance — Changelog
 
+## [2026-08-17] - LivePollIndicator documented as a first-class ui primitive
+
+### Docs
+- `LivePollIndicator` (already extracted into the ui kit + barrel-exported) now carries the full documented-primitive header matching TrendChart/StackedBarChart: purpose, the zero-props presentational contract, the Card `actions`-slot usage example, the gating rule (show exactly while the poll runs — same predicate the 5s loop uses, e.g. `hasActiveScanWork` / `queueNeedsPolling` / `scanNeedsPolling`), the `role="status"` a11y contract, and three hard rules for future live surfaces (import from the barrel, gate on the poll predicate, keep the "auto-refreshing" copy). All 6 consuming surfaces verified to import from the barrel — no hand-rolled dots anywhere.
+
 ## [2026-08-17] - Follow-up log triage + closed gap batch (armed resets, quota chip, sign-in lockout)
 
 ### Triage
