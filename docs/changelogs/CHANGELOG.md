@@ -1,5 +1,14 @@
 # Provance — Changelog
 
+## [2026-08-17] - /docs documents the real verification API contract
+
+### Changed
+- **`src/pages/DocsPage.jsx`** — the fabricated `POST /v1/verify` API reference is gone. The page now documents the real endpoint from `backend/src/scans`: **`POST /v1/scans`** (initiate — `originalFilename` / `mimeType` / `fileSizeBytes` / `mediaType: "image"` / optional `processingMode` `quick|standard|deep`, plus an optional `Idempotency-Key` header) → `201` with the signed-upload contract (`scanId`, `status: "awaiting_upload"`, `bucket`, `path`, `token`, `signedUrl`); then PUT the bytes to `signedUrl` and **`POST /v1/scans/{scanId}/submit`** → `202` `{ scanId, status: "queued" }`; then poll **`GET /v1/scans/{scanId}`** until `completed`. The response example uses the **real status enum** (`awaiting_upload · queued · processing · completed · failed`), the **real verdict enum** (`likely_authentic · inconclusive · suspicious`, displayed as `authentic · inconclusive · suspicious`), and an honest `result_payload` subset — every key traced to `buildVerdict` / `buildAnalysisResultPayload` (verdict class + confidence, signal rows with `signal_name`/`status`/`score`, `report.report_id`/`report_url`, metadata). No heatmaps, callback URLs, or fake `ai_generated` verdicts anywhere — the only "heatmaps" mention is the "no heatmaps ship yet" disclaimer.
+- The fabricated **"Webhooks" section became "Verification Lifecycle"**: reserve → upload → submit (with idempotency), the BullMQ scan-processing queue (3 retries + backoff, per-plan 402 quota gate with Retry-After), poll-the-scan as today's async mechanism (webhook callbacks do not exist yet), and SDKs/rate tiers explicitly marked **planned**. Quick Start heading corrected from "Verify media in three lines" to "A three-step verification flow".
+
+### Verified
+- Build clean, lint 0 errors. `audit:responsive` **10/10** on `/docs` + `/app/docs` at 375/640/768/1024/1280 (no overflow from the longer code panels). `audit:a11y` clean on `/app/docs`. Live DOM probe on `/docs`: real endpoint, verdict + status enums, signed-upload contract, and all four lifecycle cards render; zero fabricated refs remain. (Public `/docs` route is not yet in `audit:a11y`'s app+admin inventory — logged.)
+
 ## [2026-08-17] - Landing Sample Report section redesigned as a compact verification summary
 
 ### Changed
