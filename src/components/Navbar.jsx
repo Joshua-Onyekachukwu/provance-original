@@ -50,7 +50,7 @@ export default function Navbar() {
       }`}
     >
       <div
-        className={`pointer-events-auto flex w-full max-w-6xl items-center justify-between rounded-full border px-4 py-2.5 transition-all duration-700 ease-luxe md:px-5 ${
+        className={`pointer-events-auto flex w-full max-w-7xl items-center justify-between gap-6 rounded-full border px-5 py-2.5 transition-all duration-700 ease-luxe md:px-8 ${
           scrolled || mobileOpen
             ? 'border-stone-light/80 bg-parchment/85 shadow-[0_18px_50px_-18px_rgba(19,22,29,0.18)] backdrop-blur-xl'
             : 'border-white/60 bg-parchment/40 backdrop-blur-md'
@@ -68,7 +68,7 @@ export default function Navbar() {
           </div>
         </Link>
 
-        <nav className="hidden lg:flex items-center gap-7">
+        <nav className="hidden lg:flex items-center gap-8">
           {NAV_ITEMS.map((item) => (
             <Link
               key={item.href}
@@ -91,7 +91,7 @@ export default function Navbar() {
               <button
                 type="button"
                 onClick={signOut}
-                className="btn-secondary ml-1 px-5 py-2.5"
+                className="btn-secondary ml-2 px-6 py-2.5"
               >
                 Sign Out
               </button>
@@ -106,7 +106,7 @@ export default function Navbar() {
               </Link>
               <Link
                 to="/waitlist"
-                className="btn-primary ml-1 px-5 py-2.5"
+                className="btn-primary ml-2 px-6 py-2.5"
               >
                 Join Early Access
               </Link>

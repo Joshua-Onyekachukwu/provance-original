@@ -1,5 +1,18 @@
 # Provance — Changelog
 
+## [2026-08-17] - Navbar width + bigger, polished landing report card
+
+### Changed
+- **`src/components/Navbar.jsx`** — the floating pill is wider (`max-w-6xl → max-w-7xl`), with more inner breathing room (`px-5 md:px-8`), a `gap-6` between the logo / nav / CTA groups, nav link spacing `gap-7 → gap-8`, and CTA buttons `ml-2 px-6` — real space between the logo, the menu, and the buttons.
+- **`src/components/SampleReport.jsx`** — the landing report card is bigger (`max-w-3xl → max-w-5xl`) and more substantial:
+  - **Seal cut-off fixed** — the circular "Verified with Provance" stamp was being trimmed by `InteractivePanel`'s `overflow-hidden`. It now lives as an absolute sibling **outside** the tilt panel, overlapping the card's top-right corner; geometry-verified fully visible (74px circle, pokes 32px above the card, inside the section's clip region).
+  - **New "What the full report includes" grid** — six chips (AI detection signals, manipulation indicators, metadata & provenance, chain of custody, frame analysis, timeline & methodology) with one-line details, using the real section names from the full document.
+  - **New "Choose your report depth" row** — Quick / Standard / Deep option cards with mono tags (Fast read / Default / Extended) and one-liners, Standard featured as the default the sample shows — ties the teaser to the real `processingMode` enum (`quick | standard | deep`).
+  - **Footer** now carries the filename, report ID, and media type; the band keeps just the wordmark so the overlapping seal never covers content.
+
+### Verified
+- vitest **10/10** report tests (compact-teaser assertions unchanged — new labels don't collide with the absent-list), `npm run build` clean, lint 0 errors, `audit:responsive` **260/260** clean at 375–1280, `audit:a11y` **34/34** routes clean. Live DOM probes: pill `max-width: 1280px`, seal fully inside the section clip region.
+
 ## [2026-08-17] - /docs documents the real verification API contract
 
 ### Changed
