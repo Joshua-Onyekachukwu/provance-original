@@ -1,5 +1,18 @@
 # Provance — Changelog
 
+## [2026-08-17] - Merged dev into main — milestone live on Vercel
+
+### Shipped to main (founder-approved)
+- `dev/backend-integration-milestone` merged into `main` as `885e971` (97 commits): real scan upload → queue round-trip, admin backend slice, org module + invite token hashing, security sessions + cookie flow, notifications, billing, 404 fix, Vercel Web Analytics, armed confirms, CI gates. `main` auto-deploys to Vercel.
+
+### Gate-caught fixes during the merge
+- **Flaky armed-confirm test** (fixed in `ac764df`, pre-merge): `fireEvent.click` raced React's commit under load — clicks sometimes never armed (~1-in-5 runs). Rewrote with `userEvent` + deterministic waits; 12/12 green.
+- **CRLF shebang broke the transform** — with Windows `core.autocrlf=true`, `scripts/trello.mjs` checked out as `#!/usr/bin/env node\r\n`; vite 8/rolldown's shebang stripping left a stray `\r` → "Invalid or unexpected token" and **22 trello tests silently vanished**. Added `.gitattributes` (`scripts/*.mjs text eol=lf`) so shebang'd scripts stay LF everywhere; suite back to 560/560.
+
+### Merge resolution
+- `package.json`: kept dev's `@vercel/analytics ^2.0.1` (supersedes main's `^1.4.1`) + `better-auth`; `package-lock.json` taken from dev.
+- Local `main` had 2 unpushed duplicate commits (admin milestone + org tests — already in dev); reset to `origin/main` before merging.
+
 ## [2026-08-17] - Fix flaky armed-confirm test (fireEvent → userEvent)
 
 ### Fixed
