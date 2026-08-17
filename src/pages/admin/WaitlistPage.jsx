@@ -13,6 +13,7 @@ import {
   reviewWaitlistApplication,
 } from '../../lib/api.js'
 import { buildCsv as sharedBuildCsv } from '../../lib/csv.js'
+import { useDemoState } from '../../lib/useDemoState.js'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -47,6 +48,17 @@ const STATUS_TONES = {
   approved: 'success',
   deferred: 'warning',
   rejected: 'danger',
+}
+
+// All-zero summary used as the fallback when data has not loaded and as the
+// forced-empty payload under ?state=empty.
+const EMPTY_SUMMARY = {
+  totalRegistrations: 0,
+  pendingReview: 0,
+  approved: 0,
+  rejected: 0,
+  invitesPending: 0,
+  invitesAccepted: 0,
 }
 
 function StatusBadge({ status }) {
@@ -104,6 +116,14 @@ const WAITLIST_COLUMNS = [
 
 export default function WaitlistPage() {
   const navigate = useNavigate()
+
+  // Dev-only ?state= forcing — drives the page's hand-rolled state machine
+  // (dashboardState + kpisLoading/tableLoading) into its loading / empty /
+  // error branches for review.
+  const demoState = useDemoState()
+  const forceLoading = demoState === 'loading'
+  const forceError = demoState === 'error'
+  const forceEmpty = demoState === 'empty'
 
   useRegisterCommands(
     [
@@ -463,7 +483,7 @@ export default function WaitlistPage() {
   // Error state (full-page)
   // ------------------------------------------------------------------
 
-  if (dashboardState.status === 'error') {
+  if (dashboardState.status === 'error' || forceError) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <div className="text-center">
@@ -473,7 +493,11 @@ export default function WaitlistPage() {
             </svg>
           </div>
           <p className="font-serif text-2xl text-charcoal">Waitlist workspace could not be loaded</p>
-          <p className="mt-2 text-sm text-charcoal-mid">{dashboardState.error}</p>
+          <p className="mt-2 text-sm text-charcoal-mid">
+            {forceError
+              ? 'Demo state — forced error for review. This is not a real outage.'
+              : dashboardState.error}
+          </p>
           <Button
             variant="secondary"
             onClick={loadDashboard}
@@ -490,14 +514,7 @@ export default function WaitlistPage() {
   // KPIs from data (or empty fallback)
   // ------------------------------------------------------------------
 
-  const summary = dashboardState.data?.summary || {
-    totalRegistrations: 0,
-    pendingReview: 0,
-    approved: 0,
-    rejected: 0,
-    invitesPending: 0,
-    invitesAccepted: 0,
-  }
+  const summary = forceEmpty ? EMPTY_SUMMARY : dashboardState.data?.summary || EMPTY_SUMMARY
   const recentAuditEvents = dashboardState.data?.recentAuditEvents || []
 
   // ------------------------------------------------------------------
@@ -523,7 +540,7 @@ export default function WaitlistPage() {
       />
 
       {/* --- KPI Cards (section-level loading via StatCard loading) --- */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {[
           { label: 'Registrations', value: String(summary.totalRegistrations), detail: 'All waitlist records.', tone: 'default' },
           { label: 'Pending', value: String(summary.pendingReview), detail: 'Needs review.', tone: 'warning' },
@@ -539,7 +556,7 @@ export default function WaitlistPage() {
             label={card.label}
             value={card.value}
             detail={card.detail}
-            loading={kpisLoading}
+            loading={kpisLoading || forceLoading}
           />
         ))}
       </div>
@@ -639,9 +656,9 @@ export default function WaitlistPage() {
         {/* Table */}
         <DataTable
           columns={WAITLIST_COLUMNS}
-          rows={filteredRows}
+          rows={forceEmpty ? [] : filteredRows}
           keyField="id"
-          loading={tableLoading}
+          loading={tableLoading || forceLoading}
           searchable
           searchValue={filterText}
           onSearchChange={(value) => {
@@ -733,7 +750,7 @@ export default function WaitlistPage() {
                   </p>
                 </div>
 
-                <div className="grid gap-3 sm:grid-cols-2 lg:w-[22rem]">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:w-[22rem]">
                   <div className="rounded-2xl border border-white/60 bg-white/80 px-4 py-3">
                     <p className="text-[10px] uppercase tracking-[0.16em] text-charcoal-light">Email</p>
                     <p className="mt-1 text-sm text-charcoal">{selectedApplication.email}</p>
@@ -756,7 +773,7 @@ export default function WaitlistPage() {
               </div>
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.2fr_0.8fr]">
               <div className="rounded-2xl border border-stone-light bg-parchment p-5">
                 <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-charcoal-light">Operational fit</p>
                 <div className="mt-4 space-y-4">
@@ -764,7 +781,7 @@ export default function WaitlistPage() {
                     <p className="text-[10px] uppercase tracking-[0.16em] text-charcoal-light">Use case summary</p>
                     <p className="mt-2 text-sm leading-6 text-charcoal-mid">{selectedApplication.use_case}</p>
                   </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div className="rounded-2xl border border-stone-light bg-white-warm p-4">
                       <p className="text-[10px] uppercase tracking-[0.16em] text-charcoal-light">Decision posture</p>
                       <p className="mt-2 text-sm text-charcoal">

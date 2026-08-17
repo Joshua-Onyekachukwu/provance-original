@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { useTeamFilterParam } from '../../lib/useTeamFilterParam.js'
-import { Badge, Button, Card, DataTable, EmptyState, Skeleton, StatCard, Tabs, TrendChart, useRegisterCommands, useToast } from '../../components/ui'
+import { Link, useNavigate } from 'react-router-dom'
+import { useTeamScoping } from '../../lib/useTeamScoping.js'
+import { Badge, Button, Card, DataTable, EmptyState, LivePollIndicator, Skeleton, StackedBarChart, StatCard, Tabs, TrendChart, useRegisterCommands, useToast } from '../../components/ui'
+import DemoStateBanner from '../../components/app/DemoStateBanner.jsx'
 import ScanStatusBadge from '../../components/app/ScanStatusBadge.jsx'
 import TeamBadge from '../../components/app/TeamBadge.jsx'
 import TeamFilter from '../../components/app/TeamFilter.jsx'
 import {
+  VERDICT_CHART_SEGMENTS,
   VERDICT_META,
   formatDurationMs,
   formatFileSize,
@@ -14,18 +16,23 @@ import {
   formatScanTimestamp,
   getTeamMeta,
   getVerdictMeta,
+  hasActiveScanWork,
+  queueNeedsPolling,
 } from '../../components/app/scanPresentation.js'
+import { scanQuotaPct } from '../../lib/scanQuota.js'
 import { useAuth } from '../../context/AuthContext.jsx'
 import {
   getActivityLogs,
   getAnalytics,
+  getBilling,
   getNotifications,
   getQueueSnapshot,
   getReports,
   getSystemHealth,
   listScans,
+  markNotificationRead,
 } from '../../lib/api.js'
-import { useDemoState, withDemoOverride } from '../../lib/useDemoState.js'
+import { useDemoStateControl, withDemoOverride } from '../../lib/useDemoState.js'
 import { useResource } from '../../lib/useResource.js'
 
 // ---------------------------------------------------------------------------
@@ -39,56 +46,42 @@ function getTimeOfDayGreeting() {
   return 'Good evening'
 }
 
-// ---------------------------------------------------------------------------
-// Dev-only demo state banner — switch loading / empty / error without the URL
-// ---------------------------------------------------------------------------
-
-function DemoStateBanner({ demoState, onSelect }) {
-  if (!import.meta.env.DEV) return null
-
-  const options = [
-    { value: null, label: 'Live' },
-    { value: 'loading', label: 'Loading' },
-    { value: 'empty', label: 'Empty' },
-    { value: 'error', label: 'Error' },
-  ]
-
-  return (
-    <div
-      role="group"
-      aria-label="Demo state controls"
-      className="fixed bottom-4 right-4 z-50 flex items-center gap-1 rounded-full border border-charcoal/15 bg-charcoal/95 py-1.5 pl-4 pr-1.5 text-parchment shadow-[0_16px_40px_rgba(26,26,26,0.35)] backdrop-blur"
-    >
-      <span className="pr-2 font-mono text-[10px] uppercase tracking-[0.18em] text-parchment/50">
-        Demo state
-      </span>
-      {options.map((option) => {
-        const active = demoState === option.value
-        return (
-          <button
-            key={option.label}
-            type="button"
-            aria-pressed={active}
-            onClick={() => onSelect(option.value)}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition focus-visible:ring-2 focus-visible:ring-parchment/40 ${
-              active
-                ? 'bg-parchment text-charcoal'
-                : 'text-parchment/60 hover:bg-white/10 hover:text-parchment'
-            }`}
-          >
-            {option.label}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
 function formatAction(action) {
   return String(action || '')
     .replaceAll('.', ' ')
     .replaceAll('_', ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+/**
+ * ScanQuotaWarningChip — dashboard-level banner linking to Billing when the
+ * workspace is at or above 85% of its monthly scan quota. Tones escalate:
+ * 85–99% warning, 100%+ danger (exhausted).
+ */
+export function ScanQuotaWarningChip({ usage }) {
+  const pct = scanQuotaPct(usage)
+  if (pct == null || pct < 85) return null
+
+  const exhausted = pct >= 100
+  const tone = exhausted ? 'danger' : 'warning'
+  const toneClasses = {
+    warning: 'border-amber-300/60 bg-amber-50 text-amber-800',
+    danger: 'border-rose-300/60 bg-rose-50 text-rose-800',
+  }
+
+  return (
+    <Link
+      to="/app/billing"
+      className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors hover:brightness-[0.98] ${toneClasses[tone]}`}
+    >
+      <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" aria-hidden="true">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
+      </svg>
+      {exhausted
+        ? 'Monthly scan quota exhausted — view billing'
+        : `${pct}% of monthly scan quota used — view billing`}
+    </Link>
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -145,7 +138,7 @@ function SystemStatusDot({ label, operational }) {
   )
 }
 
-function NotificationPreviewRow({ notification }) {
+function NotificationPreviewRow({ notification, onClick }) {
   const categoryColors = {
     scan: 'bg-sky-500',
     system: 'bg-stone-400',
@@ -155,17 +148,24 @@ function NotificationPreviewRow({ notification }) {
   }
   const dotColor = categoryColors[notification.category] || 'bg-stone-400'
 
+  // Same click contract as the bell + full Notifications page: mark read,
+  // then navigate to the linked route when the notification carries one
+  // (mockNotifications deep-link to /app/reports/:scanId).
   return (
-    <div className="flex items-start gap-3 py-3.5 first:pt-0 last:pb-0">
+    <button
+      type="button"
+      onClick={onClick}
+      className="ui-focus-ring flex w-full items-start gap-3 py-3.5 text-left first:pt-0 last:pb-0"
+    >
       <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${dotColor}`} aria-hidden="true" />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-charcoal">{notification.title}</p>
-        <p className="mt-0.5 line-clamp-1 text-xs text-charcoal-mid">{notification.description}</p>
-      </div>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-medium text-charcoal">{notification.title}</span>
+        <span className="mt-0.5 block line-clamp-1 text-xs text-charcoal-mid">{notification.description}</span>
+      </span>
       <time className="shrink-0 pt-0.5 text-xs tabular-nums whitespace-nowrap text-charcoal-light">
         {formatRelativeTime(notification.created_at)}
       </time>
-    </div>
+    </button>
   )
 }
 
@@ -251,7 +251,7 @@ function FeedState({ status, error, onRetry, empty, emptyTitle, emptyDescription
 function DashboardHero({ profile, isTeam, greeting, lastActivity, reading, readingState, healthState, healthData, onRetry }) {
   return (
     <section className="overflow-hidden rounded-[2rem] border border-charcoal/8 bg-charcoal text-parchment shadow-[0_30px_90px_rgba(26,26,26,0.12)]">
-      <div className="grid gap-8 p-6 sm:p-8 xl:grid-cols-[1.2fr_0.8fr]">
+      <div className="grid grid-cols-1 gap-8 p-6 sm:p-8 xl:grid-cols-[1.2fr_0.8fr]">
         <div>
           <div className="flex flex-wrap items-center gap-3">
             <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-parchment/48">
@@ -419,7 +419,11 @@ const LEDGER_COLUMNS = [
   },
 ]
 
-function LedgerPanel({ scans, onRetry, navigate, pageSize = 5, teamFilter, onTeamFilterChange, teamCounts }) {
+// LivePollIndicator lives in the ui kit (components/ui/LivePollIndicator.jsx)
+// and is shared by the dashboard ledger + queue panels, the Queue page, and
+// the report detail pane.
+
+function LedgerPanel({ scans, onRetry, navigate, pageSize = 5, teamFilter, onTeamFilterChange, teamCounts, live }) {
   const filtered = useMemo(
     () =>
       teamFilter === 'all'
@@ -435,9 +439,12 @@ function LedgerPanel({ scans, onRetry, navigate, pageSize = 5, teamFilter, onTea
       title="Latest verification activity"
       description="Your newest uploads — filename, status, verdict, team, and report ID before opening the full report."
       actions={
-        <Button variant="ghost" size="sm" onClick={() => navigate('/app/reports')}>
-          View all reports
-        </Button>
+        <>
+          {live && <LivePollIndicator />}
+          <Button variant="ghost" size="sm" onClick={() => navigate('/app/reports')}>
+            View all reports
+          </Button>
+        </>
       }
     >
       <TeamFilter counts={teamCounts} value={teamFilter} onChange={onTeamFilterChange} />
@@ -471,7 +478,7 @@ function LedgerPanel({ scans, onRetry, navigate, pageSize = 5, teamFilter, onTea
 // Right column: queue, risk, system status
 // ---------------------------------------------------------------------------
 
-function QueuePosturePanel({ queue, teamFilter, teamQueue, onRetry }) {
+function QueuePosturePanel({ queue, teamFilter, teamQueue, onRetry, live }) {
   const data = queue.data
   // When a team filter is active the queue counts are recomputed from the
   // team-scoped scan list; otherwise the live queue snapshot is used.
@@ -494,6 +501,7 @@ function QueuePosturePanel({ queue, teamFilter, teamQueue, onRetry }) {
       loadingRows={4}
       errorDescription={queue.error}
       onRetry={onRetry}
+      actions={live ? <LivePollIndicator /> : null}
     >
       <div className="grid grid-cols-3 gap-3">
         <MiniStat label="Queued" value={queued} tone="info" />
@@ -614,6 +622,10 @@ function SystemStatusPanel({ health, onRetry }) {
  */
 function WorkspaceTabs({ scans, queue, health, navigate, teamFilter, onTeamFilterChange, teamCounts, teamQueue }) {
   const [activeTab, setActiveTab] = useState('triage')
+  // True while any scan is queued or processing — exactly the condition the
+  // 5s poll loop gates on, so the live indicators appear only while polling
+  // is actually active (worker progress is being tracked).
+  const live = hasActiveScanWork(scans.data)
 
   const items = [
     { value: 'triage', label: 'Triage' },
@@ -647,7 +659,7 @@ function WorkspaceTabs({ scans, queue, health, navigate, teamFilter, onTeamFilte
         aria-labelledby="workspace-triage-history-tab-triage"
         hidden={activeTab !== 'triage'}
       >
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <RiskWatchPanel scans={scans} onRetry={scans.reload} navigate={navigate} />
           <div className="space-y-6">
             <QueuePosturePanel
@@ -655,6 +667,7 @@ function WorkspaceTabs({ scans, queue, health, navigate, teamFilter, onTeamFilte
               teamFilter={teamFilter}
               teamQueue={teamQueue}
               onRetry={queue.reload}
+              live={live}
             />
             <SystemStatusPanel health={health} onRetry={health.reload} />
           </div>
@@ -675,6 +688,7 @@ function WorkspaceTabs({ scans, queue, health, navigate, teamFilter, onTeamFilte
           teamFilter={teamFilter}
           onTeamFilterChange={onTeamFilterChange}
           teamCounts={teamCounts}
+          live={live}
         />
       </div>
     </section>
@@ -733,8 +747,13 @@ function ReportsFeedBody({ reports, onRetry }) {
   )
 }
 
-function NotificationsFeedBody({ notifications, onRetry }) {
-  const unread = (notifications.data || []).filter((n) => !n.read)
+function NotificationsFeedBody({ notifications, onRetry, readIds, onNotificationClick }) {
+  // readIds is the optimistic in-session read set (mirrors the bell's local
+  // state): a clicked row drops out of the unread preview immediately, and
+  // the API persistence is fire-and-forget like the bell.
+  const unread = (notifications.data || []).filter(
+    (n) => !n.read && !readIds.has(n.id),
+  )
 
   return (
     <>
@@ -749,7 +768,11 @@ function NotificationsFeedBody({ notifications, onRetry }) {
       {notifications.status === 'ready' && unread.length > 0 && (
         <div className="divide-y divide-stone-light">
           {unread.slice(0, 4).map((notification) => (
-            <NotificationPreviewRow key={notification.id} notification={notification} />
+            <NotificationPreviewRow
+              key={notification.id}
+              notification={notification}
+              onClick={() => onNotificationClick(notification)}
+            />
           ))}
         </div>
       )}
@@ -790,7 +813,7 @@ function ActivityFeedBody({ activity, onRetry }) {
  * the live activity feed, recent reports, and notifications via the Tabs
  * primitive; each tab manages its own loading / error / empty state.
  */
-function ActivityTabsPanel({ activity, reports, notifications, onRetryActivity, onRetryReports, onRetryNotifications }) {
+function ActivityTabsPanel({ activity, reports, notifications, onRetryActivity, onRetryReports, onRetryNotifications, readIds, onNotificationClick }) {
   const [activeTab, setActiveTab] = useState('activity')
 
   const unreadCount = (notifications.data || []).filter((n) => !n.read).length
@@ -842,7 +865,12 @@ function ActivityTabsPanel({ activity, reports, notifications, onRetryActivity, 
           aria-labelledby="workspace-activity-tab-notifications"
           hidden={activeTab !== 'notifications'}
         >
-          <NotificationsFeedBody notifications={notifications} onRetry={onRetryNotifications} />
+          <NotificationsFeedBody
+            notifications={notifications}
+            onRetry={onRetryNotifications}
+            readIds={readIds}
+            onNotificationClick={onNotificationClick}
+          />
         </div>
       </div>
     </Card>
@@ -856,12 +884,22 @@ function ActivityTabsPanel({ activity, reports, notifications, onRetryActivity, 
 export default function AppDashboardPage() {
   const { profile, permissions, workspaceContext, setWorkspaceContext } = useAuth()
   const navigate = useNavigate()
-  const location = useLocation()
-  const demoState = useDemoState()
+  const { demoState, selectDemoState } = useDemoStateControl()
   const toast = useToast()
 
+  // Live status polling: the scans ledger and queue posture refresh every 5s
+  // while work is in flight (queued / processing), so worker-driven
+  // queued → processing → complete transitions land without a reload. Polling
+  // idles once the queue drains — see hasActiveScanWork / queueNeedsPolling.
   const scans = withDemoOverride(
-    useResource(() => listScans({ pageSize: 100 }).then((r) => r.data || [])),
+    useResource(
+      () => listScans({ pageSize: 100 }).then((r) => r.data || []),
+      [],
+      {
+        pollMs: 5000,
+        pollWhen: (state) => hasActiveScanWork(state.data),
+      },
+    ),
     demoState,
     { emptyData: [] },
   )
@@ -875,11 +913,41 @@ export default function AppDashboardPage() {
     demoState,
     { emptyData: [] },
   )
-  const queue = withDemoOverride(useResource(() => getQueueSnapshot()), demoState, {
-    emptyData: { queued: 0, processing: 0, failed: 0, avg_processing_time_ms: 0 },
-  })
+  // Optimistic in-session read set for the dashboard's notification feed —
+  // the same contract as the bell: clicking marks read (row leaves the
+  // unread preview immediately) and navigates to the linked route when the
+  // notification carries one. Persistence is fire-and-forget.
+  const [localReadIds, setLocalReadIds] = useState(() => new Set())
+
+  function handleFeedNotificationClick(notification) {
+    setLocalReadIds((current) => new Set(current).add(notification.id))
+    if (notification.link) {
+      navigate(notification.link)
+    }
+    markNotificationRead(notification.id).catch(() => {
+      if (import.meta.env.DEV) console.warn('[notifications] mark-read persistence failed')
+    })
+  }
+  const queue = withDemoOverride(
+    useResource(
+      () => getQueueSnapshot(),
+      [],
+      {
+        pollMs: 5000,
+        pollWhen: (state) => queueNeedsPolling(state.data),
+      },
+    ),
+    demoState,
+    { emptyData: { queued: 0, processing: 0, failed: 0, avg_processing_time_ms: 0 } },
+  )
   const health = withDemoOverride(useResource(() => getSystemHealth()), demoState, {
     emptyData: { api: true, database: true, storage: true, queue: true, worker: true, email: true },
+  })
+  // Billing usage (scansUsed/scansLimit) — same resolveUsage source of truth
+  // as the Billing page and the initiateScan quota gate. Powers the ≥85%
+  // quota warning chip without a second round-trip contract.
+  const billing = withDemoOverride(useResource(() => getBilling()), demoState, {
+    emptyData: { profile: { usage: { scansUsed: 0, scansLimit: 0 } } },
   })
   const analytics = withDemoOverride(useResource(() => getAnalytics()), demoState, {
     emptyData: { scans_today: 0, scans_7d: 0, completion_rate: 0, suspicious_rate: 0 },
@@ -890,73 +958,28 @@ export default function AppDashboardPage() {
     { emptyData: [] },
   )
 
-  const selectDemoState = (value) => {
-    const params = new URLSearchParams(location.search)
-    if (value) params.set('state', value)
-    else params.delete('state')
-    const search = params.toString()
-    navigate(`${location.pathname}${search ? `?${search}` : ''}`, { replace: true })
-  }
-
   // ── Team scoping ───────────────────────────────────────────────────────
   // One shared filter drives the KPI row, queue posture, and ledger so a
   // team-scoped dashboard recomputes every metric from the scan ledger. The
-  // selection is persisted to ?team= so it survives navigation and is
-  // shareable, mirroring the ?state= demo-param pattern.
-  const [teamFilter, setTeamFilter] = useTeamFilterParam()
+  // selection is persisted to ?team= (URL-backed) so it survives navigation
+  // and is shareable — see useTeamScoping.
+  const {
+    teamFilter,
+    setTeamFilter,
+    teamName,
+    isTeamScoped,
+    teamCounts,
+    teamKpis,
+    volumeTrend,
+    kpi,
+    kpiLoading,
+    kpiError,
+  } = useTeamScoping({ scans, analytics })
 
-  const teamName = teamFilter === 'all' ? null : getTeamMeta(teamFilter).name
-
-  const teamCounts = useMemo(() => {
-    const counts = {}
-    for (const scan of scans.data || []) {
-      if (scan.team_id) counts[scan.team_id] = (counts[scan.team_id] || 0) + 1
-    }
-    return counts
-  }, [scans.data])
-
-  const teamScans = useMemo(
-    () =>
-      teamFilter === 'all'
-        ? []
-        : (scans.data || []).filter((scan) => scan.team_id === teamFilter),
-    [scans.data, teamFilter],
-  )
-
-  // Analytics-shaped KPIs recomputed for the active team. Mirrors the mock
-  // analytics envelope (scans_today / scans_7d / completion_rate /
-  // suspicious_rate) plus queue posture counts so the same surfaces render
-  // either global or team-scoped values.
-  const teamKpis = useMemo(() => {
-    if (teamFilter === 'all' || teamScans.length === 0) return null
-    const dayMs = 24 * 60 * 60 * 1000
-    const now = Date.now()
-    const scansToday = teamScans.filter(
-      (scan) => now - new Date(scan.created_at).getTime() <= dayMs,
-    ).length
-    const scans7d = teamScans.filter(
-      (scan) => now - new Date(scan.created_at).getTime() <= 7 * dayMs,
-    ).length
-    const completed = teamScans.filter((scan) => scan.status === 'completed').length
-    const suspicious = teamScans.filter(
-      (scan) => scan.status === 'completed' && scan.verdict === 'suspicious',
-    ).length
-    return {
-      scans_today: scansToday,
-      scans_7d: scans7d,
-      completion_rate: teamScans.length ? completed / teamScans.length : 0,
-      suspicious_rate: teamScans.length ? suspicious / teamScans.length : 0,
-      queued: teamScans.filter((scan) => scan.status === 'queued').length,
-      processing: teamScans.filter((scan) => scan.status === 'processing').length,
-      failed: teamScans.filter((scan) => scan.status === 'failed').length,
-    }
-  }, [teamFilter, teamScans])
-
-  const kpi = teamKpis || analytics.data
-  // When a team filter is active the KPI values derive from the scan ledger,
-  // so their loading/error state tracks scans (not the analytics endpoint).
-  const kpiLoading = teamFilter !== 'all' ? scans.status === 'loading' : analytics.status === 'loading'
-  const kpiError = teamFilter !== 'all' ? scans.status === 'error' : analytics.status === 'error'
+  // The volume trend chart is team-aware too: when a team filter is active
+  // the 14-day series is recomputed from the ledger (useTeamScoping), and its
+  // loading/error state tracks scans rather than the analytics endpoint.
+  const trendData = isTeamScoped ? volumeTrend : analytics.data?.volume_trend || []
 
   const stats = useMemo(() => {
     const list = scans.data || []
@@ -1098,6 +1121,9 @@ export default function AppDashboardPage() {
         onRetry={scans.reload}
       />
 
+      {/* ── 1.5. Scan-quota warning (≥85% this cycle → Billing) ──────────── */}
+      <ScanQuotaWarningChip usage={billing.data?.profile?.usage} />
+
       {/* ── 2. KPI StatCards (mockAnalytics-driven; team-scoped when filtered) ── */}
       <section className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1106,7 +1132,7 @@ export default function AppDashboardPage() {
             <Badge tone="info">Showing {teamName} data</Badge>
           )}
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             label="Scans Today"
             value={kpi ? String(kpi.scans_today ?? 0) : '—'}
@@ -1165,40 +1191,63 @@ export default function AppDashboardPage() {
               Verification volume
             </h2>
           </div>
-          <Link
-            to="/app/history"
-            className="text-xs text-charcoal-mid hover:text-charcoal transition-colors focus-visible:ring-2 focus-visible:ring-charcoal rounded"
-          >
-            View scan history →
-          </Link>
+          <div className="flex flex-wrap items-center gap-3">
+            {isTeamScoped && teamName && <Badge tone="info">Team-scoped · {teamName}</Badge>}
+            <Link
+              to="/app/history"
+              className="text-xs text-charcoal-mid hover:text-charcoal transition-colors focus-visible:ring-2 focus-visible:ring-charcoal rounded"
+            >
+              View scan history →
+            </Link>
+          </div>
         </div>
 
-        {analytics.status === 'loading' ? (
+        {kpiLoading ? (
           <div className="animate-pulse rounded-3xl border border-stone-light bg-white-warm p-6 shadow-sm">
             <div className="mb-5 h-3 w-32 rounded bg-stone-light/60" />
             <div className="h-48 rounded-xl bg-stone-light/30" />
           </div>
-        ) : analytics.status === 'error' ? (
+        ) : kpiError ? (
           <div className="rounded-3xl border border-rose-100 bg-white-warm p-6 text-center shadow-sm">
             <p className="font-serif text-lg text-charcoal">Volume data unavailable</p>
-            <p className="mt-1 text-sm text-charcoal-mid">{analytics.error}</p>
+            <p className="mt-1 text-sm text-charcoal-mid">
+              {isTeamScoped ? scans.error : analytics.error}
+            </p>
             <Button
               variant="secondary"
               size="sm"
-              onClick={analytics.reload}
+              onClick={isTeamScoped ? scans.reload : analytics.reload}
               className="mt-4"
             >
               Retry
             </Button>
           </div>
         ) : (
-          <TrendChart
-            data={analytics.data?.volume_trend || []}
-            title="Scan volume trend"
-            description="Daily scan volume, completions, and failures across your workspace."
-            emptyTitle="No volume data yet"
-            emptyDescription="Upload a media file to start the verification pipeline — volume will build here."
-          />
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+            <TrendChart
+              data={trendData}
+              title="Scan volume trend"
+              description={
+                isTeamScoped && teamName
+                  ? `Daily scan volume, completions, and failures across the ${teamName} team.`
+                  : 'Daily scan volume, completions, and failures across your workspace.'
+              }
+              emptyTitle="No volume data yet"
+              // NOTE: when a team is scoped the series is zero-filled (14
+              // points), so the chart renders honest zeros instead of this
+              // empty branch — the text below only applies to the global view.
+              emptyDescription="Upload a media file to start the verification pipeline — volume will build here."
+            />
+            <StackedBarChart
+              data={analytics.data?.verdict_trend || []}
+              segments={VERDICT_CHART_SEGMENTS}
+              title="Verdict mix"
+              description="Completed scans split by outcome — authentic, suspicious, and inconclusive."
+              ariaLabel="Daily verdict mix over the last 14 days"
+              emptyTitle="No verdict data yet"
+              emptyDescription="Completed verifications will split by verdict here as they land."
+            />
+          </div>
         )}
       </section>
 
@@ -1222,10 +1271,12 @@ export default function AppDashboardPage() {
         onRetryActivity={activity.reload}
         onRetryReports={reports.reload}
         onRetryNotifications={notifications.reload}
+        readIds={localReadIds}
+        onNotificationClick={handleFeedNotificationClick}
       />
 
-      {/* Dev-only: force loading / empty / error for review & screenshots */}
-      <DemoStateBanner demoState={demoState} onSelect={selectDemoState} />
+      // Dev-only: force loading / empty / error for review & screenshots
+  <DemoStateBanner demoState={demoState} onSelect={selectDemoState} />
     </div>
   )
 }

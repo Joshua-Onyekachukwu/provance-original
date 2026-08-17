@@ -44,9 +44,12 @@ const SHORT_ACTION_TONES = {
   toggled: 'warning',
   changed: 'info',
   accepted: 'success',
+  retried: 'info',
   failed: 'danger',
   'invite created': 'success',
   'waitlist reviewed': 'neutral',
+  'member session revoked': 'danger',
+  'member sessions revoked': 'danger',
 }
 
 function shortAction(action) {
@@ -106,15 +109,23 @@ function AuditRow({ event, open, onToggle }) {
               {shortAction(event.action).toUpperCase()}
             </Badge>
           </span>
-          <span className="mt-1.5 block text-sm text-charcoal">
+          {/* break-words: full actor emails are unbroken strings that blow
+              the row wider than the viewport in narrow columns. */}
+          <span className="mt-1.5 block break-words text-sm text-charcoal">
             <span className="font-medium capitalize">{actorName}</span>
             <span className="text-charcoal-light"> · {event.actor_email}</span>
           </span>
           <span className="mt-1 flex flex-wrap items-center gap-2">
-            {/* Resource target chip */}
-            <span className="inline-flex items-center gap-1.5 rounded-md border border-stone-light bg-parchment px-2 py-0.5 font-mono text-[11px]">
-              <span className="text-charcoal-light">{resourceLabel(event.resource_type)}</span>
-              {event.resource_id && <span className="text-charcoal">{event.resource_id}</span>}
+            {/* Resource target chip — min-w-0 + truncate: ids like
+                waitlist_application_0007 are unbroken strings that otherwise
+                blow the chip wider than the viewport on narrow columns. */}
+            <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-md border border-stone-light bg-parchment px-2 py-0.5 font-mono text-[11px]">
+              <span className="shrink-0 text-charcoal-light">{resourceLabel(event.resource_type)}</span>
+              {event.resource_id && (
+                <span title={event.resource_id} className="min-w-0 truncate text-charcoal">
+                  {event.resource_id}
+                </span>
+              )}
             </span>
           </span>
         </span>
@@ -139,7 +150,7 @@ function AuditRow({ event, open, onToggle }) {
           aria-label={`Details for ${event.action}`}
           className="mx-5 mb-4 rounded-2xl border border-stone-light bg-parchment/60 px-5 py-4"
         >
-          <dl className="grid gap-x-8 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+          <dl className="grid grid-cols-1 gap-x-8 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
             <div>
               <dt className="text-[11px] uppercase tracking-[0.18em] text-charcoal-light">Event</dt>
               <dd className="mt-1 font-mono text-xs text-charcoal">{event.action}</dd>
@@ -174,9 +185,11 @@ export default function AuditLogsPage() {
   const { toast } = useToast()
   const demoState = useDemoState()
 
-  const resource = useResource(() => getAdminAuditLogs().then((r) => r.data || []))
-  const logs = withDemoOverride(resource, demoState, { emptyData: [] })
-
+  // Active filter state is pushed to the API (real path GET /admin/audit-logs
+  // applies the same severity/actor/action/resourceType/search filters
+  // server-side, mirroring the account activity pattern); the page keeps its
+  // client-side pass so dropdown options and the CSV export always reflect
+  // the current view. A generous pageSize keeps the facet derivation working.
   const [severity, setSeverity] = useState('all')
   const [actor, setActor] = useState('all')
   const [action, setAction] = useState('all')
@@ -184,6 +197,21 @@ export default function AuditLogsPage() {
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(1)
   const [expanded, setExpanded] = useState({})
+
+  const resource = useResource(
+    () =>
+      getAdminAuditLogs({
+        page: 1,
+        pageSize: 500,
+        severity,
+        actor,
+        action,
+        resourceType,
+        search: query.trim() || undefined,
+      }).then((r) => r.data || []),
+    [severity, actor, action, resourceType, query],
+  )
+  const logs = withDemoOverride(resource, demoState, { emptyData: [] })
 
   const status = logs.status
   const loading = status === 'loading'
@@ -386,7 +414,7 @@ export default function AuditLogsPage() {
                     setActor(event.target.value)
                     resetPage()
                   }}
-                  className="rounded-xl border border-stone-light bg-parchment px-3 py-2 text-sm text-charcoal"
+                  className="max-w-full rounded-xl border border-stone-light bg-parchment px-3 py-2 text-sm text-charcoal"
                 >
                   <option value="all">All actors</option>
                   {actors.map((value) => (
@@ -406,7 +434,7 @@ export default function AuditLogsPage() {
                     setAction(event.target.value)
                     resetPage()
                   }}
-                  className="rounded-xl border border-stone-light bg-parchment px-3 py-2 text-sm text-charcoal"
+                  className="max-w-full rounded-xl border border-stone-light bg-parchment px-3 py-2 text-sm text-charcoal"
                 >
                   <option value="all">All actions</option>
                   {actions.map((value) => (
@@ -426,7 +454,7 @@ export default function AuditLogsPage() {
                     setResourceType(event.target.value)
                     resetPage()
                   }}
-                  className="rounded-xl border border-stone-light bg-parchment px-3 py-2 text-sm text-charcoal"
+                  className="max-w-full rounded-xl border border-stone-light bg-parchment px-3 py-2 text-sm text-charcoal"
                 >
                   <option value="all">All resources</option>
                   {resourceTypes.map((value) => (

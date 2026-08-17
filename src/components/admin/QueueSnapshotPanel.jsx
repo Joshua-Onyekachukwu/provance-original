@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom'
-import HealthCheckRow from './HealthCheckRow.jsx'
 import { formatDurationMs } from '../app/scanPresentation.js'
 
 const WORKER_CONFIG = {

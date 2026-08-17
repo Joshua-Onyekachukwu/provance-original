@@ -12,7 +12,7 @@
 // Helpers
 // ---------------------------------------------------------------------------
 
-const NOW_TS = new Date('2026-07-24T12:00:00Z').getTime()
+export const NOW_TS = new Date('2026-07-24T12:00:00Z').getTime()
 
 function daysAgo(days, hourOffset = 0) {
   const d = new Date(NOW_TS - days * 86400000 + hourOffset * 3600000)
@@ -573,6 +573,7 @@ export const mockScans = Array.from({ length: 25 }, (_, i) => {
   const resultPayload =
     status === 'completed'
       ? {
+          payload_version: '1.0.0',
           signals: [
             {
               model: 'generative-fingerprint-v2',
@@ -659,12 +660,18 @@ export const mockReports = Array.from({ length: 15 }, (_, i) => {
     },
   ]
   const selectedSignals = signals.slice(0, 3 + Math.floor(Math.random() * 3))
+  // Attribution: the report mirrors scan_00{i+1}, so the owning user/team/org
+  // reuse the same rotation as mockScans — the admin Reports page can badge
+  // and filter by team and resolve the org, matching the workspace ledger.
+  const ownerUser = mockUsers[i % mockUsers.length]
 
   return {
     id: `rpt_${String(i + 1).padStart(3, '0')}`,
     scan_id: `scan_${String(i + 1).padStart(3, '0')}`,
     status: 'completed',
-    team_id: mockUserTeamById[mockUsers[i % mockUsers.length].id],
+    user_id: ownerUser.id,
+    team_id: mockUserTeamById[ownerUser.id],
+    org_id: ownerUser.org_id,
     report_id: `PRV-202607${String(15 + Math.floor(i / 2)).padStart(2, '0')}-${String(30 + i).padStart(3, '0')}`,
     verdict,
     confidence_score: Math.round(60 + Math.random() * 35),
@@ -680,14 +687,24 @@ export const mockReports = Array.from({ length: 15 }, (_, i) => {
 // Deterministic action → severity mapping for the audit trail (the admin
 // Audit Logs page filters and badges on it). Destructive/security actions
 // are high; reads and routine updates are low.
-const AUDIT_SEVERITY_BY_ACTION = {
+export const AUDIT_SEVERITY_BY_ACTION = {
   'scan.failed': 'high',
   'waitlist.rejected': 'high',
   'team.member_removed': 'high',
   'api_key.revoked': 'high',
   'role.changed': 'high',
   'feature_flag.toggled': 'high',
+  'new_device_signin': 'high',
+  'refresh_token_rejected': 'high',
+  'refresh_lockout': 'high',
+  'member_session_revoked': 'high',
+  'member_sessions_revoked': 'high',
+  'session.revoked': 'high',
   'user.invited': 'medium',
+  'session_revoked': 'medium',
+  // Password change (SecurityService.changePassword → auth_audit_events feed;
+  // the admin trail gets per-session session.revoked rows from the same call).
+  'password_changed': 'low',
   'waitlist.approved': 'medium',
   'waitlist.deferred': 'medium',
   'team.member_added': 'medium',
@@ -695,6 +712,7 @@ const AUDIT_SEVERITY_BY_ACTION = {
   'org.created': 'medium',
   'invite.accepted': 'medium',
   'scan.submitted': 'medium',
+  'scan.retried': 'medium',
   'user.activated': 'low',
   'scan.completed': 'low',
   'report.exported': 'low',
@@ -822,6 +840,11 @@ export const mockFeatureFlags = [
 
 export const mockNotifications = Array.from({ length: 20 }, (_, i) => {
   const categories = ['scan', 'system', 'team', 'billing', 'security']
+  // Deep links land on /app/reports/:scanId, which resolves against the scan
+  // store — so links must use scan ids, and only scans with a result payload
+  // (status 'completed') render a full report. Map linked notifications onto
+  // the completed scans (7, 10, 13, 16, 19 are all 'completed' in mockScans).
+  const reportLinkScans = [7, 10, 13, 16, 19]
   const titles = [
     'Scan completed successfully',
     'Verification report ready',
@@ -851,7 +874,12 @@ export const mockNotifications = Array.from({ length: 20 }, (_, i) => {
     title: titles[i % titles.length],
     description: titles[i % titles.length] + ' — tap to view details.',
     read: i > 12,
-    link: i % 3 === 0 ? `/app/reports/rpt_${String(i + 1).padStart(3, '0')}` : null,
+    link:
+      i % 3 === 0
+        ? `/app/reports/scan_${String(
+            reportLinkScans[Math.floor(i / 3) % reportLinkScans.length],
+          ).padStart(3, '0')}`
+        : null,
     created_at: daysAgo(Math.floor(i / 3), i % 24),
   }
 })
@@ -1098,7 +1126,9 @@ export const mockMonitoring = {
   // ── Queue health ─────────────────────────────────────────────────────────
   // Backlog, throughput, and worker cadence. Values are consistent with
   // mockQueueSnapshot + mockAnalytics.queue_throughput so the admin monitoring
-  // and analytics surfaces never contradict each other.
+  // and analytics surfaces never contradict each other. hourly_series is the
+  // 12h intraday cadence; daily_series is the 14-day trend (processed /
+  // completed / failed per day) that the queue-health TrendChart renders.
   queue_health: {
     queued: mockQueueSnapshot.queued,
     in_flight: mockQueueSnapshot.processing,
@@ -1108,6 +1138,16 @@ export const mockMonitoring = {
     failure_rate: 0.03,
     hourly_series: [14, 18, 16, 22, 27, 24, 19, 21, 26, 31, 28, 31].map(
       (processed, i) => ({ hour: daysAgo(0, -(11 - i)), processed }),
+    ),
+    // 14-day daily throughput — deterministic, mirrors the hourly cadence at
+    // daily scale with a ~3% failure drift.
+    daily_series: [312, 336, 298, 354, 381, 366, 342, 389, 402, 378, 415, 431, 406, 442].map(
+      (processed, i) => ({
+        date: daysAgo(13 - i, 9),
+        processed,
+        completed: Math.round(processed * 0.97) - (i % 3 === 0 ? 1 : 0),
+        failed: Math.round(processed * 0.03) + (i % 3 === 0 ? 1 : 0),
+      }),
     ),
   },
 
@@ -1282,6 +1322,17 @@ export const mockBillingProfile = {
     storageLimitGb: 50,
     apiCallsUsed: 4120,
     apiCallsLimit: 10000,
+    // End-of-cycle projection at the current pace (312 over 11 days ≈ 28.4/day
+    // → ~880 by day 31, ~380 over the 500 limit). Mirrors the real
+    // projectScanUsage shape the backend computes.
+    projection: {
+      daysElapsed: 11,
+      daysInCycle: 31,
+      pacePerDay: 28.36,
+      projectedScans: 880,
+      overageScans: 380,
+      overageCostUsd: 19,
+    },
   },
   paymentMethods: [
     {
@@ -1341,6 +1392,7 @@ export const mockSecuritySettings = {
       ipAddress: '105.112.28.41',
       lastActiveAt: daysAgo(0, -1),
       isCurrent: true,
+      teamId: mockUserTeamById.usr_001,
     },
     {
       id: 'sess_002',
@@ -1349,6 +1401,7 @@ export const mockSecuritySettings = {
       ipAddress: '105.112.30.12',
       lastActiveAt: daysAgo(2, 9),
       isCurrent: false,
+      teamId: mockUserTeamById.usr_001,
     },
     {
       id: 'sess_003',
@@ -1357,6 +1410,7 @@ export const mockSecuritySettings = {
       ipAddress: '102.89.44.7',
       lastActiveAt: daysAgo(5, 14),
       isCurrent: false,
+      teamId: mockUserTeamById.usr_001,
     },
     {
       id: 'sess_004',
@@ -1365,6 +1419,7 @@ export const mockSecuritySettings = {
       ipAddress: '88.130.94.2',
       lastActiveAt: daysAgo(9, 3),
       isCurrent: false,
+      teamId: mockUserTeamById.usr_001,
     },
   ],
   signInControls: {
@@ -1374,6 +1429,80 @@ export const mockSecuritySettings = {
     notifyOnNewDevice: true,
     notifyOnPasswordChange: true,
   },
+}
+
+// ---------------------------------------------------------------------------
+// Per-member session ledger (Organization page admin revocation)
+//
+// Each org-roster member gets tracked sessions; every row carries the
+// member's team (teamId) so the drawer badges the ledger. usr_001 (the owner /
+// dev admin account) reuses the Security page's rows so both surfaces always
+// agree. isCurrent is recomputed by the mock API from the signed-in actor
+// (mockGetMemberSessions), so the values here are just defaults.
+// ---------------------------------------------------------------------------
+
+export const mockMemberSessionsByUserId = {
+  usr_001: mockSecuritySettings.activeSessions,
+  usr_002: [
+    {
+      id: 'sess_101',
+      device: 'Chrome on Windows',
+      location: 'Lagos, NG',
+      ipAddress: '105.112.30.44',
+      lastActiveAt: daysAgo(0, -4),
+      isCurrent: false,
+      teamId: mockUserTeamById.usr_002,
+    },
+    {
+      id: 'sess_102',
+      device: 'Safari on iPhone',
+      location: 'Abuja, NG',
+      ipAddress: '102.89.44.9',
+      lastActiveAt: daysAgo(1, 8),
+      isCurrent: false,
+      teamId: mockUserTeamById.usr_002,
+    },
+  ],
+  usr_011: [
+    {
+      id: 'sess_201',
+      device: 'Firefox on macOS',
+      location: 'Enugu, NG',
+      ipAddress: '197.210.53.4',
+      lastActiveAt: daysAgo(4, 6),
+      isCurrent: false,
+      teamId: mockUserTeamById.usr_011,
+    },
+  ],
+  usr_012: [
+    {
+      id: 'sess_301',
+      device: 'Edge on Windows',
+      location: 'Kano, NG',
+      ipAddress: '105.112.82.17',
+      lastActiveAt: daysAgo(2, 9),
+      isCurrent: false,
+      teamId: mockUserTeamById.usr_012,
+    },
+    {
+      id: 'sess_302',
+      device: 'Chrome on Android',
+      location: 'Kano, NG',
+      ipAddress: '105.112.82.19',
+      lastActiveAt: daysAgo(0, -7),
+      isCurrent: false,
+      teamId: mockUserTeamById.usr_012,
+    },
+    {
+      id: 'sess_303',
+      device: 'Safari on iPad',
+      location: 'Lagos, NG',
+      ipAddress: '105.112.28.90',
+      lastActiveAt: daysAgo(6, 2),
+      isCurrent: false,
+      teamId: mockUserTeamById.usr_012,
+    },
+  ],
 }
 
 // ---------------------------------------------------------------------------
@@ -1442,6 +1571,204 @@ export const mockApiKeyLimits = {
   defaultRateLimitRpm: 60,
   maxRateLimitRpm: 600,
   tokenLifetimeDays: 180,
+}
+
+// ---------------------------------------------------------------------------
+// Webhooks (4 endpoints) — approved feature (2026-08-04)
+// ---------------------------------------------------------------------------
+
+export const WEBHOOK_EVENTS = [
+  {
+    value: 'scan.completed',
+    label: 'Scan completed',
+    description: 'A verification finished with a verdict payload.',
+  },
+  {
+    value: 'scan.failed',
+    label: 'Scan failed',
+    description: 'A verification could not be completed.',
+  },
+  {
+    value: 'report.ready',
+    label: 'Report ready',
+    description: 'The report payload is available to fetch.',
+  },
+  {
+    value: 'report.exported',
+    label: 'Report exported',
+    description: 'A report PDF was exported from the workspace.',
+  },
+]
+
+export const mockWebhookLimits = {
+  endpointsPerWorkspace: 10,
+  maxEventsPerEndpoint: WEBHOOK_EVENTS.length,
+  deliveryRetentionDays: 14,
+  signingAlgo: 'HMAC-SHA256',
+}
+
+export const mockWebhooks = [
+  {
+    id: 'whk_001',
+    name: 'Verification completion notifier',
+    url: 'https://hooks.acme-internal.com/provance/completed',
+    events: ['scan.completed', 'scan.failed'],
+    status: 'active',
+    createdAt: daysAgo(28, 4),
+    lastDeliveryAt: daysAgo(0, -1),
+    deliveryCount: 482,
+    failureCount: 7,
+    secretPrefix: 'whsec_live_9f2K',
+  },
+  {
+    id: 'whk_002',
+    name: 'Legal evidence pipeline',
+    url: 'https://evidence.legal-trust.example.com/hooks/provance',
+    events: ['report.ready'],
+    status: 'active',
+    createdAt: daysAgo(19, 9),
+    lastDeliveryAt: daysAgo(0, -4),
+    deliveryCount: 96,
+    failureCount: 1,
+    secretPrefix: 'whsec_live_4bXm',
+  },
+  {
+    id: 'whk_003',
+    name: 'Analytics warehouse sync',
+    url: 'https://data.acme-internal.com/ingest/provance',
+    events: ['scan.completed', 'scan.failed', 'report.ready'],
+    status: 'paused',
+    createdAt: daysAgo(11, 2),
+    lastDeliveryAt: daysAgo(4, 6),
+    deliveryCount: 231,
+    failureCount: 12,
+    secretPrefix: 'whsec_test_7sQw',
+  },
+  {
+    id: 'whk_004',
+    name: 'Slack-style alert channel',
+    url: 'https://alerts.internal.example.com/webhook/provance',
+    events: ['scan.failed'],
+    status: 'active',
+    createdAt: daysAgo(5, 1),
+    lastDeliveryAt: daysAgo(1, 3),
+    deliveryCount: 18,
+    failureCount: 3,
+    secretPrefix: 'whsec_test_2kLp',
+  },
+]
+
+// Delivery log per endpoint (mockWebhookDeliveries[id] = deliveries).
+// Timestamps are hours ago so the relative labels read naturally.
+function hoursAgo(hours) {
+  return new Date(Date.now() - hours * 3600 * 1000).toISOString()
+}
+
+export const mockWebhookDeliveries = {
+  whk_001: [
+    {
+      id: 'dlv_001',
+      event: 'scan.completed',
+      status: 200,
+      attemptedAt: hoursAgo(0.5),
+      latencyMs: 214,
+      response: '{"ok":true,"accepted":true}',
+    },
+    {
+      id: 'dlv_002',
+      event: 'scan.failed',
+      status: 200,
+      attemptedAt: hoursAgo(2),
+      latencyMs: 187,
+      response: '{"ok":true,"accepted":true}',
+    },
+    {
+      id: 'dlv_003',
+      event: 'scan.completed',
+      status: 429,
+      attemptedAt: hoursAgo(7),
+      latencyMs: 312,
+      response: '{"error":"rate_limited"}',
+    },
+    {
+      id: 'dlv_004',
+      event: 'scan.completed',
+      status: 200,
+      attemptedAt: hoursAgo(26),
+      latencyMs: 201,
+      response: '{"ok":true,"accepted":true}',
+    },
+    {
+      id: 'dlv_005',
+      event: 'scan.failed',
+      status: 500,
+      attemptedAt: hoursAgo(31),
+      latencyMs: 1804,
+      response: '{"error":"internal"}',
+    },
+    {
+      id: 'dlv_006',
+      event: 'scan.completed',
+      status: 200,
+      attemptedAt: hoursAgo(49),
+      latencyMs: 228,
+      response: '{"ok":true,"accepted":true}',
+    },
+  ],
+  whk_002: [
+    {
+      id: 'dlv_007',
+      event: 'report.ready',
+      status: 200,
+      attemptedAt: hoursAgo(1),
+      latencyMs: 164,
+      response: '{"ok":true,"accepted":true}',
+    },
+    {
+      id: 'dlv_008',
+      event: 'report.ready',
+      status: 200,
+      attemptedAt: hoursAgo(20),
+      latencyMs: 172,
+      response: '{"ok":true,"accepted":true}',
+    },
+  ],
+  whk_003: [
+    {
+      id: 'dlv_009',
+      event: 'scan.completed',
+      status: 200,
+      attemptedAt: hoursAgo(6),
+      latencyMs: 246,
+      response: '{"ok":true,"accepted":true}',
+    },
+    {
+      id: 'dlv_010',
+      event: 'report.ready',
+      status: 404,
+      attemptedAt: hoursAgo(50),
+      latencyMs: 90,
+      response: '{"error":"not_found"}',
+    },
+  ],
+  whk_004: [
+    {
+      id: 'dlv_011',
+      event: 'scan.failed',
+      status: 200,
+      attemptedAt: hoursAgo(9),
+      latencyMs: 193,
+      response: '{"ok":true,"accepted":true}',
+    },
+    {
+      id: 'dlv_012',
+      event: 'scan.failed',
+      status: 500,
+      attemptedAt: hoursAgo(40),
+      latencyMs: 2210,
+      response: '{"error":"internal"}',
+    },
+  ],
 }
 
 // ---------------------------------------------------------------------------
@@ -1764,6 +2091,9 @@ export const mockAdminJobs = mockScans.map((scan, i) => {
           : failed
             ? 'Input file failed MIME validation: declared type did not match container.'
             : null,
+    // Completed jobs carry the evidence payload for per-job inspection
+    // (signals + report id) — mirrors scan.result_payload.
+    result_payload: completed ? scan.result_payload || null : null,
   }
 })
 
@@ -1824,7 +2154,7 @@ export const mockAdminRoles = [
     id: 'role_analyst',
     name: 'Analyst',
     description: 'Submit and review verifications — read and export reports, no admin controls.',
-    member_count: 7,
+    member_count: 6,
     scope_summary: 'Verify + export',
     scopes: {
       'scans.read': true,
@@ -1873,6 +2203,97 @@ export const mockRoleScopeMeta = [
   { key: 'billing.manage', label: 'Manage billing', group: 'Organization' },
   { key: 'flags.manage', label: 'Manage feature flags', group: 'Platform' },
   { key: 'audit.read', label: 'Read audit logs', group: 'Platform' },
+]
+
+// ---------------------------------------------------------------------------
+// Role → member roster (single source of truth for the Roles page's member
+// assignment surface). Counts reconcile with mockAdminRoles[].member_count.
+// Derived deterministically from mockUsers so names/emails never drift from
+// the user directory.
+// ---------------------------------------------------------------------------
+
+const ROLE_MEMBER_ASSIGNMENT = [
+  ['usr_001', 'role_owner'],
+  ['usr_002', 'role_admin'],
+  ['usr_003', 'role_admin'],
+  ['usr_005', 'role_admin'],
+  ['usr_004', 'role_analyst'],
+  ['usr_006', 'role_analyst'],
+  ['usr_007', 'role_analyst'],
+  ['usr_008', 'role_analyst'],
+  ['usr_009', 'role_analyst'],
+  ['usr_010', 'role_analyst'],
+  ['usr_011', 'role_viewer'],
+  ['usr_012', 'role_viewer'],
+]
+
+const mockUserById = Object.fromEntries(mockUsers.map((u) => [u.id, u]))
+
+export const mockRoleMembers = ROLE_MEMBER_ASSIGNMENT.map(([userId, roleId]) => {
+  const user = mockUserById[userId]
+  return {
+    id: user.id,
+    name: user.displayName,
+    email: user.email,
+    role_id: roleId,
+    avatar: user.displayName
+      .split(' ')
+      .map((part) => part[0])
+      .slice(0, 2)
+      .join('')
+      .toUpperCase(),
+  }
+})
+
+// ---------------------------------------------------------------------------
+// Role change audit trail — the Roles page's audit panel. Kept alongside the
+// role roster so permission and membership edits share one event stream with
+// the role.changed severity contract (high).
+// ---------------------------------------------------------------------------
+
+export const mockRoleAuditEvents = [
+  {
+    id: 'role_audit_001',
+    action: 'role.scope_updated',
+    actor_email: 'amina.sow@provance.io',
+    description: 'Admin role — enabled reports.export for the whole role.',
+    created_at: daysAgo(2, 6),
+  },
+  {
+    id: 'role_audit_002',
+    action: 'role.member_assigned',
+    actor_email: 'joshua.onyekachukwu@provance.io',
+    description: 'Chioma Eze moved from Viewer to Analyst.',
+    created_at: daysAgo(4, 3),
+  },
+  {
+    id: 'role_audit_003',
+    action: 'role.member_removed',
+    actor_email: 'amina.sow@provance.io',
+    description: 'Tunde Bakare removed from the Admin role.',
+    created_at: daysAgo(6, 9),
+  },
+  {
+    id: 'role_audit_004',
+    action: 'role.scope_updated',
+    actor_email: 'joshua.onyekachukwu@provance.io',
+    description: 'Analyst role — disabled scans.revoke (least-privilege pass).',
+    created_at: daysAgo(9, 4),
+  },
+  {
+    id: 'role_audit_005',
+    action: 'role.created',
+    actor_email: 'amina.sow@provance.io',
+    description: 'Created the Viewer role for compliance reviewers.',
+    created_at: daysAgo(14, 2),
+  },
+  {
+    id: 'role_audit_006',
+    action: 'role.member_assigned',
+    actor_email: 'joshua.onyekachukwu@provance.io',
+    description: 'Kwame Boateng assigned the Viewer role.',
+    created_at: daysAgo(16, 7),
+  },
 ]
 
 // ---------------------------------------------------------------------------

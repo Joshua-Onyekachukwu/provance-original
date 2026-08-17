@@ -1,7 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import AppStatePanel from '../../components/app/AppStatePanel.jsx'
-import { getReport } from '../../lib/api.js'
+import TransparencyFooter from '../../components/forensic/TransparencyFooter.jsx'
+import VeracitySeal from '../../components/forensic/VeracitySeal.jsx'
+import { getReport, USE_MOCK } from '../../lib/api.js'
+import { downloadReportPdf } from '../../lib/reportPdfDownload.js'
+import { buildReportAppendix } from '../../lib/reportAppendix.js'
 import { useToast } from '../../components/ui'
 import {
   formatDateTime,
@@ -30,7 +34,7 @@ function ReportDataCard({ label, value }) {
   return (
     <div className="rounded-2xl border border-stone-light bg-parchment px-4 py-4">
       <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">{label}</p>
-      <p className="mt-2 text-sm leading-relaxed text-charcoal">{value}</p>
+      <p className="mt-2 break-words text-sm leading-relaxed text-charcoal">{value}</p>
     </div>
   )
 }
@@ -232,6 +236,10 @@ export default function AppReportPrintPage() {
   const media = state.scan?.result_payload?.media || {}
   const metadata = state.scan?.result_payload?.metadata || {}
   const methodology = state.scan?.result_payload?.methodology || {}
+  const appendix = useMemo(
+    () => buildReportAppendix({ methodologyVersion: methodology.version }),
+    [methodology.version],
+  )
   const signals = state.scan?.result_payload?.signals || []
   const recommendations = metadata.recommendations || []
   const keyFindings = useMemo(() => buildKeyFindings(signals), [signals])
@@ -252,16 +260,62 @@ export default function AppReportPrintPage() {
     }
   }, [report.report_id, scanId])
 
+  // Tracks whether the user started an export through the Export PDF button,
+  // so the afterprint confirmation only fires for button-initiated exports
+  // (not a spontaneous Ctrl+P that happens to land on this page).
+  const exportRequestedRef = useRef(false)
+
   function handleExportPdf() {
-    toast.info('Opening print dialog', {
-      description:
-        "Choose 'Save as PDF' as the destination to export this report.",
-      duration: 8000,
-    })
-    // Defer the blocking print call so React flushes the toast first —
-    // window.print() otherwise freezes the main thread mid-handler.
-    window.setTimeout(() => window.print(), 0)
+    if (USE_MOCK) {
+      // Mock mode: no backend — the printable view + browser print dialog is
+      // the export path (choose 'Save as PDF' as the destination).
+      exportRequestedRef.current = true
+      toast.info('Opening print dialog', {
+        description:
+          "Choose 'Save as PDF' as the destination to export this report.",
+        duration: 8000,
+      })
+      // Defer the blocking print call so React flushes the toast first —
+      // window.print() otherwise freezes the main thread mid-handler.
+      window.setTimeout(() => window.print(), 0)
+      return
+    }
+
+    // Real mode: the server renders the PDF (GET /reports/:id/pdf) — download
+    // it directly instead of relying on the browser print dialog.
+    downloadReportPdf(scanId)
+      .then(({ filename }) =>
+        toast.success('PDF downloaded', {
+          description: `${filename} saved to your downloads.`,
+          duration: 6000,
+        }),
+      )
+      .catch(() =>
+        toast.error('PDF export failed', {
+          description:
+            'The server could not generate the PDF. Please try again.',
+          duration: 6000,
+        }),
+      )
   }
+
+  // Close the export loop: once the print dialog closes, confirm the
+  // export completed so the user isn't left wondering whether the PDF
+  // actually went out. Fires only for button-initiated exports.
+  useEffect(() => {
+    function handleAfterPrint() {
+      if (!exportRequestedRef.current) return
+      exportRequestedRef.current = false
+      toast.success('PDF export complete', {
+        description:
+          'The report was sent to your chosen destination (Save as PDF).',
+        duration: 6000,
+      })
+    }
+
+    window.addEventListener('afterprint', handleAfterPrint)
+    return () => window.removeEventListener('afterprint', handleAfterPrint)
+  }, [toast])
 
   if (state.status === 'loading') {
     return (
@@ -318,13 +372,19 @@ export default function AppReportPrintPage() {
                 'No verdict summary is available yet for this upload.'}
             </p>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <ReportDataCard label="Verification ID" value={state.scan.id} />
-            <ReportDataCard label="Analysis timestamp" value={formatDateTime(report.generated_at, 'Not available')} />
+          <div className="flex flex-col items-end gap-4">
+            <VeracitySeal
+              size={88}
+              className="opacity-90"
+            />
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <ReportDataCard label="Verification ID" value={state.scan.id} />
+              <ReportDataCard label="Analysis timestamp" value={formatDateTime(report.generated_at, 'Not available')} />
+            </div>
           </div>
         </div>
 
-        <section className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <section className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           <ReportMetric
             label="Overall verdict"
             value={verdict.display_label || 'Pending'}
@@ -351,7 +411,7 @@ export default function AppReportPrintPage() {
           />
         </section>
 
-        <section className="mt-8 grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+        <section className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-[1.15fr_0.85fr]">
           <div className="space-y-6">
             <div className="rounded-[1.75rem] border border-stone-light bg-parchment p-5">
               <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">
@@ -427,12 +487,12 @@ export default function AppReportPrintPage() {
           </div>
         </section>
 
-        <section className="mt-8 grid gap-6 xl:grid-cols-2">
+        <section className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-2">
           <section className="rounded-[1.75rem] border border-stone-light bg-parchment p-5">
             <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">
               Metadata summary
             </p>
-            <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
               <ReportDataCard label="Capture timestamp" value={formatDateTime(metadata.capture_timestamp, 'Not available')} />
               <ReportDataCard label="Software tag" value={metadata.software || 'Not available'} />
               <ReportDataCard label="Camera make" value={metadata.make || 'Not available'} />
@@ -462,7 +522,7 @@ export default function AppReportPrintPage() {
           </section>
         </section>
 
-        <section className="mt-8 grid gap-6 xl:grid-cols-2">
+        <section className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-2">
           <section className="rounded-[1.75rem] border border-stone-light bg-parchment p-5">
             <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">
               AI detection results
@@ -475,7 +535,12 @@ export default function AppReportPrintPage() {
               {aiSignals.length > 0 ? (
                 aiSignals.map((signal) => (
                   <div
-                    key={signal.signal_id}
+                    key={
+                      signal.signal_id ||
+                      signal.model ||
+                      signal.label ||
+                      signal.signal_category
+                    }
                     className="rounded-2xl border border-stone-light bg-white-warm px-4 py-4"
                   >
                     <div className="flex items-start justify-between gap-4">
@@ -487,7 +552,7 @@ export default function AppReportPrintPage() {
                       </div>
                       <p className="text-sm font-medium text-charcoal">{formatPct(signal.score, 0, 'Pending')}</p>
                     </div>
-                    <p className="mt-3 text-sm text-charcoal-mid">
+                    <p className="mt-3 break-words text-sm text-charcoal-mid">
                       {signal.status_reason || 'No summary available.'}
                     </p>
                   </div>
@@ -513,7 +578,12 @@ export default function AppReportPrintPage() {
               {manipulationSignals.length > 0 ? (
                 manipulationSignals.map((signal) => (
                   <div
-                    key={signal.signal_id}
+                    key={
+                      signal.signal_id ||
+                      signal.model ||
+                      signal.label ||
+                      signal.signal_category
+                    }
                     className="rounded-2xl border border-stone-light bg-white-warm px-4 py-4"
                   >
                     <div className="flex items-start justify-between gap-4">
@@ -525,7 +595,7 @@ export default function AppReportPrintPage() {
                       </div>
                       <p className="text-sm font-medium text-charcoal">{formatPct(signal.score, 0, 'Pending')}</p>
                     </div>
-                    <p className="mt-3 text-sm text-charcoal-mid">
+                    <p className="mt-3 break-words text-sm text-charcoal-mid">
                       {signal.status_reason || 'No summary available.'}
                     </p>
                   </div>
@@ -544,7 +614,7 @@ export default function AppReportPrintPage() {
           <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">
             Key findings
           </p>
-          <div className="mt-5 grid gap-4 lg:grid-cols-2">
+          <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
             {keyFindings.length > 0 ? (
               keyFindings.map((finding) => (
                 <div
@@ -555,9 +625,9 @@ export default function AppReportPrintPage() {
                   <p className="mt-1 text-xs uppercase tracking-[0.18em] text-charcoal-light">
                     {finding.signalDisplayName} · {finding.severity}
                   </p>
-                  <p className="mt-3 text-sm leading-relaxed text-charcoal-mid">
-                    {finding.description}
-                  </p>
+                <p className="mt-3 break-words text-sm leading-relaxed text-charcoal-mid">
+                  {finding.description}
+                </p>
                 </div>
               ))
             ) : (
@@ -576,7 +646,12 @@ export default function AppReportPrintPage() {
           <div className="mt-5 space-y-4">
             {signals.map((signal) => (
               <div
-                key={signal.signal_id}
+                key={
+                  signal.signal_id ||
+                  signal.model ||
+                  signal.label ||
+                  signal.signal_category
+                }
                 className="rounded-2xl border border-stone-light bg-white-warm px-4 py-4"
               >
                 <div className="flex flex-wrap items-start justify-between gap-4">
@@ -595,7 +670,7 @@ export default function AppReportPrintPage() {
                     </p>
                   </div>
                 </div>
-                <p className="mt-3 text-sm leading-relaxed text-charcoal-mid">
+                <p className="mt-3 break-words text-sm leading-relaxed text-charcoal-mid">
                   {signal.status_reason || 'No status reason provided.'}
                 </p>
               </div>
@@ -603,7 +678,7 @@ export default function AppReportPrintPage() {
           </div>
         </section>
 
-        <section className="mt-8 grid gap-6 xl:grid-cols-2">
+        <section className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-2">
           <section className="rounded-[1.75rem] border border-stone-light bg-parchment p-5">
             <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">
               Recommendations
@@ -659,6 +734,54 @@ export default function AppReportPrintPage() {
             </div>
           </section>
         </section>
+
+        {/* Evidence appendix — methodology + limitations (approved MVP feature) */}
+        <section className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-2">
+          <section className="rounded-[1.75rem] border border-stone-light bg-parchment p-5">
+            <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">
+              Appendix — Methodology
+            </p>
+            <div className="mt-5 space-y-3">
+              {appendix.methodology.map((point, index) => (
+                <div
+                  key={point}
+                  className="rounded-2xl border border-stone-light bg-white-warm px-4 py-4 text-sm leading-relaxed text-charcoal-mid"
+                >
+                  <span className="font-mono text-xs text-charcoal-light">{index + 1}.</span>{' '}
+                  {point}
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-[1.75rem] border border-stone-light bg-parchment p-5">
+            <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">
+              Appendix — Limitations
+            </p>
+            <div className="mt-5 space-y-3">
+              {appendix.limitations.map((point, index) => (
+                <div
+                  key={point}
+                  className="rounded-2xl border border-stone-light bg-white-warm px-4 py-4 text-sm leading-relaxed text-charcoal-mid"
+                >
+                  <span className="font-mono text-xs text-charcoal-light">{index + 1}.</span>{' '}
+                  {point}
+                </div>
+              ))}
+            </div>
+          </section>
+        </section>
+
+        {/* Chain-of-custody strip — the forensic footer, fed by the real scan */}
+        <div className="mt-8 -mx-8 -mb-8 sm:-mx-10 sm:-mb-10 overflow-hidden rounded-b-[2rem]">
+          <TransparencyFooter
+            methodology={methodology.version || 'V2.4.1-STABLE'}
+            reportId={report.report_id || state.scan.id}
+            hash={media.sha256}
+            c2paStatus={metadata.c2pa_marker_detected ? 'verified' : 'missing'}
+            node="US-EAST-04"
+          />
+        </div>
       </article>
     </div>
   )

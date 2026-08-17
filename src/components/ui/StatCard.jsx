@@ -1,11 +1,19 @@
 import Skeleton from './Skeleton'
 
-const TONE_BORDERS = {
+// Accent border classes for tones with no verdict color backing them.
+const TONE_BORDER_CLASS = {
   default: 'border-l-stone-light',
-  info: 'border-l-sky-400',
-  success: 'border-l-emerald-400',
-  warning: 'border-l-amber-400',
   danger: 'border-l-rose-400',
+}
+
+// Verdict-mapped tones draw their accent from the verdict palette (see
+// VERDICT_PALETTE / applyVerdictPalette in scanPresentation.js) so the card
+// accent matches the exact chart colors instead of a re-declared Tailwind
+// shade — change a verdict hex once and cards + charts stay in sync.
+const VERDICT_TONE_BORDER_VARS = {
+  info: 'var(--color-tone-info)',
+  success: 'var(--color-tone-success)',
+  warning: 'var(--color-tone-warning)',
 }
 
 const SIZE_CLASSES = {
@@ -15,11 +23,9 @@ const SIZE_CLASSES = {
 }
 
 /**
- * StatCard — unified metric card (Phase 2 foundation).
- *
- * Mirrors the admin StatCard API (label/value/detail/tone/trend/size) so it can
- * become the single shared StatCard across admin + user dashboards, and adds
- * full loading / error states.
+ * StatCard — unified metric card (Phase 2 foundation), the single shared
+ * StatCard across admin + user dashboards. Supports label/value/detail/tone/
+ * trend/size plus full loading / error states.
  *
  * Props:
  *   label, value, detail
@@ -40,7 +46,8 @@ export default function StatCard({
   error = false,
   className = '',
 }) {
-  const borderColor = TONE_BORDERS[tone] || TONE_BORDERS.default
+  const borderClass = TONE_BORDER_CLASS[tone] || ''
+  const borderVar = VERDICT_TONE_BORDER_VARS[tone] || null
   const sizeStyle = SIZE_CLASSES[size] || SIZE_CLASSES.md
 
   const trendColor = trend?.direction === 'up' ? 'text-emerald-600' : trend?.direction === 'down' ? 'text-rose-600' : 'text-charcoal-mid'
@@ -48,7 +55,8 @@ export default function StatCard({
 
   return (
     <div
-      className={`rounded-3xl border border-stone-light bg-white-warm ${sizeStyle.padding} border-l-[3px] ${borderColor} shadow-sm ${className}`}
+      className={`rounded-3xl border border-stone-light bg-white-warm ${sizeStyle.padding} border-l-[3px] ${borderClass} shadow-sm ${className}`}
+      style={borderVar ? { borderLeftColor: borderVar } : undefined}
     >
       <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-charcoal-light">{label}</p>
 

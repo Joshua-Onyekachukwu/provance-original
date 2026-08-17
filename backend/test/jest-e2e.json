@@ -5,5 +5,11 @@
   "testRegex": ".e2e-spec.ts$",
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
+  },
+  "moduleNameMapper": {
+    "^better-auth$": "<rootDir>/stubs/better-auth.ts",
+    "^better-auth/node$": "<rootDir>/stubs/better-auth-node.ts",
+    "^better-auth/plugins$": "<rootDir>/stubs/better-auth-plugins.ts",
+    "^@better-auth/api-key$": "<rootDir>/stubs/better-auth-api-key.ts"
   }
 }

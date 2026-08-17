@@ -80,7 +80,7 @@ export default function MethodologyPage() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-5xl mx-auto">
             {dimensions.map((dim, i) => (
               <motion.div
                 key={dim.name}
@@ -150,7 +150,7 @@ export default function MethodologyPage() {
               </p>
             </motion.div>
 
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {[
                 { title: 'Human-in-the-Loop', desc: 'Verdicts are designed to inform human decision-makers, not replace them. High-stakes decisions require human review of evidence.' },
                 { title: 'Audit Trails', desc: 'Every verification generates a complete audit trail, including model version, confidence scores, and all raw evidence data.' },

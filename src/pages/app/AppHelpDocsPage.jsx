@@ -262,7 +262,7 @@ export default function AppHelpDocsPage({ module = 'help' }) {
           )}
 
           {!loading && !failed && searchableGuides.length > 0 && (
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {searchableGuides.map((guide) => (
                 <article
                   key={guide.id}
@@ -418,7 +418,7 @@ export default function AppHelpDocsPage({ module = 'help' }) {
           />
         )}
         {!loading && !failed && channels.length > 0 && (
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             {channels.map((channel) => (
               <a
                 key={channel.id}

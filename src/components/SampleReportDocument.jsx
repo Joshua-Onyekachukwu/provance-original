@@ -1,4 +1,5 @@
 import { sampleAiDetectionResults, sampleAnalysisScope, sampleAppendix, sampleChainOfCustody, sampleCrossValidationResults, sampleDisclaimer, sampleExecutiveSummary, sampleFrameAnalysis, sampleManipulationIndicators, sampleMediaInformation, sampleMetadataAnalysis, sampleMetrics, sampleModelResults, sampleRecommendedNextSteps, sampleReportCover, sampleReportMeta, sampleReportPreviewImage, sampleReviewerNotes, sampleTechnicalFindings, sampleTimeline, sampleWatermarkAndProvenance } from '../lib/sampleReportContent.js'
+import { buildReportAppendix } from '../lib/reportAppendix.js'
 import { formatDateTime } from './app/scanPresentation.js'
 
 function MetricCard({ item }) {
@@ -18,7 +19,7 @@ function MetricCard({ item }) {
   )
 }
 
-function KeyValueGrid({ items, columns = 'md:grid-cols-2' }) {
+function KeyValueGrid({ items, columns = 'grid-cols-1 md:grid-cols-2' }) {
   return (
     <div className={`grid gap-3 ${columns}`}>
       {items.map(([label, value]) => (
@@ -26,7 +27,7 @@ function KeyValueGrid({ items, columns = 'md:grid-cols-2' }) {
           <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-charcoal-light">
             {label}
           </div>
-          <div className="mt-2 text-sm leading-relaxed text-charcoal">{value}</div>
+          <div className="mt-2 break-words text-sm leading-relaxed text-charcoal">{value}</div>
         </div>
       ))}
     </div>
@@ -45,12 +46,12 @@ function SignalCard({ item }) {
         </div>
         <p className="font-mono text-sm text-charcoal">{item.score}</p>
       </div>
-      <p className="mt-3 text-sm leading-relaxed text-charcoal-mid">{item.detail}</p>
+      <p className="mt-3 break-words text-sm leading-relaxed text-charcoal-mid">{item.detail}</p>
     </div>
   )
 }
 
-export default function SampleReportDocument({ compact = false, showPrintControls = false }) {
+export default function SampleReportDocument({ compact = false, showPrintControls = false, onExport }) {
   return (
     <article className={`report-paper mx-auto overflow-hidden rounded-[2rem] border border-stone-light bg-white-warm shadow-[0_30px_80px_rgba(19,22,29,0.08)] ${compact ? 'max-w-6xl' : 'max-w-5xl'}`}>
       {showPrintControls ? (
@@ -63,7 +64,11 @@ export default function SampleReportDocument({ compact = false, showPrintControl
               Use your browser print dialog to save this sample as a PDF.
             </p>
           </div>
-          <button type="button" onClick={() => window.print()} className="btn-primary">
+          <button
+            type="button"
+            onClick={onExport || (() => window.print())}
+            className="btn-primary"
+          >
             Print / Save PDF
           </button>
         </div>
@@ -88,15 +93,15 @@ export default function SampleReportDocument({ compact = false, showPrintControl
                 Report identity
               </div>
               <div className="mt-3 space-y-2 text-sm text-charcoal">
-                <div><span className="font-medium">Report ID:</span> {sampleReportMeta.reportId}</div>
-                <div><span className="font-medium">Verification ID:</span> {sampleReportMeta.verificationId}</div>
-                <div><span className="font-medium">Generated:</span> {formatDateTime(sampleReportMeta.analysisTimestampIso)}</div>
-                <div><span className="font-medium">Methodology:</span> {sampleReportMeta.methodologyVersion}</div>
+                <div className="break-words"><span className="font-medium">Report ID:</span> {sampleReportMeta.reportId}</div>
+                <div className="break-words"><span className="font-medium">Verification ID:</span> {sampleReportMeta.verificationId}</div>
+                <div className="break-words"><span className="font-medium">Generated:</span> {formatDateTime(sampleReportMeta.analysisTimestampIso)}</div>
+                <div className="break-words"><span className="font-medium">Methodology:</span> {sampleReportMeta.methodologyVersion}</div>
               </div>
             </div>
           </div>
 
-          <div className="mt-6 grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[1.05fr_0.95fr]">
             <div className="overflow-hidden rounded-[1.5rem] border border-stone-light bg-charcoal">
               <img
                 src={sampleReportPreviewImage}
@@ -105,7 +110,7 @@ export default function SampleReportDocument({ compact = false, showPrintControl
                 loading="lazy"
               />
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {sampleMetrics.map((item) => (
                 <MetricCard key={item.label} item={item} />
               ))}
@@ -115,7 +120,7 @@ export default function SampleReportDocument({ compact = false, showPrintControl
 
         {compact ? (
           <>
-            <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+            <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1.05fr_0.95fr]">
               <section className="rounded-[1.75rem] border border-stone-light bg-parchment/55 p-5">
                 <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-charcoal-light">
                   Executive summary and explanation
@@ -138,7 +143,7 @@ export default function SampleReportDocument({ compact = false, showPrintControl
                       <div className="rounded-full border border-amber/20 bg-amber/10 px-3 py-1.5 text-center font-mono text-[11px] text-amber">
                         {time}
                       </div>
-                      <div className="rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-3 text-sm text-stone">
+                      <div className="min-w-0 break-words rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-3 text-sm text-stone">
                         {step}
                       </div>
                     </div>
@@ -147,7 +152,7 @@ export default function SampleReportDocument({ compact = false, showPrintControl
               </section>
             </section>
 
-            <section className="grid gap-6 xl:grid-cols-2">
+            <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
               <section className="rounded-[1.75rem] border border-stone-light bg-parchment/55 p-5">
                 <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-charcoal-light">
                   Technical findings
@@ -184,7 +189,7 @@ export default function SampleReportDocument({ compact = false, showPrintControl
           </>
         ) : (
           <>
-        <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+        <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1.05fr_0.95fr]">
           <div className="space-y-6">
             <section className="rounded-[1.75rem] border border-stone-light bg-parchment/55 p-5">
               <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-charcoal-light">
@@ -247,7 +252,7 @@ export default function SampleReportDocument({ compact = false, showPrintControl
                     <div className="rounded-full border border-amber/20 bg-amber/10 px-3 py-1.5 text-center font-mono text-[11px] text-amber">
                       {time}
                     </div>
-                    <div className="rounded-2xl border border-stone-light bg-white-warm/92 px-4 py-3 text-sm text-charcoal-mid">
+                    <div className="min-w-0 break-words rounded-2xl border border-stone-light bg-white-warm/92 px-4 py-3 text-sm text-charcoal-mid">
                       {step}
                     </div>
                   </div>
@@ -273,7 +278,7 @@ export default function SampleReportDocument({ compact = false, showPrintControl
           </div>
         </section>
 
-        <section className="grid gap-6 xl:grid-cols-2">
+        <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
           <section className="rounded-[1.75rem] border border-stone-light bg-parchment/55 p-5">
             <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-charcoal-light">
               AI detection results
@@ -297,7 +302,7 @@ export default function SampleReportDocument({ compact = false, showPrintControl
           </section>
         </section>
 
-            <section className="grid gap-6 xl:grid-cols-2">
+            <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
               <section className="rounded-[1.75rem] border border-stone-light bg-parchment/55 p-5">
                 <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-charcoal-light">
                   Watermark and provenance checks
@@ -317,7 +322,7 @@ export default function SampleReportDocument({ compact = false, showPrintControl
               </section>
             </section>
 
-            <section className="grid gap-6 xl:grid-cols-2">
+            <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
               <section className="rounded-[1.75rem] border border-stone-light bg-parchment/55 p-5">
                 <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-charcoal-light">
                   Model results
@@ -337,7 +342,7 @@ export default function SampleReportDocument({ compact = false, showPrintControl
               </section>
             </section>
 
-            <section className="grid gap-6 xl:grid-cols-2">
+            <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
               <section className="rounded-[1.75rem] border border-stone-light bg-parchment/55 p-5">
                 <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-charcoal-light">
                   Analysis scope
@@ -361,7 +366,7 @@ export default function SampleReportDocument({ compact = false, showPrintControl
               <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-charcoal-light">
                 Technical findings
               </div>
-              <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
                 {sampleTechnicalFindings.map((item) => (
                   <div key={item.id} className="rounded-2xl border border-stone-light bg-white-warm/92 p-4">
                     <div className="flex items-center justify-between gap-3">
@@ -379,7 +384,7 @@ export default function SampleReportDocument({ compact = false, showPrintControl
               </div>
             </section>
 
-            <section className="grid gap-6 xl:grid-cols-2">
+            <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
               <section className="rounded-[1.75rem] border border-stone-light bg-parchment/55 p-5">
                 <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-charcoal-light">
                   Recommended next steps
@@ -418,12 +423,40 @@ export default function SampleReportDocument({ compact = false, showPrintControl
           </>
         )}
 
+        <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+          <section className="rounded-[1.75rem] border border-stone-light bg-parchment/55 p-5">
+            <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-charcoal-light">
+              Appendix — Methodology
+            </div>
+            <div className="mt-4 space-y-3">
+              {buildReportAppendix({ methodologyVersion: sampleReportMeta.methodologyVersion }).methodology.map((item) => (
+                <div key={item} className="rounded-2xl border border-stone-light bg-white-warm/92 p-4 text-sm leading-relaxed text-charcoal-mid">
+                  {item}
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-[1.75rem] border border-stone-light bg-parchment/55 p-5">
+            <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-charcoal-light">
+              Appendix — Limitations
+            </div>
+            <div className="mt-4 space-y-3">
+              {buildReportAppendix({ methodologyVersion: sampleReportMeta.methodologyVersion }).limitations.map((item) => (
+                <div key={item} className="rounded-2xl border border-stone-light bg-white-warm/92 p-4 text-sm leading-relaxed text-charcoal-mid">
+                  {item}
+                </div>
+              ))}
+            </div>
+          </section>
+        </section>
+
         <section className="rounded-[1.75rem] border border-stone-light bg-parchment/55 p-5">
           <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-charcoal-light">
             Disclaimer
           </div>
           <p className="mt-4 text-sm leading-relaxed text-charcoal-mid">{sampleDisclaimer}</p>
-          <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-2xl border border-stone-light bg-white-warm/92 p-4">
               <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-charcoal-light">Report ID</div>
               <div className="mt-2 text-sm text-charcoal">{sampleReportMeta.reportId}</div>

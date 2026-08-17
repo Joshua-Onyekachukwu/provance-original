@@ -27,7 +27,7 @@ export default function ProductPage() {
       <section className="section-padding bg-charcoal text-parchment relative overflow-hidden">
         <div className="absolute inset-0 forensic-grid opacity-[0.04]" />
         <div className="content-container relative z-10">
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-start">
             <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}>
               <motion.span variants={fadeUp} className="eyebrow eyebrow-dark">How It Works</motion.span>
               <motion.h2 variants={fadeUp} className="font-serif text-3xl sm:text-4xl mt-4 text-balance">
@@ -42,7 +42,7 @@ export default function ProductPage() {
                 variants={fadeUp}
                 className="mt-8 rounded-[1.75rem] border border-white/10 bg-white/[0.04] p-6"
               >
-                <div className="grid gap-4 sm:grid-cols-3">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                   {[
                     ['Evidence-led', 'Signals stay visible'],
                     ['Workflow aware', 'Built for review teams'],
@@ -96,7 +96,7 @@ export default function ProductPage() {
             </motion.h2>
           </motion.div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto">
               {[
                 { title: 'Review-first UX', desc: 'Keep evidence, confidence language, and key findings together from first pass to final decision.', icon: '01' },
                 { title: 'Structured Access', desc: 'Use controlled onboarding, invite-based access, and protected workflows as access expands.', icon: '02' },

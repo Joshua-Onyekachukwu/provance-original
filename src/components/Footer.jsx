@@ -56,7 +56,7 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="grid gap-8 md:grid-cols-5">
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-5">
           <div className="md:col-span-2">
             <div className="mb-4 flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-parchment shadow-[0_10px_25px_rgba(0,0,0,0.18)]">
@@ -79,7 +79,7 @@ export default function Footer() {
             <ul className="space-y-2.5">
               {productLinks.map((item) => (
                 <li key={item.href}>
-                  <Link to={item.href} className="text-stone text-sm hover:text-parchment transition-colors">
+                  <Link to={item.href} className="inline-flex min-h-11 items-center px-2 text-stone text-sm hover:text-parchment transition-colors">
                     {item.label}
                   </Link>
                 </li>
@@ -91,7 +91,7 @@ export default function Footer() {
             <ul className="space-y-2.5">
               {companyLinks.map((item) => (
                 <li key={item.href}>
-                  <Link to={item.href} className="text-stone text-sm hover:text-parchment transition-colors">
+                  <Link to={item.href} className="inline-flex min-h-11 items-center px-2 text-stone text-sm hover:text-parchment transition-colors">
                     {item.label}
                   </Link>
                 </li>
@@ -103,7 +103,7 @@ export default function Footer() {
             <ul className="space-y-2.5">
               {resourceLinks.map((item) => (
                 <li key={item.href}>
-                  <Link to={item.href} className="text-stone text-sm hover:text-parchment transition-colors">
+                  <Link to={item.href} className="inline-flex min-h-11 items-center px-2 text-stone text-sm hover:text-parchment transition-colors">
                     {item.label}
                   </Link>
                 </li>
@@ -115,7 +115,7 @@ export default function Footer() {
           <span>&copy; 2026 Provance. All rights reserved.</span>
           <div className="flex gap-6">
             {legalLinks.map((item) => (
-              <Link key={item.href} to={item.href} className="hover:text-parchment transition-colors">
+              <Link key={item.href} to={item.href} className="inline-flex min-h-11 items-center hover:text-parchment transition-colors">
                 {item.label}
               </Link>
             ))}

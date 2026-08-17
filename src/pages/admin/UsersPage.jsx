@@ -14,6 +14,7 @@ import {
   toggleTeamAccess,
 } from '../../lib/api.js'
 import { mockScans, mockAuditEvents, mockOrganizations, mockUsers } from '../../lib/mockData.js'
+import { useDemoState } from '../../lib/useDemoState.js'
 import { useTeamFilterParam } from '../../lib/useTeamFilterParam.js'
 
 // ---------------------------------------------------------------------------
@@ -151,6 +152,13 @@ const USER_COLUMNS = [
 
 export default function UsersPage() {
   const navigate = useNavigate()
+
+  // Dev-only ?state= forcing — drives the page's hand-rolled usersState
+  // machine into its loading / empty / error branches for review.
+  const demoState = useDemoState()
+  const forceLoading = demoState === 'loading'
+  const forceError = demoState === 'error'
+  const forceEmpty = demoState === 'empty'
 
   useRegisterCommands(
     [
@@ -375,12 +383,16 @@ export default function UsersPage() {
   // -------------------------------------------------------------------
   // Render: Error
   // -------------------------------------------------------------------
-  if (usersState.status === 'error') {
+  if (usersState.status === 'error' || forceError) {
     return (
       <AppStatePanel
         label="Error"
         title="User management could not be loaded"
-        description={usersState.error}
+        description={
+          forceError
+            ? 'Demo state — forced error for review. This is not a real outage.'
+            : usersState.error
+        }
         variant="error"
         action={
           <Button
@@ -418,7 +430,7 @@ export default function UsersPage() {
       />
 
       {/* KPI Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <StatCard
           label="Total Users"
           value={String(kpis.total)}
@@ -493,9 +505,9 @@ export default function UsersPage() {
         {/* Table */}
         <DataTable
           columns={USER_COLUMNS}
-          rows={filteredUsers}
+          rows={forceEmpty ? [] : filteredUsers}
           keyField="id"
-          loading={usersState.status === 'loading'}
+          loading={usersState.status === 'loading' || forceLoading}
           searchable
           searchPlaceholder="Search by name, email, or role"
           searchKeys={['displayName', 'email', 'role']}

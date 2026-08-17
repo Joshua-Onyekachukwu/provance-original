@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { useTeamFilterParam } from '../../lib/useTeamFilterParam.js'
-import { Button, EmptyState, Skeleton, useRegisterCommands, useToast } from '../../components/ui'
+import { useTeamScoping } from '../../lib/useTeamScoping.js'
+import { Button, EmptyState, LivePollIndicator, Skeleton, useRegisterCommands, useToast } from '../../components/ui'
 import ScanStatusBadge from '../../components/app/ScanStatusBadge.jsx'
 import TeamBadge from '../../components/app/TeamBadge.jsx'
 import TeamFilter from '../../components/app/TeamFilter.jsx'
@@ -10,15 +10,21 @@ import {
   formatPct,
   formatScanTimestamp,
   getVerdictLabel,
+  hasActiveScanWork,
+  scanNeedsPolling,
 } from '../../components/app/scanPresentation.js'
-import { getScan, listScans } from '../../lib/api.js'
+import { getScan, listScans, USE_MOCK } from '../../lib/api.js'
+import { downloadReportPdf } from '../../lib/reportPdfDownload.js'
+import { useDemoState, withDemoOverride } from '../../lib/useDemoState.js'
 import { useResource } from '../../lib/useResource.js'
 
 function ReportMetaItem({ label, value }) {
   return (
     <div className="rounded-2xl border border-stone-light bg-parchment px-4 py-4">
       <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">{label}</p>
-      <p className="mt-2 text-sm text-charcoal">{value}</p>
+      {/* break-words: real backend ids (scan UUIDs, report ids) are unbroken
+          strings that would blow the meta card wider than the viewport. */}
+      <p className="mt-2 break-words text-sm text-charcoal">{value}</p>
     </div>
   )
 }
@@ -63,15 +69,37 @@ export default function AppReportsPage() {
   const navigate = useNavigate()
   const toast = useToast()
 
-  const [teamFilter, setTeamFilter] = useTeamFilterParam()
-
-  const scans = useResource(() =>
-    listScans({ pageSize: 100 }).then((r) => r?.data || r?.scans || []),
+  // The list is the page's primary data surface — ?state= forcing covers its
+  // loading / empty / error branches. The detail pane keeps its own
+  // per-scan loading / error rendering.
+  const demoState = useDemoState()
+  // Live status polling: the list and the open detail both refresh every 5s
+  // while work is in flight (queued / processing), so a report that is still
+  // processing flips to completed live without a reload — same pattern as the
+  // dashboard. Polling idles once the queue drains.
+  const scans = withDemoOverride(
+    useResource(
+      () => listScans({ pageSize: 100 }).then((r) => r?.data || r?.scans || []),
+      [],
+      {
+        pollMs: 5000,
+        pollWhen: (state) => hasActiveScanWork(state.data),
+      },
+    ),
+    demoState,
+    { emptyData: [] },
   )
   const detail = useResource(
     () => (scanId ? getScan(scanId).then((r) => r?.scan || r) : Promise.resolve(null)),
     [scanId],
+    {
+      pollMs: 5000,
+      pollWhen: (state) => scanNeedsPolling(state.data?.scan || state.data),
+    },
   )
+
+  // Team scoping — shared with the dashboard/history/queue via ?team=.
+  const { teamFilter, setTeamFilter, teamCounts, filteredScans } = useTeamScoping({ scans })
 
   const summary = useMemo(() => {
     const list = scans.data || []
@@ -83,24 +111,44 @@ export default function AppReportsPage() {
     }
   }, [scans.data])
 
-  const teamCounts = useMemo(() => {
-    const counts = {}
-    for (const scan of scans.data || []) {
-      if (scan.team_id) counts[scan.team_id] = (counts[scan.team_id] || 0) + 1
-    }
-    return counts
-  }, [scans.data])
-  const filteredList = useMemo(
-    () =>
-      teamFilter === 'all'
-        ? scans.data || []
-        : (scans.data || []).filter((scan) => scan.team_id === teamFilter),
-    [scans.data, teamFilter],
-  )
 
   const selectedScan = detail.status === 'ready' ? detail.data : null
+  // The detail pane polls GET /scans/:id while the scan is queued/processing
+  // (scanNeedsPolling) so the report swaps in the moment it completes — the
+  // live indicator surfaces exactly that tracking.
+  const detailLive = Boolean(selectedScan) && scanNeedsPolling(selectedScan)
   const selectedVerdict = selectedScan?.result_payload?.verdict
   const selectedSignals = selectedScan?.result_payload?.signals || []
+
+  // Export PDF action. Mock mode keeps the printable view + browser print
+  // dialog; real mode downloads the server-generated PDF (GET /reports/:id/pdf)
+  // directly, so the report never has to go through the print dialog.
+  function handleExportPdf(scanId) {
+    if (USE_MOCK) {
+      navigate(`/app/reports/${scanId}/print`)
+      toast.info('Preparing PDF export', {
+        description:
+          "Opening the printable report — choose 'Save as PDF' from the print dialog to download.",
+        duration: 8000,
+      })
+      return
+    }
+
+    downloadReportPdf(scanId)
+      .then(({ filename }) =>
+        toast.success('PDF downloaded', {
+          description: `${filename} saved to your downloads.`,
+          duration: 6000,
+        }),
+      )
+      .catch(() =>
+        toast.error('PDF export failed', {
+          description:
+            'The server could not generate the PDF. Please try again.',
+          duration: 6000,
+        }),
+      )
+  }
 
   useRegisterCommands(
     [
@@ -130,14 +178,7 @@ export default function AppReportsPage() {
               label: 'Export current report as PDF',
               hint: 'Printable report view',
               keywords: ['reports', 'export', 'pdf', 'print', 'download'],
-              onSelect: () => {
-                navigate(`/app/reports/${selectedScan.id}/print`)
-                toast.info('Preparing PDF export', {
-                  description:
-                    "Opening the printable report — choose 'Save as PDF' from the print dialog to download.",
-                  duration: 8000,
-                })
-              },
+              onSelect: () => handleExportPdf(selectedScan.id),
             },
           ]
         : []),
@@ -158,7 +199,7 @@ export default function AppReportsPage() {
           Uploaded media lands in a report workspace where teams can review status,
           open completed verdict payloads, and track the queue as the workflow matures.
         </p>
-        <div className="mt-8 grid gap-4 md:grid-cols-4">
+        <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-4">
           <ReportMetaItem label="Total uploads" value={String(summary.total)} />
           <ReportMetaItem label="Completed" value={String(summary.completed)} />
           <ReportMetaItem label="In progress" value={String(summary.active)} />
@@ -166,7 +207,7 @@ export default function AppReportsPage() {
         </div>
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[0.9fr_1.1fr]">
         <section className="rounded-3xl border border-stone-light bg-white-warm p-6 shadow-sm">
           <div className="flex items-center justify-between gap-4">
             <div>
@@ -228,7 +269,7 @@ export default function AppReportsPage() {
             </div>
           )}
 
-          {scans.status === 'ready' && scans.data.length > 0 && filteredList.length === 0 && (
+          {scans.status === 'ready' && scans.data.length > 0 && filteredScans.length === 0 && (
             <div className="mt-6">
               <EmptyState
                 variant="empty"
@@ -239,9 +280,9 @@ export default function AppReportsPage() {
             </div>
           )}
 
-          {scans.status === 'ready' && scans.data.length > 0 && filteredList.length > 0 && (
+          {scans.status === 'ready' && scans.data.length > 0 && filteredScans.length > 0 && (
             <div className="mt-6 space-y-4">
-              {filteredList.map((scan) => {
+              {filteredScans.map((scan) => {
                 const isActive = scan.id === scanId
 
                 return (
@@ -256,8 +297,8 @@ export default function AppReportsPage() {
                     }`}
                   >
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-medium text-charcoal">{scan.original_filename}</p>
+                      <div className="min-w-0">
+                        <p className="break-words text-sm font-medium text-charcoal">{scan.original_filename}</p>
                         <p className="mt-1 text-xs text-charcoal-mid">
                           {formatScanTimestamp(scan.created_at)}
                         </p>
@@ -294,7 +335,7 @@ export default function AppReportsPage() {
               <section key={i} className="rounded-3xl border border-stone-light bg-white-warm p-6 shadow-sm">
                 <Skeleton className="h-3 w-24" />
                 <Skeleton className="mt-4 h-8 w-2/3" />
-                <div className="mt-6 grid gap-4 md:grid-cols-2">
+                <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
                   <Skeleton className="h-16 rounded-2xl" />
                   <Skeleton className="h-16 rounded-2xl" />
                 </div>
@@ -327,33 +368,33 @@ export default function AppReportsPage() {
           <div className="space-y-6">
             <section className="rounded-3xl border border-stone-light bg-white-warm p-6 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-4">
-                <div>
+                {/* min-w-0 + break-words: real filenames (e.g.
+                    IMG_20260715_143022.jpg) are unbroken strings that blow
+                    the text-3xl header wider than the viewport on phones. */}
+                <div className="min-w-0">
                   <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">
                     Report detail
                   </p>
-                  <h3 className="mt-2 font-serif text-3xl text-charcoal">
+                  <h3 className="mt-2 break-words font-serif text-3xl leading-tight text-charcoal">
                     {selectedScan.original_filename}
                   </h3>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
+                  {detailLive && <LivePollIndicator />}
                   <Button
-                    to={`/app/reports/${selectedScan.id}/print`}
+                    {...(USE_MOCK
+                      ? { to: `/app/reports/${selectedScan.id}/print` }
+                      : {})}
                     variant="primary"
                     iconLeft={<DownloadIcon />}
-                    onClick={() =>
-                      toast.info('Preparing PDF export', {
-                        description:
-                          "Opening the printable report — choose 'Save as PDF' from the print dialog to download.",
-                        duration: 8000,
-                      })
-                    }
+                    onClick={() => handleExportPdf(selectedScan.id)}
                   >
                     Export PDF
                   </Button>
                   <ScanStatusBadge status={selectedScan.status} />
                 </div>
               </div>
-              <div className="mt-6 grid gap-4 md:grid-cols-2">
+              <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
                 <ReportMetaItem label="Scan ID" value={selectedScan.id} />
                 <ReportMetaItem
                   label="Report ID"
@@ -366,6 +407,41 @@ export default function AppReportsPage() {
                   value={`${formatFileSize(selectedScan.file_size_bytes)}. ${selectedScan.mime_type}`}
                 />
               </div>
+              {selectedScan.result_payload?.deduplicated_from && (
+                <div className="mt-6 rounded-2xl border border-sky-200 bg-sky-50/60 px-4 py-3.5">
+                  <p className="flex items-center gap-2 text-sm font-medium text-charcoal">
+                    <svg
+                      className="h-4 w-4 shrink-0 text-sky-600"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth="1.8"
+                      stroke="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
+                      />
+                    </svg>
+                    Reused from a prior verification
+                  </p>
+                  <p className="mt-1.5 break-words text-xs leading-relaxed text-charcoal-mid">
+                    This file is byte-identical to an earlier upload — the evidence payload from scan{' '}
+                    <span className="font-mono font-medium text-charcoal">
+                      {selectedScan.result_payload.deduplicated_from.source_scan_id}
+                    </span>{' '}
+                    (report{' '}
+                    <span className="font-mono font-medium text-charcoal">
+                      {selectedScan.result_payload.deduplicated_from.source_report_id || '—'}
+                    </span>
+                    ) was reused instead of reprocessing the media.{' '}
+                    {selectedScan.result_payload.deduplicated_from.reused_at
+                      ? `Reused at ${formatScanTimestamp(selectedScan.result_payload.deduplicated_from.reused_at)}.`
+                      : ''}
+                  </p>
+                </div>
+              )}
               {selectedScan.asset_preview_url && (
                 <div className="mt-6 rounded-2xl border border-stone-light bg-parchment p-4">
                   <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">
@@ -382,7 +458,7 @@ export default function AppReportsPage() {
 
             <section className="rounded-3xl border border-stone-light bg-white-warm p-6 shadow-sm">
               <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">Verdict</p>
-              <h3 className="mt-3 font-serif text-3xl text-charcoal">
+              <h3 className="mt-3 break-words font-serif text-3xl text-charcoal">
                 {selectedVerdict?.display_label || 'Pending'}
               </h3>
               <p className="mt-3 text-sm leading-relaxed text-charcoal-mid">
@@ -390,7 +466,7 @@ export default function AppReportsPage() {
                   selectedScan.failure_reason ||
                   'This upload has not produced a verdict payload yet.'}
               </p>
-              <div className="mt-6 grid gap-4 md:grid-cols-3">
+              <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
                 <ReportMetaItem
                   label="Confidence"
                   value={
@@ -423,15 +499,20 @@ export default function AppReportsPage() {
                 <div className="mt-5 space-y-4">
                   {selectedSignals.map((signal) => (
                     <div
-                      key={signal.signal_id}
+                      key={
+                        signal.signal_id ||
+                        signal.model ||
+                        signal.label ||
+                        signal.signal_category
+                      }
                       className="rounded-2xl border border-stone-light bg-parchment px-4 py-4"
                     >
                       <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-medium text-charcoal">
+                        <div className="min-w-0">
+                          <p className="break-words text-sm font-medium text-charcoal">
                             {signal.signal_display_name}
                           </p>
-                          <p className="mt-1 text-xs text-charcoal-mid">
+                          <p className="mt-1 break-words text-xs text-charcoal-mid">
                             {signal.signal_category}. Methodology {signal.methodology_version}
                           </p>
                         </div>
@@ -439,7 +520,7 @@ export default function AppReportsPage() {
                           {signal.status}
                         </span>
                       </div>
-                      <p className="mt-3 text-sm text-charcoal-mid">
+                      <p className="mt-3 break-words text-sm text-charcoal-mid">
                         {signal.status_reason || 'No status reason provided.'}
                       </p>
                       {signal.findings?.length > 0 && (
@@ -449,8 +530,8 @@ export default function AppReportsPage() {
                               key={finding.finding_id}
                               className="rounded-2xl border border-stone-light bg-white-warm px-4 py-3"
                             >
-                              <p className="text-sm font-medium text-charcoal">{finding.label}</p>
-                              <p className="mt-1 text-sm text-charcoal-mid">{finding.description}</p>
+                              <p className="break-words text-sm font-medium text-charcoal">{finding.label}</p>
+                              <p className="mt-1 break-words text-sm text-charcoal-mid">{finding.description}</p>
                             </div>
                           ))}
                         </div>

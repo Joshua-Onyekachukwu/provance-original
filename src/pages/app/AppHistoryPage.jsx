@@ -1,13 +1,20 @@
+import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Badge, Card, DataTable, useRegisterCommands } from '../../components/ui'
 import ScanStatusBadge from '../../components/app/ScanStatusBadge.jsx'
+import TeamBadge from '../../components/app/TeamBadge.jsx'
+import TeamFilter from '../../components/app/TeamFilter.jsx'
 import {
   formatFileSize,
   formatScanTimestamp,
   getVerdictMeta,
+  hasActiveScanWork,
 } from '../../components/app/scanPresentation.js'
 import { listScans } from '../../lib/api.js'
+import { useDateRangeParam, inDateRange } from '../../lib/useDateRangeParam.js'
+import { useDemoState, withDemoOverride } from '../../lib/useDemoState.js'
 import { useResource } from '../../lib/useResource.js'
+import { useTeamScoping } from '../../lib/useTeamScoping.js'
 
 function VerdictBadge({ scan }) {
   const { label, tone } = getVerdictMeta(scan)
@@ -42,6 +49,11 @@ const HISTORY_COLUMNS = [
     render: (scan) => <VerdictBadge scan={scan} />,
   },
   {
+    key: 'team_id',
+    header: 'Team',
+    render: (scan) => <TeamBadge teamId={scan.team_id} />,
+  },
+  {
     key: 'report_id',
     header: 'Report',
     render: (scan) => scan.result_payload?.report_id || '—',
@@ -58,7 +70,41 @@ const HISTORY_COLUMNS = [
 
 export default function AppHistoryPage() {
   const navigate = useNavigate()
-  const scans = useResource(() => listScans({ pageSize: 100 }).then((r) => r.data || []))
+  const demoState = useDemoState()
+  // Live status polling: the ledger refreshes every 5s while work is in
+  // flight (queued / processing), so worker-driven queued → processing →
+  // complete transitions land without a reload — same pattern as the
+  // dashboard. Polling idles once the queue drains.
+  const scans = withDemoOverride(
+    useResource(
+      () => listScans({ pageSize: 100 }).then((r) => r.data || []),
+      [],
+      {
+        pollMs: 5000,
+        pollWhen: (state) => hasActiveScanWork(state.data),
+      },
+    ),
+    demoState,
+    { emptyData: [] },
+  )
+
+  // Team scoping — shared with the dashboard/reports/queue via ?team=.
+  const { teamFilter, setTeamFilter, teamCounts, filteredScans, isTeamScoped } = useTeamScoping({
+    scans,
+  })
+
+  // Date range — URL-backed ?from= / ?to= (YYYY-MM-DD), so a fully scoped
+  // ledger view (team + range) is shareable as one link.
+  const [dateRange, setDateRange] = useDateRangeParam()
+  const hasDateRange = Boolean(dateRange.from || dateRange.to)
+  const rangedScans = useMemo(
+    () =>
+      filteredScans.filter((scan) =>
+        inDateRange(scan.created_at, dateRange.from, dateRange.to),
+      ),
+    [filteredScans, dateRange.from, dateRange.to],
+  )
+  const hasAnyFilter = isTeamScoped || hasDateRange
 
   useRegisterCommands(
     [
@@ -100,24 +146,74 @@ export default function AppHistoryPage() {
       <Card
         eyebrow="Verification ledger"
         title="Latest verification activity"
-        description="Your newest uploads — filename, status, verdict, and report ID before opening the full report."
+        description="Your newest uploads — filename, status, verdict, team, and report ID before opening the full report."
       >
-        <DataTable
-          columns={HISTORY_COLUMNS}
-          rows={scans.data || []}
-          keyField="id"
-          loading={scans.status === 'loading'}
-          error={scans.status === 'error' ? scans.error : null}
-          onRetry={scans.reload}
-          searchable
-          searchPlaceholder="Search files…"
-          searchKeys={['original_filename']}
-          pagination
-          pageSize={8}
-          onRowClick={(scan) => navigate(`/app/reports/${scan.id}`)}
-          emptyTitle="No verifications yet"
-          emptyDescription="Upload a media file to start the verification pipeline — results will appear here."
-        />
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <TeamFilter counts={teamCounts} value={teamFilter} onChange={setTeamFilter} />
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-2 text-xs font-medium text-charcoal-mid">
+              From
+              <input
+                type="date"
+                value={dateRange.from || ''}
+                onChange={(event) =>
+                  setDateRange({ ...dateRange, from: event.target.value || null })
+                }
+                className="ui-focus-ring rounded-xl border border-stone-light bg-parchment px-3 py-1.5 text-sm text-charcoal"
+              />
+            </label>
+            <label className="flex items-center gap-2 text-xs font-medium text-charcoal-mid">
+              To
+              <input
+                type="date"
+                value={dateRange.to || ''}
+                onChange={(event) =>
+                  setDateRange({ ...dateRange, to: event.target.value || null })
+                }
+                className="ui-focus-ring rounded-xl border border-stone-light bg-parchment px-3 py-1.5 text-sm text-charcoal"
+              />
+            </label>
+            {hasDateRange && (
+              <button
+                type="button"
+                onClick={() => setDateRange({ from: null, to: null })}
+                className="ui-focus-ring rounded-xl px-3 py-1.5 text-xs font-medium text-charcoal-mid transition hover:bg-parchment hover:text-charcoal"
+              >
+                Clear range
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="mt-4">
+          <DataTable
+            columns={HISTORY_COLUMNS}
+            rows={rangedScans}
+            keyField="id"
+            loading={scans.status === 'loading'}
+            error={scans.status === 'error' ? scans.error : null}
+            onRetry={scans.reload}
+            searchable
+            searchPlaceholder="Search files…"
+            searchKeys={['original_filename']}
+            pagination
+            pageSize={8}
+            onRowClick={(scan) => navigate(`/app/reports/${scan.id}`)}
+            emptyTitle={
+              isTeamScoped && hasDateRange
+                ? 'No scans in this team and range'
+                : isTeamScoped
+                  ? 'No scans in this team'
+                  : hasDateRange
+                    ? 'No scans in this date range'
+                    : 'No verifications yet'
+            }
+            emptyDescription={
+              hasAnyFilter
+                ? 'Try widening the date range — or clear the filters to see everything.'
+                : 'Upload a media file to start the verification pipeline — results will appear here.'
+            }
+          />
+        </div>
       </Card>
     </div>
   )

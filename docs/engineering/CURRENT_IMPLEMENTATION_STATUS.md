@@ -28,7 +28,7 @@ migrated onto them, and the mock-first data gate (ADR 004) makes every page run
 end-to-end without a backend. Phase 3 slices shipped: Notifications, Billing
 (UI only), Security Settings, API Keys, and Help & Documentation.
 
-The frontend is now fully built — the user workspace (15/15 pages) and the
+The frontend is now fully built — the user workspace (16/16 pages) and the
 admin workspace (12/12 pages) are both complete with loading/empty/error states,
 `?state=` demo forcing, and ⌘K commands. No placeholders remain. The current
 immediate focus is:
@@ -38,7 +38,7 @@ immediate focus is:
   `docs/reports/2026-08-05-frontend-signoff-checklist.md`)
 - backend slice planning: auth token hardening, real scan round-trip against
   Supabase, report payload API
-- approved MVP features still open: report PDF export, scan deduplication
+- approved MVP features shipped: error boundary, report PDF export, scan deduplication (2026-08-08); webhooks UI + evidence appendix remain approved
 - session hardening and observability baseline before broader beta
 
 ## Current Architecture
@@ -207,8 +207,9 @@ Recently confirmed against the current codebase and environment:
 - Upstash Free is not suitable for always-on worker usage
 - the multi-agent operating model (ADR 003) requires task packets, the review gate,
   and Founder approval before any commit
-- `USE_MOCK` stays `true` through the MVP phase; it flips to `false` as part of
-  Phase 3 backend integration
+- `USE_MOCK` is env-driven (`VITE_USE_MOCK` in `src/lib/api.js`): real by default
+  in production builds, mock fallback in dev — Phase 3 backend integration is
+  complete
 - the current documentation set is richer than its formatting consistency, so normalization remains an active documentation improvement area
 
 ## Important Files

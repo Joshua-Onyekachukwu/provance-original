@@ -1,0 +1,5 @@
+# Shebang'd CLI scripts must stay LF on every platform: with core.autocrlf=true
+# a Windows checkout writes "#!/usr/bin/env node\r\n", and vite 8/rolldown's
+# shebang stripping leaves a stray \r that fails the transform ("Invalid or
+# unexpected token") whenever the script is imported by a vitest spec.
+scripts/*.mjs text eol=lf

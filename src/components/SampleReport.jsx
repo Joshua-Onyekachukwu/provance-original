@@ -69,7 +69,7 @@ export default function SampleReport() {
                 </div>
               </div>
 
-              <div className="mt-8 grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+              <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[1.05fr_0.95fr]">
                 <div className="space-y-6">
                   <div className="rounded-[1.75rem] border border-stone-light/80 bg-parchment/70 p-4">
                     <div className="flex items-center justify-between">
@@ -89,7 +89,7 @@ export default function SampleReport() {
                         loading="lazy"
                       />
                     </div>
-                    <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                    <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
                       {[
                         ['Source information', 'Uploaded by newsroom desk'],
                         ['Fingerprint', 'SHA-256 matched to case'],
@@ -97,7 +97,7 @@ export default function SampleReport() {
                       ].map(([label, value]) => (
                         <div key={label} className="rounded-2xl border border-stone-light/80 bg-white-warm/85 p-3">
                           <div className="text-[10px] font-mono uppercase tracking-[0.16em] text-charcoal-light">{label}</div>
-                          <div className="mt-2 text-sm text-charcoal">{value}</div>
+                          <div className="mt-2 break-words text-sm text-charcoal">{value}</div>
                         </div>
                       ))}
                     </div>
@@ -124,7 +124,7 @@ export default function SampleReport() {
                           <div className="rounded-full border border-amber/20 bg-amber/10 px-3 py-1.5 text-center font-mono text-[11px] text-amber">
                             {time}
                           </div>
-                          <div className="rounded-2xl border border-stone-light/80 bg-parchment/80 px-4 py-3 text-sm text-charcoal-mid">
+                          <div className="min-w-0 break-words rounded-2xl border border-stone-light/80 bg-parchment/80 px-4 py-3 text-sm text-charcoal-mid">
                             {step}
                           </div>
                         </div>
@@ -134,7 +134,7 @@ export default function SampleReport() {
                 </div>
 
                 <div className="space-y-6">
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     {scoreCards.map((item) => (
                       <motion.div
                         key={item.label}
@@ -194,7 +194,7 @@ export default function SampleReport() {
                         className="group rounded-[1.5rem] border border-stone-light/80 bg-white-warm/90 p-5 shadow-[0_16px_35px_rgba(26,26,26,0.04)]"
                         open={section.title === 'Evidence breakdown'}
                       >
-                        <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
+                        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3">
                           <span className="font-serif text-xl text-charcoal">{section.title}</span>
                           <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-charcoal-light transition-transform duration-200 group-open:rotate-45">
                             +

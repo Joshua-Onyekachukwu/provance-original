@@ -1,6 +1,18 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Badge, Button, Card, EmptyState, useRegisterCommands, useToast } from '../../components/ui/index.js'
+import {
+  Badge,
+  Button,
+  Card,
+  ChartHoverReadout,
+  CHART_H,
+  CHART_W,
+  EmptyState,
+  PAD,
+  pctOfViewBoxX,
+  useRegisterCommands,
+  useToast,
+} from '../../components/ui/index.js'
 import AdminPageHeader from '../../components/admin/AdminPageHeader.jsx'
 import {
   formatDateTime,
@@ -8,9 +20,11 @@ import {
   formatFileSize,
   getScanStatusMeta,
 } from '../../components/app/scanPresentation.js'
-import { getAdminJobs } from '../../lib/api.js'
+import { failJob, getAdminJobs, retryJob } from '../../lib/api.js'
 import { useDemoState } from '../../lib/useDemoState.js'
 import useMockData from '../../lib/useMockData.js'
+import { useQueryParam } from '../../lib/useQueryParam.js'
+import { useResource } from '../../lib/useResource.js'
 
 // ---------------------------------------------------------------------------
 // Presentation meta
@@ -46,6 +60,53 @@ function jobDuration(job) {
 // Job detail drawer content
 // ---------------------------------------------------------------------------
 
+// ── Result payload inspector (completed jobs) ───────────────────────────────
+
+function PayloadInspector({ payload }) {
+  const [open, setOpen] = useState(false)
+
+  if (!payload) return null
+
+  const signalCount = Array.isArray(payload.signals) ? payload.signals.length : 0
+  const json = JSON.stringify(payload, null, 2)
+
+  return (
+    <div className="rounded-2xl border border-stone-light bg-parchment/70 p-4">
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        aria-expanded={open}
+        className="flex w-full items-center justify-between gap-3 text-left"
+      >
+        <div className="min-w-0">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-charcoal-light">
+            Result payload
+          </p>
+          <p className="mt-1 text-sm text-charcoal">
+            {signalCount} signal{signalCount === 1 ? '' : 's'}
+            {payload.report_id ? ` · ${payload.report_id}` : ''}
+          </p>
+        </div>
+        <svg
+          aria-hidden="true"
+          className={`h-4 w-4 shrink-0 text-charcoal-mid transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth="2"
+          stroke="currentColor"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+      {open && (
+        <pre className="mt-3 max-h-72 overflow-auto rounded-xl bg-charcoal p-4 font-mono text-[11px] leading-relaxed text-parchment/90">
+          {json}
+        </pre>
+      )}
+    </div>
+  )
+}
+
 function JobDetail({ job }) {
   const status = getScanStatusMeta(job.status)
   const priority = PRIORITY_META[job.priority] || PRIORITY_META.low
@@ -73,7 +134,7 @@ function JobDetail({ job }) {
         </div>
       </div>
 
-      <dl className="grid gap-x-8 gap-y-3 text-sm sm:grid-cols-2">
+      <dl className="grid grid-cols-1 gap-x-8 gap-y-3 text-sm sm:grid-cols-2">
         <div>
           <dt className="text-[11px] uppercase tracking-[0.18em] text-charcoal-light">Status</dt>
           <dd className="mt-1 text-charcoal">{status.label}</dd>
@@ -114,6 +175,193 @@ function JobDetail({ job }) {
           <p className="mt-2 text-sm leading-relaxed text-rose-900">{job.error}</p>
         </div>
       )}
+
+      {job.result_payload && <PayloadInspector payload={job.result_payload} />}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Worker utilization panel
+// ---------------------------------------------------------------------------
+
+// Stack order for the per-worker bar (bottom-up) — failed sits on top so red
+// reads as the headline risk. Colors mirror the scan-status badge tones
+// (sky/emerald/rose) with queued on the neutral stone and in-flight on the
+// brand trust blue.
+const WORKER_SEGMENTS = [
+  { key: 'queued', label: 'Queued', color: '#bec5d0', readoutClass: 'text-charcoal-mid' },
+  { key: 'processing', label: 'In-flight', color: '#2f5bea', readoutClass: 'text-sky-700' },
+  { key: 'completed', label: 'Completed', color: '#10b981', readoutClass: 'text-emerald-700' },
+  { key: 'failed', label: 'Failed', color: '#fb7185', readoutClass: 'text-rose-700' },
+]
+
+function workerLabel(worker) {
+  if (!worker) return 'Unassigned'
+  return worker.replace(/^worker-/, '').toUpperCase()
+}
+
+function WorkerUtilizationPanel({ stats, total }) {
+  const [hoverIdx, setHoverIdx] = useState(null)
+
+  if (total === 0 || stats.length === 0) {
+    return (
+      <div className="rounded-3xl border border-stone-light bg-white-warm p-8 text-center shadow-sm">
+        <p className="font-serif text-lg text-charcoal">No worker activity yet</p>
+        <p className="mt-1 text-sm text-charcoal-mid">Jobs will be attributed to workers as the queue processes them.</p>
+      </div>
+    )
+  }
+
+  const n = stats.length
+  const slotW = (CHART_W - PAD.left - PAD.right) / n
+  const barW = slotW * 0.56
+  const plotH = CHART_H - PAD.top - PAD.bottom
+  const max = Math.max(1, ...stats.map((s) => s.total))
+  const hovered = hoverIdx != null ? stats[hoverIdx] : null
+
+  return (
+    <div className="rounded-3xl border border-stone-light bg-white-warm p-6 shadow-sm">
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-charcoal-light">
+            Worker utilization
+          </p>
+          <p className="mt-1 text-sm text-charcoal-mid">
+            Jobs per worker, split by pipeline state — where the pool is busy and where failures concentrate.
+          </p>
+        </div>
+        <span className="rounded-full bg-stone-light/50 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.16em] text-charcoal-mid">
+          {stats.length} worker{stats.length === 1 ? '' : 's'} · {total} jobs
+        </span>
+      </div>
+
+      {/* Per-worker counts: in-flight / completed / failed */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {stats.map((workerStat) => (
+          <div key={workerStat.worker || 'unassigned'} className="rounded-2xl border border-stone-light bg-parchment/60 p-4">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-mono text-xs text-charcoal">{workerLabel(workerStat.worker)}</span>
+              <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-charcoal-light">
+                {workerStat.total} job{workerStat.total === 1 ? '' : 's'}
+              </span>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-charcoal-mid">
+              {WORKER_SEGMENTS.filter((seg) => seg.key !== 'queued').map((seg) => (
+                <span key={seg.key} className="inline-flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: seg.color }} aria-hidden="true" />
+                  {seg.label} {workerStat[seg.key] ?? 0}
+                </span>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Self-hosted SVG bars — jobs per worker stacked by state */}
+      <div className="mt-6">
+        <ChartHoverReadout
+          size="compact"
+          label={hovered ? workerLabel(hovered.worker) : null}
+          hint="Hover a bar for the per-worker breakdown"
+          items={
+            hovered
+              ? WORKER_SEGMENTS.filter((seg) => (hovered[seg.key] ?? 0) > 0).map((seg) => ({
+                  key: seg.key,
+                  text: `${hovered[seg.key]} ${seg.label.toLowerCase()}`,
+                  className: seg.readoutClass,
+                }))
+              : []
+          }
+        />
+        <div className="relative">
+          <svg
+            viewBox={`0 0 ${CHART_W} ${CHART_H}`}
+            className="h-48 w-full"
+            role="img"
+            aria-label="Jobs per worker stacked by queued, in-flight, completed, and failed"
+          >
+            {stats.map((workerStat, i) => {
+              const slotX = PAD.left + slotW * i
+              const centerX = slotX + slotW / 2
+              const barX = centerX - barW / 2
+              const isHovered = hoverIdx === i
+              let yCursor = PAD.top + plotH
+              const segs = WORKER_SEGMENTS.filter((seg) => (workerStat[seg.key] ?? 0) > 0).map((seg) => {
+                const height = ((workerStat[seg.key] ?? 0) / max) * plotH
+                const rect = { ...seg, x: barX, y: yCursor - height, height }
+                yCursor -= height
+                return rect
+              })
+              return (
+                <g key={workerStat.worker || 'unassigned'}>
+                  {segs.map((seg) => (
+                    <rect
+                      key={seg.key}
+                      x={seg.x}
+                      y={seg.y}
+                      width={barW}
+                      height={Math.max(seg.height, 0.5)}
+                      fill={seg.color}
+                      rx={3}
+                    />
+                  ))}
+                  {isHovered && (
+                    <rect
+                      x={barX - 2.5}
+                      y={PAD.top}
+                      width={barW + 5}
+                      height={plotH}
+                      fill="none"
+                      stroke="#13161d"
+                      strokeWidth={1.5}
+                      rx={5}
+                    />
+                  )}
+                  <rect
+                    x={slotX}
+                    y={PAD.top}
+                    width={slotW}
+                    height={plotH}
+                    fill="transparent"
+                    style={{ cursor: 'pointer' }}
+                    onMouseEnter={() => setHoverIdx(i)}
+                    onMouseLeave={() => setHoverIdx(null)}
+                  >
+                    <title>{`${workerLabel(workerStat.worker)} · ${workerStat.total} jobs`}</title>
+                  </rect>
+                </g>
+              )
+            })}
+          </svg>
+
+          {/* Worker axis labels — crisp HTML overlay, same treatment as the chart kit */}
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+            {stats.map((workerStat, i) => {
+              const centerX = PAD.left + slotW * i + slotW / 2
+              return (
+                <span
+                  key={workerStat.worker || 'unassigned'}
+                  className="absolute -translate-x-1/2 whitespace-nowrap font-mono text-[10px] text-charcoal-light/80"
+                  style={{ left: pctOfViewBoxX(centerX), bottom: 0 }}
+                >
+                  {workerLabel(workerStat.worker)}
+                </span>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Legend — stack order bottom-up */}
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
+          {WORKER_SEGMENTS.map((seg) => (
+            <span key={seg.key} className="inline-flex items-center gap-1.5 text-xs text-charcoal-mid">
+              <span className="h-2 w-2 rounded-[3px]" style={{ backgroundColor: seg.color }} aria-hidden="true" />
+              {seg.label}
+            </span>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
@@ -129,19 +377,58 @@ export default function JobsPage() {
   const { toast } = useToast()
   const demoState = useDemoState()
 
-  const { data: rawData, loading, error, refetch } = useMockData(getAdminJobs)
+  // Full-set fetch — the worker panel, status counts, worker filter options,
+  // and header meta all derive from EVERY job, independent of the table's
+  // server-side status filter (a deep link to ?status=failed must not shrink
+  // the utilization panel to just the failed subset).
+  const {
+    data: fullRaw,
+    loading: fullLoading,
+    error: fullError,
+    refetch: refetchFull,
+  } = useMockData(getAdminJobs)
+
+  // URL-backed status (?status=failed) so deep links resolve server-side.
+  // validate rejects null like the TeamFilter contract — an absent ?status=
+  // must read as the defaultValue, never as raw null (a validate-accepted
+  // null would serialize to 'status=null' and ping-pong the URL forever).
+  const [status, setStatus] = useQueryParam({
+    key: 'status',
+    validate: (raw) =>
+      ['all', 'queued', 'processing', 'completed', 'failed'].includes(raw),
+    defaultValue: 'all',
+  })
+
+  // Server-driven table: status/page/pageSize are forwarded to the API, so
+  // /app/admin/jobs?status=failed filters on the backend (and paginates there
+  // too), not just client-side. page stays local state — two single-key URL
+  // params can't update atomically together (see useQueryParam's docblock),
+  // and only ?status= is a shareable deep link.
+  const [page, setPage] = useState(1)
+  const table = useResource(
+    () => getAdminJobs({ status: status === 'all' ? undefined : status, page, pageSize: PAGE_SIZE }),
+    [status, page],
+  )
+  const refetchAll = useCallback(() => {
+    refetchFull()
+    table.reload()
+  }, [refetchFull, table.reload])
 
   const EMPTY_JOBS = useMemo(() => ({ data: [], total: 0 }), [])
-  const data = demoState === 'empty' ? EMPTY_JOBS : rawData
+  const fullData = demoState === 'empty' ? EMPTY_JOBS : fullRaw
+  const tableData = demoState === 'empty' ? EMPTY_JOBS : table.data
 
-  const isLoading = loading || demoState === 'loading'
-  const hasError = Boolean(error) || demoState === 'error'
-  const jobs = useMemo(() => data?.data || [], [data])
+  const isLoading = fullLoading || table.status === 'loading' || demoState === 'loading'
+  const hasError =
+    Boolean(fullError || (table.status === 'error' && table.error)) || demoState === 'error'
+  const jobs = useMemo(() => fullData?.data || [], [fullData])
+  const tableJobs = useMemo(() => tableData?.data || [], [tableData])
+  const serverTotal = tableData?.total ?? 0
 
-  const [status, setStatus] = useState('all')
+  const [worker, setWorker] = useState('all')
   const [query, setQuery] = useState('')
-  const [page, setPage] = useState(1)
   const [selectedJob, setSelectedJob] = useState(null)
+  const [busyId, setBusyId] = useState(null)
 
   const statusCounts = useMemo(() => {
     const counts = { queued: 0, processing: 0, completed: 0, failed: 0 }
@@ -151,10 +438,39 @@ export default function JobsPage() {
     return counts
   }, [jobs])
 
+  // Per-worker pipeline counts for the utilization panel + the worker filter.
+  // Derived from the ledger so mock and real modes stay in sync with whatever
+  // worker attribution the API returns (null worker → 'Unassigned').
+  const workerStats = useMemo(() => {
+    const map = new Map()
+    for (const job of jobs) {
+      const key = job.worker || 'unassigned'
+      if (!map.has(key)) {
+        map.set(key, { worker: job.worker || null, queued: 0, processing: 0, completed: 0, failed: 0, total: 0 })
+      }
+      const stat = map.get(key)
+      if (job.status in stat) {
+        stat[job.status] += 1
+      }
+      stat.total += 1
+    }
+    return [...map.values()].sort(
+      (a, b) => b.total - a.total || String(a.worker || '').localeCompare(String(b.worker || '')),
+    )
+  }, [jobs])
+
+  // The worker + search controls are client-side quick refinements over the
+  // current server page (status already arrived filtered from the API).
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return jobs.filter((job) => {
-      if (status !== 'all' && job.status !== status) return false
+    return tableJobs.filter((job) => {
+      if (worker !== 'all') {
+        if (worker === 'unassigned') {
+          if (job.worker) return false
+        } else if (job.worker !== worker) {
+          return false
+        }
+      }
       if (!q) return true
       return (
         (job.original_filename || '').toLowerCase().includes(q) ||
@@ -163,15 +479,15 @@ export default function JobsPage() {
         (job.worker || '').toLowerCase().includes(q)
       )
     })
-  }, [jobs, status, query])
+  }, [tableJobs, worker, query])
 
-  const hasActiveFilters = status !== 'all' || query.trim() !== ''
-  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const hasActiveFilters = status !== 'all' || worker !== 'all' || query.trim() !== ''
+  // Pagination is server-driven: pageCount comes from the API's exact total
+  // (after the status filter), and the visible page is what the server
+  // returned, narrowed by the worker/search quick filters.
+  const pageCount = Math.max(1, Math.ceil(serverTotal / PAGE_SIZE))
   const safePage = Math.min(page, pageCount)
-  const visible = useMemo(
-    () => filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
-    [filtered, safePage],
-  )
+  const visible = filtered
 
   function resetPage() {
     setPage(1)
@@ -179,16 +495,54 @@ export default function JobsPage() {
 
   function clearFilters() {
     setStatus('all')
+    setWorker('all')
     setQuery('')
     resetPage()
   }
 
-  const handleRetry = useCallback((job) => {
-    toast('Job re-queued', {
-      description: `${job.id} moved back to the queue for another attempt.`,
-      type: 'success',
-    })
-  }, [toast])
+  const handleRetry = useCallback(
+    async (job) => {
+      setBusyId(job.id)
+      try {
+        await retryJob(job.id)
+        toast('Job re-queued', {
+          description: `${job.id} moved back to the queue for another attempt.`,
+          type: 'success',
+        })
+        refetchAll()
+      } catch (error) {
+        toast('Job could not be re-queued', {
+          description: error instanceof Error ? error.message : 'The retry did not complete.',
+          type: 'error',
+        })
+      } finally {
+        setBusyId(null)
+      }
+    },
+    [toast, refetchAll],
+  )
+
+  const handleFail = useCallback(
+    async (job) => {
+      setBusyId(job.id)
+      try {
+        await failJob(job.id)
+        toast('Job marked failed', {
+          description: `${job.id} stopped and recorded as failed.`,
+          type: 'success',
+        })
+        refetchAll()
+      } catch (error) {
+        toast('Job could not be failed', {
+          description: error instanceof Error ? error.message : 'The fail action did not complete.',
+          type: 'error',
+        })
+      } finally {
+        setBusyId(null)
+      }
+    },
+    [toast, refetchAll],
+  )
 
   useRegisterCommands(
     [
@@ -201,6 +555,19 @@ export default function JobsPage() {
         onSelect: () => {
           setStatus('failed')
           resetPage()
+        },
+      },
+      {
+        id: 'admin.jobs-retry-failed',
+        group: 'Verification Jobs',
+        label: 'Retry all failed jobs',
+        hint: `${statusCounts.failed || 0} job${statusCounts.failed === 1 ? '' : 's'}`,
+        keywords: ['jobs', 'retry', 'failed', 'requeue'],
+        onSelect: async () => {
+          const failedJobs = jobs.filter((j) => j.status === 'failed')
+          for (const job of failedJobs) {
+            await handleRetry(job)
+          }
         },
       },
       {
@@ -220,7 +587,7 @@ export default function JobsPage() {
         onSelect: () => navigate('/app/admin'),
       },
     ],
-    [statusCounts, hasActiveFilters, navigate, toast],
+    [statusCounts, hasActiveFilters, jobs, handleRetry, navigate, toast],
   )
 
   const columns = useMemo(
@@ -300,19 +667,24 @@ export default function JobsPage() {
         align: 'right',
         render: (row) => (
           <div className="flex items-center justify-end gap-2">
-            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setSelectedJob(row) }}>
+            <Button variant="ghost" size="sm" disabled={busyId === row.id} onClick={(e) => { e.stopPropagation(); setSelectedJob(row) }}>
               Inspect
             </Button>
             {row.status === 'failed' && (
-              <Button variant="secondary" size="sm" onClick={(e) => { e.stopPropagation(); handleRetry(row) }}>
+              <Button variant="secondary" size="sm" disabled={busyId === row.id} onClick={(e) => { e.stopPropagation(); handleRetry(row) }}>
                 Retry
+              </Button>
+            )}
+            {(row.status === 'queued' || row.status === 'processing') && (
+              <Button variant="ghost" size="sm" disabled={busyId === row.id} onClick={(e) => { e.stopPropagation(); handleFail(row) }}>
+                Fail
               </Button>
             )}
           </div>
         ),
       },
     ],
-    [handleRetry],
+    [busyId, handleRetry, handleFail],
   )
 
   return (
@@ -323,19 +695,22 @@ export default function JobsPage() {
         description="Every verification job across the platform — status, priority, worker, and progress. Inspect any job for its timeline and failure details, or re-queue failed work."
         meta={[
           { label: `${jobs.length} jobs` },
+          { label: `${workerStats.length} worker${workerStats.length === 1 ? '' : 's'}` },
           { label: `${statusCounts.queued || 0} queued` },
           { label: `${statusCounts.processing || 0} processing` },
           { label: `${statusCounts.failed || 0} failed` },
         ]}
       />
 
+      {!isLoading && !hasError && <WorkerUtilizationPanel stats={workerStats} total={jobs.length} />}
+
       <Card
         eyebrow="Job ledger"
         title="Verification jobs"
         description="Newest first — status and priority badges per job. Click Inspect for the full detail."
         state={hasError ? 'error' : isLoading ? 'loading' : 'default'}
-        errorDescription={hasError ? (demoState === 'error' ? 'Demo state — forced error for review. This is not a real outage.' : error) : ''}
-        onRetry={refetch}
+        errorDescription={hasError ? (demoState === 'error' ? 'Demo state — forced error for review. This is not a real outage.' : fullError || table.error) : ''}
+        onRetry={refetchAll}
         loadingRows={6}
       >
         {!isLoading && !hasError && (
@@ -364,6 +739,38 @@ export default function JobsPage() {
                     <span className="ml-1.5 opacity-70">
                       {value === 'all' ? jobs.length : statusCounts[value] || 0}
                     </span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="mr-1 text-[11px] font-medium uppercase tracking-[0.14em] text-charcoal-light">
+                  Worker
+                </span>
+                {[
+                  { value: 'all', label: 'All workers', count: jobs.length },
+                  ...workerStats.map((s) => ({
+                    value: s.worker || 'unassigned',
+                    label: workerLabel(s.worker),
+                    count: s.total,
+                  })),
+                ].map(({ value, label, count }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-pressed={worker === value}
+                    onClick={() => {
+                      setWorker(value)
+                      resetPage()
+                    }}
+                    className={`rounded-full border px-3 py-1.5 font-mono text-[11px] transition ${
+                      worker === value
+                        ? 'border-charcoal bg-charcoal text-white-warm'
+                        : 'border-stone-light bg-parchment text-charcoal-mid hover:text-charcoal'
+                    }`}
+                  >
+                    {label}
+                    <span className="ml-1.5 opacity-70">{count}</span>
                   </button>
                 ))}
               </div>
@@ -418,7 +825,7 @@ export default function JobsPage() {
                 />
               </div>
             ) : (
-              <div className="mt-4 overflow-hidden rounded-2xl border border-stone-light bg-white-warm">
+              <div className="mt-4 overflow-x-auto rounded-2xl border border-stone-light bg-white-warm">
                 <table className="w-full border-collapse text-sm">
                   <thead>
                     <tr className="border-b border-stone-light bg-parchment/60">
@@ -454,11 +861,10 @@ export default function JobsPage() {
               </div>
             )}
 
-            {filtered.length > PAGE_SIZE && (
+            {filtered.length > 0 && serverTotal > PAGE_SIZE && (
               <div className="mt-5 flex items-center justify-between border-t border-stone-light pt-4">
                 <p className="text-xs text-charcoal-light">
-                  Showing {Math.min(filtered.length, (safePage - 1) * PAGE_SIZE + PAGE_SIZE)} of{' '}
-                  {filtered.length} jobs
+                  Showing {(safePage - 1) * PAGE_SIZE + filtered.length} of {serverTotal} jobs
                 </p>
                 <div className="flex items-center gap-2">
                   <button
@@ -520,13 +926,18 @@ export default function JobsPage() {
           </div>
           <div className="flex-1 overflow-y-auto px-6 py-6">
             <JobDetail job={selectedJob} />
-            {selectedJob.status === 'failed' && (
-              <div className="mt-5">
-                <Button variant="secondary" size="sm" onClick={() => handleRetry(selectedJob)}>
+            <div className="mt-5 flex items-center gap-3">
+              {selectedJob.status === 'failed' && (
+                <Button variant="secondary" size="sm" disabled={busyId === selectedJob.id} onClick={() => handleRetry(selectedJob)}>
                   Re-queue job
                 </Button>
-              </div>
-            )}
+              )}
+              {(selectedJob.status === 'queued' || selectedJob.status === 'processing') && (
+                <Button variant="ghost" size="sm" disabled={busyId === selectedJob.id} onClick={() => handleFail(selectedJob)}>
+                  Fail job
+                </Button>
+              )}
+            </div>
           </div>
         </aside>
       )}

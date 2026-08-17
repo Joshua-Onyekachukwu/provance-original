@@ -24,18 +24,34 @@
 
 | Category | Match |
 |---|---|
-| `all` | No action filter |
+| `all` | No action filter — audit events **+ resolved incidents** |
 | `scans` | `action` `LIKE 'scan.%'` |
 | `exports` | `action` `LIKE 'report.%'` |
 | `account` | `user.invited`, `user.activated`, `settings.updated`, `api_key.created`, `api_key.revoked`, `invite.accepted`, `invite_created` |
 | `team` | `team.member_added`, `team.member_removed`, `role.changed`, `org.created` |
-| `system` | `waitlist.reviewed`, `waitlist_reviewed`, `waitlist.approved`, `waitlist.rejected`, `waitlist.deferred`, `feature_flag.toggled` |
+| `system` | `waitlist.reviewed`, `waitlist_reviewed`, `waitlist.approved`, `waitlist.rejected`, `waitlist.deferred`, `feature_flag.toggled`, `incident.resolved` — **+ resolved incidents** |
 
 These lists intentionally mirror the frontend's client-side tab filters so mock
 and real modes behave identically. The backend services write the underscore
 forms (`waitlist_reviewed`, `invite_created`) into `auth_audit_events` while the
 mock uses the dotted forms; both are accepted here and on the Activity page so
 events badge and count identically across modes.
+
+### Incident events
+
+Resolved rows from `admin_incidents` (`supabase/migrations/0007_incidents.sql`)
+join the feed as `incident.resolved` system events for the `all` and `system`
+categories only — incidents are system-wide (no owner), and those are the two
+tabs where the mock surfaces them. Each maps to the exact mock shape
+(`buildIncidentActivityEvents`), carrying the incident's own `severity`
+(critical/major/minor → the Monitoring accordion tone dots) and the
+`summary` post-mortem text. The incidents query is best-effort: if migration
+0007 is not applied (`admin_incidents` missing), the feed degrades to the
+audit trail alone instead of failing.
+
+The combined feed is sorted newest-first by `created_at` and paginated in
+memory (mirroring `mockGetActivityLogs`), so real and mock pages line up
+exactly — including across the audit/incident boundary.
 
 ## Response shape
 
@@ -50,6 +66,17 @@ events badge and count identically across modes.
       "resource_type": "scan",      // entity_type column
       "resource_id": "scan_abc",    // entity_id column
       "created_at": "2026-08-04T10:00:00Z"
+    },
+    // incident.resolved rows carry the incident's own severity + post-mortem
+    {
+      "id": "incident_inc_001",
+      "actor_email": "system",
+      "action": "incident.resolved",
+      "severity": "major",          // from admin_incidents.severity
+      "resource_type": "incident",
+      "resource_id": "inc_001",
+      "created_at": "2026-08-07T08:00:00Z",
+      "summary": "A memory leak in the fingerprint model worker stalled processing."
     }
   ],
   "page": 1,

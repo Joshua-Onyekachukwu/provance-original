@@ -58,7 +58,7 @@ export default function WaitlistPage() {
       />
 
       <section className="section-padding bg-parchment-light">
-        <div className="content-container grid gap-8 lg:grid-cols-[0.95fr_1.05fr] items-start">
+        <div className="content-container grid grid-cols-1 gap-8 lg:grid-cols-[0.95fr_1.05fr] items-start">
           <div className="space-y-6">
             <div className="surface-card p-8">
               <p className="font-mono text-xs uppercase tracking-[0.2em] text-amber">
@@ -91,7 +91,7 @@ export default function WaitlistPage() {
             onSubmit={handleSubmit}
             className="surface-card p-8"
           >
-            <div className="grid gap-5 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
               <label className="block">
                 <span className="text-sm font-medium text-charcoal">Full name</span>
                 <input
@@ -118,7 +118,7 @@ export default function WaitlistPage() {
               </label>
             </div>
 
-            <div className="grid gap-5 md:grid-cols-2 mt-5">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 mt-5">
               <label className="block">
                 <span className="text-sm font-medium text-charcoal">Company</span>
                 <input

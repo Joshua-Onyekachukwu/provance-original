@@ -32,3 +32,9 @@ backend/.env.*
 
 # Local preview tool state (sqlite db, logs, run doc)
 .freebuff/
+
+# Test coverage output
+backend/coverage/
+
+# Trello CLI cached board id (contains no secrets)
+scripts/.trello-state.json

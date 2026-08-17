@@ -37,6 +37,7 @@ import AppNotificationsPage from './pages/app/AppNotificationsPage.jsx'
 import AppBillingPage from './pages/app/AppBillingPage.jsx'
 import AppSecurityPage from './pages/app/AppSecurityPage.jsx'
 import AppApiKeysPage from './pages/app/AppApiKeysPage.jsx'
+import AppWebhooksPage from './pages/app/AppWebhooksPage.jsx'
 import AppHelpDocsPage from './pages/app/AppHelpDocsPage.jsx'
 import AppOrganizationPage from './pages/app/AppOrganizationPage.jsx'
 import AppReportPrintPage from './pages/app/AppReportPrintPage.jsx'
@@ -132,6 +133,7 @@ export default function App() {
         <Route path="organization" element={<AppOrganizationPage />} />
         <Route path="billing" element={<AppBillingPage />} />
         <Route path="api-keys" element={<AppApiKeysPage />} />
+        <Route path="webhooks" element={<AppWebhooksPage />} />
         <Route path="docs" element={<AppHelpDocsPage module="docs" />} />
         <Route path="security" element={<AppSecurityPage />} />
         <Route path="notifications" element={<AppNotificationsPage />} />

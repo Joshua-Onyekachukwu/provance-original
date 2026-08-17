@@ -20,6 +20,34 @@
  * forms real backend services write ('waitlist_reviewed', 'invite_created'),
  * so real-mode events badge and count identically to mock-mode events.
  */
+// Literal action lists for the filtered categories — hoisted so the parity
+// test can compare them EXACTLY against the backend's
+// ACTIVITY_CATEGORY_ACTIONS (backend/src/account/activity-categories.ts).
+export const ACTIVITY_CATEGORY_ACTION_LISTS = {
+  account: [
+    'user.invited',
+    'user.activated',
+    'settings.updated',
+    'api_key.created',
+    'api_key.revoked',
+    'invite.accepted',
+    'invite_created',
+    // Session revocation — self-service (Security page) and org-admin paths.
+    'session_revoked',
+    'member_session_revoked',
+  ],
+  team: ['team.member_added', 'team.member_removed', 'role.changed', 'org.created'],
+  system: [
+    'waitlist.reviewed',
+    'waitlist_reviewed',
+    'waitlist.approved',
+    'waitlist.rejected',
+    'waitlist.deferred',
+    'feature_flag.toggled',
+    'incident.resolved',
+  ],
+}
+
 export const ACTIVITY_CATEGORIES = {
   all: { label: 'All', match: () => true },
   scans: {
@@ -32,39 +60,15 @@ export const ACTIVITY_CATEGORIES = {
   },
   account: {
     label: 'Account',
-    match: (event) =>
-      [
-        'user.invited',
-        'user.activated',
-        'settings.updated',
-        'api_key.created',
-        'api_key.revoked',
-        'invite.accepted',
-        'invite_created',
-      ].includes(event.action),
+    match: (event) => ACTIVITY_CATEGORY_ACTION_LISTS.account.includes(event.action),
   },
   team: {
     label: 'Team',
-    match: (event) =>
-      [
-        'team.member_added',
-        'team.member_removed',
-        'role.changed',
-        'org.created',
-      ].includes(event.action),
+    match: (event) => ACTIVITY_CATEGORY_ACTION_LISTS.team.includes(event.action),
   },
   system: {
     label: 'System',
-    match: (event) =>
-      [
-        'waitlist.reviewed',
-        'waitlist_reviewed',
-        'waitlist.approved',
-        'waitlist.rejected',
-        'waitlist.deferred',
-        'feature_flag.toggled',
-        'incident.resolved',
-      ].includes(event.action),
+    match: (event) => ACTIVITY_CATEGORY_ACTION_LISTS.system.includes(event.action),
   },
 }
 

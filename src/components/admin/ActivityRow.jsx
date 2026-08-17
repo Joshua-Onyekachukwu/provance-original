@@ -11,6 +11,10 @@ const ACTION_CONFIG = {
   rejected: { label: 'REJECTED', badgeClass: 'bg-rose-100 text-rose-800' },
   deferred: { label: 'DEFERRED', badgeClass: 'bg-amber-100 text-amber-800' },
   invited: { label: 'INVITED', badgeClass: 'bg-sky-100 text-sky-800' },
+  // role.* actions (Roles & Permissions page audit trail)
+  scope_updated: { label: 'SCOPE EDIT', badgeClass: 'bg-sky-100 text-sky-800' },
+  member_assigned: { label: 'ASSIGNED', badgeClass: 'bg-emerald-100 text-emerald-800' },
+  member_removed: { label: 'UNASSIGNED', badgeClass: 'bg-rose-100 text-rose-800' },
 }
 
 function getActionConfig(action) {
@@ -41,7 +45,11 @@ export default function ActivityRow({ event }) {
       {/* Actor + description */}
       <div className="min-w-0 flex-1">
         <p className="text-sm text-charcoal">
-          <span className="font-medium">{event.actor_email || 'system'}</span>
+          {/* break-words: actor emails are unbroken strings (e.g.
+              kwame.boateng@independent-research.africa) that blow the row
+              wider than the viewport in narrow columns — same clip class as
+              the long-string sweep. */}
+          <span className="break-words font-medium">{event.actor_email || 'system'}</span>
         </p>
         <p className="mt-0.5 text-sm text-charcoal-mid truncate">
           {event.description || event.action}

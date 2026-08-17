@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button, Card, EmptyState, useRegisterCommands } from '../../components/ui'
+import {
+  Button,
+  Card,
+  EmptyState,
+  useRegisterCommands,
+  useToast,
+} from '../../components/ui'
 import ForensicMediaFrame from '../../components/ForensicMediaFrame.jsx'
 import { formatFileSize } from '../../components/app/scanPresentation.js'
 import { USE_MOCK, initiateScan, submitScan } from '../../lib/api.js'
@@ -94,18 +100,34 @@ function ShieldIcon({ className = 'h-5 w-5' }) {
 // creates duplicate demo scans.
 let demoSeededFor = null
 
+// Idempotency-Key per selected file: stable across retries of the same file
+// (a network blip or double-click reuses the original scan reservation),
+// regenerated whenever the file changes or the form resets.
+function newIdempotencyKey() {
+  return typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `idem-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+}
+
 export default function AppUploadsPage() {
   const navigate = useNavigate()
+  const toast = useToast()
 
   const [selectedFile, setSelectedFile] = useState(null)
+  const [idempotencyKey, setIdempotencyKey] = useState(() => newIdempotencyKey())
   const [processingMode, setProcessingMode] = useState('standard')
   const [phase, setPhase] = useState('idle')
   const [error, setError] = useState(null)
+  const [quotaExhausted, setQuotaExhausted] = useState(false)
   const [activeScanId, setActiveScanId] = useState(null)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [dragActive, setDragActive] = useState(false)
   const [skipAutoNav, setSkipAutoNav] = useState(false)
   const [demoAutoStart, setDemoAutoStart] = useState(false)
+  // Set when submitScan reports an identical-file hit: the record completed
+  // instantly with a reused payload, so the panel + CTA shift from the queue
+  // story to the reuse story.
+  const [deduplicated, setDeduplicated] = useState(null)
 
   const isBusy = !['idle', 'error', 'queued'].includes(phase)
 
@@ -167,6 +189,8 @@ export default function AppUploadsPage() {
       setActiveScanId(null)
       setUploadProgress(0)
       setSkipAutoNav(false)
+      setDeduplicated(null)
+      setIdempotencyKey(newIdempotencyKey())
       setSelectedFile(file)
     },
     [isBusy],
@@ -196,18 +220,23 @@ export default function AppUploadsPage() {
 
   const handleReset = () => {
     setError(null)
+    setQuotaExhausted(false)
     setPhase('idle')
     setActiveScanId(null)
     setUploadProgress(0)
     setSkipAutoNav(false)
+    setDeduplicated(null)
+    setIdempotencyKey(newIdempotencyKey())
     setSelectedFile(null)
   }
 
   const handleRetry = () => {
     setError(null)
+    setQuotaExhausted(false)
     setPhase('idle')
     setUploadProgress(0)
     setSkipAutoNav(false)
+    setDeduplicated(null)
   }
 
   // Simulated upload progress (mock mode only; real uploads report no partial progress).
@@ -220,14 +249,19 @@ export default function AppUploadsPage() {
     return () => window.clearInterval(interval)
   }, [phase])
 
-  // Auto-land on the Verification Queue once the scan is queued.
+  // Auto-land once the scan is queued — on the Verification Queue for fresh
+  // submissions, straight onto the (reused) report when dedup completed it.
   useEffect(() => {
     if (phase !== 'queued' || !activeScanId || skipAutoNav) return
     const timer = window.setTimeout(() => {
-      navigate('/app/queue', { state: { newScanId: activeScanId } })
+      if (deduplicated) {
+        navigate(`/app/reports/${activeScanId}`)
+      } else {
+        navigate('/app/queue', { state: { newScanId: activeScanId } })
+      }
     }, 2000)
     return () => window.clearTimeout(timer)
-  }, [phase, activeScanId, skipAutoNav, navigate])
+  }, [phase, activeScanId, skipAutoNav, navigate, deduplicated])
 
   // Dev-only demo affordance (inert in production builds): ?demo=file seeds a
   // sample image so the upload flow can be exercised without a native file
@@ -270,13 +304,16 @@ export default function AppUploadsPage() {
     setPhase('starting')
 
     try {
-      const initiation = await initiateScan({
-        originalFilename: selectedFile.name,
-        mimeType: selectedFile.type,
-        fileSizeBytes: selectedFile.size,
-        mediaType: 'image',
-        processingMode,
-      })
+      const initiation = await initiateScan(
+        {
+          originalFilename: selectedFile.name,
+          mimeType: selectedFile.type,
+          fileSizeBytes: selectedFile.size,
+          mediaType: 'image',
+          processingMode,
+        },
+        idempotencyKey,
+      )
 
       setActiveScanId(initiation.scanId)
       setPhase('uploading')
@@ -296,11 +333,31 @@ export default function AppUploadsPage() {
       }
 
       setPhase('submitting')
-      await submitScan(initiation.scanId)
+      const submission = await submitScan(initiation.scanId)
+      if (submission?.deduplicated) {
+        setDeduplicated({
+          sourceScanId: submission.sourceScanId,
+          sourceReportId: submission.sourceReportId,
+        })
+        toast.info('Identical file already verified', {
+          description:
+            'This file matched a prior verification — the existing report was reused without reprocessing.',
+        })
+      } else {
+        setDeduplicated(null)
+      }
       setPhase('queued')
     } catch (uploadError) {
       setPhase('error')
-      setError(uploadError.message || 'Upload failed.')
+      // 402 = plan quota exhausted for this billing cycle. Show the dedicated
+      // quota message (with the reset hint) instead of a generic upload error.
+      if (uploadError.status === 402) {
+        setQuotaExhausted(true)
+        setError(uploadError.message || 'Monthly scan quota reached.')
+      } else {
+        setQuotaExhausted(false)
+        setError(uploadError.message || 'Upload failed.')
+      }
     }
   }
 
@@ -328,7 +385,9 @@ export default function AppUploadsPage() {
         : phase === 'submitting'
           ? 'Submitting'
           : phase === 'queued'
-            ? 'Queued for analysis'
+            ? deduplicated
+              ? 'Report reused — identical file'
+              : 'Queued for analysis'
             : 'Ready to verify'
 
   return (
@@ -347,7 +406,7 @@ export default function AppUploadsPage() {
         </p>
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-[1.5fr_1fr]">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.5fr_1fr]">
         <div className="space-y-6">
           {/* ── Upload card ─────────────────────────────────────────────── */}
           <Card
@@ -438,7 +497,7 @@ export default function AppUploadsPage() {
                   {selectedMode.eta} estimate
                 </p>
               </div>
-              <div role="radiogroup" aria-label="Processing mode" className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div role="radiogroup" aria-label="Processing mode" className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
                 {PROCESSING_MODES.map((mode) => {
                   const selected = processingMode === mode.id
                   return (
@@ -503,12 +562,12 @@ export default function AppUploadsPage() {
               )}
               {phase === 'queued' && activeScanId && (
                 <Button
-                  to="/app/queue"
+                  to={deduplicated ? `/app/reports/${activeScanId}` : '/app/queue'}
                   state={{ newScanId: activeScanId }}
                   size="lg"
                   variant="success"
                 >
-                  View verification queue
+                  {deduplicated ? 'View reused report' : 'View verification queue'}
                 </Button>
               )}
             </div>
@@ -521,14 +580,18 @@ export default function AppUploadsPage() {
               eyebrow="Upload status"
               title={
                 phase === 'queued'
-                  ? 'Added to the verification queue'
+                  ? deduplicated
+                    ? 'Identical file already verified'
+                    : 'Added to the verification queue'
                   : phase === 'error'
                     ? 'Verification could not start'
                     : 'Moving through the pipeline'
               }
               description={
                 phase === 'queued'
-                  ? 'Your file is queued for a worker. Opening the Verification Queue shortly.'
+                  ? deduplicated
+                    ? `This file matched a prior verification (${deduplicated.sourceScanId}) — the existing evidence payload was reused instead of reprocessing the media.`
+                    : 'Your file is queued for a worker. Opening the Verification Queue shortly.'
                   : phase === 'error'
                     ? error || 'Something went wrong.'
                     : 'The upload flows through the same steps every production scan takes.'
@@ -538,8 +601,12 @@ export default function AppUploadsPage() {
               {phase === 'error' ? (
                 <EmptyState
                   variant="error"
-                  title="Upload failed"
-                  description={error || 'Something went wrong.'}
+                  title={quotaExhausted ? 'Monthly scan quota reached' : 'Upload failed'}
+                  description={
+                    quotaExhausted
+                      ? `${error || 'Your plan\u2019s scan allowance for this cycle is used up.'} Upgrade your plan or wait for the cycle to reset to resume scanning.`
+                      : error || 'Something went wrong.'
+                  }
                   action={
                     <div className="flex gap-2">
                       <Button variant="secondary" onClick={handleRetry}>
@@ -553,7 +620,7 @@ export default function AppUploadsPage() {
                 />
               ) : (
                 <>
-                  <ol className="grid gap-3 sm:grid-cols-4">
+                  <ol className="grid grid-cols-1 gap-3 sm:grid-cols-4">
                     {UPLOAD_STEPS.map((step) => {
                       const state = stepState(step.id)
                       return (

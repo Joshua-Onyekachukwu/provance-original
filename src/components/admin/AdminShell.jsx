@@ -96,7 +96,7 @@ export default function AdminShell() {
   return (
     <CommandRegistryProvider>
     <div className="admin-shell-surface min-h-screen bg-parchment-light">
-      <div className="min-h-screen lg:grid lg:grid-cols-[280px_minmax(0,1fr)]">
+      <div className="min-h-screen block lg:grid lg:grid-cols-[280px_minmax(0,1fr)]">
         {/* Sidebar */}
         <aside className="border-b border-charcoal-soft bg-charcoal text-parchment lg:min-h-screen lg:border-b-0 lg:border-r">
           <div className="sticky top-0 p-4 sm:p-5 lg:h-screen lg:overflow-y-auto lg:p-6">

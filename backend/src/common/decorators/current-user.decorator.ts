@@ -3,6 +3,8 @@ import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 export type CurrentUserPayload = {
   id: string;
   email?: string;
+  /** Supabase auth-session id — the `sid` claim of the access-token JWT. */
+  sid?: string;
 };
 
 type RequestWithUser = {

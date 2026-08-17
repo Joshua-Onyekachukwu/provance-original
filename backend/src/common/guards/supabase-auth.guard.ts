@@ -4,6 +4,7 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
+import { decodeJwtPayloadSid } from '../jwt-sid.util';
 import { SupabaseService } from '../../supabase/supabase.service';
 
 type AuthenticatedRequest = {
@@ -13,6 +14,9 @@ type AuthenticatedRequest = {
   user?: {
     id: string;
     email?: string;
+    // Decoded from the access-token JWT payload (base64url), so session-scoped
+    // endpoints can mark the current session and revoke others by auth id.
+    sid?: string;
   };
 };
 
@@ -50,6 +54,7 @@ export class SupabaseAuthGuard implements CanActivate {
     request.user = {
       id: data.user.id,
       email: data.user.email ?? undefined,
+      sid: decodeJwtPayloadSid(token),
     };
 
     return true;

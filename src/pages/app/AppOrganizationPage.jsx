@@ -9,12 +9,17 @@ import {
   useToast,
 } from '../../components/ui'
 import { useAuth } from '../../context/AuthContext.jsx'
+import TeamBadge from '../../components/app/TeamBadge.jsx'
 import { formatRelativeTime } from '../../components/app/scanPresentation.js'
+import { copyText, shareableUrl } from '../../lib/clipboard.js'
 import {
   cancelInvite,
+  getMemberSessions,
   getOrganization,
   inviteMember,
   removeMember,
+  revokeMemberSession,
+  revokeMemberSessions,
   updateMemberRole,
   updateMemberTeam,
 } from '../../lib/api.js'
@@ -56,7 +61,7 @@ function Avatar({ name, size = 'md' }) {
   )
 }
 
-function MemberRow({ member, teams, canManage, isCurrentUser, onRoleChange, onTeamChange, onRemove, busy }) {
+function MemberRow({ member, teams, canManage, isCurrentUser, onRoleChange, onTeamChange, onRemove, onCancelConfirm, onViewSessions, busy, confirming }) {
   return (
     <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-stone-light bg-parchment px-4 py-4">
       <Avatar name={member.displayName} />
@@ -77,7 +82,7 @@ function MemberRow({ member, teams, canManage, isCurrentUser, onRoleChange, onTe
           <select
             value={member.team || ''}
             onChange={(event) => onTeamChange(member, event.target.value)}
-            disabled={busy === member.id}
+            disabled={busy}
             aria-label={`Team access for ${member.displayName}`}
             className="rounded-xl border border-stone-light bg-white-warm px-3 py-2 text-xs font-medium text-charcoal disabled:opacity-50"
           >
@@ -90,7 +95,7 @@ function MemberRow({ member, teams, canManage, isCurrentUser, onRoleChange, onTe
           <select
             value={member.role}
             onChange={(event) => onRoleChange(member, event.target.value)}
-            disabled={busy === member.id}
+            disabled={busy}
             aria-label={`Role for ${member.displayName}`}
             className="rounded-xl border border-stone-light bg-white-warm px-3 py-2 text-xs font-medium text-charcoal disabled:opacity-50"
           >
@@ -103,11 +108,26 @@ function MemberRow({ member, teams, canManage, isCurrentUser, onRoleChange, onTe
           <Button
             variant="ghost"
             size="sm"
-            disabled={busy === member.id}
-            onClick={() => onRemove(member)}
-            className="text-rose-600 hover:bg-rose-50"
+            disabled={busy}
+            onClick={() => onViewSessions(member)}
+            title={`Review and revoke ${member.displayName}'s active sessions`}
           >
-            Remove
+            Sessions
+          </Button>
+          {confirming && !busy && (
+            <Button variant="ghost" size="sm" onClick={onCancelConfirm}>
+              Cancel
+            </Button>
+          )}
+          <Button
+            variant={confirming ? 'danger' : 'ghost'}
+            size="sm"
+            loading={busy}
+            disabled={busy}
+            onClick={() => onRemove(member)}
+            className={confirming ? '' : 'text-rose-600 hover:bg-rose-50'}
+          >
+            {busy ? 'Removing…' : confirming ? 'Confirm remove?' : 'Remove'}
           </Button>
         </div>
       ) : (
@@ -147,8 +167,22 @@ export default function AppOrganizationPage() {
   const [inviteError, setInviteError] = useState('')
   const [isInviting, setIsInviting] = useState(false)
   const [busyId, setBusyId] = useState(null)
+  // Armed two-step confirm for member removal — same pattern as session
+  // revoke / API key revoke: first click arms, second click executes, and the
+  // row shows in-flight loading state while removeMember is pending.
+  const [confirmingRemoveId, setConfirmingRemoveId] = useState(null)
   const [localMembers, setLocalMembers] = useState(null)
   const [localInvites, setLocalInvites] = useState(null)
+  // invite.id → absolute accept link, held in memory only: the backend issues
+  // the raw token once at creation (migration 0015) and persists only its
+  // hash, so the row re-copy works this session and never touches storage.
+  const [inviteLinks, setInviteLinks] = useState({})
+  // Member-sessions drawer (org-admin revocation).
+  const [sessionsMember, setSessionsMember] = useState(null)
+  const [memberSessions, setMemberSessions] = useState(null)
+  const [sessionsLoading, setSessionsLoading] = useState(false)
+  const [sessionsError, setSessionsError] = useState('')
+  const [sessionsBusyId, setSessionsBusyId] = useState(null)
 
   const status = org.status
   const loading = status === 'loading'
@@ -198,7 +232,17 @@ export default function AppOrganizationPage() {
         team: inviteTeam || undefined,
       })
       setLocalInvites((current) => [result.invite, ...(current || org.data?.pendingInvites || [])])
-      toast.success(`Invite sent to ${result.invite.email}`)
+      // The raw token exists only in this response — deliver it via the
+      // share/email link (the backend persists only its SHA-256 hash). Hold
+      // the link in memory so the pending row can re-copy it this session.
+      const inviteLink = shareableUrl('/accept-invite', `token=${result.token}`)
+      setInviteLinks((current) => ({ ...current, [result.invite.id]: inviteLink }))
+      const copied = await copyText(inviteLink)
+      toast.success(
+        copied
+          ? `Invite sent to ${result.invite.email} — invite link copied to clipboard`
+          : `Invite sent to ${result.invite.email}`,
+      )
       closeInvite()
     } catch (error) {
       setInviteError(error instanceof Error ? error.message : 'Invite could not be sent.')
@@ -208,6 +252,7 @@ export default function AppOrganizationPage() {
   }
 
   async function handleTeamChange(member, teamId) {
+    setConfirmingRemoveId(null)
     setBusyId(member.id)
     try {
       await updateMemberTeam(member.id, teamId)
@@ -224,6 +269,7 @@ export default function AppOrganizationPage() {
   }
 
   async function handleRoleChange(member, role) {
+    setConfirmingRemoveId(null)
     setBusyId(member.id)
     try {
       await updateMemberRole(member.id, role)
@@ -238,7 +284,18 @@ export default function AppOrganizationPage() {
     }
   }
 
+  function handleRemoveClick(member) {
+    // First click arms the two-step confirm; second click executes.
+    if (confirmingRemoveId !== member.id) {
+      setConfirmingRemoveId(member.id)
+      return
+    }
+    setConfirmingRemoveId(null)
+    void handleRemove(member)
+  }
+
   async function handleRemove(member) {
+    setConfirmingRemoveId(null)
     setBusyId(member.id)
     try {
       await removeMember(member.id)
@@ -250,6 +307,80 @@ export default function AppOrganizationPage() {
       toast.error(error instanceof Error ? error.message : 'Member could not be removed.')
     } finally {
       setBusyId(null)
+    }
+  }
+
+  async function handleCopyInviteLink(invite) {
+    const link = inviteLinks[invite.id]
+    if (!link) {
+      // Invites seeded before this session never had their token on the
+      // client — the raw token is issued once at creation and hashed at rest.
+      toast.info(
+        'The invite link is only available when the invite is created — cancel and re-invite to issue a fresh one.',
+      )
+      return
+    }
+    const copied = await copyText(link)
+    toast.success(
+      copied
+        ? `Invite link for ${invite.email} copied to clipboard`
+        : 'Invite link could not be copied.',
+    )
+  }
+
+  async function openSessions(member) {
+    setSessionsMember(member)
+    setMemberSessions(null)
+    setSessionsError('')
+    setSessionsLoading(true)
+    try {
+      const result = await getMemberSessions(member.id)
+      setMemberSessions(result.sessions || [])
+    } catch (error) {
+      setSessionsError(error instanceof Error ? error.message : 'Sessions could not be loaded.')
+    } finally {
+      setSessionsLoading(false)
+    }
+  }
+
+  function closeSessions() {
+    setSessionsMember(null)
+    setMemberSessions(null)
+    setSessionsError('')
+    setSessionsBusyId(null)
+  }
+
+  async function handleRevokeSession(session) {
+    if (!sessionsMember) return
+    setSessionsBusyId(session.id)
+    try {
+      await revokeMemberSession(sessionsMember.id, session.id)
+      setMemberSessions((current) =>
+        (current || []).filter((item) => item.id !== session.id),
+      )
+      toast.success(`${session.device} signed out`)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Session could not be revoked.')
+    } finally {
+      setSessionsBusyId(null)
+    }
+  }
+
+  async function handleRevokeAllSessions() {
+    if (!sessionsMember) return
+    setSessionsBusyId('all')
+    try {
+      const result = await revokeMemberSessions(sessionsMember.id)
+      setMemberSessions((current) => (current || []).filter((session) => session.isCurrent))
+      toast.success(
+        result.revoked > 0
+          ? `${result.revoked} session${result.revoked === 1 ? '' : 's'} revoked for ${sessionsMember.displayName}`
+          : 'No other active sessions to revoke',
+      )
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Sessions could not be revoked.')
+    } finally {
+      setSessionsBusyId(null)
     }
   }
 
@@ -324,7 +455,7 @@ export default function AppOrganizationPage() {
         loadingRows={2}
       >
         {!loading && !failed && profile && (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-2xl border border-stone-light bg-parchment px-4 py-4">
               <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">Plan</p>
               <p className="mt-2 font-serif text-2xl text-charcoal">{profile.plan}</p>
@@ -393,9 +524,12 @@ export default function AppOrganizationPage() {
                 canManage={canManage}
                 isCurrentUser={member.id === user?.id}
                 busy={busyId === member.id}
+                confirming={confirmingRemoveId === member.id}
                 onRoleChange={handleRoleChange}
                 onTeamChange={handleTeamChange}
-                onRemove={handleRemove}
+                onRemove={handleRemoveClick}
+                onCancelConfirm={() => setConfirmingRemoveId(null)}
+                onViewSessions={openSessions}
               />
             ))}
           </div>
@@ -422,7 +556,7 @@ export default function AppOrganizationPage() {
           />
         )}
         {!loading && !failed && teams.length > 0 && (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {teams.map((team, index) => {
               const teamMembers = members.filter((m) => m.team === team.id)
               return (
@@ -496,6 +630,14 @@ export default function AppOrganizationPage() {
                   )}
                 </div>
                 <Badge tone="warning" size="sm">Pending</Badge>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleCopyInviteLink(invite)}
+                  title={inviteLinks[invite.id] ? 'Copy the accept link for this invite' : 'The link was available only at creation'}
+                >
+                  Copy invite link
+                </Button>
                 <Button variant="ghost" size="sm" onClick={() => handleCancelInvite(invite)}>
                   Cancel
                 </Button>
@@ -531,7 +673,7 @@ export default function AppOrganizationPage() {
 
           <fieldset>
             <legend className="text-sm font-medium text-charcoal">Team</legend>
-            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
               {teams.map((team) => {
                 const selected = inviteTeam === team.id
                 return (
@@ -559,7 +701,7 @@ export default function AppOrganizationPage() {
 
           <fieldset>
             <legend className="text-sm font-medium text-charcoal">Role</legend>
-            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
               {ROLE_OPTIONS.map((role) => {
                 const selected = inviteRole === role
                 return (
@@ -604,6 +746,107 @@ export default function AppOrganizationPage() {
             </Button>
           </div>
         </form>
+      </Drawer>
+
+      {/* ── Member sessions drawer (org-admin revocation) ─────────────────── */}
+      <Drawer
+        open={Boolean(sessionsMember)}
+        onClose={closeSessions}
+        title={sessionsMember ? `Sessions — ${sessionsMember.displayName}` : 'Sessions'}
+        description={
+          sessionsMember
+            ? 'Active devices for this member. Revoking a session signs that device out immediately.'
+            : ''
+        }
+      >
+        <div className="mt-6 space-y-5">
+          {sessionsMember && (
+            <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-stone-light bg-parchment px-4 py-3">
+              <span className="text-xs text-charcoal-mid">Team</span>
+              <TeamBadge teamId={sessionsMember.team} />
+            </div>
+          )}
+
+          {sessionsLoading && (
+            <p className="text-sm text-charcoal-mid">Loading active sessions…</p>
+          )}
+
+          {!sessionsLoading && sessionsError && (
+            <div
+              role="alert"
+              className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700"
+            >
+              {sessionsError}
+            </div>
+          )}
+
+          {!sessionsLoading && !sessionsError && (memberSessions || []).length === 0 && (
+            <p className="text-sm text-charcoal-mid">No active sessions tracked for this member.</p>
+          )}
+
+          {!sessionsLoading && !sessionsError && (memberSessions || []).length > 0 && (
+            <div className="space-y-3">
+              {memberSessions.map((session) => (
+                <div
+                  key={session.id}
+                  className="flex flex-wrap items-center gap-3 rounded-2xl border border-stone-light bg-parchment px-4 py-3.5"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="truncate text-sm font-medium text-charcoal">
+                        {session.device}
+                      </p>
+                      {session.isCurrent && (
+                        <Badge tone="success" size="sm">
+                          This device
+                        </Badge>
+                      )}
+                      {session.isNewDevice && (
+                        <Badge
+                          tone="warning"
+                          size="sm"
+                          title="First time this device has been seen for this member"
+                        >
+                          New device
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="mt-0.5 truncate text-xs text-charcoal-mid">
+                      {session.location} · {session.ipAddress}
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-charcoal-light">
+                      Last active {formatRelativeTime(session.lastActiveAt)}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={session.isCurrent || sessionsBusyId === session.id}
+                    onClick={() => handleRevokeSession(session)}
+                    className="text-rose-600 hover:bg-rose-50"
+                  >
+                    Revoke
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {!sessionsLoading && !sessionsError && (memberSessions || []).length > 0 && (
+            <div className="flex justify-end pt-1">
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={sessionsBusyId === 'all'}
+                onClick={handleRevokeAllSessions}
+              >
+                {sessionsBusyId === 'all'
+                  ? 'Revoking sessions…'
+                  : 'Revoke all other sessions'}
+              </Button>
+            </div>
+          )}
+        </div>
       </Drawer>
     </div>
   )

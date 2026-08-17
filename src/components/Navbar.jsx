@@ -42,7 +42,7 @@ export default function Navbar() {
       }`}
     >
       <div className="content-container flex items-center justify-between h-16 md:h-20 px-4 md:px-6">
-        <Link to="/" className="flex items-center gap-2 group">
+        <Link to="/" className="flex items-center gap-2 py-1 group">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-charcoal shadow-[0_10px_30px_rgba(19,22,29,0.18)]">
             <span className="text-parchment text-sm font-serif font-semibold">P</span>
           </div>
@@ -54,7 +54,7 @@ export default function Navbar() {
           </div>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-8">
+        <nav className="hidden lg:flex items-center gap-8">
           {NAV_ITEMS.map((item) => (
             <Link
               key={item.href}
@@ -101,7 +101,7 @@ export default function Navbar() {
         </nav>
 
         <button
-          className="md:hidden flex flex-col gap-1.5 p-2"
+          className="lg:hidden flex h-11 w-11 flex-col items-center justify-center gap-1.5 rounded-lg"
           onClick={() => setMobileOpen(!mobileOpen)}
           aria-label="Toggle menu"
           aria-expanded={mobileOpen}
@@ -120,7 +120,7 @@ export default function Navbar() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-parchment/95 backdrop-blur-xl border-b border-stone-light overflow-hidden"
+            className="lg:hidden bg-parchment/95 backdrop-blur-xl border-b border-stone-light overflow-hidden"
           >
             <div className="px-6 py-6 flex flex-col gap-4">
               {NAV_ITEMS.map((item) => (
@@ -128,7 +128,7 @@ export default function Navbar() {
                   key={item.href}
                   to={item.href}
                   onClick={() => setMobileOpen(false)}
-                  className={`text-base font-medium transition-colors ${
+                  className={`inline-flex min-h-11 items-center text-base font-medium transition-colors ${
                     isActive(item.href) ? 'text-charcoal' : 'text-charcoal-mid hover:text-charcoal'
                   }`}
                 >
@@ -139,7 +139,7 @@ export default function Navbar() {
                 <>
                   <Link
                     to="/app"
-                    className="text-base text-charcoal-mid hover:text-charcoal transition-colors"
+                    className="inline-flex min-h-11 items-center text-base text-charcoal-mid hover:text-charcoal transition-colors"
                   >
                     Dashboard
                   </Link>
@@ -155,7 +155,7 @@ export default function Navbar() {
                 <>
                   <Link
                     to="/signin"
-                    className="text-base text-charcoal-mid hover:text-charcoal transition-colors"
+                    className="inline-flex min-h-11 items-center text-base text-charcoal-mid hover:text-charcoal transition-colors"
                   >
                     Sign In
                   </Link>

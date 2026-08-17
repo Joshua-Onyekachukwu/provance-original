@@ -15,8 +15,8 @@
  * inert — useDemoState always returns null and overrides never apply.
  */
 
-import { useMemo } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useCallback, useMemo } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 const VALID_STATES = ['loading', 'empty', 'error']
 
@@ -32,6 +32,36 @@ export function useDemoState() {
     const value = new URLSearchParams(location.search).get('state')
     return VALID_STATES.includes(value) ? value : null
   }, [location.search])
+}
+
+/**
+ * Combines useDemoState with the URL-syncing select handler used by the
+ * DemoStateBanner, so every page drives the same `?state=` param the same way:
+ *
+ *   const { demoState, selectDemoState } = useDemoStateControl()
+ *   <DemoStateBanner demoState={demoState} onSelect={selectDemoState} />
+ *
+ * In production builds this is fully inert (useDemoState returns null and
+ * selectDemoState never mutates the URL — both short-circuit on !DEV).
+ */
+export function useDemoStateControl() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const demoState = useDemoState()
+
+  const selectDemoState = useCallback(
+    (value) => {
+      if (!import.meta.env.DEV) return
+      const params = new URLSearchParams(location.search)
+      if (value) params.set('state', value)
+      else params.delete('state')
+      const search = params.toString()
+      navigate(`${location.pathname}${search ? `?${search}` : ''}`, { replace: true })
+    },
+    [location.pathname, location.search, navigate],
+  )
+
+  return { demoState, selectDemoState }
 }
 
 /**

@@ -26,6 +26,22 @@ function parsePositiveInteger(
   return parsed;
 }
 
+function parseNonNegativeNumber(
+  value: string | undefined,
+  fallback: number,
+  key: string,
+): number {
+  if (value === undefined || value === '') return fallback;
+
+  const parsed = Number(value);
+
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    throw new Error(`${key} must be a non-negative number.`);
+  }
+
+  return parsed;
+}
+
 function validateOriginList(value: string | undefined): string {
   const configuredOrigins = (value?.trim() || '')
     .split(',')
@@ -110,6 +126,67 @@ function validateSameSite(value: string | undefined): string {
   return normalized;
 }
 
+/**
+ * Better Auth envs are optional — the backend must boot without them (the
+ * auth provider runs stateless until DATABASE_URL is provided). When set,
+ * they are validated strictly.
+ */
+function validateOptionalSecret(
+  value: string | undefined,
+  key: string,
+): string | undefined {
+  const secret = value?.trim();
+
+  if (secret && secret.length < 32) {
+    throw new Error(`${key} must be at least 32 characters.`);
+  }
+
+  return secret;
+}
+
+function validateOptionalHttpUrl(
+  value: string | undefined,
+  key: string,
+): string | undefined {
+  const url = value?.trim();
+
+  if (!url) {
+    return undefined;
+  }
+
+  try {
+    const parsed = new URL(url);
+
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      throw new Error();
+    }
+  } catch {
+    throw new Error(`${key} must be a valid http(s) URL.`);
+  }
+
+  return url;
+}
+
+function validateDatabaseUrl(value: string | undefined): string | undefined {
+  const url = value?.trim();
+
+  if (!url) {
+    return undefined;
+  }
+
+  try {
+    const parsed = new URL(url);
+
+    if (!['postgres:', 'postgresql:'].includes(parsed.protocol)) {
+      throw new Error();
+    }
+  } catch {
+    throw new Error('DATABASE_URL must be a valid postgres:// or postgresql:// URL.');
+  }
+
+  return url;
+}
+
 export function validateEnv(config: Record<string, unknown>) {
   const env = config as Record<string, string | undefined>;
   const supabaseUrl = env.SUPABASE_URL?.trim();
@@ -173,6 +250,22 @@ export function validateEnv(config: Record<string, unknown>) {
       env.SUPABASE_ORGANIZATION_MEMBERS_TABLE?.trim() || 'organization_members',
     SUPABASE_ORGANIZATION_INVITES_TABLE:
       env.SUPABASE_ORGANIZATION_INVITES_TABLE?.trim() || 'organization_invites',
+    SUPABASE_USER_SESSIONS_TABLE:
+      env.SUPABASE_USER_SESSIONS_TABLE?.trim() || 'user_sessions',
+    SUPABASE_USER_SECURITY_SETTINGS_TABLE:
+      env.SUPABASE_USER_SECURITY_SETTINGS_TABLE?.trim() || 'user_security_settings',
+    SUPABASE_API_USAGE_TABLE: env.SUPABASE_API_USAGE_TABLE?.trim() || 'api_usage',
+    // Path to the repo migrations dir for the migration-diff health check.
+    // Defaults to <repo root>/supabase/migrations (resolved from __dirname).
+    MIGRATIONS_DIR: env.MIGRATIONS_DIR?.trim() || undefined,
+    PASSWORD_MIN_LENGTH: parsePositiveInteger(
+      env.PASSWORD_MIN_LENGTH,
+      8,
+      'PASSWORD_MIN_LENGTH',
+    ),
+    PASSWORD_REQUIRE_UPPERCASE: isTruthy(env.PASSWORD_REQUIRE_UPPERCASE, true),
+    PASSWORD_REQUIRE_NUMBER: isTruthy(env.PASSWORD_REQUIRE_NUMBER, true),
+    PASSWORD_REQUIRE_SYMBOL: isTruthy(env.PASSWORD_REQUIRE_SYMBOL, true),
     STORAGE_CAPACITY_GB: parsePositiveInteger(env.STORAGE_CAPACITY_GB, 500, 'STORAGE_CAPACITY_GB'),
     DB_MAX_CONNECTIONS: parsePositiveInteger(
       env.DB_MAX_CONNECTIONS,
@@ -195,12 +288,41 @@ export function validateEnv(config: Record<string, unknown>) {
       30,
       'AUTH_COOKIE_MAX_AGE_DAYS',
     ),
+    // Better Auth — optional parallel auth provider (see better-auth.config.ts).
+    // Flag-gated (default OFF): the provider only registers email/password +
+    // session + plugin routes when USE_BETTER_AUTH is truthy AND DATABASE_URL
+    // is set; the live GoTrue flow at /v1/auth/* is untouched either way.
+    USE_BETTER_AUTH: isTruthy(env.USE_BETTER_AUTH, false),
+    BETTER_AUTH_SECRET: validateOptionalSecret(
+      env.BETTER_AUTH_SECRET,
+      'BETTER_AUTH_SECRET',
+    ),
+    BETTER_AUTH_URL: validateOptionalHttpUrl(env.BETTER_AUTH_URL, 'BETTER_AUTH_URL'),
+    DATABASE_URL: validateDatabaseUrl(env.DATABASE_URL),
     SCAN_PROCESSING_QUEUE_NAME:
       env.SCAN_PROCESSING_QUEUE_NAME?.trim() || 'scan-processing',
     WORKER_CONCURRENCY: parsePositiveInteger(
       env.WORKER_CONCURRENCY,
       4,
       'WORKER_CONCURRENCY',
+    ),
+    // Retention windows (days) for completed reports and audit events. These
+    // are surfaced in admin settings and drive the retention policy documented
+    // in docs/engineering/RETENTION_POLICY.md.
+    REPORT_RETENTION_DAYS: parsePositiveInteger(
+      env.REPORT_RETENTION_DAYS,
+      365,
+      'REPORT_RETENTION_DAYS',
+    ),
+    SCAN_OVERAGE_PRICE_USD: parseNonNegativeNumber(
+      env.SCAN_OVERAGE_PRICE_USD,
+      0.05,
+      'SCAN_OVERAGE_PRICE_USD',
+    ),
+    AUDIT_RETENTION_DAYS: parsePositiveInteger(
+      env.AUDIT_RETENTION_DAYS,
+      730,
+      'AUDIT_RETENTION_DAYS',
     ),
   };
 }

@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import InteractivePanel from './InteractivePanel'
 import ForensicMediaFrame from './ForensicMediaFrame'
 import { mockReports } from '../lib/mockData.js'
+import { TONE_BAR, TONE_LABEL, signalTone } from '../lib/showcaseTone.js'
 
 // ---------------------------------------------------------------------------
 // Demo dataset — the interactive showcase is driven by a real entry from the
@@ -49,15 +50,6 @@ const SCHEDULE = {
   settle: 950, // gap between the last signal and the "complete" state
 }
 
-function signalTone(finding) {
-  const text = finding || ''
-  if (/(no |verified|consistent|present|normal|match|complete)/i.test(text)) return 'ok'
-  if (/(detected|incomplete|anomal|break|signature|located)/i.test(text)) return 'warn'
-  return 'neutral'
-}
-
-const TONE_BAR = { ok: 'bg-emerald-500', warn: 'bg-amber', neutral: 'bg-amber-light' }
-const TONE_LABEL = { ok: 'No anomaly flagged', warn: 'Anomaly flagged', neutral: 'Under review' }
 
 // ---------------------------------------------------------------------------
 // In-view detection — fires once when the section enters the viewport.
@@ -538,7 +530,7 @@ export default function ProductShowcase() {
           </p>
         </motion.div>
 
-        <div className="grid gap-6 lg:grid-cols-[1.55fr_0.85fr]">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.55fr_0.85fr]">
           <InteractivePanel className="rounded-[2rem] border border-stone-light/80 bg-white-warm/85 shadow-[0_28px_80px_rgba(26,26,26,0.12)] backdrop-blur-xl">
             <div className="relative z-10 p-5 md:p-7">
               <div className="flex flex-wrap items-center justify-between gap-4 border-b border-stone-light/90 pb-4">
@@ -563,7 +555,7 @@ export default function ProductShowcase() {
                     type="button"
                     onClick={replay}
                     disabled={isRunning}
-                    className="ui-focus-ring inline-flex items-center gap-1.5 rounded-full border border-charcoal/15 bg-white-warm px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.16em] text-charcoal transition hover:border-charcoal/35 hover:bg-parchment disabled:cursor-not-allowed disabled:opacity-50"
+                    className="ui-focus-ring inline-flex min-h-11 items-center gap-1.5 rounded-full border border-charcoal/15 bg-white-warm px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.16em] text-charcoal transition hover:border-charcoal/35 hover:bg-parchment disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <svg
                       viewBox="0 0 20 20"
@@ -583,7 +575,7 @@ export default function ProductShowcase() {
                 </div>
               </div>
 
-              <div className="mt-6 grid gap-5 xl:grid-cols-[0.95fr_0.95fr_0.9fr]">
+              <div className="mt-6 grid grid-cols-1 gap-5 xl:grid-cols-[0.95fr_0.95fr_0.9fr]">
                 {/* Uploaded asset */}
                 <div className="space-y-5 xl:col-span-1">
                   <div className="rounded-[1.5rem] border border-stone-light/80 bg-parchment/70 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]">
@@ -613,7 +605,7 @@ export default function ProductShowcase() {
                         className="rounded-[1.1rem] border-0"
                       />
                     </div>
-                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                       {[
                         ['File type', 'Video with audio'],
                         ['Duration', '00:42'],

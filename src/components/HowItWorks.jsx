@@ -33,7 +33,7 @@ export default function HowItWorks() {
           {/* Connecting line */}
           <div className="hidden lg:block absolute top-1/2 left-[17%] right-[17%] h-px bg-stone-light/90 -translate-y-1/2" />
 
-          <div className="grid lg:grid-cols-3 gap-8 lg:gap-12">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
             {steps.map((step, i) => (
               <motion.div
                 key={step.num}

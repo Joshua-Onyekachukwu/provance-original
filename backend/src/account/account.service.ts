@@ -1,9 +1,15 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import {
+  ACTIVITY_CATEGORY_ACTIONS,
+  ACTIVITY_CATEGORY_LIKE_PATTERNS,
+  type ActivityCategory,
+} from './activity-categories';
 import { auditSeverity } from '../common/audit-severity';
 import type { CurrentUserPayload } from '../common/decorators/current-user.decorator';
 import { SupabaseService } from '../supabase/supabase.service';
@@ -32,40 +38,56 @@ type ActivityRow = {
   created_at: string;
 };
 
-// Category → action matching, mirroring the frontend Activity page tabs
-// (src/pages/app/AppActivityPage.jsx CATEGORIES) so real-mode filtering
-// behaves identically to the client-side tabs.
-type ActivityCategory = 'all' | 'scans' | 'exports' | 'account' | 'team' | 'system';
-
-const ACTIVITY_CATEGORY_ACTIONS: Record<
-  Exclude<ActivityCategory, 'all' | 'scans' | 'exports'>,
-  string[]
-> = {
-  account: [
-    'user.invited',
-    'user.activated',
-    'settings.updated',
-    'api_key.created',
-    'api_key.revoked',
-    'invite.accepted',
-    // Real services write the underscore form (see audit-severity.ts).
-    'invite_created',
-  ],
-  team: ['team.member_added', 'team.member_removed', 'role.changed', 'org.created'],
-  system: [
-    'waitlist.reviewed',
-    'waitlist.approved',
-    'waitlist.rejected',
-    'waitlist.deferred',
-    'feature_flag.toggled',
-    // Real services write the underscore form (see audit-severity.ts).
-    'waitlist_reviewed',
-  ],
+type IncidentRow = {
+  id: string;
+  severity: string;
+  started_at: string;
+  resolved_at: string | null;
+  summary: string;
 };
+
+type AdminClient = NonNullable<ReturnType<SupabaseService['getAdminClient']>>;
+
+type ActivityEvent = {
+  id: string;
+  actor_email: string;
+  action: string;
+  severity: string;
+  resource_type: string;
+  resource_id: string | null;
+  created_at: string;
+  summary?: string;
+};
+
+/**
+ * isMissingRelationError — true when a PostgREST error means the queried table
+ * does not exist yet (migration not applied). These errors degrade to empty
+ * feeds/defaults rather than surfacing 503s, matching the security/scans
+ * best-effort pattern so fresh DBs never break auth or activity flows.
+ */
+function isMissingRelationError(error: unknown): boolean {
+  const message =
+    typeof error === 'object' && error !== null && 'message' in error
+      ? String((error as { message: string }).message)
+      : '';
+  return (
+    message.includes('Could not find the table') ||
+    message.includes('relation') ||
+    message.includes('PGRST205') ||
+    message.includes('does not exist')
+  );
+}
+
+// Category → action matching lives in ./activity-categories (a pure module
+// the frontend's parity test imports directly) — mirroring the frontend
+// Activity page tabs so real-mode filtering behaves identically to the
+// client-side tabs.
 
 @Injectable()
 export class AccountService {
+  private readonly logger = new Logger(AccountService.name);
   private readonly auditTable: string;
+  private readonly incidentsTable: string;
 
   constructor(
     private readonly supabaseService: SupabaseService,
@@ -73,6 +95,8 @@ export class AccountService {
   ) {
     this.auditTable =
       this.configService.get<string>('SUPABASE_AUDIT_EVENTS_TABLE') || 'auth_audit_events';
+    this.incidentsTable =
+      this.configService.get<string>('SUPABASE_ADMIN_INCIDENTS_TABLE') || 'admin_incidents';
   }
 
   async getCurrentViewer(user: CurrentUserPayload) {
@@ -157,8 +181,10 @@ export class AccountService {
    *
    * auth_audit_events has no user_id column, so events are matched by
    * actor_email (the identity the backend writes when the user acts).
-   * Supports the same category semantics as the Activity page tabs and a
-   * pagination envelope matching mockGetActivityLogs.
+   * Resolved incidents from admin_incidents are merged in as system events
+   * (the same incident.resolved rows the mock feed emits), and the combined
+   * feed is sorted newest-first and paginated in memory — mirroring
+   * mockGetActivityLogs exactly so real and mock pages line up.
    */
   async getActivity(
     user: CurrentUserPayload,
@@ -188,15 +214,27 @@ export class AccountService {
       ? input.category
       : 'all';
 
-    // ── Scoped query (filters applied to both data + count) ─────────────────
-    // Resolved once, then applied to both builders below — mirrors the
-    // conditional chaining pattern in admin.service.ts countMembers().
+    // Incidents are system-wide (no owner), so they only join the feed where
+    // the frontend tabs surface them: 'all' and 'system'.
+    const includeIncidents = category === 'all' || category === 'system';
+
+    // ── Scoped audit query (email + category filter) ────────────────────────
+    // All matching rows are fetched — a single user's trail is bounded — and
+    // pagination happens over the merged feed below.
     const categoryFilter = (() => {
       if (category === 'scans') {
-        return { type: 'like' as const, column: 'action' as const, value: 'scan.%' };
+        return {
+          type: 'like' as const,
+          column: 'action' as const,
+          value: ACTIVITY_CATEGORY_LIKE_PATTERNS.scans,
+        };
       }
       if (category === 'exports') {
-        return { type: 'like' as const, column: 'action' as const, value: 'report.%' };
+        return {
+          type: 'like' as const,
+          column: 'action' as const,
+          value: ACTIVITY_CATEGORY_LIKE_PATTERNS.exports,
+        };
       }
       const actions = category === 'all' ? undefined : ACTIVITY_CATEGORY_ACTIONS[category];
       return actions
@@ -204,53 +242,91 @@ export class AccountService {
         : null;
     })();
 
-    let dataQuery = adminClient
+    let auditQuery = adminClient
       .from(this.auditTable)
       .select('id,actor_email,action,entity_type,entity_id,created_at')
       .eq('actor_email', email)
-      .order('created_at', { ascending: false })
-      .range(from, to);
-
-    let countQuery = adminClient
-      .from(this.auditTable)
-      .select('id', { count: 'exact', head: true })
-      .eq('actor_email', email);
+      .order('created_at', { ascending: false });
 
     if (categoryFilter?.type === 'like') {
-      dataQuery = dataQuery.like(categoryFilter.column, categoryFilter.value);
-      countQuery = countQuery.like(categoryFilter.column, categoryFilter.value);
+      auditQuery = auditQuery.like(categoryFilter.column, categoryFilter.value);
     } else if (categoryFilter?.type === 'in') {
-      dataQuery = dataQuery.in(categoryFilter.column, categoryFilter.values);
-      countQuery = countQuery.in(categoryFilter.column, categoryFilter.values);
+      auditQuery = auditQuery.in(categoryFilter.column, categoryFilter.values);
     }
 
-    const [{ data, error }, { count, error: countError }] = await Promise.all([
-      dataQuery,
-      countQuery,
-    ]);
+    const { data, error } = await auditQuery;
 
-    if (error || countError) {
+    if (error) {
       throw new ServiceUnavailableException('Failed to load account activity.');
     }
 
-    const rows = (data ?? []) as ActivityRow[];
-    const total = count ?? rows.length;
+    const auditEvents = ((data ?? []) as ActivityRow[]).map((row) => ({
+      id: row.id,
+      actor_email: row.actor_email || 'system',
+      action: row.action,
+      severity: auditSeverity(row.action),
+      resource_type: row.entity_type,
+      resource_id: row.entity_id,
+      created_at: row.created_at,
+    }));
+
+    const incidentEvents = includeIncidents
+      ? await this.fetchResolvedIncidentEvents(adminClient)
+      : [];
+
+    // Merge + sort newest-first + slice in memory (mirrors mockGetActivityLogs).
+    const merged = [...incidentEvents, ...auditEvents].sort(
+      (left, right) =>
+        new Date(right.created_at).getTime() - new Date(left.created_at).getTime(),
+    );
+    const total = merged.length;
 
     return {
-      data: rows.map((row) => ({
-        id: row.id,
-        actor_email: row.actor_email || 'system',
-        action: row.action,
-        severity: auditSeverity(row.action),
-        resource_type: row.entity_type,
-        resource_id: row.entity_id,
-        created_at: row.created_at,
-      })),
+      data: merged.slice(from, to + 1),
       page: safePage,
       pageSize: safePageSize,
       total,
       totalPages: Math.max(1, Math.ceil(total / safePageSize)),
     };
+  }
+
+  /**
+   * fetchResolvedIncidentEvents — maps resolved admin_incidents rows to the
+   * incident.resolved system events the Activity feed surfaces, carrying the
+   * same severity + post-mortem summary the Monitoring page shows.
+   *
+   * Best-effort: when the table is missing (migration 0007 not applied), the
+   * feed degrades to the audit trail alone instead of failing.
+   */
+  private async fetchResolvedIncidentEvents(
+    adminClient: AdminClient,
+  ): Promise<ActivityEvent[]> {
+    const { data, error } = await adminClient
+      .from(this.incidentsTable)
+      .select('id,severity,started_at,resolved_at,summary')
+      .eq('status', 'resolved')
+      .order('resolved_at', { ascending: false });
+
+    if (error) {
+      if (isMissingRelationError(error)) {
+        this.logger.warn(
+          'Activity feed skipped incidents — admin_incidents table missing (migration 0007 not applied).',
+        );
+        return [];
+      }
+      throw new ServiceUnavailableException('Failed to load account activity.');
+    }
+
+    return ((data ?? []) as IncidentRow[]).map((incident) => ({
+      id: `incident_${incident.id}`,
+      action: 'incident.resolved',
+      actor_email: 'system',
+      severity: incident.severity,
+      resource_type: 'incident',
+      resource_id: incident.id,
+      created_at: incident.resolved_at || incident.started_at,
+      summary: incident.summary,
+    }));
   }
 
   private isActivityCategory(value: string | undefined): value is ActivityCategory {

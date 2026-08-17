@@ -34,8 +34,53 @@ jobs:
       - name: Test (vitest)
         run: npm test
 
+      - name: Grid class guard (mobile-first sweep)
+        run: npm run guard:grid
+        # Repo-wide static scan: every responsive grid-cols-* must declare an
+        # explicit base grid-cols-1 (or be a breakpoint-gated grid / reviewed
+        # allowlist entry). Runs alongside vitest so a copy-pasted desktop-only
+        # grid className fails CI before it ships.
+
       - name: Build
         run: npm run build
+
+      - name: Smoke test built app (vite preview + route curls)
+        run: npm run check:smoke
+        # Boots `vite preview` against dist/ and curls /, /benchmark, /app,
+        # /app/admin — fails the build on non-200 responses, an empty SPA
+        # shell, a missing #root mount, or a missing hashed JS bundle.
+        # Client-side rendering can't be asserted via curl; this gate catches
+        # the shell/asset regressions that produce blank pages.
+
+  responsive:
+    name: Responsive audit (640-1280 overflow gate)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium (Playwright)
+        run: npx playwright install --with-deps chromium
+
+      - name: Responsive audit (640/768/1024/1280)
+        run: npm run audit:responsive
+        # Boots vite in mock mode, signs in as the seeded mock admin, and walks
+        # every public + /app/* + /app/admin/* route at 640px, 768px, 1024px,
+        # and 1280px, failing on page-level horizontal overflow or clipped
+        # in-flow elements (the grid/table regression class). New routes must be
+        # added to the inventory in scripts/audit-responsive.mjs to stay under
+        # the gate.
 
   backend:
     name: Backend (build · unit · e2e)

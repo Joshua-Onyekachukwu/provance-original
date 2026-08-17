@@ -5,8 +5,17 @@
  * promises resolved after a realistic delay so loading and error states can be
  * tested end-to-end without a backend.
  *
- * 5–10% of calls randomly error out to exercise error-state rendering.
+ * ~8% of calls randomly error out (maybeError default rate) to exercise
+ * error-state rendering.
+ *
+ * Dev-only kill switch: append `?noisy=0` to the URL (or set
+ * localStorage['provance.mock.noisy.v1'] = '0') to disable the random error
+ * injection during interactive demos — see mockNoise.js.
  */
+
+import { isNoiseDisabled } from './mockNoise.js'
+import { projectScanUsage } from './scanQuota.js'
+import { computeNewDeviceFlags } from './sessionTrust.js'
 
 import {
   mockUsers,
@@ -25,20 +34,29 @@ import {
   mockBillingProfile,
   mockInvoices,
   mockSecuritySettings,
+  NOW_TS,
   mockApiKeys,
   API_KEY_SCOPES,
   mockApiKeyLimits,
+  mockWebhooks,
+  WEBHOOK_EVENTS,
+  mockWebhookLimits,
+  mockWebhookDeliveries,
   mockDocsContent,
   mockHelpContent,
   mockOrgTeams,
   mockOrgWorkspace,
   mockUserTeamById,
+  mockMemberSessionsByUserId,
   buildIncidentActivityEvents,
   mockAdminJobs,
   mockAdminRoles,
+  mockRoleMembers,
+  mockRoleAuditEvents,
   mockRoleScopeMeta,
   mockAdminSettings,
   buildAdminDashboard,
+  AUDIT_SEVERITY_BY_ACTION,
 } from './mockData.js'
 
 // ---------------------------------------------------------------------------
@@ -51,9 +69,62 @@ function delay(min = 200, max = 600) {
 }
 
 function maybeError(rate = 0.08) {
+  if (isNoiseDisabled()) return
   if (Math.random() < rate) {
     throw new Error('Mock API: simulated transient error. Please try again.')
   }
+}
+
+/**
+ * Dev-only quota forcing — `?quota=exhausted` in the URL makes the mock
+ * entitlement layer behave as if the current cycle's scan quota is spent, so
+ * the 402 upload surface and the Billing exhausted banner can be reviewed
+ * without waiting for 500 mock scans. Inert in production builds.
+ */
+function mockQuotaExhausted() {
+  if (!import.meta.env.DEV) return false
+  return new URLSearchParams(window.location.search).get('quota') === 'exhausted'
+}
+
+/**
+ * Dev-only quota-high forcing — `?quota=high` pushes scansUsed to 90% of the
+ * plan limit so the dashboard's ≥85% warning chip renders for review. Inert
+ * in production builds — same pattern as `?quota=exhausted`.
+ */
+function mockQuotaHigh() {
+  if (!import.meta.env.DEV) return false
+  return new URLSearchParams(window.location.search).get('quota') === 'high'
+}
+
+/**
+ * Dev-only dedup forcing — `?dedup=1` makes mockSubmitScan treat the next
+ * submission as an identical file, completing it instantly with a reused
+ * payload copied from the first seeded completed scan. Lets the reuse UX be
+ * demoed without uploading the same file twice (mock scans never complete on
+ * their own, so an honest lookup would otherwise never hit). Inert in
+ * production builds — same pattern as `?quota=exhausted`.
+ */
+function mockDedupForced() {
+  if (!import.meta.env.DEV) return false
+  return new URLSearchParams(window.location.search).get('dedup') === '1'
+}
+
+/**
+ * pseudoSha256 — deterministic stand-in for the worker's SHA-256 fingerprint.
+ * Mock mode never uploads real bytes, so the hash is derived from the file's
+ * identity (name + size) rather than its content. Stable across reloads, so a
+ * second upload of the same file in a session shares a hash — the exact
+ * property the real worker-side dedup relies on. FNV-1a expanded to a
+ * 64-char hex string so it reads like the real fingerprint.
+ */
+function pseudoSha256(name, sizeBytes) {
+  let hash = 0x811c9dc5
+  const input = `${name}|${sizeBytes}`.toLowerCase()
+  for (let i = 0; i < input.length; i += 1) {
+    hash ^= input.charCodeAt(i)
+    hash = Math.imul(hash, 0x01000193)
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0').repeat(8)
 }
 
 function findById(collection, id) {
@@ -162,14 +233,84 @@ function buildAuthResponse(account, loginEmail) {
   }
 }
 
-export async function mockSignInWithPassword({ email, password } = {}) {
+/**
+ * Seen (user, device, ip) combos — mock parity for the backend's new-device
+ * detection. Mirrors SecurityService.isNewDeviceCombo: a combo with no prior
+ * sign-in triggers a new_device_signin audit event, and — when the
+ * notifyOnNewDevice control is on — a security notification + mock email.
+ */
+const mockSeenDeviceCombos = new Set()
+
+export async function mockSignInWithPassword({ email, password, meta } = {}) {
   await delay()
   const key = (email || '').trim().toLowerCase()
   const account = MOCK_TEST_ACCOUNTS[key]
   if (!account || !password || password.length < 8) {
     throw new Error('Invalid login credentials. Check your email and password.')
   }
+  await mockRecordNewDeviceSignIn({
+    userId: account.user.id,
+    email: account.user.email,
+    meta,
+  })
   return buildAuthResponse(account, email.trim())
+}
+
+/**
+ * mockRecordNewDeviceSignIn — the mock half of the backend's new-device
+ * detection. A first-time (user, device, ip) combo writes a high-severity
+ * audit event unconditionally and, when notifyOnNewDevice is enabled, a
+ * security notification + a console mock-email line. Exporting it lets the
+ * parity test drive combos directly instead of round-tripping a sign-in.
+ */
+export async function mockRecordNewDeviceSignIn({ userId, email, meta } = {}) {
+  const device = meta?.device || 'Chrome on Windows'
+  const ipAddress = meta?.ipAddress || '127.0.0.1'
+  const location = meta?.location || null
+  const combo = `${userId}|${device}|${ipAddress}`
+
+  if (mockSeenDeviceCombos.has(combo)) {
+    return { isNewDevice: false }
+  }
+  mockSeenDeviceCombos.add(combo)
+
+  // Unconditional high-severity audit event (matches the backend trail).
+  mockAuditEvents.unshift({
+    id: `audit_live_${Date.now()}_${String(++mockAuditLiveSeq).padStart(3, '0')}`,
+    actor_email: email || null,
+    action: 'new_device_signin',
+    severity: AUDIT_SEVERITY_BY_ACTION['new_device_signin'],
+    resource_type: 'auth_session',
+    resource_id: userId,
+    details: { device, ip_address: ipAddress, location },
+    created_at: new Date().toISOString(),
+  })
+
+  if (!mockSecuritySettings.signInControls.notifyOnNewDevice) {
+    return { isNewDevice: true }
+  }
+
+  // In-app notification (bell + notification center).
+  mockNotifications.unshift({
+    id: `notif_live_${Date.now()}_${String(++mockAuditLiveSeq).padStart(3, '0')}`,
+    category: 'security',
+    title: 'New device sign-in detected',
+    description: `${device} signed in from ${ipAddress}${
+      location ? ` (${location})` : ''
+    }.`,
+    read: false,
+    link: '/app/security',
+    created_at: new Date().toISOString(),
+  })
+
+  // Mock email — mirrors the backend's [mock-email] log line contract.
+  // eslint-disable-next-line no-console
+  console.log(
+    `[mock-email] To: ${email || userId} — Subject: "New device sign-in detected" — ` +
+      `${device} from ${ipAddress}${location ? ` (${location})` : ''} — secure your account if this wasn't you.`,
+  )
+
+  return { isNewDevice: true }
 }
 
 /**
@@ -226,10 +367,14 @@ export async function mockGetAdminDashboard() {
   return buildAdminDashboard()
 }
 
-export async function mockGetAdminUsers({ page = 1, pageSize = 20 } = {}) {
+export async function mockGetAdminUsers({ page = 1, pageSize = 20, team } = {}) {
   await delay()
   maybeError()
-  return paginate(mockUsers, { page, pageSize })
+  let rows = mockUsers
+  if (team && team !== 'all') {
+    rows = mockUsers.filter((user) => user.team_id === team)
+  }
+  return paginate(rows, { page, pageSize })
 }
 
 export async function mockGetOrganizations() {
@@ -341,11 +486,48 @@ export async function mockGetScan(id) {
 /**
  * mockInitiateScan — reserves a verification record and returns the signed
  * upload contract (bucket/path/token). Mirrors POST /scans.
+ *
+ * Enforces the mock plan quota: once the billing profile's scansUsed reaches
+ * scansLimit, new scans are rejected with a 402-shaped error carrying
+ * retryAfterSeconds (matching the real /scans entitlement gate). Dev-only
+ * forcing: append ?quota=exhausted to demo the 402 surface without waiting.
  */
-export async function mockInitiateScan(payload = {}) {
+export async function mockInitiateScan(payload = {}, idempotencyKey) {
   await delay(350, 700)
-  const scanId = newestScanId()
+
   const creatorId = mockUsers[0]?.id || 'usr_001'
+
+  // Idempotency parity with POST /scans: a retried initiate with the same key
+  // returns the original reservation while the record is still pre-submission
+  // (no submitted_at), checked before the quota gate so the retry never
+  // double-consumes the allowance.
+  if (idempotencyKey) {
+    const existing = mockScanStore.find(
+      (scan) =>
+        scan.user_id === creatorId &&
+        scan.idempotency_key === idempotencyKey &&
+        !scan.submitted_at,
+    )
+    if (existing) {
+      return {
+        scanId: existing.id,
+        bucket: 'mock-private-uploads',
+        path: `scans/${existing.id}/original`,
+        token: 'mock_signed_upload_token',
+      }
+    }
+  }
+
+  if (mockQuotaExhausted()) {
+    const error = new Error(
+      'Monthly scan quota reached. Upgrade your plan or wait for the cycle to reset.',
+    )
+    error.status = 402
+    error.retryAfterSeconds = 86400
+    throw error
+  }
+
+  const scanId = newestScanId()
   const record = {
     id: scanId,
     user_id: creatorId,
@@ -358,6 +540,14 @@ export async function mockInitiateScan(payload = {}) {
     status: 'queued',
     verdict: null,
     result_payload: null,
+    // Mock parity with the worker's SHA-256: recorded at initiate time so the
+    // dedup lookup in mockSubmitScan is an equality match, like the real
+    // scans_user_hash_complete_idx path.
+    file_hash_sha256: pseudoSha256(
+      payload.originalFilename || 'upload.jpg',
+      payload.fileSizeBytes || 0,
+    ),
+    idempotency_key: idempotencyKey || null,
     created_at: new Date().toISOString(),
     completed_at: null,
   }
@@ -371,6 +561,103 @@ export async function mockInitiateScan(payload = {}) {
   }
 }
 
+const MOCK_WORKER_STEP_MS = 2000
+
+/**
+ * buildMockCompletedScanPayload — mock parity with the real worker's
+ * buildAnalysisResultPayload (scans.service.ts): produces the report-payload
+ * contract the report detail pane consumes — a verdict object with
+ * display_label / confidence / signal counts, a report reference, and
+ * per-signal analysis entries. Called when the simulated worker marks a scan
+ * complete, so polling surfaces swap in a fully rendered report.
+ */
+function buildMockCompletedScanPayload(scan) {
+  const verdictClasses = [
+    { class: 'likely_authentic', display_label: 'Likely Authentic', color: '#0f766e' },
+    { class: 'suspicious', display_label: 'Suspicious', color: '#b45309' },
+    { class: 'inconclusive', display_label: 'Inconclusive', color: '#6b6b6b' },
+  ]
+  const pick = verdictClasses[Math.floor(Math.random() * verdictClasses.length)]
+  const confidenceScore = Math.round(45 + Math.random() * 50)
+  const signals = [
+    {
+      signal_id: 'file_integrity',
+      signal_display_name: 'File Integrity',
+      signal_category: 'Integrity',
+      methodology_version: 'v2',
+      status: Math.random() > 0.5 ? 'clear' : 'flagged',
+      status_reason:
+        Math.random() > 0.5
+          ? 'File hash matches the declared original; no tampering detected.'
+          : 'Header mismatch: the declared MIME type does not match the file signature.',
+      findings: [],
+    },
+    {
+      signal_id: 'metadata_forensics',
+      signal_display_name: 'Metadata Forensics',
+      signal_category: 'Metadata',
+      methodology_version: 'v3',
+      status: Math.random() > 0.5 ? 'clear' : 'flagged',
+      status_reason:
+        Math.random() > 0.5
+          ? 'EXIF chain is consistent with the declared capture time and device.'
+          : 'Creation path and edit history do not fully reconcile.',
+      findings: [],
+    },
+    {
+      signal_id: 'frequency_domain',
+      signal_display_name: 'Frequency-Domain Analysis',
+      signal_category: 'Signal Processing',
+      methodology_version: 'v1',
+      status: Math.random() > 0.5 ? 'clear' : 'anomaly_detected',
+      status_reason:
+        Math.random() > 0.5
+          ? 'No synthetic patterning detected in the spectral profile.'
+          : 'Synthetic patterning detected around facial edges and backdrop gradients.',
+      findings: [],
+    },
+    {
+      signal_id: 'temporal_continuity',
+      signal_display_name: 'Temporal Continuity',
+      signal_category: 'Temporal',
+      methodology_version: 'v2',
+      status: Math.random() > 0.5 ? 'clear' : 'continuity_break',
+      status_reason:
+        Math.random() > 0.5
+          ? 'Frame flow is continuous across the clip.'
+          : 'Frame continuity breaks in the final segment of the uploaded clip.',
+      findings: [],
+    },
+  ]
+  return {
+    payload_version: '1.0.0',
+    verdict: {
+      class: pick.class,
+      display_label: pick.display_label,
+      display_color: pick.color,
+      confidence_score: confidenceScore,
+      confidence_level: confidenceScore >= 75 ? 'high' : confidenceScore >= 55 ? 'moderate' : 'low',
+      signal_count_total: signals.length,
+      signal_count_completed: signals.length,
+      primary_contributing_signals: signals
+        .filter((s) => s.status !== 'clear')
+        .map((s) => s.signal_id)
+        .slice(0, 2),
+      plain_language_summary:
+        pick.class === 'suspicious'
+          ? 'Strong synthetic indicators were detected across multiple signals. The result benefits from human review before any high-stakes decision.'
+          : pick.class === 'likely_authentic'
+            ? 'File integrity checks are stable and no strong anomaly cluster was detected. The result still benefits from human review before any high-stakes decision.'
+            : 'Signals returned mixed or insufficient evidence to reach a confident conclusion. Further review is recommended.',
+    },
+    report: {
+      report_id: `PRV-${scan.id.slice(0, 8).toUpperCase()}`,
+      generated_at: new Date().toISOString(),
+    },
+    signals,
+  }
+}
+
 /**
  * mockSubmitScan — marks the reserved record as submitted (still queued for a
  * worker). Mirrors POST /scans/:id/submit.
@@ -379,9 +666,80 @@ export async function mockSubmitScan(scanId) {
   await delay(250, 500)
   const scan = findById(mockScanStore, scanId)
   if (!scan) throw new Error('Scan not found.')
+
+  // Hash-based dedup (mock parity with the worker-side real path): when this
+  // file already produced a completed scan, the record completes immediately
+  // and reuses the prior payload instead of sitting in the queue. `?dedup=1`
+  // forces the hit against the first seeded completed scan so the reuse UX
+  // can be demoed without uploading twice.
+  const source = mockDedupForced()
+    ? mockScanStore.find((candidate) => candidate.status === 'completed')
+    : mockScanStore.find(
+        (candidate) =>
+          candidate.status === 'completed' &&
+          candidate.id !== scan.id &&
+          candidate.file_hash_sha256 &&
+          candidate.file_hash_sha256 === scan.file_hash_sha256,
+      )
+
+  if (source) {
+    const reusedAt = new Date().toISOString()
+    const sourceReportId = `PRV-${source.id.slice(0, 8).toUpperCase()}`
+    scan.status = 'completed'
+    scan.verdict = source.verdict
+    scan.result_payload = {
+      ...(source.result_payload || {}),
+      report: {
+        ...(source.result_payload?.report || {}),
+        report_id: `PRV-${scan.id.slice(0, 8).toUpperCase()}`,
+        generated_at: reusedAt,
+      },
+      deduplicated_from: {
+        source_scan_id: source.id,
+        source_report_id: sourceReportId,
+        reused_at: reusedAt,
+      },
+    }
+    scan.completed_at = reusedAt
+    scan.submitted_at = reusedAt
+    persistScanStore()
+    return {
+      scan,
+      deduplicated: true,
+      sourceScanId: source.id,
+      sourceReportId,
+      reusedAt,
+    }
+  }
+
   scan.status = 'queued'
   scan.submitted_at = new Date().toISOString()
   persistScanStore()
+
+  // Simulated worker pipeline (mock parity with the real BullMQ worker): the
+  // record advances queued → processing → completed with a full report
+  // payload over a few seconds, so the report detail page's 5s polling
+  // visibly flips the scan from its pending state to the completed report
+  // without a reload — instead of sitting in a static queued state forever.
+  // The record is mutated in place, so every surface reading the store
+  // (report detail, queue, dashboard, ledger) sees the same transitions.
+  setTimeout(() => {
+    if (scan.status !== 'queued') return
+    scan.status = 'processing'
+    scan.updated_at = new Date().toISOString()
+    persistScanStore()
+  }, MOCK_WORKER_STEP_MS)
+  setTimeout(() => {
+    if (scan.status !== 'processing') return
+    const completedAt = new Date().toISOString()
+    const payload = buildMockCompletedScanPayload(scan)
+    scan.status = 'completed'
+    scan.verdict = payload.verdict.class
+    scan.result_payload = payload
+    scan.completed_at = completedAt
+    scan.updated_at = completedAt
+    persistScanStore()
+  }, MOCK_WORKER_STEP_MS * 2)
   return { scan }
 }
 
@@ -420,10 +778,71 @@ export async function mockGetReports({ page = 1, pageSize = 20 } = {}) {
 // Analytics
 // ---------------------------------------------------------------------------
 
-export async function mockGetAnalytics() {
+/**
+ * mockGetAnalytics — team-scoped parity with the real GET /admin/analytics.
+ *
+ * With no team (or 'all') the static mockAnalytics is returned as-is. When a
+ * team is active, the top-organizations table is recomputed from the scan
+ * ledger — scans carry team_id and each scan's user resolves to an org via
+ * the user registry — so the org rows show that team's actual usage split
+ * (the same derivation the page used to perform client-side before the
+ * backend grew real team scoping). team_breakdown always reflects per-team
+ * scan counts from the ledger, matching the real payload.
+ */
+export async function mockGetAnalytics({ team } = {}) {
   await delay()
   maybeError()
-  return mockAnalytics
+
+  const teamBreakdown = buildTeamBreakdown()
+
+  if (!team || team === 'all') {
+    return { ...mockAnalytics, team_breakdown: teamBreakdown }
+  }
+
+  // Org registry lookups — mirrors the backend's orgByUser + org metadata.
+  const orgByUser = new Map(mockUsers.map((u) => [u.id, u.org_id]))
+  const orgMetaById = new Map(mockOrganizations.map((o) => [o.id, o]))
+  const orgNameById = new Map(mockOrganizations.map((o) => [o.id, o.name]))
+
+  const byOrg = {}
+  for (const scan of mockScans) {
+    if (!scan.team_id || scan.team_id !== team) continue
+    const orgId = orgByUser.get(scan.user_id)
+    if (!orgId) continue
+    const entry = (byOrg[orgId] ||= { scans: 0, completed: 0 })
+    entry.scans += 1
+    if (scan.status === 'completed') entry.completed += 1
+  }
+
+  const topOrganizations = Object.entries(byOrg)
+    .map(([orgId, stats]) => {
+      const meta = orgMetaById.get(orgId) || { member_count: 0, storage_used_gb: 0 }
+      return {
+        id: orgId,
+        name: orgNameById.get(orgId) || orgId,
+        member_count: meta.member_count,
+        scan_count: stats.scans,
+        storage_used_gb: meta.storage_used_gb,
+        completion_rate: stats.scans > 0 ? stats.completed / stats.scans : 0,
+      }
+    })
+    .sort((a, b) => b.scan_count - a.scan_count)
+
+  return { ...mockAnalytics, top_organizations: topOrganizations, team_breakdown: teamBreakdown }
+}
+
+/**
+ * buildTeamBreakdown — per-team scan counts from the mock ledger, shaped as
+ * [{ team_id, scans }] to match the real /admin/analytics payload.
+ */
+function buildTeamBreakdown() {
+  const counts = new Map()
+  for (const scan of mockScans) {
+    if (scan.team_id) counts.set(scan.team_id, (counts.get(scan.team_id) || 0) + 1)
+  }
+  return [...counts.entries()]
+    .map(([team_id, scans]) => ({ team_id, scans }))
+    .sort((a, b) => b.scans - a.scans)
 }
 
 // ---------------------------------------------------------------------------
@@ -462,11 +881,76 @@ export async function mockGetNotifications({ page = 1, pageSize = 20 } = {}) {
   return paginate(mockNotifications, { page, pageSize })
 }
 
+export async function mockMarkNotificationRead(notificationId) {
+  await delay()
+  maybeError()
+
+  const notification = mockNotifications.find((n) => n.id === notificationId)
+  if (!notification) throw new Error('Notification not found.')
+
+  notification.read = true
+  return { ok: true, notification: { ...notification } }
+}
+
+export async function mockGetUnreadNotificationCount() {
+  await delay()
+  maybeError()
+
+  // Counts against the live module store so it tracks mark-read persistence.
+  return { unread: mockNotifications.filter((notification) => !notification.read).length }
+}
+
+export async function mockMarkAllNotificationsRead() {
+  await delay()
+  maybeError()
+
+  let updated = 0
+  for (const notification of mockNotifications) {
+    if (!notification.read) {
+      notification.read = true
+      updated += 1
+    }
+  }
+  return { ok: true, updated }
+}
+
 export async function mockGetBilling() {
   await delay()
   maybeError()
+
+  const profile = { ...mockBillingProfile }
+
+  // Dev-only forcing: report the plan at its quota limit so the Billing
+  // exhausted banner renders for review (see mockQuotaExhausted), or at 90%
+  // so the dashboard's ≥85% warning chip renders (see mockQuotaHigh). The
+  // projection is recomputed from the effective usage so the forced meters
+  // and the projection card always agree.
+  let effectiveUsage = profile.usage
+
+  if (mockQuotaExhausted()) {
+    effectiveUsage = {
+      ...profile.usage,
+      scansUsed: profile.usage.scansLimit,
+    }
+  } else if (mockQuotaHigh()) {
+    effectiveUsage = {
+      ...profile.usage,
+      scansUsed: Math.round(profile.usage.scansLimit * 0.9),
+    }
+  }
+
+  profile.usage = {
+    ...effectiveUsage,
+    projection: projectScanUsage({
+      used: effectiveUsage.scansUsed,
+      limit: effectiveUsage.scansLimit,
+      periodStart: effectiveUsage.periodStart,
+      periodEnd: effectiveUsage.periodEnd,
+    }),
+  }
+
   return {
-    profile: mockBillingProfile,
+    profile,
     invoices: mockInvoices,
   }
 }
@@ -506,43 +990,268 @@ export async function mockGetActivityLogs({ page = 1, pageSize = 20 } = {}) {
   maybeError()
   // Resolved incidents surface as system events (post-mortem summaries). The
   // feed is sorted newest-first by timestamp so incident events interleave
-  // correctly with the audit trail regardless of when each resolved.
-  // Note: incidents are mock-mode-only for now — the real /v1/account/activity
-  // reads auth_audit_events and does not emit incident rows yet.
+  // correctly with the audit trail regardless of when each resolved. The real
+  // /v1/account/activity mirrors this exact merge: auth_audit_events + resolved
+  // admin_incidents rows, sorted and paginated the same way.
   const merged = [...buildIncidentActivityEvents(), ...mockAuditEvents].sort(
     (left, right) => new Date(right.created_at) - new Date(left.created_at),
   )
   return paginate(merged, { page, pageSize })
 }
 
-// Admin audit trail — the full event list (the page filters client-side and
-// exports the filtered view). Real path: GET /admin/audit-logs.
-export async function mockGetAdminAuditLogs() {
+// Admin audit trail — mirrors GET /admin/audit-logs: the same optional
+// filters (severity / actor / action / resourceType / search) are applied
+// server-style, then the result is paginated with the same envelope the real
+// endpoint returns ({ data, page, pageSize, total, totalPages }). The page
+// also filters client-side, so these are additive — keeping mock and real
+// paths in exact parity.
+export async function mockGetAdminAuditLogs({
+  page = 1,
+  pageSize = 100,
+  severity,
+  actor,
+  action,
+  resourceType,
+  search,
+} = {}) {
   await delay()
   maybeError()
-  return { data: mockAuditEvents, total: mockAuditEvents.length }
+
+  let events = mockAuditEvents
+  if (severity && severity !== 'all') {
+    events = events.filter((event) => event.severity === severity)
+  }
+  if (actor && actor !== 'all') {
+    events = events.filter((event) => event.actor_email === actor)
+  }
+  if (action && action !== 'all') {
+    events = events.filter((event) => event.action === action)
+  }
+  if (resourceType && resourceType !== 'all') {
+    events = events.filter((event) => event.resource_type === resourceType)
+  }
+  if (search && search.trim()) {
+    const needle = search.trim().toLowerCase()
+    events = events.filter((event) =>
+      [event.actor_email, event.action, event.resource_type, event.resource_id]
+        .some((value) => String(value ?? '').toLowerCase().includes(needle)),
+    )
+  }
+
+  return paginate(events, { page, pageSize })
 }
 
 // ---------------------------------------------------------------------------
 // Admin jobs / reports / roles / settings
 // ---------------------------------------------------------------------------
 
-export async function mockGetAdminJobs() {
-  await delay()
-  maybeError()
-  return { data: mockAdminJobs, total: mockAdminJobs.length }
+// Live audit-event ids for retry/fail writes — the seeded mockAuditEvents are
+// audit_0001…audit_0030, so session events use a separate prefix to stay
+// unique across repeated mutations.
+let mockAuditLiveSeq = 0
+
+/**
+ * currentMockActorEmail — reads the persisted mock session (same key the auth
+ * layer writes) so mutations can attribute audit events to the actual admin.
+ * Falls back to the seeded super_admin when no session exists (e.g. tests or
+ * a stale page) rather than failing the action.
+ */
+function currentMockActorEmail() {
+  try {
+    const stored = JSON.parse(window.localStorage.getItem(AUTH_STORAGE_KEY) || 'null')
+    if (stored?.user?.email) return stored.user.email
+  } catch {
+    // no window / localStorage in node, or malformed JSON — fall through
+  }
+  return mockUsers[0]?.email || 'system'
 }
 
-export async function mockGetAdminReports({ page = 1, pageSize = 20 } = {}) {
+export async function mockGetAdminJobs(params = {}) {
   await delay()
   maybeError()
-  return paginate(mockReports, { page, pageSize })
+
+  const { status, page = 1, pageSize = 500 } = params
+
+  // Status filter in the page's display dialect ('completed', not the DB
+  // 'complete') — the same values the tabs send and mockAdminJobs stores,
+  // mirroring how the real backend maps the display dialect via JOB_STATUS_DB.
+  // 'all' (or absent) returns every job, like the no-params contract.
+  let rows =
+    status && status !== 'all'
+      ? mockAdminJobs.filter((job) => job.status === status)
+      : [...mockAdminJobs]
+
+  // Pagination matches the backend envelope { data, total, page, pageSize }:
+  // total is the exact count AFTER the status filter (count: 'exact'), and
+  // pageSize defaults to 500 so a no-params fetch still returns the full set
+  // (the Jobs page derives its worker panel + status counts from that).
+  const total = rows.length
+  const safePage = Math.max(1, page)
+  const safePageSize = Math.min(500, Math.max(1, pageSize))
+  const start = (safePage - 1) * safePageSize
+  const data = rows.slice(start, start + safePageSize)
+
+  // Shallow copy semantics preserved: rows is already a fresh array (filter
+  // or spread), so downstream useMemo-derived counts recompute correctly.
+  // totalPages mirrors the real backend's envelope (the Jobs page computes
+  // its own pageCount from the exact total, so this is contract parity).
+  return {
+    data,
+    total,
+    page: safePage,
+    pageSize: safePageSize,
+    totalPages: Math.max(1, Math.ceil(total / safePageSize)),
+  }
+}
+
+/**
+ * mockRetryJob — moves a failed job back to the queue (attempts bumped, error
+ * cleared). Mutates the module-level store so the ledger reflects it for the
+ * session, like mockRevokeSession. Mirrors POST /admin/jobs/:id/retry.
+ */
+export async function mockRetryJob(jobId) {
+  await delay(250, 500)
+  maybeError()
+  const job = mockAdminJobs.find((j) => j.id === jobId)
+  if (!job) throw new Error('Job not found.')
+  if (job.status !== 'failed') {
+    throw new Error('Only failed jobs can be re-queued.')
+  }
+  job.status = 'queued'
+  job.progress = 0
+  job.attempts = (job.attempts || 1) + 1
+  job.error = null
+  job.started_at = null
+  job.completed_at = null
+  // Surface the mutation in the audit trail (mirrors the real backend, which
+  // writes a scan.retried event on POST /admin/jobs/:id/retry). Prepend so
+  // the newest event lands first, matching the newest-first feed contract.
+  mockAuditEvents.unshift({
+    id: `audit_live_${Date.now()}_${String(++mockAuditLiveSeq).padStart(3, '0')}`,
+    actor_email: currentMockActorEmail(),
+    action: 'scan.retried',
+    severity: AUDIT_SEVERITY_BY_ACTION['scan.retried'],
+    resource_type: 'scan',
+    resource_id: job.scan_id,
+    details: { from: 'failed', to: 'queued' },
+    created_at: new Date().toISOString(),
+  })
+  return { ok: true, job }
+}
+
+/**
+ * mockFailJob — marks a non-terminal (queued/processing) job as failed, the
+ * admin's kill-switch for stuck work. Mirrors POST /admin/jobs/:id/fail.
+ */
+export async function mockFailJob(jobId, reason = 'Manually failed by an administrator.') {
+  await delay(250, 500)
+  maybeError()
+  const job = mockAdminJobs.find((j) => j.id === jobId)
+  if (!job) throw new Error('Job not found.')
+  if (job.status === 'completed') {
+    throw new Error('Completed jobs cannot be failed.')
+  }
+  if (job.status === 'failed') {
+    throw new Error('This job is already failed.')
+  }
+  const fromStatus = job.status
+  job.status = 'failed'
+  job.progress = Math.max(job.progress || 0, 40)
+  job.error = reason
+  job.completed_at = new Date().toISOString()
+  // Same audit-trail treatment as retry — mirrors the backend's scan.failed
+  // write on POST /admin/jobs/:id/fail, attributed to the acting admin.
+  mockAuditEvents.unshift({
+    id: `audit_live_${Date.now()}_${String(++mockAuditLiveSeq).padStart(3, '0')}`,
+    actor_email: currentMockActorEmail(),
+    action: 'scan.failed',
+    severity: AUDIT_SEVERITY_BY_ACTION['scan.failed'],
+    resource_type: 'scan',
+    resource_id: job.scan_id,
+    details: { from: fromStatus, to: 'failed', reason },
+    created_at: new Date().toISOString(),
+  })
+  return { ok: true, job }
+}
+
+export async function mockGetAdminReports({ page = 1, pageSize = 20, team } = {}) {
+  await delay()
+  maybeError()
+  let rows = mockReports
+  if (team && team !== 'all') {
+    rows = mockReports.filter((report) => report.team_id === team)
+  }
+  return paginate(rows, { page, pageSize })
 }
 
 export async function mockGetAdminRoles() {
   await delay()
   maybeError()
-  return { roles: mockAdminRoles, scopes: mockRoleScopeMeta }
+  return {
+    roles: mockAdminRoles,
+    scopes: mockRoleScopeMeta,
+    members: mockRoleMembers,
+    auditEvents: mockRoleAuditEvents,
+  }
+}
+
+/**
+ * mockUpdateRoleScopes — persists a full scope map for one role on the
+ * module-level store (session-scoped, like mockRetryJob). Owner edits are
+ * rejected with the same guard the real RolesService enforces (403 → Error).
+ * Mirrors PATCH /admin/roles/:roleId/scopes.
+ */
+export async function mockUpdateRoleScopes(roleId, scopes) {
+  await delay(300, 500)
+  maybeError()
+  const role = mockAdminRoles.find((r) => r.id === roleId)
+  if (!role) throw new Error('Role not found.')
+  if (!role.editable) {
+    throw new Error('The Owner role is fixed by design and cannot be edited.')
+  }
+  for (const key of Object.keys(scopes)) {
+    if (!mockRoleScopeMeta.some((scope) => scope.key === key)) {
+      throw new Error(`Unknown scope "${key}".`)
+    }
+    if (typeof scopes[key] !== 'boolean') {
+      throw new Error(`Scope "${key}" must be a boolean.`)
+    }
+  }
+  role.scopes = { ...scopes }
+  return { ok: true, roleId, scopes }
+}
+
+/**
+ * mockReassignMemberRole — moves a member between RBAC roles, reconciling the
+ * role member counts on the module-level store. Owner seat and Owner role are
+ * guarded like the real service; an unchanged RBAC role returns changed:false
+ * without mutating. Mirrors PATCH /admin/roles/members/:memberId.
+ */
+export async function mockReassignMemberRole(memberId, roleId) {
+  await delay(300, 500)
+  maybeError()
+  const member = mockRoleMembers.find((m) => m.id === memberId)
+  if (!member) throw new Error('Member not found.')
+  if (member.role_id === 'role_owner') {
+    throw new Error('The owner seat is fixed by design and cannot be reassigned.')
+  }
+  const role = mockAdminRoles.find((r) => r.id === roleId)
+  if (!role) throw new Error('Role not found.')
+  if (roleId === 'role_owner') {
+    throw new Error('The Owner role cannot be assigned through the roster.')
+  }
+  if (member.role_id === roleId) {
+    return { ok: true, memberId, roleId, changed: false }
+  }
+
+  const prevRoleId = member.role_id
+  member.role_id = roleId
+
+  const prevRole = mockAdminRoles.find((r) => r.id === prevRoleId)
+  if (prevRole) prevRole.member_count = Math.max(0, (prevRole.member_count || 1) - 1)
+  role.member_count = (role.member_count || 0) + 1
+
+  return { ok: true, memberId, roleId }
 }
 
 export async function mockGetAdminSettings() {
@@ -558,18 +1267,70 @@ export async function mockGetAdminSettings() {
 export async function mockGetSecuritySettings() {
   await delay()
   maybeError()
-  return mockSecuritySettings
+  // Recompute the 'New device' trust flags per call — the rows are mutable
+  // (revoke filters them) and the signal is time-relative, so it must stay
+  // fresh like the backend's live computation.
+  // Fixture clock (NOW_TS), not the wall clock — the mock rows are baked
+  // relative to it, so the badge demo is deterministic across dates.
+  const flags = computeNewDeviceFlags(mockSecuritySettings.activeSessions, NOW_TS)
+  return {
+    ...mockSecuritySettings,
+    activeSessions: mockSecuritySettings.activeSessions.map((session) => ({
+      ...session,
+      isNewDevice: flags.get(session.id) ?? false,
+    })),
+  }
 }
 
 export async function mockChangePassword({ currentPassword, newPassword } = {}) {
   await delay()
   maybeError()
+  // Current-password verification is format-level only: mock auth accepts any
+  // 8+ char password for a known account (see MOCK_TEST_ACCOUNTS), so there is
+  // no stored secret to verify against — the real backend 400s on a mismatch
+  // via signInWithPassword, which the mock cannot replicate without one.
   if (!currentPassword || !newPassword || newPassword.length < 8) {
     throw new Error('New password must be at least 8 characters.')
   }
   if (currentPassword === newPassword) {
     throw new Error('New password must be different from the current password.')
   }
+  // Mirrors SecurityService.changePassword's revoke-everything-else step: every
+  // OTHER tracked session is revoked and its ledger row dropped; the current
+  // session stays signed in. Persisted on the module-level store the same way
+  // mockRevokeSession persists single revocations.
+  const revocable = mockSecuritySettings.activeSessions.filter((s) => !s.isCurrent)
+  mockSecuritySettings.activeSessions = mockSecuritySettings.activeSessions.filter(
+    (s) => s.isCurrent,
+  )
+  // Per-session admin-trail rows — same shape mockRevokeSession writes for a
+  // single revoke, so the feed + admin trail reflect each signed-out device.
+  for (const session of revocable) {
+    mockAuditEvents.unshift({
+      id: `audit_live_${Date.now()}_${String(++mockAuditLiveSeq).padStart(3, '0')}`,
+      actor_email: currentMockActorEmail(),
+      action: 'session.revoked',
+      severity: AUDIT_SEVERITY_BY_ACTION['session.revoked'] || 'high',
+      resource_type: 'auth_session',
+      resource_id: session.id,
+      created_at: new Date().toISOString(),
+      details: { session_id: session.id, reason: 'password_change' },
+    })
+  }
+  // password_changed feed event, written last so it lands newest-first at the
+  // top — the real backend revokes first, then records the audit. Real mode
+  // writes it to auth_audit_events (Activity feed); the mock's shared store
+  // surfaces it in the feed and the admin trail alike.
+  mockAuditEvents.unshift({
+    id: `audit_live_${Date.now()}_${String(++mockAuditLiveSeq).padStart(3, '0')}`,
+    actor_email: currentMockActorEmail(),
+    action: 'password_changed',
+    severity: AUDIT_SEVERITY_BY_ACTION['password_changed'] || 'low',
+    resource_type: 'auth_user',
+    resource_id: mockActorUserId(),
+    created_at: new Date().toISOString(),
+    details: {},
+  })
   return { ok: true }
 }
 
@@ -584,6 +1345,20 @@ export async function mockRevokeSession(sessionId) {
   mockSecuritySettings.activeSessions = mockSecuritySettings.activeSessions.filter(
     (s) => s.id !== sessionId,
   )
+  // Surface the revocation in the audit trail + Activity feed — mirrors the
+  // real backend's session.revoked admin-trail write on self-service revoke
+  // (SecurityService.recordAdminTrail). Prepend so the newest event lands
+  // first, matching the newest-first feed contract.
+  mockAuditEvents.unshift({
+    id: `audit_live_${Date.now()}_${String(++mockAuditLiveSeq).padStart(3, '0')}`,
+    actor_email: currentMockActorEmail(),
+    action: 'session.revoked',
+    severity: AUDIT_SEVERITY_BY_ACTION['session.revoked'] || 'high',
+    resource_type: 'auth_session',
+    resource_id: sessionId,
+    created_at: new Date().toISOString(),
+    details: { session_id: sessionId },
+  })
   return { ok: true, sessionId }
 }
 
@@ -663,6 +1438,155 @@ export async function mockRegenerateApiKey(keyId) {
 }
 
 // ---------------------------------------------------------------------------
+// Webhooks (approved feature, 2026-08-04)
+// ---------------------------------------------------------------------------
+
+function makeWebhookId() {
+  const maxNumeric = mockWebhooks.reduce((acc, wh) => {
+    const n = Number(wh.id.replace(/\D/g, '')) || 0
+    return n > acc ? n : acc
+  }, 0)
+  return `whk_${String(maxNumeric + 1).padStart(3, '0')}`
+}
+
+function makeDeliveryId(webhookId) {
+  const deliveries = mockWebhookDeliveries[webhookId] || []
+  const maxNumeric = deliveries.reduce((acc, d) => {
+    const n = Number(d.id.replace(/\D/g, '')) || 0
+    return n > acc ? n : acc
+  }, 0)
+  return `dlv_${String(maxNumeric + 1).padStart(3, '0')}`
+}
+
+function makeMockWebhookSecret() {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
+  let body = ''
+  for (let i = 0; i < 40; i += 1) {
+    body += chars[Math.floor(Math.random() * chars.length)]
+  }
+  return `whsec_live_${body}`
+}
+
+export async function mockGetWebhooks() {
+  await delay()
+  maybeError()
+  return {
+    endpoints: mockWebhooks,
+    events: WEBHOOK_EVENTS,
+    limits: mockWebhookLimits,
+  }
+}
+
+export async function mockCreateWebhook({ name, url, events = [] } = {}) {
+  await delay()
+  maybeError()
+  if (!name || !name.trim()) throw new Error('An endpoint name is required.')
+  const trimmedUrl = (url || '').trim()
+  if (!trimmedUrl) throw new Error('A destination URL is required.')
+  if (!/^https?:\/\//.test(trimmedUrl)) {
+    throw new Error('The destination URL must start with http:// or https://.')
+  }
+  if (events.length === 0) throw new Error('Select at least one event.')
+  if (mockWebhooks.filter((w) => w.status !== 'deleted').length >= mockWebhookLimits.endpointsPerWorkspace) {
+    throw new Error('Workspace endpoint limit reached.')
+  }
+  const endpoint = {
+    id: makeWebhookId(),
+    name: name.trim(),
+    url: trimmedUrl,
+    events,
+    status: 'active',
+    createdAt: new Date().toISOString(),
+    lastDeliveryAt: null,
+    deliveryCount: 0,
+    failureCount: 0,
+    secretPrefix: 'whsec_live_••••',
+  }
+  mockWebhooks.unshift(endpoint)
+  // The full signing secret is returned exactly once, on creation (like API
+  // keys) — the store keeps only a prefix so it cannot be re-shown later.
+  return { endpoint, secret: makeMockWebhookSecret() }
+}
+
+export async function mockUpdateWebhookStatus(webhookId, status) {
+  await delay()
+  maybeError()
+  const endpoint = mockWebhooks.find((w) => w.id === webhookId)
+  if (!endpoint) throw new Error('Webhook endpoint not found.')
+  if (status !== 'active' && status !== 'paused') {
+    throw new Error('Invalid webhook status.')
+  }
+  endpoint.status = status
+  return { ok: true, webhookId, status }
+}
+
+export async function mockRotateWebhookSecret(webhookId) {
+  await delay()
+  maybeError()
+  const endpoint = mockWebhooks.find((w) => w.id === webhookId)
+  if (!endpoint) throw new Error('Webhook endpoint not found.')
+  return { ok: true, webhookId, secret: makeMockWebhookSecret() }
+}
+
+export async function mockDeleteWebhook(webhookId) {
+  await delay()
+  maybeError()
+  const index = mockWebhooks.findIndex((w) => w.id === webhookId)
+  if (index === -1) throw new Error('Webhook endpoint not found.')
+  mockWebhooks.splice(index, 1)
+  delete mockWebhookDeliveries[webhookId]
+  return { ok: true, webhookId }
+}
+
+export async function mockTestWebhook(webhookId) {
+  await delay()
+  maybeError()
+  const endpoint = mockWebhooks.find((w) => w.id === webhookId)
+  if (!endpoint) throw new Error('Webhook endpoint not found.')
+  if (endpoint.status === 'paused') {
+    throw new Error('Paused endpoints cannot be pinged — resume it first.')
+  }
+  const delivery = {
+    id: makeDeliveryId(webhookId),
+    event: 'scan.completed',
+    status: 200,
+    attemptedAt: new Date().toISOString(),
+    latencyMs: Math.round(80 + Math.random() * 320),
+    response: '{"ok":true,"accepted":true,"test":true}',
+  }
+  mockWebhookDeliveries[webhookId] = [
+    delivery,
+    ...(mockWebhookDeliveries[webhookId] || []),
+  ]
+  endpoint.lastDeliveryAt = delivery.attemptedAt
+  endpoint.deliveryCount += 1
+  return { ok: true, webhookId, delivery }
+}
+
+export async function mockGetWebhookDeliveries(webhookId) {
+  await delay()
+  maybeError()
+  const endpoint = mockWebhooks.find((w) => w.id === webhookId)
+  if (!endpoint) throw new Error('Webhook endpoint not found.')
+  return { deliveries: mockWebhookDeliveries[webhookId] || [] }
+}
+
+// ---------------------------------------------------------------------------
+// Telemetry (pre-Sentry crash reports)
+// ---------------------------------------------------------------------------
+
+/**
+ * mockSubmitCrashReports — accepts the buffered crash records and reports the
+ * batch accepted, mirroring POST /telemetry/errors (idempotent upsert on the
+ * client id). No window access, so it is safe in node test environments.
+ */
+export async function mockSubmitCrashReports(records = []) {
+  await delay(150, 350)
+  if (!Array.isArray(records)) throw new Error('Crash reports must be an array.')
+  return { accepted: records.length }
+}
+
+// ---------------------------------------------------------------------------
 // Help & documentation
 // ---------------------------------------------------------------------------
 
@@ -713,7 +1637,12 @@ export async function mockInviteMember({ email, role = 'member', team } = {}) {
     expiresAt: new Date(Date.now() + 7 * 86400000).toISOString(),
   }
   mockOrgWorkspace.pendingInvites.unshift(invite)
-  return { ok: true, invite }
+  // Parity with the real path: the raw token is issued once here (for the
+  // share/email link); the backend persists only its SHA-256 hash.
+  const token = `tok_${Math.random().toString(36).slice(2, 10)}${Math.random()
+    .toString(36)
+    .slice(2, 10)}`
+  return { ok: true, invite, token, inviteLink: `/accept-invite?token=${token}` }
 }
 
 export async function mockUpdateMemberTeam(memberId, teamId) {
@@ -754,6 +1683,110 @@ export async function mockCancelInvite(inviteId) {
     (invite) => invite.id !== inviteId,
   )
   return { ok: true, inviteId }
+}
+
+// ---------------------------------------------------------------------------
+// Organization — member sessions (org-admin revocation)
+// ---------------------------------------------------------------------------
+
+/**
+ * mockActorUserId — resolves the signed-in mock user from the persisted auth
+ * session so the member-session surface can mark the actor's own current
+ * session the way the real /v1/security/sessions path does.
+ */
+function mockActorUserId() {
+  const email = currentMockActorEmail().toLowerCase()
+  const user = mockUsers.find((u) => u.email.toLowerCase() === email)
+  return user?.id || null
+}
+
+/**
+ * mockGetMemberSessions — the member's tracked sessions with the team tag,
+ * matching GET /v1/organization/members/:memberId/sessions. isCurrent is
+ * recomputed from the signed-in actor (their own first session), never from
+ * the static data.
+ */
+export async function mockGetMemberSessions(memberId) {
+  await delay()
+  maybeError()
+  const member = mockOrgWorkspace.members.find((m) => m.id === memberId)
+  if (!member) throw new Error('Member not found.')
+  const actorId = mockActorUserId()
+  // Fixture clock (NOW_TS), not the wall clock — see mockGetSecuritySettings.
+  const flags = computeNewDeviceFlags(mockMemberSessionsByUserId[memberId] || [], NOW_TS)
+  const sessions = (mockMemberSessionsByUserId[memberId] || []).map((session, index) => ({
+    ...session,
+    isCurrent: memberId === actorId && index === 0,
+    isNewDevice: flags.get(session.id) ?? false,
+  }))
+  return { memberId, teamId: member.team || null, sessions }
+}
+
+/**
+ * mockRevokeMemberSession — revokes one of a member's sessions (owner/admin
+ * only; owner seat protected). Mirrors
+ * DELETE /v1/organization/members/:memberId/sessions/:sessionId and persists
+ * the revocation on the module-level store like mockRevokeSession.
+ */
+export async function mockRevokeMemberSession(memberId, sessionId) {
+  await delay()
+  maybeError()
+  const member = mockOrgWorkspace.members.find((m) => m.id === memberId)
+  if (!member) throw new Error('Member not found.')
+  if (member.role === 'owner') throw new Error('The owner cannot be modified.')
+  const sessions = mockMemberSessionsByUserId[memberId] || []
+  const index = sessions.findIndex((s) => s.id === sessionId)
+  if (index === -1) throw new Error('Session not found.')
+  const actorId = mockActorUserId()
+  if (memberId === actorId && index === 0) {
+    throw new Error('You cannot revoke the current session.')
+  }
+  mockMemberSessionsByUserId[memberId] = sessions.filter((s) => s.id !== sessionId)
+  // Surface the revocation in the audit trail + Activity feed (mirrors the
+  // real backend: SecurityService writes member_session_revoked to the feed
+  // and the org service writes the admin-trail row). Prepend so the newest
+  // event lands first, matching the newest-first feed contract.
+  mockAuditEvents.unshift({
+    id: `audit_live_${Date.now()}_${String(++mockAuditLiveSeq).padStart(3, '0')}`,
+    actor_email: currentMockActorEmail(),
+    action: 'member_session_revoked',
+    severity: AUDIT_SEVERITY_BY_ACTION['member_session_revoked'] || 'high',
+    resource_type: 'auth_session',
+    resource_id: sessionId,
+    created_at: new Date().toISOString(),
+    details: { member_id: memberId, session_id: sessionId },
+  })
+  return { ok: true, memberId, sessionId }
+}
+
+/**
+ * mockRevokeMemberSessions — revokes every tracked session of a member except
+ * the actor's own current one, returning the count. Mirrors
+ * DELETE /v1/organization/members/:memberId/sessions.
+ */
+export async function mockRevokeMemberSessions(memberId) {
+  await delay()
+  maybeError()
+  const member = mockOrgWorkspace.members.find((m) => m.id === memberId)
+  if (!member) throw new Error('Member not found.')
+  if (member.role === 'owner') throw new Error('The owner cannot be modified.')
+  const sessions = mockMemberSessionsByUserId[memberId] || []
+  const actorId = mockActorUserId()
+  const revocable = sessions.filter((session, index) => !(memberId === actorId && index === 0))
+  mockMemberSessionsByUserId[memberId] = sessions.filter((session) => !revocable.includes(session))
+  // One summary audit row per batch carrying the revoked count — mirrors the
+  // real backend's member_sessions_revoked write on revoke-all.
+  mockAuditEvents.unshift({
+    id: `audit_live_${Date.now()}_${String(++mockAuditLiveSeq).padStart(3, '0')}`,
+    actor_email: currentMockActorEmail(),
+    action: 'member_sessions_revoked',
+    severity: AUDIT_SEVERITY_BY_ACTION['member_sessions_revoked'] || 'high',
+    resource_type: 'member',
+    resource_id: memberId,
+    created_at: new Date().toISOString(),
+    details: { member_id: memberId, revoked: revocable.length },
+  })
+  return { ok: true, memberId, revoked: revocable.length }
 }
 
 export async function mockUpdateSecuritySetting(key, value) {

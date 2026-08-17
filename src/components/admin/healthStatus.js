@@ -3,7 +3,8 @@
  *
  * Split into its own module (not exported from a .jsx component file) so
  * fast refresh stays intact; mirrors the popoverOrigin / commandRegistry
- * pattern. Consumed by HealthCheckRow and ServiceStatusList.
+ * pattern. Consumed by ServiceStatusList (the legacy HealthCheckRow was
+ * archived with the other superseded admin components).
  */
 export const STATUS_CONFIG = {
   operational: { dot: 'bg-emerald-500', label: 'Operational', text: 'text-emerald-700' },

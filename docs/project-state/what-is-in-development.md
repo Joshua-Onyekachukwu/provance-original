@@ -10,11 +10,14 @@ This document tracks the areas that are active, partial, or being prepared for n
 
 The active implementation target after planning approval is the working MVP application surface.
 
-**Status (2026-08-05):** the frontend is 100% complete — the user workspace
-(15/15 pages) and admin workspace (12/12 pages) are both shipped and verified,
+**Status (2026-08-08):** the frontend is 100% complete — the user workspace
+(16/16 pages) and admin workspace (12/12 pages) are both shipped and verified,
 with loading/empty/error states, `?state=` demo forcing, and ⌘K commands on every
-surface. No placeholders remain. The active work now is approved MVP features
-(PDF export, scan dedup) and backend integration.
+surface. No placeholders remain. All approved MVP features are now shipped:
+global error boundary, report PDF export (2026-08-07), scan deduplication
+(2026-08-08), Webhooks UI (2026-08-08), and the evidence appendix
+(methodology + limitations, 2026-08-08). The active work now is backend
+integration.
 
 Originally this included:
 
@@ -43,7 +46,7 @@ These are documented and intentionally deferred until the correct phase:
 - product analytics and fuller observability (approved 2026-08-04 — Sentry + PostHog)
 - billing and subscription infrastructure (UI shipped; enforcement approved for later)
 - video and audio processing
-- the approved feature set: error boundary, report PDF export, scan deduplication (admin analytics + monitoring shipped), webhooks UI, evidence appendix
+- the approved feature set fully shipped: error boundary + report PDF export + admin analytics/monitoring + scan deduplication + webhooks UI + evidence appendix
 - OpenAI and Anthropic integrations
 
 ## Documentation Work In Progress

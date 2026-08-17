@@ -7,6 +7,7 @@ import {
   Post,
   Res,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Throttle } from '@nestjs/throttler';
@@ -18,12 +19,14 @@ import {
 import { SupabaseAuthGuard } from '../common/guards/supabase-auth.guard';
 import {
   buildCookieSessionOptions,
-  clearRefreshCookie,
+  clearAllRefreshCookies,
   readRefreshCookie,
   setRefreshCookie,
 } from './cookie-session.util';
+import { requestSessionMeta } from '../security/session-meta.util';
 import { AcceptInviteDto } from './dto/accept-invite.dto';
 import { AuthService } from './auth.service';
+import { RefreshLockoutInterceptor } from './refresh-lockout.interceptor';
 import { ConfirmPasswordResetDto } from './dto/confirm-password-reset.dto';
 import { RefreshSessionDto } from './dto/refresh-session.dto';
 import { RequestPasswordResetDto } from './dto/request-password-reset.dto';
@@ -72,7 +75,10 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
     @Body() dto: SignInDto,
   ): Promise<AuthSessionResponse> {
-    const result = await this.authService.signIn(dto);
+    const result = await this.authService.signIn(
+      dto,
+      requestSessionMeta(response.req),
+    );
 
     if (
       this.cookieOptions.enabled &&
@@ -99,16 +105,23 @@ export class AuthController {
 
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
+  @UseInterceptors(RefreshLockoutInterceptor)
   async refreshSession(
     @Res({ passthrough: true }) response: Response,
     @Body() dto: RefreshSessionDto,
   ): Promise<AuthSessionResponse> {
     const cookieRefreshToken = this.cookieOptions.enabled
-      ? readRefreshCookie(response.req)
+      ? readRefreshCookie(response.req, this.cookieOptions.cookieName)
       : null;
-    const result = await this.authService.refreshSession({
-      refreshToken: cookieRefreshToken ?? dto.refreshToken,
-    });
+    const result = await this.authService.refreshSession(
+      {
+        refreshToken: cookieRefreshToken ?? dto.refreshToken,
+      },
+      requestSessionMeta(response.req),
+      // Where the presented credential came from — recorded on rejection so
+      // the admin audit trail can distinguish cookie vs body-token replays.
+      cookieRefreshToken ? 'cookie' : 'body',
+    );
 
     if (
       this.cookieOptions.enabled &&
@@ -129,13 +142,15 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<{ status: string; message: string }> {
     const cookieRefreshToken = this.cookieOptions.enabled
-      ? readRefreshCookie(response.req)
+      ? readRefreshCookie(response.req, this.cookieOptions.cookieName)
       : null;
 
     const result = await this.authService.signOut(cookieRefreshToken);
 
     if (this.cookieOptions.enabled) {
-      clearRefreshCookie(response, this.cookieOptions);
+      // Clear every refresh-cookie name (plain + __Host-) so a stale cookie
+      // from a deployment name transition cannot linger after sign-out.
+      clearAllRefreshCookies(response, this.cookieOptions);
     }
 
     return result;

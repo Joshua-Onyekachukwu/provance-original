@@ -43,7 +43,7 @@ export default function SampleReportPage() {
                 </div>
               </div>
 
-              <div className="grid gap-6 p-6 md:p-8 lg:grid-cols-[1.02fr_0.98fr] lg:p-10 border-b border-stone-light">
+              <div className="grid grid-cols-1 gap-6 p-6 md:p-8 lg:grid-cols-[1.02fr_0.98fr] lg:p-10 border-b border-stone-light">
                 <div className="space-y-6">
                   <div className="rounded-[1.5rem] border border-stone-light/80 bg-parchment/70 p-4">
                     <div className="flex items-center justify-between gap-3">
@@ -62,7 +62,7 @@ export default function SampleReportPage() {
                         className="rounded-[1.2rem] border-0"
                       />
                     </div>
-                    <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                    <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
                       {[
                         ['Source information', 'Uploaded by newsroom desk'],
                         ['Fingerprint', 'Matched to case record'],
@@ -101,7 +101,7 @@ export default function SampleReportPage() {
                 </div>
 
                 <div className="space-y-6">
-                  <div className="grid sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {[
                       { label: 'Authenticity Score', value: '31 / 100', accent: 'text-rose-700 bg-rose-50 border-rose-200/70' },
                       { label: 'AI Confidence', value: '94.7%', accent: 'text-amber-700 bg-amber-50 border-amber-200/70' },
@@ -181,7 +181,7 @@ export default function SampleReportPage() {
                 <h3 className="font-serif text-lg text-charcoal mb-5 flex items-center gap-2">
                   <span className="w-1.5 h-1.5 bg-amber rounded-full" /> Evidence Appendix
                 </h3>
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   {[
                     { id: 'FRQ-001', title: 'Frequency artifacts', desc: 'High-frequency patterning detected around the subject contour and backdrop gradients.', tone: 'bg-rose-50 border-rose-200/70 text-rose-700' },
                     { id: 'TMP-002', title: 'Timeline continuity', desc: 'Frame-to-frame shifts rise sharply in the final section of the uploaded clip.', tone: 'bg-amber-50 border-amber-200/70 text-amber-700' },

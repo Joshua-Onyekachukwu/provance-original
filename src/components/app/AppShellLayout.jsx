@@ -5,6 +5,13 @@ import ErrorBoundary from './ErrorBoundary.jsx'
 import { mockNotifications } from '../../lib/mockData.js'
 import { formatRelativeTime } from './scanPresentation.js'
 import { Badge, Button, CommandPalette, CommandRegistryProvider, Popover, useToast } from '../ui'
+import {
+  USE_MOCK,
+  getNotifications,
+  getUnreadNotificationCount,
+  markAllNotificationsRead,
+  markNotificationRead,
+} from '../../lib/api.js'
 
 // ---------------------------------------------------------------------------
 // Navigation model — single source of truth for the sidebar, page meta, and
@@ -46,6 +53,7 @@ const NAV_SECTIONS = [
     label: 'Developer',
     items: [
       { label: 'API Keys', href: '/app/api-keys', icon: 'api', note: 'Tokens for programmatic verification' },
+      { label: 'Webhooks', href: '/app/webhooks', icon: 'api', note: 'Realtime event delivery to your systems' },
       { label: 'Documentation', href: '/app/docs', icon: 'docs', note: 'API reference and integration guides' },
     ],
   },
@@ -355,30 +363,104 @@ function WorkspaceToggle() {
 
 function NotificationBell() {
   const toast = useToast()
+  const navigate = useNavigate()
   const [notifications, setNotifications] = useState(() =>
     mockNotifications.map((notification) => ({ ...notification })),
   )
-  const unreadCount = useMemo(() => notifications.filter((n) => !n.read).length, [notifications])
+  // The badge count is owned separately from the feed so the shell can poll
+  // the lightweight GET /notifications/unread-count endpoint instead of
+  // refetching the feed; local mark-read actions adjust it optimistically.
+  const [badgeCount, setBadgeCount] = useState(0)
+
+  // Fetch the user's feed from GET /notifications on mount. In mock mode a
+  // load failure keeps the seeded mock list so the demo never blanks; in real
+  // mode a failure leaves the feed empty rather than showing fabricated rows.
+  useEffect(() => {
+    let active = true
+    getNotifications({ pageSize: 8 })
+      .then((result) => {
+        if (!active) return
+        const rows = result?.data || result?.notifications || []
+        if (rows.length > 0) {
+          setNotifications(rows.map((n) => ({ ...n })))
+          setBadgeCount(rows.filter((n) => !n.read).length)
+        }
+      })
+      .catch(() => {
+        if (active && !USE_MOCK) setNotifications([])
+      })
+    return () => {
+      active = false
+    }
+  }, [])
+
+  // Poll the unread count (immediately + every 30s) so the badge reflects
+  // changes from other tabs/devices without refetching the whole feed. A poll
+  // failure keeps the last known badge.
+  useEffect(() => {
+    let active = true
+    function refreshBadge() {
+      getUnreadNotificationCount()
+        .then((result) => {
+          if (!active) return
+          const unread = Number(result?.unread ?? result?.count ?? 0)
+          if (!Number.isNaN(unread)) setBadgeCount(unread)
+        })
+        .catch(() => {
+          // Keep the last known count; the next poll reconciles.
+        })
+    }
+    refreshBadge()
+    const id = window.setInterval(refreshBadge, 30_000)
+    return () => {
+      active = false
+      window.clearInterval(id)
+    }
+  }, [])
   const visibleNotifications = notifications.slice(0, 8)
 
   function markAllRead() {
     const count = notifications.filter((n) => !n.read).length
     setNotifications((current) => current.map((n) => ({ ...n, read: true })))
+    setBadgeCount(0)
     if (count > 0) {
       toast.success('All caught up', {
         description: `Marked ${count} notification${count === 1 ? '' : 's'} as read.`,
       })
     }
+    markAllNotificationsRead().catch(() => {
+      if (import.meta.env.DEV) console.warn('[notifications] mark-all-read persistence failed')
+    })
   }
 
-  function markRead(id) {
+  function markRead(notification) {
     setNotifications((current) =>
-      current.map((n) => (n.id === id ? { ...n, read: true } : n)),
+      current.map((n) =>
+        n.id === notification.id ? { ...n, read: true } : n,
+      ),
     )
+    if (!notification.read) {
+      setBadgeCount((count) => Math.max(0, count - 1))
+    }
+    markNotificationRead(notification.id).catch(() => {
+      if (import.meta.env.DEV) console.warn('[notifications] mark-read persistence failed')
+    })
   }
 
-  // Note: mockNotifications[].link is intentionally not navigated in this phase —
-  // the mock links point at report routes that are not yet wired to the bell.
+  // Clicking a notification marks it read, closes the popover, and — when it
+  // carries a link (mockNotifications deep-links to /app/reports/:scanId) —
+  // navigates to the linked report route. Without a link it stays put (the
+  // full Notifications page holds the detail expansion instead).
+  // In-session note: the dashboard's separately-mounted feed keeps its own
+  // cached unread count until it remounts — not a sync bug, just per-instance
+  // state (mock and real modes both refetch on navigation).
+  function handleNotificationClick(notification, close) {
+    markRead(notification)
+    if (notification.link) {
+      navigate(notification.link)
+    }
+    close()
+  }
 
   return (
     <Popover
@@ -390,15 +472,15 @@ function NotificationBell() {
           ref={triggerRef}
           type="button"
           onClick={open}
-          aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
+          aria-label={badgeCount > 0 ? `Notifications, ${badgeCount} unread` : 'Notifications'}
           aria-haspopup="true"
           aria-expanded={isOpen}
           className="ui-focus-ring relative grid h-10 w-10 place-items-center rounded-xl border border-stone-light bg-white-warm text-charcoal-mid transition hover:border-charcoal/25 hover:text-charcoal"
         >
           <NavIcon name="bell" className="h-[18px] w-[18px]" />
-          {unreadCount > 0 && (
+          {badgeCount > 0 && (
             <span className="absolute -right-1.5 -top-1.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-rose-500 px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-parchment-light">
-              {unreadCount > 99 ? '99+' : unreadCount}
+              {badgeCount > 99 ? '99+' : badgeCount}
             </span>
           )}
         </button>
@@ -410,10 +492,10 @@ function NotificationBell() {
             <div>
               <p className="font-serif text-lg text-charcoal">Notifications</p>
               <p className="mt-0.5 text-xs text-charcoal-mid">
-                {unreadCount > 0 ? `${unreadCount} unread` : 'You are all caught up'}
+                {badgeCount > 0 ? `${badgeCount} unread` : 'You are all caught up'}
               </p>
             </div>
-            {unreadCount > 0 && (
+            {badgeCount > 0 && (
               <Button variant="ghost" size="sm" onClick={markAllRead}>
                 Mark all read
               </Button>
@@ -429,7 +511,7 @@ function NotificationBell() {
                 <li key={notification.id}>
                   <button
                     type="button"
-                    onClick={() => markRead(notification.id)}
+                    onClick={() => handleNotificationClick(notification, close)}
                     className={`ui-focus-ring flex w-full items-start gap-3 px-5 py-3.5 text-left transition ${
                       isUnread ? 'bg-sky-50/50 hover:bg-sky-50' : 'hover:bg-stone-light/60'
                     }`}
@@ -690,7 +772,7 @@ export default function AppShellLayout() {
   return (
     <CommandRegistryProvider>
     <div className="app-shell-surface min-h-screen bg-parchment-light">
-      <div className="min-h-screen lg:grid lg:grid-cols-[300px_minmax(0,1fr)]">
+      <div className="min-h-screen block lg:grid lg:grid-cols-[300px_minmax(0,1fr)]">
         <aside className="border-b border-charcoal-soft bg-charcoal text-parchment lg:min-h-screen lg:border-b-0 lg:border-r">
           <div className="flex flex-col px-4 py-4 sm:px-6 lg:sticky lg:top-0 lg:h-screen lg:px-6 lg:py-6">
             <div className="flex items-center justify-between gap-3">

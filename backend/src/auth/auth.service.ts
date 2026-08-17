@@ -1,13 +1,18 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { AccountService } from '../account/account.service';
+import { auditSeverity } from '../common/audit-severity';
 import type { CurrentUserPayload } from '../common/decorators/current-user.decorator';
 import { ConfigService } from '@nestjs/config';
 import { createHash } from 'crypto';
+import { decodeJwtPayloadSid } from '../common/jwt-sid.util';
+import { SecurityService } from '../security/security.service';
+import type { SessionMeta } from '../security/session-meta.util';
 import { SupabaseService } from '../supabase/supabase.service';
 import { AcceptInviteDto } from './dto/accept-invite.dto';
 import { ConfirmPasswordResetDto } from './dto/confirm-password-reset.dto';
@@ -17,14 +22,17 @@ import { SignInDto } from './dto/sign-in.dto';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   private readonly orgsTable: string;
   private readonly orgMembersTable: string;
   private readonly orgInvitesTable: string;
+  private readonly auditTable: string;
 
   constructor(
     private readonly accountService: AccountService,
     private readonly supabaseService: SupabaseService,
     private readonly configService: ConfigService,
+    private readonly securityService: SecurityService,
   ) {
     // Org tables mirror the organization module (0005_organization.sql) so the
     // invite-accept path joins the same roster the org endpoints manage.
@@ -40,13 +48,16 @@ export class AuthService {
       'SUPABASE_ORGANIZATION_INVITES_TABLE',
       'organization_invites',
     );
+    this.auditTable =
+      this.configService.get<string>('SUPABASE_AUDIT_LOGS_TABLE') ||
+      'audit_logs';
   }
 
   async getCurrentSession(user: CurrentUserPayload) {
     return this.accountService.getCurrentViewer(user);
   }
 
-  async signIn(dto: SignInDto) {
+  async signIn(dto: SignInDto, meta?: SessionMeta) {
     const client = this.supabaseService.createPublicClient();
 
     if (!client) {
@@ -81,6 +92,20 @@ export class AuthService {
       entity_id: data.user.id,
       details: {},
     });
+
+    // Ledger the session so the Security page can list and revoke it. Skip
+    // when the sid claim is unavailable rather than collapsing every session
+    // into a sentinel row that could never match the guard's decoded sid.
+    const authSessionId = decodeJwtPayloadSid(data.session.access_token);
+
+    if (authSessionId) {
+      await this.securityService.recordSession({
+        userId: data.user.id,
+        authSessionId,
+        refreshToken: data.session.refresh_token,
+        meta,
+      });
+    }
 
     const viewerState = await this.accountService.getCurrentViewer({
       id: data.user.id,
@@ -170,6 +195,11 @@ export class AuthService {
       );
     }
 
+    // A password reset should invalidate tracked sessions — wipe the ledger.
+    if (data.user) {
+      await this.securityService.deleteUserSessions(data.user.id);
+    }
+
     await this.insertAuditEvent({
       action: 'password_reset_confirmed',
       entity_type: 'auth_user',
@@ -182,7 +212,11 @@ export class AuthService {
     };
   }
 
-  async refreshSession(dto: RefreshSessionDto) {
+  async refreshSession(
+    dto: RefreshSessionDto,
+    meta?: SessionMeta,
+    tokenSource: 'cookie' | 'body' = 'body',
+  ) {
     const client = this.supabaseService.createPublicClient();
 
     if (!client) {
@@ -201,7 +235,17 @@ export class AuthService {
       refresh_token: dto.refreshToken,
     });
 
-    if (error || !data.session || !data.user) {
+    // Supabase rejected the refresh token — this is exactly what a replayed
+    // rotated token (token theft) produces. Record it in the admin audit
+    // trail before rejecting: only the SHA-256 hash of the presented token
+    // is stored, never the raw value, and the write is best-effort so the
+    // rejection itself can never be blocked by the audit insert.
+    if (error) {
+      await this.recordRejectedRefresh(dto.refreshToken, error, tokenSource, meta);
+      throw new UnauthorizedException('Invalid or expired session.');
+    }
+
+    if (!data.session || !data.user) {
       throw new UnauthorizedException('Invalid or expired session.');
     }
 
@@ -212,6 +256,19 @@ export class AuthService {
       entity_id: data.user.id,
       details: {},
     });
+
+    // Rotation keeps the same auth session id, so this bumps last_active_at
+    // on the existing ledger row (and stores the fresh token hash).
+    const authSessionId = decodeJwtPayloadSid(data.session.access_token);
+
+    if (authSessionId) {
+      await this.securityService.recordSession({
+        userId: data.user.id,
+        authSessionId,
+        refreshToken: data.session.refresh_token,
+        meta,
+      });
+    }
 
     const viewerState = await this.accountService.getCurrentViewer({
       id: data.user.id,
@@ -250,6 +307,11 @@ export class AuthService {
       }
     }
 
+    // Drop the ledger row for this session (matched by refresh-token hash).
+    if (refreshToken) {
+      await this.securityService.deleteSessionByRefreshHash(refreshToken);
+    }
+
     await this.insertAuditEvent({
       action: 'sign_out',
       entity_type: 'auth_user',
@@ -275,15 +337,16 @@ export class AuthService {
       };
     }
 
-    // ── 1. Organization invite (raw token) — joins the org roster ──────────
-    // POST /organization/invites stores a plaintext token on
-    // organization_invites.token; acceptance creates the auth user and inserts
-    // the membership row so the invitee lands on the org roster with the
-    // invited role and team.
+    // ── 1. Organization invite (hashed token) — joins the org roster ───────
+    // POST /organization/invites persists only the SHA-256 of the raw token
+    // (migration 0015), so a leaked invites table never exposes usable tokens.
+    // Acceptance hashes the submitted token and matches token_hash; the raw
+    // token reached the invitee only via the share/email link.
+    const tokenHash = createHash('sha256').update(dto.token).digest('hex');
     const { data: orgInvite, error: orgInviteError } = await adminClient
       .from(this.orgInvitesTable)
       .select('id, email, role, team_id, organization_id, status, expires_at')
-      .eq('token', dto.token)
+      .eq('token_hash', tokenHash)
       .eq('status', 'pending')
       .gt('expires_at', new Date().toISOString())
       .maybeSingle();
@@ -299,7 +362,7 @@ export class AuthService {
     }
 
     // ── 2. Waitlist access invite (hashed token) — existing flow ───────────
-    const tokenHash = createHash('sha256').update(dto.token).digest('hex');
+    // (tokenHash was already computed above for the org-invite lookup.)
     const { data: invite, error: inviteError } = await adminClient
       .from('access_invites')
       .select('id, email, waitlist_application_id, status, expires_at')
@@ -587,6 +650,64 @@ export class AuthService {
     if (error && strict) {
       throw new ServiceUnavailableException(
         'Audit logging is temporarily unavailable.',
+      );
+    }
+  }
+
+  /**
+   * Record a rejected refresh token in the admin audit trail (audit_logs).
+   *
+   * Supabase rejects a refresh token when it was already rotated (the replay
+   * signature of token theft), expired, or was never issued. The event is
+   * high-severity so it surfaces on the Admin Audit Logs page; only a
+   * SHA-256 hash of the presented token is stored so a leaked table never
+   * leaks the credential. The write is best-effort — a missing audit_logs
+   * table (migration 0008 not applied) must never break the rejection path.
+   */
+  private async recordRejectedRefresh(
+    presentedToken: string,
+    supabaseError: { message?: string; status?: number },
+    tokenSource: 'cookie' | 'body',
+    meta?: SessionMeta,
+  ) {
+    const adminClient = this.supabaseService.getAdminClient();
+
+    if (!adminClient) {
+      return;
+    }
+
+    const message = supabaseError.message ?? '';
+    // Known replay signatures from GoTrue — flagged so the admin can
+    // distinguish theft from a plain expiry. The message changed across
+    // GoTrue versions: the legacy "Refresh Token Not Found" vs v2.195.0's
+    // "Invalid Refresh Token: Already Used" (error_code
+    // refresh_token_already_used), verified live on this project.
+    const reuseSuspected =
+      message.includes('Refresh Token Not Found') || /already used/i.test(message);
+
+    const { error } = await adminClient.from(this.auditTable).insert({
+      actor_email: 'system',
+      action: 'refresh_token_rejected',
+      severity: auditSeverity('refresh_token_rejected'),
+      entity_type: 'auth_session',
+      entity_id: null,
+      details: {
+        refresh_token_hash: createHash('sha256')
+          .update(presentedToken)
+          .digest('hex'),
+        reuse_suspected: reuseSuspected,
+        error: message.slice(0, 300),
+        status: supabaseError.status ?? null,
+        token_source: tokenSource,
+        device: meta?.device ?? null,
+        ip_address: meta?.ipAddress ?? null,
+        location: meta?.location ?? null,
+      },
+    });
+
+    if (error) {
+      this.logger.warn(
+        `Refresh-token rejection audit write failed: ${error.message}`,
       );
     }
   }

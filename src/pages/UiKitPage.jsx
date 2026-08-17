@@ -111,7 +111,7 @@ function BadgesDemo() {
 
 function CardsDemo() {
   return (
-    <div className="grid gap-5 md:grid-cols-2">
+    <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
       <Card eyebrow="Default state" title="Report library" description="A populated card with header and body content.">
         <div className="space-y-2 text-sm text-charcoal-mid">
           <p>Body content renders here.</p>
@@ -147,7 +147,7 @@ function CardsDemo() {
 
 function StatCardsDemo() {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <StatCard label="Scans today" value="47" detail="Across all workspaces" tone="default" />
       <StatCard label="Completion rate" value="94%" trend={{ direction: 'up', value: '2.1%' }} tone="success" />
       <StatCard label="Suspicious flagged" value="22" trend={{ direction: 'down', value: '3' }} tone="warning" />
@@ -205,7 +205,7 @@ function DataTableDemo() {
           onRowClick={(row) => window.alert(`Row clicked: ${row.original_filename}`)}
         />
       </div>
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div>
           <p className="mb-3 text-sm font-medium text-charcoal">Loading state</p>
           <DataTable columns={columns} rows={[]} loading />
@@ -453,7 +453,7 @@ function DrawerDemo() {
             The drawer portals to <code className="font-mono text-charcoal">document.body</code>, traps focus, locks body
             scroll, and closes on <kbd className="rounded border border-stone-light bg-parchment px-1.5 font-mono text-[11px]">Esc</kbd>.
           </p>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <StatCard label="Confidence" value="94.7%" tone="warning" />
             <StatCard label="Risk" value="High" tone="danger" />
           </div>
@@ -486,7 +486,7 @@ function ToastsDemo() {
 
 function MiscDemo() {
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <div>
         <p className="mb-3 text-sm font-medium text-charcoal">Skeleton</p>
         <div className="space-y-3 rounded-2xl border border-stone-light bg-white-warm p-5">
@@ -539,7 +539,7 @@ export default function UiKitPage() {
           <Section title="Card" description="Unified section card with header block and built-in loading, empty, and error states.">
             <CardsDemo />
           </Section>
-          <Section title="StatCard" description="Unified metric card with tone accents, trend chips, and loading/error states — API-compatible with the admin StatCard.">
+          <Section title="StatCard" description="Unified metric card with tone accents, trend chips, and loading/error states — the single shared StatCard across admin and user dashboards.">
             <StatCardsDemo />
           </Section>
           <Section title="DataTable" description="Generic table with client sort, search, pagination, row click, and full states. Backend-ready: swap mock rows for API data later.">

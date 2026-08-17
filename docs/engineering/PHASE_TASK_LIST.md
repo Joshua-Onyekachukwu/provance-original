@@ -1,6 +1,6 @@
 # Provance Feature And Phase Checklist
 
-Last updated: 2026-07-24
+Last updated: 2026-08-07
 
 ## Purpose
 
@@ -86,9 +86,9 @@ Status tags:
 - [x] Complete: formatter consolidation — all date/number/duration/storage formatters unified into `src/components/app/scanPresentation.js` (formatCount, formatDate, formatDateTime, formatScanTimestamp, formatShortDate, formatDateLong, formatTimeShort, formatHourShort, formatRelativeTime, formatPct, percentOf, formatCurrency, formatDurationMs, formatStorageGb, formatFileSize)
 - [x] Complete: formatter locale pinned to en-US (formatDate + formatRelativeTime fallback were locale-default `toLocaleDateString(undefined, …)`; now `Intl.DateTimeFormat('en-US', …)` so output never shifts with the browser locale)
 - [x] Complete: sample-report timestamp standardization — single canonical `analysisTimestampIso` in `sampleReportContent.js` rendered via `formatDateTime` on the landing, page, document, and print surfaces (was hardcoded and divergent: `2026-06-25` vs `2026-07-16`)
-- [x] Complete: formatter test suite — **63 vitest tests** covering edge cases (nulls, NaN, zero, sub-second, invalid input, rounding and unit boundaries)
+- [x] Complete: formatter test suite — **113-test suite** covering edge cases (nulls, NaN, zero, sub-second, invalid input, rounding and unit boundaries); full vitest suite **295/295** (2026-08-07)
 - [x] Complete: formatter sign-off sweep — final grep for hand-rolled formatting (numbers/percents/dates) across forensic components and Sample Report surfaces; stragglers migrated (`AppBillingPage` → `formatStorageGb`, forensic `VeracityGauge` → `formatPct`); `scanPresentation.js` confirmed as the single source of truth for presentation formatting (2026-08-05)
-- [ ] Not Started: sweep the two legacy admin pages (Organizations, Feature Flags) onto the ui kit primitives
+- [x] Complete: sweep the legacy admin pages onto the ui kit primitives — Organizations + Feature Flags migrated in the prior pass; final sweep (2026-08-07) found and migrated the last `AdminTable` consumer (AnalyticsPage top-orgs table → `DataTable`), leaving **zero** legacy `AdminTable`/`AdminStatCard`/`AdminDrawer` imports anywhere in `src/pages/`
 
 ### App Shell And Navigation
 
@@ -157,6 +157,7 @@ Status tags:
 
 ### Admin Workspace
 
+- [x] Complete: all 12 admin pages shipped and verified — Overview, Waitlist, Users, Organizations, Feature Flags, Analytics, Monitoring, Audit Logs, Jobs, Reports, Roles, Settings — mock-backed with loading/empty/error states and `?state=` demo forcing (2026-08-07); no admin placeholders remain
 - [x] Complete: admin-gated route
 - [x] Complete: waitlist search and filtering
 - [x] Complete: notes and status review
@@ -183,7 +184,7 @@ Status tags:
 - [x] Complete: refresh endpoint
 - [x] Complete: current-session identity endpoint
 - [x] Complete: backend-backed profile endpoints
-- [ ] Not Started: cookie-based session transport
+- [x] Complete: cookie-based session transport (httpOnly refresh cookie + in-memory access token; backend flow shipped 2026-08-04, frontend migration shipped 2026-08-06 — see `docs/engineering/AUTH_HARDENING_MIGRATION.md`)
 - [ ] Not Started: fuller authorization model beyond allowlists and route guards
 
 ### Verification Pipeline
@@ -195,7 +196,7 @@ Status tags:
 - [x] Complete: structured `result_payload`
 - [ ] In Progress: end-to-end reliability validation in deployed environments
 - [ ] In Progress: better retry and failure classification
-- [ ] Not Started: payload schema versioning strategy
+- [x] Complete: payload schema versioning strategy (`result_payload.payload_version` semantic-lite `MAJOR.MINOR.PATCH`, shipped 2026-08-10 — see `docs/engineering/SCAN_UPLOAD_CONTRACT.md`)
 - [ ] Deferred: multi-media orchestration
 
 ### Storage And Data
@@ -205,7 +206,7 @@ Status tags:
 - [x] Complete: profiles table migration in repo
 - [x] Complete: private uploads bucket expectation
 - [x] Complete: reconcile remote schema state with local migration truth
-- [ ] Not Started: retention policy documentation for uploaded artifacts
+- [x] Complete: retention policy documentation for uploaded artifacts (baseline ratified 2026-08-10 — see `docs/engineering/RETENTION_POLICY.md`; archival enforcement job tracked as Phase 5 backlog)
 
 ### Security
 
@@ -215,23 +216,23 @@ Status tags:
 - [x] Complete: request IDs
 - [x] Complete: global exception filtering
 - [x] Complete: admin allowlist gating
-- [ ] In Progress: auth transport hardening
+- [x] Complete: auth transport hardening (httpOnly cookie session transport + rotation; see `docs/engineering/AUTH_HARDENING_MIGRATION.md`)
 - [ ] Not Started: expanded RLS review
 - [ ] Not Started: bot protection
-- [ ] Not Started: deeper file inspection before processing
-- [ ] Not Started: malware scanning before beta
+- [x] Complete: deeper file inspection before processing (pre-processing content gate — empty/truncated and non-image magic bytes rejected with actionable failure reasons; supported-image header mismatch still flows through as the suspicious signal; shipped 2026-08-10 with `inspectUploadContent` tests)
+- [ ] Not Started: malware scanning before beta (needs a scanning vendor — decision deferred)
 
 ### Observability And Operations
 
 - [x] Complete: health endpoint
 - [ ] Approved 2026-08-04: Sentry integration (errors)
 - [ ] Approved 2026-08-04: product analytics integration (PostHog)
-- [ ] Not Started: queue metrics and backlog monitoring
-- [ ] Not Started: worker error alerting
-- [ ] Not Started: founder-friendly operational diagnostics surface
+- [x] Complete: queue metrics and backlog monitoring (Monitoring page queue_health — queued/in-flight backlog, throughput/hour, failure rate, hourly + daily series, avg processing time; real `GET /admin/monitoring` payload)
+- [ ] Not Started: worker error alerting (needs an alerting channel — Sentry/email decision deferred)
+- [x] Complete: founder-friendly operational diagnostics surface (dashboard internal diagnostics panel + admin Overview/Monitoring surfaces)
 - [x] Complete: admin analytics + monitoring pages (Analytics + Monitoring pages, real `GET /admin/analytics` endpoint)
 - [ ] Approved 2026-08-04: global error boundary + crash recovery
-- [ ] Approved 2026-08-04: scan deduplication (hash-based)
+- [x] Complete: scan deduplication (hash-based) — worker-side SHA-256 lookup + reused payload (migration 0013, shipped 2026-08-08)
 - [ ] Approved 2026-08-04: webhooks UI (later release)
 - [ ] Approved 2026-08-04: usage/entitlement enforcement (later release)
 - [ ] Approved 2026-08-04: evidence appendix in reports (later release)
@@ -244,7 +245,7 @@ Status tags:
 - [x] Complete: Supabase project access verified
 - [x] Complete: Fly deployment files present
 - [x] Complete: Vercel deployment path present
-- [ ] In Progress: decide queue strategy for dev and shared environments
+- [x] Complete: decide queue strategy for dev and shared environments (Upstash Redis + BullMQ, documented in `docs/engineering/DEPLOYMENT_FLYIO_AND_UPSTASH.md`; verified via `backend/scripts/verify-bullmq.mjs`)
 - [ ] Not Started: Cloudflare account and domain strategy confirmation
 - [ ] Approved 2026-08-04: Sentry setup
 - [ ] Approved 2026-08-04: PostHog setup

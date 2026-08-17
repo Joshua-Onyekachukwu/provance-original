@@ -3,6 +3,7 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
+import { MigrationHealthService } from './../src/health/migration-health.service';
 
 describe('HealthController (e2e)', () => {
   let app: INestApplication<App>;
@@ -10,7 +11,13 @@ describe('HealthController (e2e)', () => {
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      // Keep the e2e hermetic: the migration-diff check probes the live
+      // Supabase schema at boot (onModuleInit) — stub it here so the health
+      // spec never depends on the network or the real DB state.
+      .overrideProvider(MigrationHealthService)
+      .useValue({ check: jest.fn() })
+      .compile();
 
     app = moduleFixture.createNestApplication();
     await app.init();

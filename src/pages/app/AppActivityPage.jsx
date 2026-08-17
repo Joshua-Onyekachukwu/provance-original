@@ -40,6 +40,7 @@ const ACTION_META = {
   'api_key.revoked': { label: 'Revoked', verb: 'revoked an API key', tone: 'error' },
   'feature_flag.toggled': { label: 'Toggled', verb: 'toggled a feature flag', tone: 'warning' },
   'role.changed': { label: 'Role changed', verb: 'changed a role', tone: 'info' },
+  'password_changed': { label: 'Password changed', verb: 'changed their password', tone: 'warning' },
   'org.created': { label: 'Created', verb: 'created the organization', tone: 'success' },
   'invite.accepted': { label: 'Accepted', verb: 'accepted an invite', tone: 'success' },
   // Resolved incidents surface from the monitoring feed; severity drives the
@@ -131,10 +132,16 @@ function ActivityRow({ event, open, onToggle }) {
             <Badge tone={tone} size="sm">
               {meta.label}
             </Badge>
-            {/* Target chip */}
-            <span className="inline-flex items-center gap-1.5 rounded-md border border-stone-light bg-parchment px-2 py-0.5 font-mono text-[11px]">
-              <span className="text-charcoal-light">{resourceLabel(event.resource_type)}</span>
-              {event.resource_id && <span className="text-charcoal">{event.resource_id}</span>}
+            {/* Target chip — min-w-0 + truncate: resource ids like
+                waitlist_application_0007 are unbroken strings that otherwise
+                blow the chip wider than the viewport on narrow columns. */}
+            <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-md border border-stone-light bg-parchment px-2 py-0.5 font-mono text-[11px]">
+              <span className="shrink-0 text-charcoal-light">{resourceLabel(event.resource_type)}</span>
+              {event.resource_id && (
+                <span title={event.resource_id} className="min-w-0 truncate text-charcoal">
+                  {event.resource_id}
+                </span>
+              )}
             </span>
           </span>
         </span>
@@ -159,7 +166,7 @@ function ActivityRow({ event, open, onToggle }) {
           aria-label={`Details for ${event.action}`}
           className="mx-5 mb-4 rounded-2xl border border-stone-light bg-parchment/60 px-5 py-4"
         >
-          <dl className="grid gap-x-8 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+          <dl className="grid grid-cols-1 gap-x-8 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
             <div>
               <dt className="text-[11px] uppercase tracking-[0.18em] text-charcoal-light">Event</dt>
               <dd className="mt-1 font-mono text-xs text-charcoal">{event.action}</dd>

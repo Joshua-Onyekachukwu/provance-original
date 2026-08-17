@@ -32,7 +32,7 @@ export default function ContactPage() {
       />
 
       <section className="section-padding bg-parchment-light">
-        <div className="content-container grid gap-8 lg:grid-cols-[0.95fr_1.05fr] items-start">
+        <div className="content-container grid grid-cols-1 gap-8 lg:grid-cols-[0.95fr_1.05fr] items-start">
           <div className="surface-card p-8">
             <div className="surface-card-muted mb-8 rounded-[1.5rem] p-6">
               <p className="font-mono text-xs uppercase tracking-[0.2em] text-charcoal-light">
@@ -70,7 +70,7 @@ export default function ContactPage() {
             onSubmit={handleSubmit}
             className="surface-card p-8"
           >
-            <div className="grid gap-5 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
               <label className="block">
                 <span className="text-sm font-medium text-charcoal">Name</span>
                 <input
@@ -95,7 +95,7 @@ export default function ContactPage() {
               </label>
             </div>
 
-            <div className="grid gap-5 md:grid-cols-2 mt-5">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 mt-5">
               <label className="block">
                 <span className="text-sm font-medium text-charcoal">Company</span>
                 <input

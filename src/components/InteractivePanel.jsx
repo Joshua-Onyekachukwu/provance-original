@@ -1,14 +1,33 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
+const BASE_STYLE = {
+  transform: 'perspective(1400px) rotateX(0deg) rotateY(0deg) scale(1)',
+  background:
+    'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.12), rgba(255,255,255,0.04) 45%, rgba(255,255,255,0.02) 100%)',
+}
+
+/**
+ * InteractivePanel — a 3D tilt-on-pointer-move card wrapper.
+ *
+ * Touch/pointer model:
+ *  - Tilt is enabled only on devices with `(hover: hover) and (pointer: fine)`
+ *    (mouse/trackpad). On touch, a tap synthesizes a single mouse-move but
+ *    never a matching mouse-leave, which would leave the panel stuck tilted —
+ *    so on coarse pointers the panel renders flat (no handlers attached).
+ *  - `prefers-reduced-motion: reduce` also disables the tilt.
+ */
 export default function InteractivePanel({ children, className = '' }) {
-  const [style, setStyle] = useState({
-    transform: 'perspective(1400px) rotateX(0deg) rotateY(0deg) scale(1)',
-    background:
-      'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.12), rgba(255,255,255,0.04) 45%, rgba(255,255,255,0.02) 100%)',
-  })
+  const [style, setStyle] = useState(BASE_STYLE)
+  const [canTilt, setCanTilt] = useState(false)
+
+  useEffect(() => {
+    const fine = window.matchMedia('(hover: hover) and (pointer: fine)').matches
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    setCanTilt(fine && !reduced)
+  }, [])
 
   const handleMove = (event) => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    if (!canTilt) return
     const rect = event.currentTarget.getBoundingClientRect()
     const x = ((event.clientX - rect.left) / rect.width) * 100
     const y = ((event.clientY - rect.top) / rect.height) * 100
@@ -22,19 +41,15 @@ export default function InteractivePanel({ children, className = '' }) {
   }
 
   const handleLeave = () => {
-    setStyle({
-      transform: 'perspective(1400px) rotateX(0deg) rotateY(0deg) scale(1)',
-      background:
-        'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.12), rgba(255,255,255,0.04) 45%, rgba(255,255,255,0.02) 100%)',
-    })
+    setStyle(BASE_STYLE)
   }
 
   return (
     <div
       className={`relative overflow-hidden transition-transform duration-300 ease-out will-change-transform ${className}`}
       style={{ transform: style.transform }}
-      onMouseMove={handleMove}
-      onMouseLeave={handleLeave}
+      onMouseMove={canTilt ? handleMove : undefined}
+      onMouseLeave={canTilt ? handleLeave : undefined}
     >
       <div
         aria-hidden="true"
