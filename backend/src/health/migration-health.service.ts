@@ -88,6 +88,7 @@ export const MIGRATION_PROBES: MigrationProbe[] = [
   { migration: '0018', file: '0018_better_auth.sql', probeable: true, table: 'verification', column: 'id', note: 'better-auth core + plugin tables (probe: verification)' },
   { migration: '0019', file: '0019_scan_idempotency.sql', probeable: true, table: 'scans', column: 'idempotency_key' },
   { migration: '0020', file: '0020_api_usage.sql', probeable: true, table: 'api_usage', column: 'user_id' },
+  { migration: '0021', file: '0021_scan_attempts.sql', probeable: true, table: 'scans', column: 'attempts_made', note: 'adds scans.attempts_made/max_attempts — retry telemetry for the admin Jobs payload' },
 ];
 
 type AdminClient = NonNullable<ReturnType<SupabaseService['getAdminClient']>>;

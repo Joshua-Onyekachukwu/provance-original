@@ -32,6 +32,8 @@ type ScanRow = {
   processing_mode: string;
   team_id: string | null;
   completed_at: string | null;
+  attempts_made: number | null;
+  max_attempts: number | null;
 };
 
 type QueueSnapshot = {
@@ -306,14 +308,16 @@ export class ScansService {
       // Inline path (no Redis): runScanProcessing rethrows on failure, so this
       // catch marks the row failed. Best-effort — if persisting the failure
       // itself fails (Supabase down), log and move on; there is no retry tier
-      // in inline mode.
+      // in inline mode, so the telemetry records a single attempt.
       void this.runScanProcessing(adminClient, scan).catch((error) => {
         const reason = error instanceof Error ? error.message : 'Unknown error.';
-        void this.markScanFailed(scan.id, reason).catch((markError) => {
-          this.logger.error(
-            `Failed to persist failed status for scan ${scan.id}: ${markError instanceof Error ? markError.message : 'unknown error'}`,
-          );
-        });
+        void this.markScanFailed(scan.id, reason, { attemptsMade: 1, maxAttempts: 1 }).catch(
+          (markError) => {
+            this.logger.error(
+              `Failed to persist failed status for scan ${scan.id}: ${markError instanceof Error ? markError.message : 'unknown error'}`,
+            );
+          },
+        );
       });
     }
 
@@ -592,6 +596,8 @@ export class ScansService {
       team_id: '0012_profiles_team.sql',
       file_hash_sha256: '0013_scan_dedup.sql',
       idempotency_key: '0019_scan_idempotency.sql',
+      attempts_made: '0021_scan_attempts.sql',
+      max_attempts: '0021_scan_attempts.sql',
     };
 
     if (column && migrationByColumn[column]) {
@@ -697,8 +703,18 @@ export class ScansService {
    * exhausted (the worker's 'failed' event) or from the inline path's error
    * handler. Idempotent and race-safe: a scan already 'complete' (e.g. a
    * concurrent dedup hit) is never downgraded to 'failed'.
+   *
+   * attempts — retry telemetry from the failing job (migration 0021): how
+   * many attempts were burned and the configured budget (3 for the BullMQ
+   * path, 1 for inline). Absent (legacy rows / direct callers), the scan's
+   * stored values or neutral defaults are preserved so the admin Jobs payload
+   * always has a real number to show.
    */
-  async markScanFailed(scanId: string, reason: string) {
+  async markScanFailed(
+    scanId: string,
+    reason: string,
+    attempts?: { attemptsMade: number; maxAttempts: number },
+  ) {
     const adminClient = this.supabaseService.getAdminClient();
 
     if (!adminClient) {
@@ -714,18 +730,25 @@ export class ScansService {
       return;
     }
 
+    const attemptsMade = attempts?.attemptsMade ?? scan.attempts_made ?? 1;
+    const maxAttempts = attempts?.maxAttempts ?? scan.max_attempts ?? 3;
+
     await this.updateScan(adminClient, scanId, {
       status: 'failed',
       failure_reason: reason,
+      attempts_made: attemptsMade,
+      max_attempts: maxAttempts,
       updated_at: new Date().toISOString(),
     });
-    this.logger.warn(`Scan ${scanId} marked failed after retries: ${reason}`);
+    this.logger.warn(
+      `Scan ${scanId} marked failed after ${attemptsMade} of ${maxAttempts} attempts: ${reason}`,
+    );
 
     // Best-effort audit trail: a terminal worker-side failure should surface
     // in the Admin Audit Logs page like the admin fail/retry actions do. A
     // missing audit_logs table (migration 0008 not applied) or an unresolved
     // owner email must never break the failure write itself.
-    await this.recordScanFailedAudit(adminClient, scan, reason);
+    await this.recordScanFailedAudit(adminClient, scan, reason, attemptsMade, maxAttempts);
   }
 
   /**
@@ -739,6 +762,8 @@ export class ScansService {
     adminClient: NonNullable<ReturnType<SupabaseService['getAdminClient']>>,
     scan: ScanRow,
     reason: string,
+    attemptsMade: number,
+    maxAttempts: number,
   ) {
     try {
       const { data: profile, error: profileError } = await adminClient
@@ -754,7 +779,7 @@ export class ScansService {
         severity: auditSeverity('scan.failed'),
         entity_type: 'scan',
         entity_id: scan.id,
-        details: { failure_reason: reason },
+        details: { failure_reason: reason, attempts_made: attemptsMade, max_attempts: maxAttempts },
       });
 
       if (error) {

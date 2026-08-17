@@ -2078,6 +2078,7 @@ export const mockAdminJobs = mockScans.map((scan, i) => {
     status: scan.status,
     priority: JOB_PRIORITIES[i % JOB_PRIORITIES.length],
     attempts: failed ? 2 + (i % 2) : processing ? 1 : 1,
+    max_attempts: 3,
     progress: completed ? 100 : processing ? 40 + (i % 5) * 12 : failed ? 62 : 0,
     worker: JOB_WORKERS[i % JOB_WORKERS.length],
     processing_mode: scan.processing_mode,

@@ -1,5 +1,15 @@
 # Provance — Changelog
 
+## [2026-08-17] - Scan retry telemetry surfaces in the admin Jobs payload
+
+### Added
+- New migration `0021_scan_attempts.sql` — `scans.attempts_made` (default 1) and `scans.max_attempts` (default 3), with a probe in `MIGRATION_PROBES` so readiness/`validate:migrations` catch a missing 0021 (probe count now 21).
+- The BullMQ worker's final-attempt `failed` handler now passes `job.attemptsMade` / `job.opts.attempts` into `markScanFailed`, which persists both columns on the failed row and includes them in the `scan.failed` audit details (inline path records 1/1; absent telemetry falls back to stored/neutral defaults).
+- `AdminService` `toJobView` now surfaces the real `attempts` (display floor of 1 keeps the mock dialect for rows without telemetry) plus `max_attempts`, and `retryJob` resets `attempts_made` to 0 so a manual retry starts a fresh run; `mockAdminJobs` gains `max_attempts` for shape parity.
+
+### Verified
+- backend jest **442/442** (new tests: attempts persistence + audit details in `scans.service.spec`, real-attempts assertions in `admin.service.spec`, 21-probe count in `migration-health.service.spec`), e2e **76 pass / 2 skip**, `npm run build` clean, migration validator picks up 0021 from dist.
+
 ## [2026-08-17] - validate:migrations auto-emits the missing-migration paste block
 
 ### Added

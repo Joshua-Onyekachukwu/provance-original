@@ -702,14 +702,61 @@ describe('ScansService', () => {
 
       await service.markScanFailed('scan-1', 'download failed');
 
+      // No attempts passed → neutral defaults (1 burned of 3 max) ride through
+      // so the admin payload always has a real number.
+      expect(client.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: 'failed',
+          failure_reason: 'download failed',
+          attempts_made: 1,
+          max_attempts: 3,
+        }),
+      );
       expect(client.insert).toHaveBeenCalledWith({
         actor_email: 'owner@example.com',
         action: 'scan.failed',
         severity: 'high',
         entity_type: 'scan',
         entity_id: 'scan-1',
-        details: { failure_reason: 'download failed' },
+        details: {
+          failure_reason: 'download failed',
+          attempts_made: 1,
+          max_attempts: 3,
+        },
       });
+    });
+
+    it('persists the BullMQ attemptsMade/maxAttempts into the row and audit details', async () => {
+      const client = createAdminClient([
+        { data: scanRow({ status: 'processing' }), error: null },
+        { data: null, error: null },
+        { data: { email: 'owner@example.com' }, error: null },
+        { data: null, error: null },
+      ]);
+      const service = createService(client);
+
+      await service.markScanFailed('scan-1', 'Model 502', {
+        attemptsMade: 3,
+        maxAttempts: 3,
+      });
+
+      expect(client.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: 'failed',
+          failure_reason: 'Model 502',
+          attempts_made: 3,
+          max_attempts: 3,
+        }),
+      );
+      expect(client.insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          details: {
+            failure_reason: 'Model 502',
+            attempts_made: 3,
+            max_attempts: 3,
+          },
+        }),
+      );
     });
 
     it('falls back to the system actor when the owner email is unresolvable', async () => {

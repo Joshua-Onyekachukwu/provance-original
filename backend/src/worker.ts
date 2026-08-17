@@ -63,9 +63,14 @@ async function bootstrapWorker() {
       // Retries (attempts: 3 + exponential backoff) are exhausted — land the
       // scan in its terminal failed state. Best-effort: the row may already
       // be failed/complete (e.g. a concurrent inline path), which
-      // markScanFailed treats as a no-op.
+      // markScanFailed treats as a no-op. The job's attemptsMade/maxAttempts
+      // ride through so the admin Jobs page shows operators exactly how many
+      // retries this scan burned (migration 0021 columns).
       void scansService
-        .markScanFailed(scanId, error.message)
+        .markScanFailed(scanId, error.message, {
+          attemptsMade: job?.attemptsMade ?? 0,
+          maxAttempts: attempts,
+        })
         .catch((markError) =>
           logger.error(
             `Failed to persist failed status for scan ${scanId}: ${markError instanceof Error ? markError.message : 'unknown error'}`,

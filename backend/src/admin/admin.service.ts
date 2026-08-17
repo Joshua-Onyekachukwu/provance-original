@@ -94,6 +94,8 @@ type ScanJobRow = {
   completed_at: string | null;
   result_payload: unknown | null;
   failure_reason: string | null;
+  attempts_made: number | null;
+  max_attempts: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -101,7 +103,7 @@ type ScanJobRow = {
 // Columns the jobs ledger reads from the scans table (shared by listJobs and
 // the retry/fail transitions so the row dialect can't drift between them).
 const JOB_COLUMNS =
-  'id,status,original_filename,mime_type,file_size_bytes,processing_mode,team_id,completed_at,result_payload,failure_reason,created_at,updated_at';
+  'id,status,original_filename,mime_type,file_size_bytes,processing_mode,team_id,completed_at,result_payload,failure_reason,attempts_made,max_attempts,created_at,updated_at';
 
 // Display-dialect job status → DB scan_status values. The ?status= filter
 // accepts the same dialect the page's chips use (toJobView maps
@@ -1472,6 +1474,9 @@ export class AdminService {
       .update({
         status: 'queued',
         failure_reason: null,
+        // A manual retry starts a fresh run — the burned-attempt counter
+        // resets so the next failure reports its own attempts honestly.
+        attempts_made: 0,
         updated_at: new Date().toISOString(),
       })
       .eq('id', jobId)
@@ -1863,8 +1868,12 @@ function round2(value: number) {
  *  - status: the DB enum says 'complete'; the frontend mock dialect says
  *    'completed' — emit the display dialect at the API boundary. Jobs never
  *    surface 'awaiting_upload' (a job is work that has been submitted).
- *  - priority / attempts / progress / worker: the scans table has no such
- *    columns — neutral defaults the page renders as '—' or a sane fallback
+ *  - attempts / max_attempts: real retry telemetry (0021_scan_attempts.sql)
+ *    when the worker reported it — attempts shows how many tries a failing
+ *    scan burned; the display floor of 1 keeps the mock dialect for rows
+ *    without telemetry.
+ *  - priority / progress / worker: the scans table has no such columns —
+ *    neutral defaults the page renders as '—' or a sane fallback
  *    (progress: completed=100, else 0).
  *  - processing_mode / completed_at: real columns (0009_scan_processing.sql)
  *    surfaced directly, matching the scans service's toFrontendScanRow.
@@ -1885,7 +1894,13 @@ function toJobView(scan: ScanJobRow) {
     file_size_bytes: scan.file_size_bytes,
     status,
     priority: 'medium',
-    attempts: 1,
+    // Real retry telemetry (migration 0021): attempts_made reflects how many
+    // attempts the worker burned (0 right after a manual retry). The display
+    // floor of 1 keeps the page's "attempts" readout in the mock dialect
+    // (the mock shows 1 for non-failed jobs) while a failed job shows its
+    // real burn count. max_attempts rides through for future readouts.
+    attempts: Math.max(1, scan.attempts_made ?? 1),
+    max_attempts: scan.max_attempts ?? 3,
     progress: status === 'completed' ? 100 : 0,
     worker: null,
     processing_mode: scan.processing_mode ?? 'standard',

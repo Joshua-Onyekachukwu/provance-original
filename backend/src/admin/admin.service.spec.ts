@@ -121,6 +121,8 @@ const scanRows = [
     completed_at: null,
     result_payload: null,
     failure_reason: 'Model signature endpoint returned 502 after 3 retries.',
+    attempts_made: 3,
+    max_attempts: 3,
     created_at: '2026-08-05T09:00:00.000Z',
     updated_at: '2026-08-05T09:01:00.000Z',
   },
@@ -156,6 +158,11 @@ describe('AdminService.listJobs', () => {
     expect(result.data[1].error).toBe(
       'Model signature endpoint returned 502 after 3 retries.',
     );
+    // Real retry telemetry (0021): the failed job burned all 3 attempts.
+    expect(result.data[1].attempts).toBe(3);
+    expect(result.data[1].max_attempts).toBe(3);
+    // Non-failed rows keep the mock-dialect floor of 1.
+    expect(result.data[0].attempts).toBe(1);
     expect(result.data[2].status).toBe('queued');
     // Real processing columns surface directly (0009_scan_processing.sql).
     expect(result.data[0].processing_mode).toBe('deep');
@@ -277,7 +284,12 @@ describe('AdminService.retryJob', () => {
     expect(result.job.status).toBe('queued');
     expect(result.job.error).toBeNull();
     expect(client.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'queued', failure_reason: null }),
+      expect.objectContaining({
+        status: 'queued',
+        failure_reason: null,
+        // A manual retry resets the burned-attempt counter for a fresh run.
+        attempts_made: 0,
+      }),
     );
     // Audit trail: who retried it + the transition, severity from the map.
     expect(client.from).toHaveBeenCalledWith('audit_logs');
