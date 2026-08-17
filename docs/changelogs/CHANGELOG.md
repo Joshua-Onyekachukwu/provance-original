@@ -1,5 +1,18 @@
 # Provance — Changelog
 
+## [2026-08-17] - validate:migrations: manifest-vs-live expectation cross-check
+
+### Added
+- `backend/scripts/validate-migrations.mjs` now reads the runbook's canonical migration manifest (`MIGRATION_RUNBOOK.md` `BEGIN/END MIGRATION MANIFEST` markers — the same block `check:migrations` (CI) parses) and **diffs the live applied set against the documented expectation** on every run:
+  - **(1) Runbook self-consistency** — if the founder checklist's `expect applied: N` hardcode disagrees with the probeable count its own manifest documents, it warns that the runbook is stale and points at `--runbook` to regenerate.
+  - **(2) Manifest vs live** — if the live probe's applied count differs from the manifest's expected applied count (probeable files, seed-only 0017 excluded), it warns that the runbook's `applied: N` expectation contradicts the live probe, naming the gap (missing count or an over-applied set the manifest doesn't list).
+- The `--runbook` generator's `expect applied: N · skipped: M` line is now **derived from MIGRATION_PROBES** (`probeableTotal`/`skippedTotal`) instead of the hardcoded `20 · 1`, so a new migration can never silently leave a stale expectation in the doc.
+
+### Verified
+- Live run: `WARN: runbook manifest expects applied: 20 but the live probe reports applied: 5 (15 missing)` — exactly matches `validate:migrations`' own missing list; exit 1 unchanged.
+- Parse helpers unit-verified against the real runbook (21 manifest files, hardcode 20, both probeable-count and stale-simulation branches correct).
+- `--runbook` regenerates cleanly with the derived line (`expect applied: 20 · missing: 0 · skipped: 1`); `npm run check:migrations` still exits 0 (CONVERGED); syntax clean.
+
 ## [2026-08-17] - Migration-convergence checker: banner ↔ filename + content-level verification
 
 ### Added

@@ -107,6 +107,45 @@ const get = (key) => {
 const SUPABASE_URL = get('SUPABASE_URL');
 const SERVICE_KEY = get('SUPABASE_SERVICE_ROLE_KEY');
 
+/**
+ * The runbook's canonical migration manifest (BEGIN/END MIGRATION MANIFEST
+ * markers) is the stable source of truth for what the repo SHOULD apply —
+ * the same manifest check-migration-convergence.mjs (CI) parses. This script
+ * reads it too so the live probe can be diffed against the documented
+ * expectation: a stale "applied: 20" hardcode in the runbook (e.g. after a
+ * new migration lands without a --runbook regen) is flagged on every run
+ * instead of silently contradicting the probe.
+ */
+const RUNBOOK_PATH = new URL('../../docs/engineering/MIGRATION_RUNBOOK.md', import.meta.url);
+
+function readRunbook() {
+  try {
+    return readFileSync(RUNBOOK_PATH, 'utf8');
+  } catch {
+    return null;
+  }
+}
+
+/** Extract the manifest's migration file list (null when the block is absent). */
+function parseManifestFiles(text) {
+  const start = text.indexOf('<!-- BEGIN MIGRATION MANIFEST');
+  const end = text.indexOf('<!-- END MIGRATION MANIFEST -->');
+  if (start === -1 || end === -1 || end <= start) return null;
+  const block = text.slice(start + '<!-- BEGIN MIGRATION MANIFEST'.length, end);
+  const files = [];
+  for (const line of block.split(/\r?\n/)) {
+    const m = line.match(/^\|\s*\d+\s*\|\s*`(\d{4}_.*\.sql)`\s*\|$/);
+    if (m) files.push(m[1]);
+  }
+  return files;
+}
+
+/** Parse the founder checklist's "expect `applied: N …`" hardcode (null when absent). */
+function parseRunbookExpectedApplied(text) {
+  const m = text.match(/expect\s+`applied:\s*(\d+)/);
+  return m ? Number(m[1]) : null;
+}
+
 if (!SUPABASE_URL || !SERVICE_KEY) {
   console.error('MISSING_ENV (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY in backend/.env.local)');
   process.exit(1);
@@ -177,6 +216,16 @@ function buildManifestSection() {
  * block. The output is wrapped in BEGIN/END markers so a regenerate is a
  * clean replace of the section in the doc.
  */
+/**
+ * The converged-state expectation the runbook documents: every probeable
+ * migration applied (0017 seed-only is the one by-design skip). Derived from
+ * MIGRATION_PROBES so the "expect applied: N" line can never drift from the
+ * probe list — the stable source of truth. Computed lazily because
+ * MIGRATION_PROBES is imported below this module's top-level statements.
+ */
+const probeableTotal = () => MIGRATION_PROBES.filter((p) => p.probeable).length;
+const skippedTotal = () => MIGRATION_PROBES.filter((p) => !p.probeable).length;
+
 function buildRunbookSection(rows) {
   const pending = rows.filter((r) => r.status !== 'OK');
   const lines = [];
@@ -205,7 +254,7 @@ function buildRunbookSection(rows) {
     lines.push(`| [ ] | ${r.migration} | \`${r.file}\` | ${meta.unlocks} | ${meta.verify} | [Open →](${link}) |`);
   }
   lines.push('');
-  lines.push('**After the paste** — one command: `cd backend && npm run validate:migrations` (expect `applied: 20 · missing: 0 · skipped: 1`), then `curl http://localhost:4000/v1/health/readiness` (expect `"status": "ready"`). Or skip the dashboard entirely once `DATABASE_URL` is set in `backend/.env.local`: `npm run apply:migrations -- --verify`.');
+  lines.push(`**After the paste** — one command: \`cd backend && npm run validate:migrations\` (expect \`applied: ${probeableTotal()} · missing: 0 · skipped: ${skippedTotal()}\`), then \`curl http://localhost:4000/v1/health/readiness\` (expect \`"status": "ready"\`). Or skip the dashboard entirely once \`DATABASE_URL\` is set in \`backend/.env.local\`: \`npm run apply:migrations -- --verify\``);
   lines.push('');
   lines.push('<details><summary>📋 Full combined block — paste once (all pending migrations, dependency order)</summary>');
   lines.push('');
@@ -293,6 +342,47 @@ console.log('─'.repeat(92));
 console.log(
   `applied: ${appliedCount} · missing: ${missing.length} · errored: ${errored.length} · skipped: ${skippedCount}`,
 );
+
+// ── Manifest cross-check ──────────────────────────────────────────────────
+// The runbook's manifest block is the stable source of truth for what the
+// repo SHOULD apply; the live probe tells us what IS applied. Diff the two
+// so a stale expectation in the runbook (e.g. "expect applied: 20" after a
+// new migration lands without a --runbook regen) is flagged on every run
+// instead of silently contradicting the live probe.
+const runbookText = readRunbook();
+let manifestExpectedApplied = null;
+if (runbookText) {
+  const manifestFiles = parseManifestFiles(runbookText);
+  if (manifestFiles) {
+    // Expected applied = every probeable migration whose file is documented
+    // in the manifest (seed-only migrations are the by-design skip).
+    const probeByFile = new Map(MIGRATION_PROBES.map((p) => [p.file, p]));
+    manifestExpectedApplied = manifestFiles.filter((f) => probeByFile.get(f)?.probeable).length;
+  } else {
+    console.log(
+      '\nWARN: runbook manifest block not found — cannot diff the documented expectation against the live probe (run with --runbook to regenerate it).',
+    );
+  }
+}
+
+if (manifestExpectedApplied !== null) {
+  // (1) Runbook self-consistency: the documented "expect applied: N" line vs
+  //     the manifest it sits next to.
+  const runbookExpected = parseRunbookExpectedApplied(runbookText);
+  if (runbookExpected !== null && runbookExpected !== manifestExpectedApplied) {
+    console.log(
+      `\nWARN: runbook says \"expect applied: ${runbookExpected}\" but its own manifest documents ${manifestExpectedApplied} probeable migrations — the runbook is stale; regenerate with \`--runbook\`.`,
+    );
+  }
+
+  // (2) Manifest vs live: the documented expectation vs the actual probe.
+  if (appliedCount !== manifestExpectedApplied) {
+    const gap = manifestExpectedApplied - appliedCount;
+    console.log(
+      `\nWARN: runbook manifest expects applied: ${manifestExpectedApplied} but the live probe reports applied: ${appliedCount} (${missing.length} missing) — the runbook's \"applied: ${runbookExpected ?? manifestExpectedApplied}\" expectation contradicts the live probe.${gap > 0 ? ` ${gap} migration(s) still need applying.` : ` The live set exceeds the documented expectation (${-gap} more than the manifest) — likely a migration applied that the manifest does not list; regenerate with \`--runbook\`. `}`,
+    );
+  }
+}
 
 if (args.includes('--runbook')) {
   // --runbook: emit the founder-facing checklist section for MIGRATION_RUNBOOK.md
