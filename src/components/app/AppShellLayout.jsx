@@ -479,7 +479,7 @@ function NotificationBell() {
         >
           <NavIcon name="bell" className="h-[18px] w-[18px]" />
           {badgeCount > 0 && (
-            <span className="absolute -right-1.5 -top-1.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-rose-500 px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-parchment-light">
+            <span className="absolute -right-1.5 -top-1.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-rose-600 px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-parchment-light">
               {badgeCount > 99 ? '99+' : badgeCount}
             </span>
           )}

@@ -1,5 +1,18 @@
 # Provance — Changelog
 
+## [2026-08-17] - Accessibility audit gate + landing sample-report coverage
+
+### Added
+- **`npm run audit:a11y`** (`scripts/audit-a11y.mjs`) — repeatable accessibility gate over the app + admin surfaces: boots vite mock, signs in as the seeded admin, walks all `/app` + `/app/admin` routes (plus `/`, `/sample-report`, `/signin`), and fails on structural issues — interactive elements with no accessible name, `<img>` without `alt`, form controls with no label/aria/title, and real-keyboard Tab stops with no visible focus indicator (Playwright Tab cycling so `:focus-visible` actually matches; native date/time widgets exempted because Chromium focuses inside their shadow DOM). Contrast findings print as advisory (hex tokens measured exactly; Tailwind v4 `oklch` palette + alpha backgrounds fall through to the ancestor walk and are marked unverified). **34/34 routes structurally clean.**
+- **`src/components/SampleReport.test.jsx`** (6 tests) — renders the landing Sample Report section and walks the whole sample-report content model key-by-key, asserting every section lands in the DOM: cover (ink wordmark, verdict banner, report identity), executive summary, media information, metadata analysis, risk, timeline, version information, AI detection results, manipulation indicators, watermark/provenance, frame analysis, model + cross-validation results, analysis scope, chain of custody, technical findings, recommended next steps, appendix, reviewer notes, disclaimer, and the metrics grid.
+- **`src/test/setup.js`** — jsdom `matchMedia` + `IntersectionObserver` stubs (guarded to browser-like envs) so framer-motion `whileInView` landing components and `InteractivePanel`'s pointer/reduced-motion gates can render in vitest.
+
+### Changed
+- **Contrast fixes** — `--color-charcoal-light` darkened `#7d8797 → #5f6b7c` so tertiary labels on parchment/white-warm meet WCAG AA (≥4.5:1; the systemic advisory across every page); `TransparencyFooter` label spans moved `charcoal-light → stone` so they stay legible on the charcoal footer; notification-count badge `bg-rose-500 → bg-rose-600` so white 10px text reads ≈4.8:1.
+
+### Verified
+- `audit:a11y` **34/34 routes clean** (exit 0); `audit:responsive` **260/260 clean** incl. the landing Sample Report section at 375/640/768/1024/1280; vitest **603/603** (68 files, +6 new); `npm run build` clean; lint 0 errors (41-warning baseline). Known advisory left: amber timeline timestamps ≈3.3–3.6:1 (brand-accent tradeoff, logged).
+
 ## [2026-08-17] - Sample report cover mirrors the pdfkit export header
 
 ### Changed

@@ -14,18 +14,18 @@ const TransparencyFooter = ({ methodology, reportId, hash, node, c2paStatus = 'm
           <span className="tracking-[0.1em] uppercase">Core: {methodology || 'V2.4.1-STABLE'}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-charcoal-light uppercase">Analysis_ID:</span>
+          <span className="text-stone uppercase">Analysis_ID:</span>
           <span className="text-parchment/80">{reportId || 'PRV-882-X9'}</span>
         </div>
         <div className="hidden lg:flex items-center gap-2">
-          <span className="text-charcoal-light uppercase">SHA256:</span>
+          <span className="text-stone uppercase">SHA256:</span>
           <span className="text-parchment/40 select-all truncate max-w-[150px]">{hash || 'UNAVAILABLE'}</span>
         </div>
       </div>
       
       <div className="flex items-center gap-6">
         <div className="flex items-center gap-2">
-           <span className="text-charcoal-light uppercase text-[8px]">C2PA:</span>
+           <span className="text-stone uppercase text-[8px]">C2PA:</span>
            {c2paStatus === 'verified' ? (
              <span className="text-emerald-500 font-bold border border-emerald-500/20 px-1 rounded-[2px] bg-emerald-500/5">VALIDATED</span>
            ) : (
@@ -33,7 +33,7 @@ const TransparencyFooter = ({ methodology, reportId, hash, node, c2paStatus = 'm
            )}
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-charcoal-light uppercase text-[8px]">Node:</span>
+          <span className="text-stone uppercase text-[8px]">Node:</span>
           <span className="text-parchment/40">{node || 'US-EAST-04'}</span>
         </div>
         <div className="flex items-center gap-2 border-l border-charcoal-soft pl-4">

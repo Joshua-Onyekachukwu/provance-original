@@ -10,6 +10,40 @@ import '@testing-library/jest-dom/vitest'
 import { cleanup } from '@testing-library/react'
 import { afterEach } from 'vitest'
 
+// jsdom does not implement window.matchMedia — stub it so components that
+// gate pointer/reduced-motion behavior (InteractivePanel tilt, hero motion,
+// …) can render in tests. Default: no fine pointer, no reduced motion.
+// jsdom does not implement IntersectionObserver — stub it so framer-motion
+// whileInView blocks (landing sections) mount in tests. The stub never fires,
+// so hidden/visible states stay static, which is all a render test needs.
+if (typeof window !== 'undefined' && !window.IntersectionObserver) {
+  window.IntersectionObserver = class {
+    constructor(callback, options) {
+      this.callback = callback
+      this.options = options
+    }
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+    takeRecords() {
+      return []
+    }
+  }
+}
+
+if (typeof window !== 'undefined' && !window.matchMedia) {
+  window.matchMedia = (query) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
+  })
+}
+
 afterEach(() => {
   cleanup()
 })

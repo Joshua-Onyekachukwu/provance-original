@@ -50,7 +50,7 @@ surfaces (the app shells have their own tokens):
 | `--color-charcoal` | `#13161d` | Text + dark section background |
 | `--color-charcoal-soft` | `#1c2230` | Dark bezel core gradient end |
 | `--color-charcoal-mid` | `#546071` | Secondary body text |
-| `--color-charcoal-light` | `#7d8797` | Tertiary labels / captions |
+| `--color-charcoal-light` | `#5f6b7c` | Tertiary labels / captions — darkened 2026-08-17 from `#7d8797` so text on parchment/white-warm meets WCAG AA (≥4.5:1); keep it lighter than `charcoal-mid` for the label hierarchy |
 | `--color-stone` | `#bec5d0` | Muted text on dark |
 | `--color-stone-light` | `#dde3ea` | Hairlines / track fills |
 | `--color-trust` | `#2f5bea` | Primary brand accent |

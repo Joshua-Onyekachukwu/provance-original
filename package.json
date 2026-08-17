@@ -22,6 +22,7 @@
     "backend:test:e2e": "npm --prefix backend run test:e2e -- --runInBand",
     "check:launch": "npm run check:test && npm run build && npm run backend:build && npm run backend:test:e2e",
     "audit:responsive": "node scripts/audit-responsive.mjs",
+    "audit:a11y": "node scripts/audit-a11y.mjs",
     "guard:grid": "node scripts/grid-guard.mjs"
   },
   "dependencies": {
