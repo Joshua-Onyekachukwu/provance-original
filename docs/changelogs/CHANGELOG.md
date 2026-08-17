@@ -1,5 +1,19 @@
 # Provance — Changelog
 
+## [2026-08-17] - Mobile touch audit: 44px tap targets on the landing nav
+
+### Fixed
+- `src/components/Navbar.jsx` — the mobile menu links (nav items, Dashboard, Sign In) were bare `text-base` links (~24px tall, below the 44px touch-target minimum). Added `inline-flex min-h-11 items-center` so every row is exactly 44px, matching the footer's existing pattern. CTA buttons were already ≥44px.
+
+### Audit summary (Hero + landing framer-motion, mobile width)
+- Hero CTAs (`btn-primary`/`btn-secondary`): 55px ✓ · Hero "See why teams choose Provance" anchor: `min-h-11` ✓ · Navbar hamburger: 44×44 with aria-label/expanded/controls ✓ · CLEARAnswers accordion summaries: ~68px ✓ · SampleReport `<details>` summaries: `min-h-11` ✓ · ProductShowcase signal-row buttons: ~56px, Replay button: `min-h-11` ✓
+- `InteractivePanel` 3D tilt is touch-safe by design — enabled only on `(hover: hover) and (pointer: fine)` devices and disabled under `prefers-reduced-motion`, so touch taps can't leave the panel stuck tilted.
+- **No hover-only interactions anywhere** on the landing: grep for `group-hover`/`peer-hover`/`hover:block`/`hover:visible` content gating returns zero matches; all `whileHover` usages are decorative lift/translate on non-interactive cards (harmless on touch).
+
+### Verified
+- Headless measurement at 375×720: hamburger 44×44, all 8 mobile menu rows 44px (55px for the CTA), hero CTAs 55px.
+- Responsive audit subset 15/15 clean (sample-report + benchmark at 375/640/768/1024/1280 — these render the shared Navbar); lint 0 errors, build clean.
+
 ## [2026-08-17] - break-words/min-w-0 hardening on report surfaces
 
 ### Fixed

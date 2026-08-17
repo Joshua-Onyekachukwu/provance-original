@@ -128,7 +128,7 @@ export default function Navbar() {
                   key={item.href}
                   to={item.href}
                   onClick={() => setMobileOpen(false)}
-                  className={`text-base font-medium transition-colors ${
+                  className={`inline-flex min-h-11 items-center text-base font-medium transition-colors ${
                     isActive(item.href) ? 'text-charcoal' : 'text-charcoal-mid hover:text-charcoal'
                   }`}
                 >
@@ -139,7 +139,7 @@ export default function Navbar() {
                 <>
                   <Link
                     to="/app"
-                    className="text-base text-charcoal-mid hover:text-charcoal transition-colors"
+                    className="inline-flex min-h-11 items-center text-base text-charcoal-mid hover:text-charcoal transition-colors"
                   >
                     Dashboard
                   </Link>
@@ -155,7 +155,7 @@ export default function Navbar() {
                 <>
                   <Link
                     to="/signin"
-                    className="text-base text-charcoal-mid hover:text-charcoal transition-colors"
+                    className="inline-flex min-h-11 items-center text-base text-charcoal-mid hover:text-charcoal transition-colors"
                   >
                     Sign In
                   </Link>
