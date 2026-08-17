@@ -160,6 +160,26 @@ export async function betterConfirmPasswordReset({ token, password } = {}) {
 // Security settings (AppSecurityPage)
 // ---------------------------------------------------------------------------
 
+/**
+ * betterChangePassword — better-auth leg of the change-password contract.
+ *
+ * Parity contract — all three auth backends must behave identically on a
+ * password change (pinned by betterChangePasswordContract.test.js and
+ * changePasswordContract.test.js):
+ *   1. Format-validate BEFORE touching the backend — 8+ chars and different
+ *      from the current password, with the same messages as
+ *      mockChangePassword.
+ *   2. Revoke EVERY OTHER session while the current device stays signed in.
+ *      The mock filters activeSessions down to the current row;
+ *      SecurityService.changePassword (GoTrue) revokes every non-current
+ *      session via the Supabase admin API; better-auth's native
+ *      `revokeOtherSessions: true` deletes all of the user's sessions and
+ *      immediately mints a fresh one for the current device (cookie
+ *      rotated) — same net state: exactly one active session, the current
+ *      device.
+ *   3. Resolve `{ ok: true }`. The page re-syncs the ledger afterwards via
+ *      settings.reload(), which works for all three paths.
+ */
 export async function betterChangePassword({ currentPassword, newPassword } = {}) {
   if (!currentPassword || !newPassword || newPassword.length < 8) {
     throw new Error('New password must be at least 8 characters.')
@@ -168,7 +188,9 @@ export async function betterChangePassword({ currentPassword, newPassword } = {}
     throw new Error('New password must be different from the current password.')
   }
   // Matches the page copy: "Rotating your password signs out other active
-  // sessions for safety."
+  // sessions for safety." revokeOtherSessions: true is better-auth's native
+  // revoke-everything-else — the equivalent of the mock's activeSessions
+  // filter and the GoTrue path's per-session admin revoke.
   await unwrap(
     authClient.changePassword({
       currentPassword,

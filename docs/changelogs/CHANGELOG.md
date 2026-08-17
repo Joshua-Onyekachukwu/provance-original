@@ -1,5 +1,14 @@
 # Provance — Changelog
 
+## [2026-08-17] - better-auth changePassword revoke-everything-else parity pinned
+
+### Added
+- `betterChangePassword` now documents the three-backend change-password parity contract (mock = GoTrue = better-auth): format-validate before touching the backend (identical messages), revoke EVERY OTHER session while the current device stays signed in, resolve `{ ok: true }`. The revoke-everything-else is better-auth's native `revokeOtherSessions: true` (verified in better-auth 1.6.26's `update-user` route: deletes all sessions, mints a fresh session for the current device) — the same net state as the mock's activeSessions filter and the GoTrue path's per-session admin revoke.
+- `betterChangePasswordContract.test.js` — 4 tests pinning the better-auth leg with a stubbed `createAuthClient` (vi.hoisted mock): `revokeOtherSessions: true` is passed with the payload and resolves `{ ok: true }`; short/identical passwords reject with the exact mock messages BEFORE the client is touched; client errors propagate as thrown Errors (the api.js contract the Security page reads).
+
+### Verified
+- Full frontend gates green: vitest **592/592** (67 files, +4), `npm run lint` 0 errors, `npm run build` clean. (One env-slow flake observed on the first full run — a timing-sensitive suite crossing its window on the slow environment — passed cleanly on two consecutive re-runs; unrelated to this change.)
+
 ## [2026-08-17] - Mock security mutations persist across reloads
 
 ### Added
