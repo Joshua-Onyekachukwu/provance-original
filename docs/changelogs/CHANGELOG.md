@@ -1,5 +1,12 @@
 # Provance — Changelog
 
+## [2026-08-17] - Import-parity guards for api.js, mockApi.js, mockData.js
+
+### Added
+- Three new parity guards on the generic `createImportParityGuard` core, mirroring the ui-barrel/chartGeometry guards: `apiParity.test.js` (79-export surface), `mockApiParity.test.js` (69), `mockDataParity.test.js` (40). Each pins the module's runtime export surface in declaration order and walks every importer in `src/` asserting the names it imports still exist — so a rename/removal that misses an importer fails the unit suite immediately (mock/real drift can't be silent anymore).
+- Verified repo-wide: zero namespace/default imports of any of the three modules (the unsupported-shape check is green), and every importer (41 api.js consumers incl. api.js→mockApi and mockApi→mockData chains) imports only names that exist.
+- Note: these run under the vitest suite, so they're already part of the CI frontend job alongside the existing parity guards.
+
 ## [2026-08-17] - LivePollIndicator refresh-now affordance on every live surface
 
 ### Added
