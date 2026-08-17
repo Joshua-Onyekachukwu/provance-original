@@ -34,6 +34,16 @@
  * transitions, job-level states, 402 quota behavior) are printed as notes
  * so mismatches are explicit, not buried.
  *
+ * Pre-walk project-identity guard: before ANY user is created or byte is
+ * uploaded, the script probes the live schema with the SAME MIGRATION_PROBES
+ * list validate:migrations and readiness use (one source of truth) and fails
+ * fast — exit 2 — with the project ref, the applied-set fingerprint, and the
+ * missing list if the project is not migration-converged (or unverifiable).
+ * This makes a wrong-project dashboard paste diagnosable in one command
+ * before the walk starts. It also cross-checks the backend's own readiness
+ * view: if the backend reports a different convergence state than this env's
+ * direct probe, a warning note flags a backend/env project mismatch.
+ *
  * Usage:  node scripts/validate-scan-roundtrip.mjs
  * Requires: backend/.env.local with SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY
  *           (+ SUPABASE_ANON_KEY for the signed-URL upload), and the backend
@@ -41,6 +51,7 @@
  *           and a built backend (dist/queue/queue.connection.js) are needed.
  */
 
+import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname, resolve } from 'node:path';
@@ -183,6 +194,159 @@ async function apiFetch(path, { token, method = 'GET', body } = {}) {
 
 const sleep = (ms) => new Promise((resolveSleep) => setTimeout(resolveSleep, ms));
 
+/**
+ * migrationGuard — pre-walk project-identity guard.
+ *
+ * Probes the project THIS walk will upload to (SUPABASE_URL from
+ * backend/.env.local) against the same MIGRATION_PROBES list that
+ * validate:migrations and readiness use, before any user is created or any
+ * file is uploaded. If migrations are missing (or a probe errors and the
+ * state cannot be verified), it fails fast with the project ref, the
+ * applied-set fingerprint, and the missing list — so a wrong-project
+ * dashboard paste is diagnosable in one command, not after a confusing 503
+ * mid-walk. Exits 2 (same as the other fail-fast gates).
+ */
+async function migrationGuard() {
+  let probes;
+  try {
+    ({ MIGRATION_PROBES: probes } = await import(
+      '../dist/health/migration-health.service.js',
+    ));
+  } catch {
+    console.error(
+      'Could not load MIGRATION_PROBES from dist/health/migration-health.service.js — run `npm run build` first (the probe list is compiled from src/health/migration-health.service.ts).',
+    );
+    process.exit(2);
+  }
+
+  const rest = async (table, column) => {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/${table}?select=${encodeURIComponent(column)}&limit=1`,
+      { headers: { apikey: SERVICE_ROLE, Authorization: `Bearer ${SERVICE_ROLE}` } },
+    );
+    const body = res.ok ? null : await res.json().catch(() => ({}));
+    return {
+      ok: res.ok,
+      status: res.status,
+      code: body?.code ?? '',
+      message: body?.message ?? '',
+    };
+  };
+
+  const applied = [];
+  const missing = [];
+  const errored = [];
+  let skipped = 0;
+
+  for (const probe of probes) {
+    if (!probe.probeable || !probe.table || !probe.column) {
+      skipped += 1; // seed-only migrations have no schema object to probe
+      continue;
+    }
+
+    let result;
+    try {
+      result = await rest(probe.table, probe.column);
+    } catch (error) {
+      // A probe fetch failure means the state is unverifiable right now —
+      // treat it as an error (fail fast with the fingerprint) rather than
+      // letting a bare network error bubble up past the guard.
+      errored.push({
+        migration: probe.migration,
+        file: probe.file,
+        reason: `probe fetch failed: ${error instanceof Error ? error.message : String(error)}`.slice(0, 120),
+      });
+      continue;
+    }
+    if (result.ok) {
+      applied.push(probe.migration);
+      continue;
+    }
+    if (result.code === 'PGRST205' || result.code === '42703') {
+      missing.push({
+        migration: probe.migration,
+        file: probe.file,
+        reason: `${result.code} (${probe.table}.${probe.column})`,
+      });
+      continue;
+    }
+    errored.push({
+      migration: probe.migration,
+      file: probe.file,
+      reason: `HTTP ${result.status} ${result.code || result.message}`.slice(0, 120),
+    });
+  }
+
+  const ref = SUPABASE_URL.replace(/^https?:\/\//, '').split('.')[0];
+  const appliedFingerprint = applied.join(',');
+  const fingerprint = createHash('sha1')
+    .update(appliedFingerprint || '(none)')
+    .digest('hex')
+    .slice(0, 8);
+  const dashboard = `https://supabase.com/dashboard/project/${ref}/sql/new`;
+  const converged = missing.length === 0 && errored.length === 0;
+
+  // Cross-check the backend's view: if it reports a different convergence
+  // state than this env's direct probe, the backend is likely pointed at a
+  // different Supabase project (classic wrong-project paste). Best-effort —
+  // the direct probe above is authoritative for the upload target.
+  let backendMismatchNote = '';
+  try {
+    const readyRes = await fetch(`${BASE}/v1/health/readiness`);
+    const ready = await readyRes.json().catch(() => null);
+    const backendReady = ready?.checks?.migrations?.ready === true;
+    if (backendReady !== converged) {
+      backendMismatchNote =
+        `backend readiness disagrees (checks.migrations.ready=${String(ready?.checks?.migrations?.ready)}) — ` +
+        `the backend may point at a different Supabase project than ${ref}. ` +
+        'Compare backend/.env.local SUPABASE_URL with the one this script reads.';
+    }
+  } catch {
+    // best-effort cross-check — never fail the guard on the cross-check itself
+  }
+
+  if (converged) {
+    console.log(
+      `PASS  pre-walk project identity — ${ref} · applied ${applied.length}/${probes.length} · fingerprint ${fingerprint} (${appliedFingerprint || '(no probeable migrations)'})`,
+    );
+    if (backendMismatchNote) note(backendMismatchNote);
+    return;
+  }
+
+  console.error('FAIL  pre-walk project identity — migrations are NOT converged; refusing to start the walk.');
+  console.error(`project : ${ref}   (dashboard: ${dashboard})`);
+  console.error(`applied : ${applied.length}  fingerprint ${fingerprint}  (${appliedFingerprint || '(none)'})`);
+  console.error(`missing : ${missing.length}`);
+  for (const m of missing) {
+    console.error(`  - ${m.migration} (${m.file}) — ${m.reason}`);
+  }
+  if (errored.length) {
+    console.error(`errored : ${errored.length} (schema state unverifiable)`);
+    for (const e of errored) {
+      console.error(`  - ${e.migration} (${e.file}) — ${e.reason}`);
+    }
+  }
+  console.error(`skipped : ${skipped} (seed-only)`);
+  console.error('');
+  console.error(
+    `This env probes project ${ref}. If you pasted migrations into the dashboard but they do not show here,`,
+  );
+  console.error(
+    `compare that ref with the project id in your SQL Editor URL bar (it must read project/${ref}) — you may have`,
+  );
+  console.error('pasted into a different Supabase project.');
+  console.error('');
+  console.error(
+    `Fix: paste the missing block via ${dashboard}, or once DATABASE_URL is set in backend/.env.local run`,
+  );
+  console.error('`cd backend && npm run apply:migrations -- --verify`.');
+  if (backendMismatchNote) {
+    console.error('');
+    console.error(backendMismatchNote);
+  }
+  process.exit(2);
+}
+
 async function main() {
   if (!SUPABASE_URL || !SERVICE_ROLE) {
     console.error('Missing SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY in backend/.env.local');
@@ -202,6 +366,13 @@ async function main() {
     );
     process.exit(2);
   }
+
+  // ── 0. Pre-walk project-identity guard ──
+  // Fail fast BEFORE creating any user or uploading anything if the project
+  // this walk targets is not migration-converged (or unverifiable), so a
+  // wrong-project dashboard paste is diagnosable in one command. Same probe
+  // list as validate:migrations / readiness checks.migrations.
+  await migrationGuard();
 
   const stamp = Date.now();
   const email = `scans.e2e.${stamp}@provance.local`;

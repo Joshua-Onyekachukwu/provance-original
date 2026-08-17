@@ -1,5 +1,13 @@
 # Provance — Changelog
 
+## [2026-08-17] - Pre-walk project-identity guard on validate:scan-roundtrip
+
+### Added
+- `backend/scripts/validate-scan-roundtrip.mjs` now runs a **pre-walk project-identity guard** before creating any throwaway user or uploading any byte: it probes the live schema with the SAME `MIGRATION_PROBES` list `validate:migrations` and readiness `checks.migrations` use (imported from `dist/health/migration-health.service.js` — one source of truth), and fails fast (exit 2) when migrations are not converged or a probe cannot verify the state. The failure prints the **project ref**, the **applied-set fingerprint** (sha1 of the applied list, e.g. `f687d713` for `0001,0002,0003,0004,0006`), the full missing list, the SQL-Editor dashboard link for that exact project, and the `apply:migrations -- --verify` hint — so a wrong-project dashboard paste is diagnosable in one command before any upload. Also cross-checks the backend's own readiness view and warns when it disagrees (backend/env project mismatch). Probe fetch throws are folded into `errored` (unverifiable → still fails fast) instead of bubbling up as a bare network error.
+
+### Verified (live, current state)
+- `node scripts/validate-scan-roundtrip.mjs` exits **2** with `project dmhrwdcuwtgscwlaagsa · applied 5 · fingerprint f687d713 · missing 15` — the missing set (0005, 0007–0016, 0018–0021) matches `validate:migrations` exactly. Syntax check clean; no backend `src/` impact (standalone script, requires `npm run build` like the BullMQ leg already did).
+
 ## [2026-08-17] - Sample Report now renders the branded verification report (PDF design)
 
 ### Changed
