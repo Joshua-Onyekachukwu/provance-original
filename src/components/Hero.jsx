@@ -81,9 +81,6 @@ export default function Hero() {
               <span className="stat-pill flex items-center gap-1.5 px-4 py-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-trust" /> Enterprise workflows
               </span>
-              <span className="stat-pill flex items-center gap-1.5 px-4 py-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber" /> Image-first early access
-              </span>
             </motion.div>
 
             <motion.a

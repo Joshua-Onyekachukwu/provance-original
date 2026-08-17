@@ -1,5 +1,15 @@
 # Provance — Changelog
 
+## [2026-08-17] - Landing cleanup: removed Live Product Preview, Open Benchmark, and the hero "Image-first early access" pill
+
+### Changed
+- `src/pages/HomePage.jsx` — removed the `<TrustBar />` ("Open Benchmark · Published" benchmark-claims strip) and `<ProductShowcase />` ("Live Product Preview — Watch a scan move from queue to report" interactive demo) sections per the Founder directive; landing is now Hero → WhyProvance → SampleReport → HowItWorks → UseCases → Pricing → CLEARAnswers.
+- `src/components/Hero.jsx` — removed the "Image-first early access" stat pill from the hero's claim row (leaving Explainable evidence · Professional reports · Enterprise workflows).
+- Both component files moved to `src/archive/` (the sanctioned dead-code destination, forensic/ precedent) with ProductShowcase's relative imports repointed to `../components/`, so the componentReferences dead-code guard stays green and the work survives for a future public-pages design pass.
+
+### Verified
+- vitest **592/592** (67 files) incl. the componentReferences guard (7/7), lint 0 errors, `npm run build` clean.
+
 ## [2026-08-17] - RolesController HTTP-layer supertest spec (list / scopes Owner-guard / member reassign)
 
 ### Added

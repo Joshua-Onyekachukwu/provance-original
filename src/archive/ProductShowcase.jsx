@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import InteractivePanel from './InteractivePanel'
-import ForensicMediaFrame from './ForensicMediaFrame'
+import InteractivePanel from '../components/InteractivePanel'
+import ForensicMediaFrame from '../components/ForensicMediaFrame'
 import { mockReports } from '../lib/mockData.js'
 import { TONE_BAR, TONE_LABEL, signalTone } from '../lib/showcaseTone.js'
 
