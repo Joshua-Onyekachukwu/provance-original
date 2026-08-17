@@ -1,5 +1,13 @@
 # Provance — Changelog
 
+## [2026-08-17] - RolesController HTTP-layer supertest spec (list / scopes Owner-guard / member reassign)
+
+### Added
+- `backend/src/roles/roles.controller.spec.ts` — 16-test HTTP-layer suite booting the real `RolesController` with the REAL `SupabaseAuthGuard` + `AdminGuard` (mocked SupabaseService with invalid/non-admin token sentinels, `ADMIN_EMAILS` config mock), mirroring the admin-controller spec convention. Covers: route metadata (paths/verbs/`@HttpCode`), guard pair, RBAC matrix list pass-through, `PATCH :roleId/scopes` forwarding + actor wiring, Owner-role 403 at the HTTP layer (service ForbiddenException → 403 via GlobalExceptionFilter), DTO 400s (non-object scopes, missing props, forbidNonWhitelisted), `PATCH members/:memberId` routing (not shadowed by `:roleId/scopes`), Owner-assignment 403, missing-roleId 400, guard 401/403 paths, and the 30/60s controller throttle (429 at request 31).
+
+### Verified
+- New spec: **16/16**. Backend jest **470/470** (+16), e2e suite untouched, `npm run build` clean.
+
 ## [2026-08-17] - Migration-convergence CI gate: migration dir must match the runbook manifest
 
 ### Added
