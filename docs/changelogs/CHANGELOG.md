@@ -1,5 +1,13 @@
 # Provance — Changelog
 
+## [2026-08-17] - Sample report cover mirrors the pdfkit export header
+
+### Changed
+- **`src/components/SampleReportDocument.jsx`** — the cover now mirrors the PDF export header (`backend/src/reports/report-pdf.ts`) exactly: a full-bleed ink band (`#23201A`, edge-to-edge inside the rounded paper) with the uppercase PROVANCE wordmark in parchment (`#F7F4ED`, bold sans, wide tracking) over the VERIFICATION REPORT label in muted gold (`#C9C2B4`). The redundant sentence-case eyebrow ("Provance forensic analysis report") was replaced by the PDF's verdict banner — a tone-colored rule + OVERALL VERDICT label — beneath which the serif verdict headline and summary sit. Renders on the landing Sample Report section (compact), `/sample-report`, and the print view (the band is the first printed element since the toolbar is `print:hidden`).
+
+### Verified
+- `npm run build` clean (8.25s); ESLint on the file 0 errors; vite dev transform returns 200 with the band classes in the compiled output (preview webview unavailable this session, so verification is DOM/build-level). No vitest suite pins the cover DOM — a cover-contract render test is logged as a follow-up.
+
 ## [2026-08-17] - useResource/useMockData collapsed into one polling engine
 
 ### Changed

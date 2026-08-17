@@ -74,12 +74,25 @@ export default function SampleReportDocument({ compact = false, showPrintControl
         </div>
       ) : null}
 
+      {/* Ink brand band — exact mirror of the pdfkit cover header (report-pdf.ts):
+          edge-to-edge INK (#23201A) band, uppercase PROVANCE wordmark in PARCHMENT
+          (#F7F4ED) over the VERIFICATION REPORT label in muted gold (#C9C2B4). */}
+      <div className="bg-[#23201A] px-6 py-5 md:px-10 md:py-6">
+        <p className="font-sans text-xl font-bold uppercase tracking-[0.2em] text-[#F7F4ED] md:text-2xl">
+          Provance
+        </p>
+        <p className="mt-1.5 text-[10px] font-medium uppercase tracking-[0.32em] text-[#C9C2B4] md:text-[11px]">
+          Verification report
+        </p>
+      </div>
+
       <div className={`${compact ? 'p-6 md:p-8 lg:p-10' : 'p-6 md:p-10 lg:p-12'} space-y-8`}>
         <section className="rounded-[1.75rem] border border-stone-light bg-parchment/65 p-5 md:p-6">
           <div className="flex flex-wrap items-start justify-between gap-6">
             <div className="max-w-3xl">
-              <div className="text-[10px] font-mono uppercase tracking-[0.22em] text-charcoal-light">
-                Provance forensic analysis report
+              <div className="h-1.5 w-full rounded-full bg-(--color-tone-warning)" />
+              <div className="mt-4 text-[10px] font-mono uppercase tracking-[0.22em] text-charcoal-light">
+                Overall verdict
               </div>
               <h1 className={`${compact ? 'text-3xl md:text-4xl' : 'text-4xl md:text-5xl'} mt-3 font-serif text-charcoal`}>
                 {sampleReportCover.verdict}
