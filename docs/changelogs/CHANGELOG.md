@@ -1,5 +1,12 @@
 # Provance — Changelog
 
+## [2026-08-18] - Export PDF cover seal — verified already shipped
+
+### Verified
+- The request "add the Verified with Provance seal next to the ink-band wordmark on the export PDF cover" was already implemented in commit `eee7e0e` (seal-extension task): `report-pdf.ts` renders the stamp at `PAGE_W - MARGIN - 24, 37` (radius 22) on the right of the 74pt ink band, same right-of-wordmark placement as the web cover.
+- Fresh verification against a generated PDF: content-stream decode confirms the circular `VERIFIED WITH PROVANCE` phrase, the `PROVANCE` wordmark, and the parchment-disc/amber-ring fill ops all render. Backend jest spec `report-pdf.spec.ts` passes 5/5, including "renders the circular Verified with Provance seal on the cover".
+- No code changes needed this pass.
+
 ## [2026-08-17] - /product report showcase + honest API contract
 
 ### Added
