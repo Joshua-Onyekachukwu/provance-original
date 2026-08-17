@@ -157,7 +157,7 @@ export default function AppHistoryPage() {
         eyebrow="Verification ledger"
         title="Latest verification activity"
         description="Your newest uploads — filename, status, verdict, team, and report ID before opening the full report."
-        actions={live ? <LivePollIndicator /> : null}
+        actions={live ? <LivePollIndicator onRefresh={scans.refresh} /> : null}
       >
         <div className="flex flex-wrap items-end justify-between gap-3">
           <TeamFilter counts={teamCounts} value={teamFilter} onChange={setTeamFilter} />

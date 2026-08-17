@@ -10,12 +10,17 @@
  *   const detail = useResource(() => getScan(scanId).then((r) => r?.scan || r), [scanId])
  *
  * Returns:
- *   { status: 'loading' | 'ready' | 'error', data, error, reload }
+ *   { status: 'loading' | 'ready' | 'error', data, error, reload, refresh }
  *
  * - status 'loading' while the loader promise is pending
  * - status 'ready' with the resolved value in `data` on success
  * - status 'error' with a message on failure
- * - reload() re-runs the loader (wire it to Retry buttons)
+ * - reload() re-runs the loader (wire it to Retry buttons) — this re-enters
+ *   the loading state (data blanks briefly)
+ * - refresh() fetches immediately with SILENT semantics (same as a poll
+ *   tick): in-place data swap, no loading flash, keeps last-known-good on
+ *   failure. Wire it to the live indicator's tap-to-refresh affordance —
+ *   unlike reload() it never blanks a live panel.
  *
  * `deps` is optional: pass the values the loader closes over (e.g. [scanId])
  * and the resource reloads automatically when they change. Omit it (or pass
@@ -40,6 +45,9 @@
  *   processing). Defaults to always-on when pollMs is set.
  * - Polls are skipped while one is already in flight, and the loop pauses
  *   while the tab is hidden (a visibilitychange tick catches up on return).
+ * - refresh() (see Returns) is the manual twin of a poll tick: an explicit
+ *   user action that fetches immediately regardless of the pollWhen gate or
+ *   the tab-hidden pause (the user asked for fresh data now).
  *
  * Note: the gate evaluates the resource's internal state, so dev-only demo
  * forcing (?state=empty|error via withDemoOverride) does not idle the polls
@@ -152,6 +160,39 @@ export function useResource(loader, deps = [], options = {}) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pollMs, attempt, ...deps])
 
+  // ── Manual refresh (the live indicator's tap-to-refresh affordance) ──────
+  // An explicit user action: fetch fresh data immediately with the same
+  // silent semantics as a poll tick (in-place swap, no loading flash,
+  // last-known-good on failure) — unlike reload(), which re-enters the
+  // loading state and blanks the panel. Bypasses the pollWhen gate and the
+  // tab-hidden pause on purpose: the user asked for fresh data now. Skips
+  // while one refresh is already in flight, mirroring the poll's inFlight
+  // guard.
+  const refreshingRef = useRef(false)
+  const refresh = useCallback(async () => {
+    if (refreshingRef.current) return
+    refreshingRef.current = true
+    try {
+      const data = await loaderRef.current()
+      setState((prev) =>
+        // Never clobber an in-progress manual load with a refresh result.
+        prev.status === 'loading' ? prev : { status: 'ready', data, error: '' },
+      )
+    } catch (error) {
+      // Keep the last-known-good data — a transient failure must not blank
+      // a live panel or flip it to the error state.
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          '[useResource] manual refresh failed; keeping last-known-good data:',
+          error?.message || error,
+        )
+      }
+    } finally {
+      refreshingRef.current = false
+    }
+  }, [])
+
   const reload = useCallback(() => setAttempt((n) => n + 1), [])
-  return { ...state, reload }
+  return { ...state, reload, refresh }
 }

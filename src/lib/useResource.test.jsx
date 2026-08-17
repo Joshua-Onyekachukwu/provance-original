@@ -125,4 +125,65 @@ describe('useResource polling', () => {
     })
     expect(loader).toHaveBeenCalledTimes(1)
   })
+
+  it('refresh() fetches immediately with silent semantics (no loading flash)', async () => {
+    const loader = vi
+      .fn()
+      .mockResolvedValueOnce('v1')
+      .mockResolvedValueOnce('v2')
+    const { result } = renderHook(() => useResource(loader, []))
+
+    await flush()
+    expect(result.current.status).toBe('ready')
+    expect(result.current.data).toBe('v1')
+
+    // Manual refresh swaps data in place — status never leaves 'ready'.
+    await act(async () => {
+      result.current.refresh()
+    })
+    expect(result.current.status).toBe('ready')
+    expect(result.current.data).toBe('v2')
+    expect(loader).toHaveBeenCalledTimes(2)
+  })
+
+  it('refresh() keeps last-known-good data when the fetch rejects', async () => {
+    const loader = vi
+      .fn()
+      .mockResolvedValueOnce('v1')
+      .mockRejectedValueOnce(new Error('network blip'))
+    const { result } = renderHook(() => useResource(loader, []))
+
+    await flush()
+    expect(result.current.data).toBe('v1')
+
+    await act(async () => {
+      result.current.refresh()
+    })
+    // Silent failure — the panel keeps its data and stays ready.
+    expect(result.current.status).toBe('ready')
+    expect(result.current.data).toBe('v1')
+    expect(result.current.error).toBe('')
+  })
+
+  it('refresh() forces a tick even when the pollWhen gate is closed', async () => {
+    const loader = vi.fn().mockResolvedValue('v1')
+    const { result } = renderHook(() =>
+      useResource(loader, [], { pollMs: 1000, pollWhen: () => false }),
+    )
+
+    await flush()
+    expect(loader).toHaveBeenCalledTimes(1)
+
+    // The interval idles (gate closed)…
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
+    })
+    expect(loader).toHaveBeenCalledTimes(1)
+
+    // …but an explicit refresh bypasses the gate — the user asked for now.
+    await act(async () => {
+      result.current.refresh()
+    })
+    expect(loader).toHaveBeenCalledTimes(2)
+  })
 })

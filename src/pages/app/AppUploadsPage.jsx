@@ -625,7 +625,7 @@ export default function AppUploadsPage() {
                     ? 'Verification could not start'
                     : 'Moving through the pipeline'
               }
-              actions={scanLive ? <LivePollIndicator /> : null}
+              actions={scanLive ? <LivePollIndicator onRefresh={activeScan.refresh} /> : null}
               description={
                 phase === 'queued'
                   ? deduplicated

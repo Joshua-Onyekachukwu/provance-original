@@ -1,5 +1,16 @@
 # Provance — Changelog
 
+## [2026-08-17] - LivePollIndicator refresh-now affordance on every live surface
+
+### Added
+- `LivePollIndicator` gained an optional `onRefresh` prop: a small tap-to-refresh icon button beside the dot (outside the `role="status"` live region, so it stays a normal interactive control). Without `onRefresh` the component remains the pure status atom.
+- `useResource` and `useMockData` both expose a new `refresh()` — the manual twin of a poll tick: silent in-place swap, no loading flash, keeps last-known-good on failure, bypasses the `pollWhen` gate (explicit user action). Documented as the ONLY correct wiring for the affordance (`reload`/`refetch` would blank the panel).
+- Wired on all six live surfaces: dashboard ledger + queue-posture panels, Queue page, History ledger, report detail pane, Uploads status card, and admin Monitoring queue-health panel.
+
+### Verified
+- 8 new tests (useResource refresh ×3, useMockData refresh ×2, LivePollIndicator component ×3); vitest **574/574**, lint 0 errors, build clean.
+- Headless probe: the uploads `?demo=start` flow shows the Refresh now button, a click re-fetches silently with the status panel intact, and the dashboard queue-posture card shows it once a queued scan exists. Responsive audit subset on all changed surfaces **40/40** clean at 375–1280. (The full 260-check walk hit the documented headless-Chromium page-crash at laptop-1024 on this dev box — environment, not layout.)
+
 ## [2026-08-17] - LivePollIndicator documented as a first-class ui primitive
 
 ### Docs

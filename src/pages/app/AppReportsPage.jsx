@@ -380,7 +380,7 @@ export default function AppReportsPage() {
                   </h3>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
-                  {detailLive && <LivePollIndicator />}
+                  {detailLive && <LivePollIndicator onRefresh={detail.refresh} />}
                   <Button
                     {...(USE_MOCK
                       ? { to: `/app/reports/${selectedScan.id}/print` }

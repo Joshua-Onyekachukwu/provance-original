@@ -85,4 +85,43 @@ describe('useMockData polling', () => {
     expect(loader).toHaveBeenCalledTimes(1)
     expect(result.current.data).toEqual({ count: 1 })
   })
+
+  it('refresh() fetches immediately with silent semantics (no loading flash)', async () => {
+    const loader = vi
+      .fn()
+      .mockResolvedValueOnce({ count: 1 })
+      .mockResolvedValueOnce({ count: 2 })
+
+    const { result } = renderHook(() => useMockData(loader, null, { pollMs: 5000 }))
+
+    await flush()
+    expect(result.current.data).toEqual({ count: 1 })
+
+    // Manual refresh swaps in place — loading never flips back to true.
+    await act(async () => {
+      result.current.refresh()
+    })
+    expect(result.current.data).toEqual({ count: 2 })
+    expect(result.current.loading).toBe(false)
+    expect(result.current.error).toBeNull()
+  })
+
+  it('refresh() keeps last-known-good data when the fetch rejects', async () => {
+    const loader = vi
+      .fn()
+      .mockResolvedValueOnce({ count: 1 })
+      .mockRejectedValueOnce(new Error('probe down'))
+
+    const { result } = renderHook(() => useMockData(loader, null, { pollMs: 5000 }))
+
+    await flush()
+    expect(result.current.data).toEqual({ count: 1 })
+
+    await act(async () => {
+      result.current.refresh()
+    })
+    expect(result.current.data).toEqual({ count: 1 })
+    expect(result.current.loading).toBe(false)
+    expect(result.current.error).toBeNull()
+  })
 })

@@ -90,7 +90,7 @@ function PanelSkeleton({ rows = 4 }) {
 // Queue health (headline stats + shared HourlyBarChart primitive)
 // ---------------------------------------------------------------------------
 
-function QueueHealthPanel({ queue, live = false }) {
+function QueueHealthPanel({ queue, live = false, onRefresh }) {
   const hourly = useMemo(() => queue?.hourly_series || [], [queue?.hourly_series])
   // Series max — kept here only to gate the chart block below (the
   // HourlyBarChart primitive recomputes it internally).
@@ -129,8 +129,9 @@ function QueueHealthPanel({ queue, live = false }) {
           </span>
           {/* The monitoring feed polls every 5s while loaded — the live dot
               mirrors the queue/scan surfaces so every auto-refreshing admin
-              panel reads the same way. */}
-          {live && <LivePollIndicator />}
+              panel reads the same way; the refresh icon forces a poll tick
+              now (silent swap, no loading flash). */}
+          {live && <LivePollIndicator onRefresh={onRefresh} />}
         </div>
       </div>
 
@@ -521,7 +522,7 @@ export default function MonitoringPage() {
   // last-known-good on a failed poll) so the queue-health panel tracks real
   // worker cadence — the live dot shows the surface is auto-refreshing, same
   // as the workspace queue/dashboard/report surfaces.
-  const { data: rawMonitoring, loading, error, refetch } = useMockData(getMonitoring, null, {
+  const { data: rawMonitoring, loading, error, refetch, refresh } = useMockData(getMonitoring, null, {
     pollMs: 5000,
   })
 
@@ -741,7 +742,7 @@ export default function MonitoringPage() {
 
       {/* ── Queue health + database performance ────────────────────────────── */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <QueueHealthPanel queue={queueHealth} live={Boolean(monitoring)} />
+        <QueueHealthPanel queue={queueHealth} live={Boolean(monitoring)} onRefresh={refresh} />
         <DBPerformancePanel db={dbPerformance} />
       </div>
 

@@ -11,6 +11,9 @@
  *   Refetching:  { data: prev, loading: true,  error: null }
  *
  * refetch() reloads from the same source, preserving previous data while loading.
+ * refresh() (when pollMs is set) is the manual twin of a poll tick — silent
+ * in-place swap, no loading flash, last-known-good on failure — for the live
+ * indicator's tap-to-refresh affordance (see useResource's refresh contract).
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -137,5 +140,10 @@ export default function useMockData(mockFn, params = null, options = {}) {
     loading: state.loading,
     error: state.error,
     refetch,
+    // refresh = the silent poll tick, exposed for the live indicator's
+    // tap-to-refresh affordance: same in-place swap semantics as useResource's
+    // refresh (no loading flash, last-known-good on failure). refetch() stays
+    // for Retry buttons, which re-enter the loading state.
+    refresh: poll,
   }
 }

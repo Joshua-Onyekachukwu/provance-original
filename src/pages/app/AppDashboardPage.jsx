@@ -392,7 +392,7 @@ const LEDGER_COLUMNS = [
 // and is shared by the dashboard ledger + queue panels, the Queue page, and
 // the report detail pane.
 
-function LedgerPanel({ scans, onRetry, navigate, pageSize = 5, teamFilter, onTeamFilterChange, teamCounts, live }) {
+function LedgerPanel({ scans, onRetry, navigate, pageSize = 5, teamFilter, onTeamFilterChange, teamCounts, live, onRefresh }) {
   const filtered = useMemo(
     () =>
       teamFilter === 'all'
@@ -409,7 +409,7 @@ function LedgerPanel({ scans, onRetry, navigate, pageSize = 5, teamFilter, onTea
       description="Your newest uploads — filename, status, verdict, team, and report ID before opening the full report."
       actions={
         <>
-          {live && <LivePollIndicator />}
+          {live && <LivePollIndicator onRefresh={onRefresh} />}
           <Button variant="ghost" size="sm" onClick={() => navigate('/app/reports')}>
             View all reports
           </Button>
@@ -447,7 +447,7 @@ function LedgerPanel({ scans, onRetry, navigate, pageSize = 5, teamFilter, onTea
 // Right column: queue, risk, system status
 // ---------------------------------------------------------------------------
 
-function QueuePosturePanel({ queue, teamFilter, teamQueue, onRetry, live }) {
+function QueuePosturePanel({ queue, teamFilter, teamQueue, onRetry, live, onRefresh }) {
   const data = queue.data
   // When a team filter is active the queue counts are recomputed from the
   // team-scoped scan list; otherwise the live queue snapshot is used.
@@ -470,7 +470,7 @@ function QueuePosturePanel({ queue, teamFilter, teamQueue, onRetry, live }) {
       loadingRows={4}
       errorDescription={queue.error}
       onRetry={onRetry}
-      actions={live ? <LivePollIndicator /> : null}
+      actions={live ? <LivePollIndicator onRefresh={onRefresh} /> : null}
     >
       <div className="grid grid-cols-3 gap-3">
         <MiniStat label="Queued" value={queued} tone="info" />
@@ -590,6 +590,11 @@ function SystemStatusPanel({ health, onRetry }) {
  * with the same per-panel loading / error / empty behavior.
  */
 function WorkspaceTabs({ scans, queue, health, navigate, teamFilter, onTeamFilterChange, teamCounts, teamQueue }) {
+  // Tap-to-refresh on the live indicators: force a poll tick now instead of
+  // waiting out the 5s cadence. Uses the resource's silent `refresh` (in-place
+  // swap, no loading flash) — never reload(), which would blank the panel.
+  const refreshScans = scans.refresh
+  const refreshQueue = queue.refresh
   const [activeTab, setActiveTab] = useState('triage')
   // True while any scan is queued or processing — exactly the condition the
   // 5s poll loop gates on, so the live indicators appear only while polling
@@ -637,6 +642,7 @@ function WorkspaceTabs({ scans, queue, health, navigate, teamFilter, onTeamFilte
               teamQueue={teamQueue}
               onRetry={queue.reload}
               live={live}
+              onRefresh={refreshQueue}
             />
             <SystemStatusPanel health={health} onRetry={health.reload} />
           </div>
@@ -658,6 +664,7 @@ function WorkspaceTabs({ scans, queue, health, navigate, teamFilter, onTeamFilte
           onTeamFilterChange={onTeamFilterChange}
           teamCounts={teamCounts}
           live={live}
+          onRefresh={refreshScans}
         />
       </div>
     </section>

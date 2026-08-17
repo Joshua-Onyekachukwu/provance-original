@@ -244,7 +244,7 @@ export default function AppQueuePage() {
         loadingRows={3}
         errorDescription={queue.error}
         onRetry={queue.reload}
-        actions={live ? <LivePollIndicator /> : null}
+        actions={live ? <LivePollIndicator onRefresh={queue.refresh} /> : null}
       >
         {queueView && (
           <>
