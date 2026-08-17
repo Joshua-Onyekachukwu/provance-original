@@ -12,6 +12,11 @@ import { useId } from 'react'
  */
 export default function VerifiedSeal({ className = '' }) {
   const circleId = useId()
+  // The path is a radius-33 circle in a 100-unit viewBox. Pin the text to the
+  // exact circumference so the doubled phrase tiles the ring seamlessly —
+  // without textLength the browser clips the overflow mid-phrase, leaving a
+  // visible seam where the second "VERIFIED WITH PROVANCE" is cut off.
+  const RING_LENGTH = 2 * Math.PI * 33
 
   return (
     <div
@@ -26,7 +31,7 @@ export default function VerifiedSeal({ className = '' }) {
         <text
           style={{ fill: '#13161d', fontSize: '6.6px', letterSpacing: '1.6px', fontFamily: 'IBM Plex Mono, monospace', fontWeight: 600 }}
         >
-          <textPath href={`#${circleId}`} startOffset="2%">
+          <textPath href={`#${circleId}`} textLength={RING_LENGTH} startOffset="0">
             VERIFIED WITH PROVANCE • VERIFIED WITH PROVANCE •
           </textPath>
         </text>

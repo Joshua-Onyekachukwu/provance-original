@@ -1,5 +1,13 @@
 # Provance — Changelog
 
+## [2026-08-17] - Seal circular text: seamless ring (no clip seam)
+
+### Fixed
+- **`src/components/VerifiedSeal.jsx`** — the SVG circular text was 272.75px against a 207.37px circle path (76% fill), so browsers clipped the overflow mid-phrase leaving a visible seam at the overlap. The `textPath` now pins `textLength` to the exact circumference (`2π·33` viewBox units) with `startOffset=0`, so the doubled "VERIFIED WITH PROVANCE •" phrase tiles the ring continuously. Verified via glyph-position probe: last glyph ends at −179°, first starts at 180° — seam closed to ~1°. The pdfkit export was already seamless (24 glyphs × 15° = full 360°), no change needed.
+
+### Verified
+- vitest 10/10 (SampleReport suite) · build clean. Glyph-geometry probe on the live seal confirms the closed ring.
+
 ## [2026-08-17] - Verified with Provance seal extended to the full report cover + export PDF
 
 ### Added
