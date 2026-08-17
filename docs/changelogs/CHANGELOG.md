@@ -1,5 +1,14 @@
 # Provance — Changelog
 
+## [2026-08-17] - Public pages copy audit (pre-MVP overclaims)
+
+### Added
+- **`docs/engineering/PUBLIC_COPY_OVERCLAIM_AUDIT.md`** — swept `/docs`, `/resources`, `/benchmark`, `/security`, `/waitlist`, `/signin`, `/reset-password` for copy that overclaims pre-MVP functionality, classifying every flagged line against the real backend (not the mocks or landing). Findings: **/docs critical** — the page presents a live `POST /v1/verify` API reference (curl + response with `ai_generated` verdict, heatmaps, webhooks, SDKs, rate-limit tiers) that does not exist; the real scan API is internal `POST /v1/scans`, image-only, and the real verdict vocabulary is `authentic/likely_authentic/inconclusive/likely_synthetic/synthetic`. **/security high** — audit-log mockup shows `method:saml`, `update_retention`, and export/integration controls that don't exist, and the "Compliance Ready"/"Built for the enterprise" titles overclaim (bodies were correctly hedged). **/benchmark low** — numbers are genuinely grounded in the shipped `public/benchmark/gold/BENCHMARK_REPORT_V0.1.md`; two wording nits only. **resources / waitlist / signin / reset-password clean.** Every flagged line carries a recommended rewrite; the doc ends with a priority order and an apply path.
+
+### Verified
+- Ground-truth probes: no `verify` route, no `heatmap`/`webhook`/`saml` refs in `backend/src`; `email_confirm: true` confirmed; verdict enum confirmed in `report-document.ts`; benchmark report file confirmed on disk.
+- No code changes (audit only) — pages are untouched pending founder approval of the rewrites.
+
 ## [2026-08-17] - Migration-convergence gate: pure logic extracted + jest spec
 
 ### Added
