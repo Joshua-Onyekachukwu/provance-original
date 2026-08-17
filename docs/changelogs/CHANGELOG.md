@@ -1,5 +1,10 @@
 # Provance — Changelog
 
+## [2026-08-17] - find-skills discovery for the Founder
+
+### Added
+- Curated the open agent-skills registry (skills.sh + `npx skills find`) against Provance's stack and gap-checked against the global installs: top picks are `antfu/skills@vitest` (32.3K — Vitest author), `upstash/skills@upstash-redis-js` (5.6K official — the BullMQ backing store), `addyosmani/web-quality-skills@accessibility` (45K — the ~50-route app has had no a11y audit), `kadajett/agent-nestjs-skills@nestjs-best-practices` (25K), `callstackincubator/agent-skills@github-actions` (6.6K); alternates `redis/agent-skills@redis-development` (3.2K) and `supabase/supabase@vitest` (2.2K). None installed yet — Founder to approve before `npx skills add -g`.
+
 ## [2026-08-17] - frontend-design pass: the "Examination" instrument world on the landing
 
 ### Changed
