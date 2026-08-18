@@ -1388,6 +1388,12 @@ export const mockBillingProfile = {
     period: 'current-month',
     periodStart: daysAgo(11, 0),
     periodEnd: daysAgo(-20, 0),
+    // VU meter (primary) — the ratified ledger names. The 312 seeded scans are
+    // all Standard depth, so 312 × 10 VU = 3,120 units against the Pro
+    // allowance of 100,000.
+    unitsUsed: 3120,
+    unitsLimit: 100000,
+    // LEGACY scan meter — kept until the frontend switch to VUs lands.
     scansUsed: 312,
     scansLimit: 500,
     storageUsedGb: 18.4,

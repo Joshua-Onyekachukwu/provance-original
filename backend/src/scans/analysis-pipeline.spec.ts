@@ -371,6 +371,135 @@ describe('scan analysis pipeline', () => {
     });
   });
 
+  describe('processing depth branches — quick / standard / deep genuinely differ', () => {
+    it('quick runs the fast subset only (integrity + visual stats, no EXIF/C2PA forensics)', async () => {
+      const jpeg = await makeNoiseImage('image/jpeg');
+      // Rich capture metadata exists in the file, but quick must NOT parse it.
+      mockExifrParse().mockResolvedValue({
+        DateTimeOriginal: new Date('2026-01-01T10:00:00.000Z'),
+        Software: 'Adobe Lightroom',
+        Make: 'Canon',
+        Model: 'EOS R5',
+        Orientation: 1,
+        ColorSpace: 1,
+      });
+      const service = createService();
+
+      const payload = await runAnalysis(
+        service,
+        scanRow({
+          processing_mode: 'quick',
+          mime_type: 'image/jpeg',
+          file_size_bytes: jpeg.length,
+        }),
+        jpeg,
+      );
+
+      const names = payload.signals.map(
+        (signal: { signal_name: string }) => signal.signal_name,
+      );
+      expect(names).toEqual(['file_integrity', 'visual_statistics']);
+      expect(payload.verdict.signal_count_total).toBe(2);
+      // Extraction-heavy forensics were skipped entirely.
+      expect(mockExifrParse()).not.toHaveBeenCalled();
+      expect(payload.metadata.capture_timestamp).toBeNull();
+      expect(payload.metadata.c2pa_marker_detected).toBeNull();
+      expect(payload.metadata.processing_cost_credits).toBe(1);
+    });
+
+    it('standard runs the full 4-signal baseline at 10 credits', async () => {
+      const jpeg = await makeNoiseImage('image/jpeg');
+      mockExifrParse().mockResolvedValue({
+        DateTimeOriginal: new Date('2026-01-01T10:00:00.000Z'),
+        Software: 'Adobe Lightroom',
+        Make: 'Canon',
+        Model: 'EOS R5',
+        Orientation: 1,
+        ColorSpace: 1,
+      });
+      const service = createService();
+
+      const payload = await runAnalysis(
+        service,
+        scanRow({
+          processing_mode: 'standard',
+          mime_type: 'image/jpeg',
+          file_size_bytes: jpeg.length,
+        }),
+        jpeg,
+      );
+
+      expect(payload.signals).toHaveLength(4);
+      expect(payload.verdict.signal_count_total).toBe(4);
+      expect(payload.metadata.capture_timestamp).toBe('2026-01-01T10:00:00.000Z');
+      expect(payload.metadata.c2pa_marker_detected).toBe(false);
+      expect(payload.metadata.processing_cost_credits).toBe(10);
+      expect(payload.metadata.deep_analysis).toBeUndefined();
+    });
+
+    it('deep adds the region-consistency signal + deep_analysis block at 100 credits', async () => {
+      // Jimp v1's decoder uses a dynamic import() that jest's CJS vm sandbox
+      // rejects ("A dynamic import callback was invoked without
+      // --experimental-vm-modules"), so the real decode silently degrades both
+      // analyzeImage and analyzeRegions to their null/zeroed fallbacks here.
+      // Pin the decode with a deterministic uniform bitmap so the
+      // region-consistency MATH is what's tested: uniform pixels → uniform
+      // regions → the heuristic reports no outlier cluster (status 'clear').
+      // The real decode path is exercised by the same library in production.
+      const uniformBitmap = {
+        width: 96,
+        height: 96,
+        data: Buffer.alloc(96 * 96 * 4), // uniform black
+      };
+      // The service reads `image.bitmap`, so the mocked Jimp instance wraps
+      // the bitmap like a real Jimp instance does.
+      const readSpy = jest
+        .spyOn(Jimp, 'read')
+        .mockResolvedValue({ bitmap: uniformBitmap } as never);
+
+      const png = await makeNoiseImage('image/png');
+      mockExifrParse().mockResolvedValue(null);
+      const service = createService();
+
+      const payload = await runAnalysis(
+        service,
+        scanRow({
+          processing_mode: 'deep',
+          mime_type: 'image/png',
+          file_size_bytes: png.length,
+        }),
+        png,
+      );
+
+      const names = payload.signals.map(
+        (signal: { signal_name: string }) => signal.signal_name,
+      );
+      expect(names).toEqual([
+        'file_integrity',
+        'visual_statistics',
+        'metadata_forensics',
+        'provenance_credentials',
+        'region_consistency',
+      ]);
+      expect(payload.verdict.signal_count_total).toBe(5);
+      expect(payload.metadata.deep_analysis).toBeDefined();
+      expect(payload.metadata.deep_analysis.grid_size).toBe(4);
+      expect(payload.metadata.deep_analysis.region_count).toBe(16);
+      expect(payload.metadata.processing_cost_credits).toBe(100);
+
+      const region = payload.signals.find(
+        (signal: { signal_name: string }) => signal.signal_name === 'region_consistency',
+      );
+      expect(['clear', 'attention', 'flagged']).toContain(region.status);
+      expect(region.supplementary_data.assessment).toBeDefined();
+      // Noise fixture → statistically uniform regions, so the heuristic must
+      // report no outlier cluster (a deterministic, honest outcome).
+      expect(region.status).toBe('clear');
+      expect(region.findings).toHaveLength(0);
+      readSpy.mockRestore();
+    });
+  });
+
   describe('buildVerdict — threshold lock', () => {
     const cleanImageStats = {
       averageLuminance: 128,

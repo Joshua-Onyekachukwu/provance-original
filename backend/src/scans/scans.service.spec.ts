@@ -29,7 +29,15 @@ function createConfigService() {
   } as unknown as ConfigService;
 }
 
-function createAdminClient(plan: PlannedResult[]) {
+// Minimal 1×1 transparent PNG — a real image buffer that passes
+// inspectUploadContent's magic-byte check, so the completion path can be
+// exercised end-to-end without a heavyweight fixture.
+const PNG_1PX = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+  'base64',
+);
+
+function createAdminClient(plan: PlannedResult[], storageOverrides = {}) {
   let step = 0;
   const next = (): PlannedResult => {
     const result = plan[step++];
@@ -47,6 +55,11 @@ function createAdminClient(plan: PlannedResult[]) {
       },
       error: null,
     })),
+    download: jest.fn(async () => ({
+      data: new Blob([PNG_1PX], { type: 'image/png' }),
+      error: null,
+    })),
+    ...storageOverrides,
   };
 
   const builder = {
@@ -89,6 +102,7 @@ function createSupabaseService(client: unknown) {
 function createBillingService() {
   return {
     assertScanQuota: jest.fn(async () => undefined),
+    recordScanUsage: jest.fn(async () => undefined),
   };
 }
 
@@ -402,6 +416,66 @@ describe('ScansService', () => {
         status: 503,
         message: expect.stringContaining('0019_scan_idempotency.sql'),
       });
+    });
+  });
+
+  describe('processQueuedScan — deduct-on-complete metering', () => {
+    it('records VU usage at the depth cost when the scan completes via dedup reuse', async () => {
+      // Plan: getScanByIdOrThrow → updateScan(processing) → dedup hit →
+      // updateScan(complete). The dedup branch skips the analysis pipeline,
+      // so the real PNG fixture passes inspection and the completion path
+      // runs end-to-end.
+      const client = createAdminClient([
+        {
+          data: scanRow({
+            id: 'scan-1',
+            status: 'queued',
+            mime_type: 'image/png',
+            processing_mode: 'standard',
+          }),
+        },
+        { error: null },
+        { data: { id: 'scan-0', result_payload: { verdict: { class: 'likely_authentic' } } } },
+        { error: null },
+      ]);
+      const service = createService(client);
+      const billing = (
+        service as unknown as { billingService: { recordScanUsage: jest.Mock } }
+      ).billingService;
+
+      await service.processQueuedScan('scan-1');
+
+      expect(billing.recordScanUsage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          scanId: 'scan-1',
+          userId: 'user-1',
+          depth: 'standard',
+        }),
+      );
+    });
+
+    it('does not record usage when processing fails (failed scans consume 0)', async () => {
+      const client = createAdminClient(
+        [
+          { data: scanRow({ id: 'scan-2', status: 'queued', mime_type: 'image/png' }) },
+          { error: null }, // update → processing
+        ],
+        {
+          download: jest.fn(async () => ({
+            data: null,
+            error: { message: 'download failed' },
+          })),
+        },
+      );
+      const service = createService(client);
+      const billing = (
+        service as unknown as { billingService: { recordScanUsage: jest.Mock } }
+      ).billingService;
+
+      await expect(service.processQueuedScan('scan-2')).rejects.toThrow(
+        ServiceUnavailableException,
+      );
+      expect(billing.recordScanUsage).not.toHaveBeenCalled();
     });
   });
 

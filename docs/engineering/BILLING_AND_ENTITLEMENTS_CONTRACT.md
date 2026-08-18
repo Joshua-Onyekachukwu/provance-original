@@ -17,13 +17,14 @@ depth, API usage, and future top-ups all speak the same meter. The unit
 model is ratified in `USAGE_CREDITS_PROPOSAL.md` (recommended defaults:
 100,000 VUs at Pro, hard-stop overage, ≤1× rollover, free failed scans).
 
-> **Transition (read before wiring):** the billing service today still emits
-> the pre-ledger field names (`scansUsed` / `scansLimit`), and
-> `src/lib/scanQuota.js` reads those. This revision ratifies the **VU ledger
-> field names** (`unitsUsed` / `unitsLimit`) that rollout step 1
-> (ledger + metering) must ship. Field mapping below — everything else in
-> the contract (cycle math, 402 envelope, warning thresholds) is unchanged
-> in behavior, only re-denominated.
+> **Transition (read before wiring):** rollout step 1 (ledger + metering) has
+> shipped (2026-08-18): the service emits the **VU ledger field names**
+> (`unitsUsed` / `unitsLimit`) as the primary meter, and still emits the
+> legacy `scansUsed` / `scansLimit` alongside until the frontend Billing
+> page + warning chip switch to VUs (the next slice — then the legacy fields
+> are dropped). Field mapping below — everything else in the contract (cycle
+> math, 402 envelope, warning thresholds) is unchanged in behavior, only
+> re-denominated.
 
 Reference implementation:
 

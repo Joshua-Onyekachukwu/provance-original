@@ -1,5 +1,29 @@
 # Provance — Changelog
 
+## [2026-08-18] - VU ledger + metering backend slice (billing rollout step 1)
+
+### Added
+- **`supabase/migrations/0022_vu_ledger.sql`** — the VU (Verification Unit) ledger: `(user_id, scan_id, depth, units, source, cycle_month, applied_rate, created_at)` with owner RLS + a `(user_id, created_at)` cycle index. `applied_rate` snapshots the depth cost at scan time so a future cost-table change never rewrites history. Runbook manifest regenerated (`check:migrations` CONVERGED, 22 files).
+- **Depth → VU cost catalog** (`billing.service.ts`): `VU_COST_BY_DEPTH` (quick 1 · standard 10 · deep 100), `PLAN_VU_ALLOWANCES` (Starter 10k · Pro 100k · Team 300k · Enterprise placeholder 250k), `vuCostForDepth` / `vuAllowanceForPlan` helpers.
+- **`countCycleUnits`** — sums the ledger for the cycle window; **`recordScanUsage`** — deduct-on-complete: writes a ledger row at the depth cost (best-effort, never blocks/fails scans; missing table → warn only).
+
+### Changed
+- **`assertScanQuota` re-pointed at the VU meter** — 402 + Retry-After fires when `unitsUsed >= unitsLimit` (0 VUs remaining); `QuotaExceededException` speaks VUs (`unitsUsed`/`unitsLimit`, "Monthly verification-unit allowance reached (100,000/100,000 on the pro plan)").
+- **`GET /billing`** — `usage` now carries `unitsUsed`/`unitsLimit` (primary, the ratified ledger names) alongside legacy `scansUsed`/`scansLimit` (kept until the frontend switch drops them).
+- **Worker deduct-on-complete** (`scans.service.ts` `runScanProcessing`) — both completion branches (fresh analysis + dedup reuse) call `recordScanUsage` at the scan's depth; failed scans never reach it (consume 0).
+- **Mock parity** — `mockBillingProfile.usage` gains `unitsUsed: 3120` / `unitsLimit: 100000` (312 standard scans × 10 VU); `mockInitiateScan` gate checks the VU meter (+ `?quota=exhausted` forcing pushes units to the limit); the mock worker deducts the depth cost on completion (both branches); `mockGetBilling` forcing now drives `unitsUsed`.
+- **Completed the interrupted report-depth work** in the same files: `buildAnalysisResultPayload` branches on `processing_mode` (quick 2 signals + no EXIF/C2PA · standard 4 · deep 5 + `deep_analysis` block), `PROCESSING_CREDITS_BY_DEPTH` (1/10/100) powers `metadata.processing_cost_credits`, `analyzeRegions` + `buildRegionConsistencySignal` implement the 4×4 region sweep.
+
+### Fixed
+- **Deep-depth test decode**: Jimp v1's decoder uses a dynamic `import()` that jest's CJS vm sandbox rejects, silently degrading `analyzeRegions` to null (so the deep signal never rendered under test). The deep test now pins `Jimp.read` with a deterministic uniform bitmap — the region-consistency *math* is what's tested; the real decode path runs in production.
+- **`MIGRATION_PROBES`** gained the 0022 probe (`vu_ledger.id`) so the boot-time schema check logs a clean bill (spec updated to 21 checked).
+
+### Verified
+- Backend jest **505/505** (new: VU policy catalog, countCycleUnits, recordScanUsage ×4, assertScanQuota VU gate ×3, getBilling VU payload ×3, processQueuedScan deduct-on-complete ×2, deep-branch tests) · frontend vitest **609/609** · build clean · lint 0 errors · `check:migrations` CONVERGED (22 files).
+
+### Notes
+- Legacy `scansUsed`/`scansLimit` remain in the payload until the frontend Billing page + warning chip switch to VUs (next slice). Rollover (≤1×), top-ups, and API metering remain deferred per the proposal's rollout order.
+
 ## [2026-08-18] - Public-surface verification after button-cascade fix
 
 ### Changed

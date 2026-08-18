@@ -97,6 +97,32 @@ function mockQuotaHigh() {
 }
 
 /**
+ * Depth → VU cost (mock parity with the real VU_COST_BY_DEPTH catalog in
+ * billing.service.ts). Applied when a mock scan completes; the ledger's
+ * unitsUsed accrues the depth cost so the mock meter never drifts from real
+ * mode. Failed mock scans consume 0.
+ */
+const MOCK_VU_COST_BY_DEPTH = { quick: 1, standard: 10, deep: 100 }
+
+function mockVuCostForDepth(depth) {
+  return MOCK_VU_COST_BY_DEPTH[depth] ?? MOCK_VU_COST_BY_DEPTH.standard
+}
+
+/**
+ * Deduct-on-complete (mock parity): accrue the completed scan's depth cost
+ * into the billing profile's VU meter. Mirrors the real worker writing the
+ * vu_ledger row at completion — failed scans never reach here (0 VU).
+ */
+function mockDeductScanUsage(scan) {
+  const units = mockVuCostForDepth(scan?.processing_mode)
+  if (!units || units <= 0) return
+  mockBillingProfile.usage = {
+    ...mockBillingProfile.usage,
+    unitsUsed: (mockBillingProfile.usage.unitsUsed || 0) + units,
+  }
+}
+
+/**
  * Dev-only dedup forcing — `?dedup=1` makes mockSubmitScan treat the next
  * submission as an identical file, completing it instantly with a reused
  * payload copied from the first seeded completed scan. Lets the reuse UX be
@@ -608,9 +634,12 @@ export async function mockInitiateScan(payload = {}, idempotencyKey) {
     }
   }
 
-  if (mockQuotaExhausted()) {
+  // VU gate (mock parity with the real assertScanQuota): fires when the
+  // cycle's VU meter is exhausted (0 units remaining) or via the dev-only
+  // ?quota=exhausted forcing flag.
+  if (mockQuotaExhausted() || mockBillingProfile.usage.unitsUsed >= mockBillingProfile.usage.unitsLimit) {
     const error = new Error(
-      'Monthly scan quota reached. Upgrade your plan or wait for the cycle to reset.',
+      'Monthly verification-unit allowance reached. Upgrade your plan, add VUs, or wait for the cycle to reset.',
     )
     error.status = 402
     error.retryAfterSeconds = 86400
@@ -793,6 +822,9 @@ export async function mockSubmitScan(scanId) {
     }
     scan.completed_at = reusedAt
     scan.submitted_at = reusedAt
+    // A reused result is still verification work delivered — VUs accrue at
+    // the depth the scan ran (same rule as the real dedup completion path).
+    mockDeductScanUsage(scan)
     persistScanStore()
     return {
       scan,
@@ -829,6 +861,8 @@ export async function mockSubmitScan(scanId) {
     scan.result_payload = payload
     scan.completed_at = completedAt
     scan.updated_at = completedAt
+    // Deduct-on-complete: the worker accrued the depth cost into the VU meter.
+    mockDeductScanUsage(scan)
     persistScanStore()
   }, MOCK_WORKER_STEP_MS * 2)
   return { scan }
@@ -1018,15 +1052,18 @@ export async function mockGetBilling() {
   // and the projection card always agree.
   let effectiveUsage = profile.usage
 
+  // Dev forcing pushes the VU meter (the ratified primary) to the limit / 90%
+  // so the exhausted banner and the ≥85% warning chip render for review. The
+  // legacy scan meter is left alone — it is no longer the enforcement source.
   if (mockQuotaExhausted()) {
     effectiveUsage = {
       ...profile.usage,
-      scansUsed: profile.usage.scansLimit,
+      unitsUsed: profile.usage.unitsLimit,
     }
   } else if (mockQuotaHigh()) {
     effectiveUsage = {
       ...profile.usage,
-      scansUsed: Math.round(profile.usage.scansLimit * 0.9),
+      unitsUsed: Math.round(profile.usage.unitsLimit * 0.9),
     }
   }
 

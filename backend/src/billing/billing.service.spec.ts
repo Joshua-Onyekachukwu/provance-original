@@ -10,9 +10,13 @@ import {
   OVERAGE_PRICE_PER_SCAN_USD,
   PLAN_API_CALL_QUOTAS,
   PLAN_SCAN_QUOTAS,
+  PLAN_VU_ALLOWANCES,
+  VU_COST_BY_DEPTH,
   apiCallLimitForPlan,
   projectScanUsage,
   scanLimitForPlan,
+  vuAllowanceForPlan,
+  vuCostForDepth,
   currentBillingCycle,
 } from './billing.service';
 
@@ -48,6 +52,7 @@ function createAdminClient(plan: PlannedResult[]) {
     select: jest.fn(() => builder),
     eq: jest.fn(() => builder),
     gte: jest.fn(() => builder),
+    insert: jest.fn(() => Promise.resolve({ error: null })),
     maybeSingle: jest.fn(() => Promise.resolve(next())),
     // Directly-awaited head/count chains resolve through the thenable contract.
     then(resolve: (value: PlannedResult) => void) {
@@ -106,6 +111,39 @@ describe('billing policy', () => {
   it('never reports a retry-after below 60s', () => {
     const now = new Date('2026-07-31T23:59:59.000Z');
     expect(currentBillingCycle(now).retryAfterSeconds).toBe(60);
+  });
+
+  describe('vu policy', () => {
+    it('maps each plan to its monthly VU allowance', () => {
+      expect(PLAN_VU_ALLOWANCES).toMatchObject({
+        starter: 10_000,
+        pro: 100_000,
+        team: 300_000,
+      });
+    });
+
+    it('maps depth to its VU cost (quick 1 · standard 10 · deep 100)', () => {
+      expect(VU_COST_BY_DEPTH).toMatchObject({
+        quick: 1,
+        standard: 10,
+        deep: 100,
+      });
+    });
+
+    it('falls back to the pro allowance for unknown or missing plans', () => {
+      expect(vuAllowanceForPlan('pro')).toBe(PLAN_VU_ALLOWANCES.pro);
+      expect(vuAllowanceForPlan('unknown-plan')).toBe(PLAN_VU_ALLOWANCES.pro);
+      expect(vuAllowanceForPlan(null)).toBe(PLAN_VU_ALLOWANCES.pro);
+      expect(vuAllowanceForPlan(undefined)).toBe(PLAN_VU_ALLOWANCES.pro);
+    });
+
+    it('falls back to the standard cost for unknown depths', () => {
+      expect(vuCostForDepth('quick')).toBe(1);
+      expect(vuCostForDepth('standard')).toBe(10);
+      expect(vuCostForDepth('deep')).toBe(100);
+      expect(vuCostForDepth('unknown-depth')).toBe(VU_COST_BY_DEPTH.standard);
+      expect(vuCostForDepth(null)).toBe(VU_COST_BY_DEPTH.standard);
+    });
   });
 
   describe('projectScanUsage', () => {
@@ -248,24 +286,135 @@ describe('BillingService', () => {
     });
   });
 
+  describe('countCycleUnits', () => {
+    it('sums the ledger rows for the cycle window', async () => {
+      const client = createAdminClient([
+        { data: [{ units: 10 }, { units: 100 }, { units: 10 }] },
+      ]);
+      const service = createService(client);
+
+      await expect(
+        service.countCycleUnits(USER_ID, '2026-07-01T00:00:00.000Z'),
+      ).resolves.toBe(120);
+    });
+
+    it('returns zero when the ledger has no rows for the cycle', async () => {
+      const client = createAdminClient([{ data: [] }]);
+      const service = createService(client);
+
+      await expect(
+        service.countCycleUnits(USER_ID, '2026-07-01T00:00:00.000Z'),
+      ).resolves.toBe(0);
+    });
+
+    it('rejects with 503 when supabase is not configured', async () => {
+      const service = createService(null);
+      await expect(
+        service.countCycleUnits(USER_ID, '2026-07-01T00:00:00.000Z'),
+      ).rejects.toThrow(ServiceUnavailableException);
+    });
+  });
+
+  describe('recordScanUsage', () => {
+    it('writes a ledger row at the depth cost with the cycle month', async () => {
+      const client = createAdminClient([]);
+      const service = createService(client);
+      const admin = client as unknown as {
+        from: jest.Mock;
+      };
+
+      await service.recordScanUsage({
+        scanId: 'scan-1',
+        userId: USER_ID,
+        depth: 'standard',
+        completedAt: '2026-07-16T14:32:00.000Z',
+      });
+
+      expect(admin.from).toHaveBeenCalledWith('vu_ledger');
+      const insertArg = (admin.from.mock.results[0].value as { insert: jest.Mock }).insert.mock
+        .calls[0][0];
+      expect(insertArg).toMatchObject({
+        user_id: USER_ID,
+        scan_id: 'scan-1',
+        depth: 'standard',
+        units: 10,
+        source: 'package',
+        cycle_month: '2026-07',
+        applied_rate: 10,
+      });
+    });
+
+    it('writes the deep cost for deep scans', async () => {
+      const client = createAdminClient([]);
+      const service = createService(client);
+      const admin = client as unknown as {
+        from: jest.Mock;
+      };
+
+      await service.recordScanUsage({
+        scanId: 'scan-2',
+        userId: USER_ID,
+        depth: 'deep',
+        completedAt: '2026-07-16T14:32:00.000Z',
+      });
+
+      const insertArg = (admin.from.mock.results[0].value as { insert: jest.Mock }).insert.mock
+        .calls[0][0];
+      expect(insertArg.units).toBe(100);
+    });
+
+    it('is best-effort: a ledger write error never throws', async () => {
+      const builder = {
+        from: jest.fn(() => builder),
+        insert: jest.fn(() =>
+          Promise.resolve({ error: { message: 'relation does not exist' } }),
+        ),
+      } as const;
+      const service = createService(builder);
+
+      await expect(
+        service.recordScanUsage({
+          scanId: 'scan-3',
+          userId: USER_ID,
+          depth: 'quick',
+          completedAt: '2026-07-16T14:32:00.000Z',
+        }),
+      ).resolves.toBeUndefined();
+    });
+
+    it('skips the write entirely when supabase is not configured', async () => {
+      const service = createService(null);
+      await expect(
+        service.recordScanUsage({
+          scanId: 'scan-4',
+          userId: USER_ID,
+          depth: 'standard',
+          completedAt: '2026-07-16T14:32:00.000Z',
+        }),
+      ).resolves.toBeUndefined();
+    });
+  });
+
   describe('assertScanQuota', () => {
-    it('passes when usage is under the plan limit', async () => {
-      // 1: membership → org · 2: org plan · 3: scan count (thenable).
+    it('passes when the VU meter is under the plan allowance', async () => {
+      // 1: membership → org · 2: org plan · 3: scan count · 4: VU ledger sum.
       const client = createAdminClient([
         { data: { organization_id: 'org-1' } },
         { data: { plan: 'pro' } },
         { count: 400 },
+        { data: [{ units: 40000 }] },
       ]);
       const service = createService(client);
 
       await expect(service.assertScanQuota(USER_ID)).resolves.toBeUndefined();
     });
 
-    it('throws 402 QuotaExceededException with retry-after when exhausted', async () => {
+    it('throws 402 QuotaExceededException with retry-after when the VU meter is exhausted', async () => {
       const client = createAdminClient([
         { data: { organization_id: 'org-1' } },
         { data: { plan: 'pro' } },
         { count: 500 },
+        { data: [{ units: 100000 }] },
       ]);
       const service = createService(client);
 
@@ -274,14 +423,15 @@ describe('BillingService', () => {
       expect(error).toBeInstanceOf(QuotaExceededException);
       expect(error).toMatchObject({ status: 402 });
       expect((error as QuotaExceededException).retryAfterSeconds).toBeGreaterThan(0);
-      expect((error as QuotaExceededException).message).toContain('500/500');
+      expect((error as QuotaExceededException).message).toContain('100000/100000');
     });
 
-    it('uses the plan limit matching the resolved plan', async () => {
+    it('uses the VU allowance matching the resolved plan', async () => {
       const client = createAdminClient([
         { data: { organization_id: 'org-1' } },
         { data: { plan: 'starter' } },
         { count: 100 },
+        { data: [{ units: 10000 }] },
       ]);
       const service = createService(client);
 
@@ -300,8 +450,9 @@ describe('BillingService', () => {
         // resolveUsage → resolveUserPlan: membership + org plan
         { data: { organization_id: 'org-1' } },
         { data: { plan: 'pro' } },
-        // countCycleScans
+        // countCycleScans + countCycleUnits (Promise.all, scans first)
         { count: 312 },
+        { data: [{ units: 3120 }] },
         // resolveStorageUsage: membership probe
         { data: { organization_id: 'org-1' } },
         // resolveApiUsage: api_usage row
@@ -321,6 +472,10 @@ describe('BillingService', () => {
       });
       expect(result.profile.usage).toMatchObject({
         period: 'current-month',
+        // VU meter (primary)
+        unitsUsed: 3120,
+        unitsLimit: PLAN_VU_ALLOWANCES.pro,
+        // legacy scan meter
         scansUsed: 312,
         scansLimit: 500,
         storageUsedGb: 18.4,
@@ -343,8 +498,9 @@ describe('BillingService', () => {
       const client = createAdminClient([
         // resolveUsage → resolveUserPlan: no membership → default plan
         { data: null },
-        // countCycleScans
+        // countCycleScans + countCycleUnits
         { count: 5 },
+        { data: [{ units: 120 }] },
         // resolveStorageUsage: no membership → nulls (short-circuits)
         { data: null },
         // resolveApiUsage: missing table error → 0 used, plan limit
@@ -355,6 +511,8 @@ describe('BillingService', () => {
       const result = await service.getBilling(USER_ID);
 
       expect(result.profile.usage).toMatchObject({
+        unitsUsed: 120,
+        unitsLimit: PLAN_VU_ALLOWANCES[DEFAULT_PLAN],
         scansUsed: 5,
         scansLimit: PLAN_SCAN_QUOTAS[DEFAULT_PLAN],
         storageUsedGb: null,
@@ -369,8 +527,9 @@ describe('BillingService', () => {
         // resolveUsage → resolveUserPlan: membership + org plan
         { data: { organization_id: 'org-1' } },
         { data: { plan: 'team' } },
-        // countCycleScans
+        // countCycleScans + countCycleUnits
         { count: 0 },
+        { data: [] },
         // resolveStorageUsage: membership probe
         { data: { organization_id: 'org-1' } },
         // resolveApiUsage: no row → zero used, plan limit
@@ -383,6 +542,8 @@ describe('BillingService', () => {
       const result = await service.getBilling(USER_ID);
 
       expect(result.profile.usage).toMatchObject({
+        unitsUsed: 0,
+        unitsLimit: PLAN_VU_ALLOWANCES.team,
         apiCallsUsed: 0,
         apiCallsLimit: PLAN_API_CALL_QUOTAS.team,
         storageUsedGb: 1.2,

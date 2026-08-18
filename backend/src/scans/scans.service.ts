@@ -65,6 +65,34 @@ type ImageStats = {
   blockiness: number;
 };
 
+/**
+ * Honest per-region luminance statistics for deep scans — a real tamper-
+ * localization heuristic computed from the uploaded buffer (4×4 grid, per-cell
+ * mean/stddev/entropy, outliers beyond 2σ from the frame-wide mean).
+ */
+type RegionAnalysis = {
+  grid_size: number;
+  region_count: number;
+  outlier_region_count: number;
+  outlier_regions: {
+    x: number;
+    y: number;
+    deviation_sigma: number;
+  }[];
+  region_luminance_variance: number;
+  assessment: 'uniform' | 'localized_anomalies' | 'widespread_anomalies';
+  note: string;
+};
+
+// Processing depth → metered cost in verification units (VU). Quick is a fast
+// triage subset, standard the full baseline, deep the extended forensic sweep.
+// Matches USAGE_CREDITS_PROPOSAL.md §3 (1 / 10 / 100).
+const PROCESSING_CREDITS_BY_DEPTH: Record<string, number> = {
+  quick: 1,
+  standard: 10,
+  deep: 100,
+};
+
 @Injectable()
 export class ScansService {
   private readonly logger = new Logger(ScansService.name);
@@ -665,6 +693,9 @@ export class ScansService {
         this.logger.log(
           `Scan ${scan.id} reuses prior result from scan ${prior.id} (identical SHA-256).`,
         );
+        // Deduct-on-complete: a reused result is still verification work
+        // delivered, so it consumes VUs at the depth the scan ran.
+        await this.recordScanUsage(scan, new Date().toISOString());
         return;
       }
 
@@ -683,6 +714,10 @@ export class ScansService {
         completed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       });
+      // Deduct-on-complete: the scan completed at its depth (quick 1 ·
+      // standard 10 · deep 100) — write the VU ledger row. Failed scans never
+      // reach here (they consume 0). Best-effort inside recordScanUsage.
+      await this.recordScanUsage(scan, new Date().toISOString());
     } catch (error) {
       // Rethrow so BullMQ retries the job (attempts: 3 + exponential backoff
       // configured on enqueue). The row is intentionally left in 'processing'
@@ -695,6 +730,28 @@ export class ScansService {
         `Scan ${scan.id} processing failed (will retry): ${reason}`,
       );
       throw error;
+    }
+  }
+
+  /**
+   * recordScanUsage — deduct-on-complete: forward a completed scan to the
+   * billing ledger so the cycle's VU meter accrues the depth cost (quick 1 ·
+   * standard 10 · deep 100). Called only from the completion branches — a
+   * failed scan never reaches here and consumes 0. The billing service's
+   * write is best-effort (metering must not block or fail scans).
+   */
+  private async recordScanUsage(scan: ScanRow, completedAt: string) {
+    try {
+      await this.billingService.recordScanUsage({
+        scanId: scan.id,
+        userId: scan.user_id,
+        depth: scan.processing_mode ?? 'standard',
+        completedAt,
+      });
+    } catch (error) {
+      this.logger.warn(
+        `VU ledger write skipped for scan ${scan.id}: ${error instanceof Error ? error.message : 'unknown error'}`,
+      );
     }
   }
 
@@ -950,16 +1007,27 @@ export class ScansService {
     analysisTimestamp: string,
     startedAt: number,
   ) {
-    const metadata = await this.extractMetadata(fileBuffer);
-    const imageStats = await this.analyzeImage(fileBuffer);
+    // Depth drives what is actually computed — quick skips the extraction-heavy
+    // forensics (EXIF parse + C2PA marker scan) so a verdict lands in seconds;
+    // deep adds the per-region consistency sweep on top of the full baseline.
+    const depth = scan.processing_mode ?? 'standard';
+    const isQuick = depth === 'quick';
+    const isDeep = depth === 'deep';
+
     const detectedFormat = detectImageFormat(fileBuffer);
     const sha256 = createHash('sha256').update(fileBuffer).digest('hex');
     const md5 = createHash('md5').update(fileBuffer).digest('hex');
     const hasHeaderMismatch =
       Boolean(detectedFormat.mimeType) && detectedFormat.mimeType !== scan.mime_type;
-    const hasC2paMarker = containsC2paMarker(fileBuffer);
-    const metadataSignal = buildMetadataSignal(metadata);
-    const imageSignal = buildImageSignal(imageStats);
+
+    const [imageStats, metadata, hasC2paMarker] = isQuick
+      ? [await this.analyzeImage(fileBuffer), null, null]
+      : await Promise.all([
+          this.analyzeImage(fileBuffer),
+          this.extractMetadata(fileBuffer),
+          Promise.resolve(containsC2paMarker(fileBuffer)),
+        ]);
+
     const integritySignal = buildIntegritySignal({
       detectedFormatLabel: detectedFormat.label,
       hasHeaderMismatch,
@@ -968,19 +1036,41 @@ export class ScansService {
       sha256,
       md5,
     });
-    const provenanceSignal = buildProvenanceSignal(hasC2paMarker);
+    const imageSignal = buildImageSignal(imageStats);
+    const metadataSignal = metadata ? buildMetadataSignal(metadata) : null;
+    const provenanceSignal =
+      hasC2paMarker === null ? null : buildProvenanceSignal(hasC2paMarker);
+
+    // Deep-only: real region-consistency analysis of the decoded buffer.
+    const regionAnalysis = isDeep ? await this.analyzeRegions(fileBuffer) : null;
+    const regionSignal = regionAnalysis
+      ? buildRegionConsistencySignal(regionAnalysis)
+      : null;
+
     const signals = [
       integritySignal,
-      metadataSignal,
       imageSignal,
-      provenanceSignal,
+      ...(metadataSignal ? [metadataSignal] : []),
+      ...(provenanceSignal ? [provenanceSignal] : []),
+      ...(regionSignal ? [regionSignal] : []),
     ];
     const verdict = buildVerdict({
-      metadata,
+      metadata: {
+        captureTimestamp: metadata?.captureTimestamp ?? null,
+        software: metadata?.software ?? null,
+        make: metadata?.make ?? null,
+        model: metadata?.model ?? null,
+      },
       imageStats,
       hasHeaderMismatch,
-      hasC2paMarker,
+      hasC2paMarker: Boolean(hasC2paMarker),
       signalCount: signals.length,
+      // Primary contributors derived from what was actually computed and
+      // flagged, so quick/deep payloads don't cite signals that never ran.
+      primarySignals: signals
+        .filter((signal) => signal.status !== 'clear')
+        .map((signal) => signal.signal_name)
+        .slice(0, 3),
     });
     const processingTimeMs = Date.now() - startedAt;
     const primaryOrigin = getPrimaryOrigin(
@@ -1028,22 +1118,136 @@ export class ScansService {
         generated_at: analysisTimestamp,
       },
       metadata: {
-        capture_timestamp: metadata.captureTimestamp,
-        software: metadata.software,
-        make: metadata.make,
-        model: metadata.model,
-        color_space: metadata.colorSpace,
-        orientation: metadata.orientation,
+        capture_timestamp: metadata?.captureTimestamp ?? null,
+        software: metadata?.software ?? null,
+        make: metadata?.make ?? null,
+        model: metadata?.model ?? null,
+        color_space: metadata?.colorSpace ?? null,
+        orientation: metadata?.orientation ?? null,
         detected_format: detectedFormat.label,
         header_matches_mime: !hasHeaderMismatch,
+        // null when the depth skipped the C2PA marker scan (quick) — distinct
+        // from false, which means "scanned and not found".
         c2pa_marker_detected: hasC2paMarker,
         scan_created_at: scan.created_at,
         scan_completed_at: analysisTimestamp,
         total_processing_time_ms: processingTimeMs,
-        processing_cost_credits: null,
-        recommendations: buildRecommendations(verdict.class, hasC2paMarker),
+        processing_cost_credits: PROCESSING_CREDITS_BY_DEPTH[depth] ?? 10,
+        recommendations: buildRecommendations(verdict.class, Boolean(hasC2paMarker)),
+        ...(regionAnalysis ? { deep_analysis: regionAnalysis } : {}),
       },
     };
+  }
+
+  /**
+   * Region-consistency sweep (deep mode only) — splits the decoded image into a
+   * 4×4 grid and computes per-cell luminance statistics. Cells whose mean
+   * luminance deviates more than 2σ from the frame-wide mean are flagged as
+   * tamper-region candidates: a real, computed localization heuristic, not a
+   * fabricated claim. Returns null when the buffer can't be decoded so a deep
+   * scan degrades gracefully to the standard signal set.
+   */
+  private async analyzeRegions(fileBuffer: Buffer): Promise<RegionAnalysis | null> {
+    try {
+      const image = await Jimp.read(fileBuffer);
+      const { width, height, data } = image.bitmap;
+      const grid = 4;
+      const cellW = Math.max(1, Math.floor(width / grid));
+      const cellH = Math.max(1, Math.floor(height / grid));
+      const cells: {
+        x: number;
+        y: number;
+        mean: number;
+        stddev: number;
+        entropy: number;
+      }[] = [];
+
+      for (let gy = 0; gy < grid; gy++) {
+        for (let gx = 0; gx < grid; gx++) {
+          let sum = 0;
+          let sumSq = 0;
+          let count = 0;
+          const histogram = new Array<number>(256).fill(0);
+          const yStart = gy * cellH;
+          const yEnd = Math.min(height, (gy + 1) * cellH);
+          const xStart = gx * cellW;
+          const xEnd = Math.min(width, (gx + 1) * cellW);
+
+          for (let y = yStart; y < yEnd; y++) {
+            for (let x = xStart; x < xEnd; x++) {
+              const index = (y * width + x) * 4;
+              const luminance =
+                0.299 * (data[index] ?? 0) +
+                0.587 * (data[index + 1] ?? 0) +
+                0.114 * (data[index + 2] ?? 0);
+              sum += luminance;
+              sumSq += luminance * luminance;
+              count += 1;
+              const histogramIndex = Math.max(
+                0,
+                Math.min(255, Math.round(luminance)),
+              );
+              histogram[histogramIndex] += 1;
+            }
+          }
+
+          const mean = count > 0 ? sum / count : 0;
+          const variance = count > 0 ? sumSq / count - mean * mean : 0;
+          const entropy = histogram.reduce((total, bucket) => {
+            if (!bucket || count === 0) {
+              return total;
+            }
+            const probability = bucket / count;
+            return total - probability * Math.log2(probability);
+          }, 0);
+          cells.push({
+            x: gx,
+            y: gy,
+            mean: roundMetric(mean),
+            stddev: roundMetric(Math.sqrt(Math.max(variance, 0))),
+            entropy: roundMetric(entropy),
+          });
+        }
+      }
+
+      const means = cells.map((cell) => cell.mean);
+      const globalMean =
+        means.reduce((total, value) => total + value, 0) / Math.max(1, means.length);
+      const globalVariance =
+        means.reduce((total, value) => total + (value - globalMean) ** 2, 0) /
+        Math.max(1, means.length);
+      const globalStd = Math.sqrt(globalVariance);
+      const sigmaFloor = Math.max(globalStd, 1);
+      const outliers = cells.filter(
+        (cell) => Math.abs(cell.mean - globalMean) > 2 * sigmaFloor,
+      );
+
+      return {
+        grid_size: grid,
+        region_count: cells.length,
+        outlier_region_count: outliers.length,
+        outlier_regions: outliers.map((cell) => ({
+          x: cell.x,
+          y: cell.y,
+          deviation_sigma: roundMetric(
+            Math.abs(cell.mean - globalMean) / sigmaFloor,
+          ),
+        })),
+        region_luminance_variance: roundMetric(globalVariance),
+        assessment:
+          outliers.length === 0
+            ? 'uniform'
+            : outliers.length <= 2
+              ? 'localized_anomalies'
+              : 'widespread_anomalies',
+        note:
+          outliers.length === 0
+            ? 'All regions hold within 2σ of the frame-wide luminance distribution.'
+            : `${outliers.length} of ${cells.length} regions deviate more than 2σ from the frame-wide luminance distribution.`,
+      };
+    } catch {
+      return null;
+    }
   }
 
   private async extractMetadata(fileBuffer: Buffer) {
@@ -1363,6 +1567,61 @@ function buildProvenanceSignal(hasC2paMarker: boolean) {
 }
 
 /**
+ * Deep-mode only — the per-region consistency signal derived from the real
+ * computed RegionAnalysis (tamper-localization heuristic): cells whose mean
+ * luminance deviates > 2σ from the frame-wide mean are surfaced as findings.
+ * Matches the other signal builders' contract so the report renderer and PDF
+ * evidence appendix consume it like any other signal.
+ */
+function buildRegionConsistencySignal(analysis: RegionAnalysis) {
+  const status =
+    analysis.outlier_region_count === 0
+      ? 'clear'
+      : analysis.outlier_region_count <= 2
+        ? 'attention'
+        : 'flagged';
+  const findings = analysis.outlier_regions.slice(0, 4).map((region) => ({
+    finding_id: randomUUID(),
+    finding_type: 'region_outlier',
+    severity: 'medium',
+    label: `Luminance outlier in region (${region.x + 1},${region.y + 1})`,
+    description: `Region deviates ${region.deviation_sigma.toFixed(1)}σ from the frame-wide luminance mean across the ${analysis.grid_size}×${analysis.grid_size} region grid.`,
+    technical_detail: null,
+    raw_value: region.deviation_sigma,
+    reference_range: null,
+  }));
+
+  return {
+    signal_id: randomUUID(),
+    signal_name: 'region_consistency',
+    signal_display_name: 'Region Consistency',
+    signal_category: 'spatial_analysis',
+    methodology_version: '0.2.0-mvp',
+    model_id: 'region-luminance-heuristics',
+    model_version: '2026-07-07',
+    status,
+    status_reason:
+      status === 'clear'
+        ? `All ${analysis.region_count} regions hold within 2σ of the frame-wide luminance distribution — no localized anomaly cluster.`
+        : `${analysis.outlier_region_count} of ${analysis.region_count} regions deviate more than 2σ from the frame-wide luminance distribution — a localized anomaly signature worth review.`,
+    score: status === 'clear' ? 0.1 : status === 'attention' ? 0.42 : 0.72,
+    confidence: {
+      score: 0.62,
+      level: 'moderate',
+      threshold_applied: 2,
+    },
+    findings,
+    supplementary_data: {
+      grid_size: analysis.grid_size,
+      region_count: analysis.region_count,
+      region_luminance_variance: analysis.region_luminance_variance,
+      assessment: analysis.assessment,
+    },
+    signal_weight: 0.1,
+  };
+}
+
+/**
  * Pure verdict classifier — exported as a test seam so the threshold
  * boundaries (0.2 likely_authentic / 0.45 inconclusive) are unit-lockable
  * without driving the full pipeline.
@@ -1378,6 +1637,10 @@ export function buildVerdict(input: {
   hasHeaderMismatch: boolean;
   hasC2paMarker: boolean;
   signalCount: number;
+  // Optional: primary contributors derived from the signals actually computed
+  // and flagged for this depth. When absent/empty the depth-agnostic defaults
+  // below apply (kept for direct buildVerdict callers and legacy fixtures).
+  primarySignals?: string[];
 }) {
   let suspicionScore = 0.18;
 
@@ -1412,6 +1675,11 @@ export function buildVerdict(input: {
   suspicionScore = clamp(suspicionScore, 0.05, 0.9);
   const confidenceScore = clamp(0.52 + input.signalCount * 0.045, 0.52, 0.78);
 
+  const primarySignals =
+    input.primarySignals && input.primarySignals.length > 0
+      ? input.primarySignals
+      : undefined;
+
   if (suspicionScore < 0.2) {
     return {
       class: 'likely_authentic',
@@ -1421,7 +1689,8 @@ export function buildVerdict(input: {
       confidence_level: 'moderate',
       signal_count_total: input.signalCount,
       signal_count_completed: input.signalCount,
-      primary_contributing_signals: ['file_integrity', 'provenance_credentials'],
+      primary_contributing_signals:
+        primarySignals ?? ['file_integrity', 'provenance_credentials'],
       plain_language_summary:
         'File integrity checks are stable and no strong anomaly cluster was detected. The result still benefits from human review before any high-stakes decision.',
     };
@@ -1436,7 +1705,8 @@ export function buildVerdict(input: {
       confidence_level: 'moderate',
       signal_count_total: input.signalCount,
       signal_count_completed: input.signalCount,
-      primary_contributing_signals: ['metadata_forensics', 'visual_statistics'],
+      primary_contributing_signals:
+        primarySignals ?? ['metadata_forensics', 'visual_statistics'],
       plain_language_summary:
         'The file produced a usable evidence package, but the signal mix is not strong enough to support a confident authenticity or synthetic-media verdict.',
     };
@@ -1450,7 +1720,8 @@ export function buildVerdict(input: {
     confidence_level: 'moderate',
     signal_count_total: input.signalCount,
     signal_count_completed: input.signalCount,
-    primary_contributing_signals: ['file_integrity', 'metadata_forensics', 'visual_statistics'],
+    primary_contributing_signals:
+      primarySignals ?? ['file_integrity', 'metadata_forensics', 'visual_statistics'],
     plain_language_summary:
       'The evidence package contains enough anomalous signals to recommend manual review before the media is treated as trustworthy.',
   };

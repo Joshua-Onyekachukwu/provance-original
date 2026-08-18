@@ -8,13 +8,45 @@ import { SupabaseService } from '../supabase/supabase.service';
 import { QuotaExceededException } from './quota-exceeded.exception';
 
 // ---------------------------------------------------------------------------
-// Plan catalog — single source of truth for scan entitlements.
+// Plan catalog — single source of truth for VU entitlements.
 //
 // The organizations table carries a `plan` text column (default 'pro'); these
-// monthly scan allowances map each plan to its included scan quota. Mirrors
-// the mockBillingProfile usage limits the Billing page already renders.
+// monthly VU (Verification Unit) allowances map each plan to its included
+// usage. Mirrors the mockBillingProfile usage limits the Billing page
+// renders. Ratified in docs/engineering/USAGE_CREDITS_PROPOSAL.md
+// (VUs, 100k at Pro, hard-stop overage, free failed scans).
 // ---------------------------------------------------------------------------
 
+/**
+ * Monthly VU allowances per plan. Enterprise is a placeholder for committed
+ * blocks negotiated per contract (rollout step 4); the workspace meter needs
+ * a number to render.
+ */
+export const PLAN_VU_ALLOWANCES: Record<string, number> = {
+  starter: 10_000,
+  pro: 100_000,
+  team: 300_000,
+  enterprise: 250_000, // placeholder — committed blocks negotiated per contract
+};
+
+/**
+ * Depth → VU cost (the dial that converts scans into units). Applied when a
+ * scan COMPLETES at the depth it ran; failed scans consume 0. Changing these
+ * values is the "tighten the dial" lever — the ledger's `applied_rate` keeps
+ * history auditable across changes.
+ */
+export const VU_COST_BY_DEPTH: Record<string, number> = {
+  quick: 1,
+  standard: 10,
+  deep: 100,
+};
+
+/**
+ * LEGACY — flat monthly scan counts, kept so the pre-ledger payload fields
+ * (scansUsed/scansLimit) keep rendering the Billing page meters until the
+ * frontend switch to unitsUsed/unitsLimit lands (rollout step 1 follow-up).
+ * Do not add new consumers; drop alongside the legacy payload fields.
+ */
 export const PLAN_SCAN_QUOTAS: Record<string, number> = {
   starter: 100,
   pro: 500,
@@ -35,6 +67,16 @@ export const PLAN_API_CALL_QUOTAS: Record<string, number> = {
 };
 
 export const DEFAULT_PLAN = 'pro';
+
+export function vuAllowanceForPlan(plan: string | null | undefined): number {
+  return (
+    PLAN_VU_ALLOWANCES[plan ?? ''] ?? PLAN_VU_ALLOWANCES[DEFAULT_PLAN]
+  );
+}
+
+export function vuCostForDepth(depth: string | null | undefined): number {
+  return VU_COST_BY_DEPTH[depth ?? ''] ?? VU_COST_BY_DEPTH.standard;
+}
 
 /**
  * Per-scan overage price (USD) applied to projected usage above the plan's
@@ -142,6 +184,7 @@ export class BillingService {
   private readonly orgsTable: string;
   private readonly scansTable: string;
   private readonly apiUsageTable: string;
+  private readonly vuLedgerTable: string;
   private readonly overagePriceUsd: number;
 
   constructor(
@@ -159,6 +202,8 @@ export class BillingService {
     this.scansTable = configService.get<string>('SUPABASE_SCANS_TABLE', 'scans');
     this.apiUsageTable =
       configService.get<string>('SUPABASE_API_USAGE_TABLE') || 'api_usage';
+    this.vuLedgerTable =
+      configService.get<string>('SUPABASE_VU_LEDGER_TABLE') || 'vu_ledger';
     this.overagePriceUsd =
       Number(configService.get<number>('SCAN_OVERAGE_PRICE_USD')) > 0
         ? Number(configService.get<number>('SCAN_OVERAGE_PRICE_USD'))
@@ -224,17 +269,93 @@ export class BillingService {
   }
 
   /**
+   * Sum the user's VU ledger for the current cycle (created_at >= periodStart
+   * — the calendar-month window). This is the metered value the Billing page
+   * renders and the enforcement gate uses.
+   */
+  async countCycleUnits(userId: string, periodStartIso: string): Promise<number> {
+    const adminClient = this.supabaseService.getAdminClient();
+    if (!adminClient) {
+      throw new ServiceUnavailableException('Supabase is not configured.');
+    }
+
+    const { data, error } = await adminClient
+      .from(this.vuLedgerTable)
+      .select('units')
+      .eq('user_id', userId)
+      .gte('created_at', periodStartIso);
+
+    if (error) {
+      throw new ServiceUnavailableException('Failed to resolve VU usage.');
+    }
+
+    const rows = (data ?? []) as Array<{ units: number | null }>;
+    return rows.reduce((sum, row) => sum + (Number(row.units) || 0), 0);
+  }
+
+  /**
+   * Deduct-on-complete: write a VU ledger row for a completed scan at the
+   * depth it ran (quick 1 · standard 10 · deep 100). Failed scans never call
+   * this — they consume 0. Best-effort by design: metering must not block or
+   * fail scans, so a missing ledger table (migration 0022 not applied) or a
+   * write error only logs a warning and lets the scan proceed.
+   */
+  async recordScanUsage(input: {
+    scanId: string;
+    userId: string;
+    depth: string;
+    completedAt: string;
+  }): Promise<void> {
+    const adminClient = this.supabaseService.getAdminClient();
+    if (!adminClient) return;
+
+    const units = vuCostForDepth(input.depth);
+    if (units <= 0) return;
+
+    try {
+      const { error } = await adminClient.from(this.vuLedgerTable).insert({
+        user_id: input.userId,
+        scan_id: input.scanId,
+        depth: input.depth,
+        units,
+        source: 'package',
+        cycle_month: input.completedAt.slice(0, 7), // 'YYYY-MM'
+        applied_rate: units,
+        created_at: input.completedAt,
+      });
+
+      if (error) {
+        this.logger.warn(
+          `VU ledger write skipped for scan ${input.scanId}: ${error.message}`,
+        );
+      }
+    } catch (error) {
+      this.logger.warn(
+        `VU ledger write skipped for scan ${input.scanId}: ${error instanceof Error ? error.message : 'unknown error'}`,
+      );
+    }
+  }
+
+  /**
    * Resolve the user's plan + metered usage for the current cycle — the shape
    * the Billing page consumes (mirrors mockGetBilling's profile.usage).
    */
   async resolveUsage(userId: string) {
     const plan = await this.resolveUserPlan(userId);
     const cycle = currentBillingCycle();
-    const scansUsed = await this.countCycleScans(userId, cycle.periodStart);
+    const [scansUsed, unitsUsed] = await Promise.all([
+      this.countCycleScans(userId, cycle.periodStart),
+      this.countCycleUnits(userId, cycle.periodStart),
+    ]);
     const scansLimit = scanLimitForPlan(plan);
+    const unitsLimit = vuAllowanceForPlan(plan);
 
     return {
       plan,
+      // VU meter (primary) — the ratified ledger names.
+      unitsUsed,
+      unitsLimit,
+      // LEGACY scan meter — kept until the frontend switch to VUs lands.
       scansUsed,
       scansLimit,
       periodStart: cycle.periodStart,
@@ -245,16 +366,16 @@ export class BillingService {
 
   /**
    * Entitlement gate for initiateScan. Throws 402 with a Retry-After hint when
-   * the current cycle's scan quota is exhausted.
+   * the current cycle's VU allowance is exhausted (0 VUs remaining).
    */
   async assertScanQuota(userId: string) {
     const usage = await this.resolveUsage(userId);
 
-    if (usage.scansUsed >= usage.scansLimit) {
+    if (usage.unitsUsed >= usage.unitsLimit) {
       throw new QuotaExceededException({
         plan: usage.plan,
-        used: usage.scansUsed,
-        limit: usage.scansLimit,
+        unitsUsed: usage.unitsUsed,
+        unitsLimit: usage.unitsLimit,
         periodEnd: usage.periodEnd,
         retryAfterSeconds: usage.retryAfterSeconds,
       });
@@ -294,6 +415,10 @@ export class BillingService {
           period: 'current-month',
           periodStart: usage.periodStart,
           periodEnd: usage.periodEnd,
+          // VU meter (primary) — the ratified ledger names.
+          unitsUsed: usage.unitsUsed,
+          unitsLimit: usage.unitsLimit,
+          // LEGACY scan meter — kept until the frontend switch to VUs lands.
           scansUsed: usage.scansUsed,
           scansLimit: usage.scansLimit,
           storageUsedGb: storage.usedGb,
