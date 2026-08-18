@@ -396,6 +396,38 @@ export default function AppBillingPage() {
         </Card>
       )}
 
+      {/* ── 2.6. Rollover history ───────────────────────────────────────── */}
+      {!loading && !failed && usage?.rolloverHistory && usage.rolloverHistory.length > 0 && (
+        <Card
+          eyebrow="Rollover history"
+          title="Carried-over verification units"
+          description="Unused VUs from prior cycles folded into this cycle's allowance (≤1× monthly cap)."
+        >
+          <div className="overflow-x-auto rounded-2xl border border-stone-light">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-stone-light bg-parchment">
+                <tr>
+                  <th className="px-4 py-3 font-mono text-[10px] uppercase tracking-[0.18em] text-charcoal-light">Cycle</th>
+                  <th className="px-4 py-3 font-mono text-[10px] uppercase tracking-[0.18em] text-charcoal-light">Allowance</th>
+                  <th className="px-4 py-3 font-mono text-[10px] uppercase tracking-[0.18em] text-charcoal-light">Used</th>
+                  <th className="px-4 py-3 text-right font-mono text-[10px] uppercase tracking-[0.18em] text-charcoal-light">Carried</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-stone-light bg-white-warm">
+                {usage.rolloverHistory.map((row) => (
+                  <tr key={row.cycleMonth} className="transition-colors hover:bg-parchment/70">
+                    <td className="px-4 py-3.5 font-medium text-charcoal">{row.cycleMonth}</td>
+                    <td className="px-4 py-3.5 tabular-nums text-charcoal-mid">{formatCount(row.allowance)}</td>
+                    <td className="px-4 py-3.5 tabular-nums text-charcoal-mid">{formatCount(row.priorUsed)}</td>
+                    <td className="px-4 py-3.5 text-right font-medium tabular-nums text-emerald-600">+{formatCount(row.carried)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
       {/* ── 3. Payment methods ───────────────────────────────────────────── */}
       <Card
         eyebrow="Payment methods"

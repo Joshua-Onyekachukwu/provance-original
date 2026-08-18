@@ -1430,6 +1430,11 @@ export const mockBillingProfile = {
       overageUnits: 0,
       overageCostUsd: 0,
     },
+    // Rollover history — previous cycles' carried-into rows from the ledger.
+    rolloverHistory: [
+      { cycleMonth: '2026-06', allowance: 100000, priorUsed: 87200, carried: 12800 },
+      { cycleMonth: '2026-07', allowance: 100000, priorUsed: 94500, carried: 5500 },
+    ],
   },
   // Per-scan VU spend breakdown — recent scans in the current cycle with
   // their depth, size tier, and VU cost. The Billing page renders this as a
