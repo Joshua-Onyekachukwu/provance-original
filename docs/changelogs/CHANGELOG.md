@@ -1,5 +1,19 @@
 # Provance — Changelog
 
+## [2026-08-18] - Billing contract re-denominated to VUs
+
+### Changed
+- **`docs/engineering/BILLING_AND_ENTITLEMENTS_CONTRACT.md`** — the ratified baseline now speaks **VUs (Verification Units)** instead of flat scan counts, per `USAGE_CREDITS_PROPOSAL.md` (recommended defaults: 100,000 VUs at Pro, hard-stop overage, ≤1× rollover, free failed scans):
+  - **Plan catalog** — monthly VU allowances (Starter 10,000 · Pro 100,000 · Team 300,000 · Enterprise committed block) with ≈ scan equivalents at each depth, plus the **depth → VU cost table** (Quick 1 · Standard 10 · Deep 100) and renamed constants/helpers (`PLAN_VU_ALLOWANCES`, `vuAllowanceForPlan`, `vuCostForDepth`).
+  - **Quota gate** — 402 + Retry-After fires when the cycle ledger shows 0 VUs remaining; **deduct-on-complete** (failed scans consume 0), idempotency precedence unchanged; 402 body renamed to `unitsUsed`/`unitsLimit`.
+  - **GET /v1/billing payload** — `usage` now `unitsUsed`/`unitsLimit` with projection in VUs (`projectedUnits`/`overageUnits`/`overageCostUsd` at default `VU_OVERAGE_PRICE_USD` 0.0006); field-by-field source table + consumers updated.
+  - **Warning chip** — behavior explicitly unchanged: reads `unitsUsed/unitsLimit` at ≥85% warning / 100%+ danger, same `scanQuotaPct` math.
+  - **Cycle math** — calendar-month UTC unchanged, with the ratified ≤1× rollover rule added.
+- Added a **transition note** at the top mapping the current code's pre-ledger fields (`scansUsed`/`scansLimit`) to the ratified ledger names, and updated §5 mock-parity + §6 gaps (ledger = rollout step 1; API-call counting folds into VU metering; overage stays informational).
+
+### Notes
+- Doc-only change — no source code touched; the service still emits `scansUsed/scansLimit` until rollout step 1 (ledger + metering) lands.
+
 ## [2026-08-18] - Commit api.js Backend seam design doc (candidate 01)
 
 ### Added

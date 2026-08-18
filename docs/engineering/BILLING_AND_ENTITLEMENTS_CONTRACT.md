@@ -1,14 +1,29 @@
 # Billing & Entitlements — API Contract
 
-Status: **Ratified baseline** (2026-08-10)
+Status: **Ratified baseline (2026-08-10) · Revised 2026-08-18 — VU units**
 
 ## Purpose
 
 Define the billing + entitlement contract for Provance's MVP: the plan
-catalog, the monthly cycle math, the scan-quota gate (`402` + `Retry-After`),
-and the `GET /v1/billing` payload shape. This is the contract behind the
-Billing page, the dashboard's scan-quota warning chip, and the
-`initiateScan` entitlement gate.
+catalog, the monthly cycle math, the **VU (Verification Unit) quota gate**
+(`402` + `Retry-After`), and the `GET /v1/billing` payload shape. This is
+the contract behind the Billing page, the dashboard's VU-usage warning
+chip, and the `initiateScan` entitlement gate.
+
+**Units, not counts.** A package no longer buys a flat monthly *scan count*;
+it buys a monthly allowance of **VUs — Verification Units**. Each scan
+*consumes* VUs at the depth it ran (Quick 1 · Standard 10 · Deep 100), so
+depth, API usage, and future top-ups all speak the same meter. The unit
+model is ratified in `USAGE_CREDITS_PROPOSAL.md` (recommended defaults:
+100,000 VUs at Pro, hard-stop overage, ≤1× rollover, free failed scans).
+
+> **Transition (read before wiring):** the billing service today still emits
+> the pre-ledger field names (`scansUsed` / `scansLimit`), and
+> `src/lib/scanQuota.js` reads those. This revision ratifies the **VU ledger
+> field names** (`unitsUsed` / `unitsLimit`) that rollout step 1
+> (ledger + metering) must ship. Field mapping below — everything else in
+> the contract (cycle math, 402 envelope, warning thresholds) is unchanged
+> in behavior, only re-denominated.
 
 Reference implementation:
 
@@ -16,6 +31,7 @@ Reference implementation:
 - `backend/src/billing/quota-exceeded.exception.ts` (402 exception)
 - `backend/src/common/filters/global-exception.filter.ts` (Retry-After emission)
 - `src/lib/mockApi.js` / `src/lib/mockData.js` (mock parity — `mockGetBilling`, `mockInitiateScan`, `mockBillingProfile`)
+- `docs/engineering/USAGE_CREDITS_PROPOSAL.md` (unit model, depth costs, rollover, top-ups)
 
 ## 1. Plan catalog
 
@@ -23,16 +39,27 @@ Single source of truth in `backend/src/billing/billing.service.ts`. The
 `organizations.plan` text column (migration 0005, default `'pro'`) selects the
 row; unknown/missing plans fall back to `pro`.
 
-| Plan | Price (USD/mo) | Seats | Monthly scan quota | Monthly API-call limit |
-| --- | --- | --- | --- | --- |
-| starter | 0 | 1 | 100 | 1,000 |
-| pro | 49 | 3 | 500 | 10,000 |
-| team | 199 | 10 | 2,500 | 50,000 |
-| enterprise | 999 | 25 | 10,000 | 250,000 |
+| Plan | Price (USD/mo) | Seats | Monthly VU allowance | ≈ Quick scans | ≈ Standard scans | ≈ Deep scans |
+| --- | --- | --- | --- | --- | --- | --- |
+| starter | 0 | 1 | 10,000 | 10,000 | 1,000 | 100 |
+| pro | 49 | 3 | **100,000** | 100,000 | 10,000 | 1,000 |
+| team | 199 | 10 | 300,000 | 300,000 | 30,000 | 3,000 |
+| enterprise | 999 | 25 | committed block | — | — | — |
 
-Constants: `PLAN_SCAN_QUOTAS`, `PLAN_API_CALL_QUOTAS`, `PLAN_DISPLAY`,
-`DEFAULT_PLAN = 'pro'`. Helpers: `scanLimitForPlan(plan)`,
-`apiCallLimitForPlan(plan)`, `planDisplay(plan)`.
+**Depth → VU cost** (the dial that converts scans into units; applied at
+scan completion — failed scans consume 0):
+
+| Depth | Processing mode (API) | VU cost |
+| --- | --- | --- |
+| Quick | `quick` | 1 |
+| Standard | `standard` | 10 |
+| Deep | `deep` | 100 |
+
+Constants: `PLAN_VU_ALLOWANCES` (replaces `PLAN_SCAN_QUOTAS`),
+`VU_COST_BY_DEPTH`, `PLAN_API_CALL_QUOTAS`, `PLAN_DISPLAY`,
+`DEFAULT_PLAN = 'pro'`. Helpers: `vuAllowanceForPlan(plan)`,
+`vuCostForDepth(processingMode)`, `apiCallLimitForPlan(plan)`,
+`planDisplay(plan)`.
 
 **Plan resolution** (`resolveUserPlan`) — the user's effective plan comes from
 their active org membership (`organization_members` status `'active'` →
@@ -50,15 +77,21 @@ UTC**:
 - `retryAfterSeconds` — `max(60, ceil((periodEnd - now) / 1000))`, so the
   Retry-After hint never reports less than 60 s
 
+**Rollover (ratified):** unused VUs roll over **up to 1× the monthly
+allowance** (bounded — can't accumulate forever). Rollover credits are
+consumed *before* the new month's allowance; the ledger records the source
+per deduction so the meter stays auditable.
+
 The mock mirrors this as `usage.period: 'current-month'` with the same
 `periodStart`/`periodEnd` values (mock dates are seeded `daysAgo` values, but
 the shape is identical).
 
-## 3. Scan-quota gate — 402 + Retry-After
+## 3. VU quota gate — 402 + Retry-After
 
 `assertScanQuota(userId)` runs **before scan creation** on `POST /scans`
-(`scans.service.ts` initiate path). When `scansUsed >= scansLimit` for the
-current cycle it throws `QuotaExceededException`:
+(`scans.service.ts` initiate path). When the cycle's ledger shows
+`unitsUsed >= unitsLimit` (0 VUs remaining, i.e. `unitsLimit − unitsUsed` would
+not cover the requested depth's cost) it throws `QuotaExceededException`:
 
 ```
 HTTP 402 Payment Required
@@ -66,10 +99,10 @@ Retry-After: <seconds until next cycle start>
 {
   "statusCode": 402,
   "code": "QUOTA_EXCEEDED",
-  "message": "Monthly scan quota reached (500/500 on the pro plan). New scans resume <periodEnd>.",
+  "message": "Monthly verification-unit allowance reached (100,000/100,000 on the pro plan). New scans resume <periodEnd>.",
   "plan": "pro",
-  "used": 500,
-  "limit": 500,
+  "unitsUsed": 100000,
+  "unitsLimit": 100000,
   "periodEnd": "<ISO>",
   "path": "/v1/scans",
   "requestId": "...",
@@ -79,13 +112,19 @@ Retry-After: <seconds until next cycle start>
 
 - The `Retry-After` header (RFC 9110) is emitted by the global exception
   filter from `exception.retryAfterSeconds`.
+- **Deduct-on-complete:** VUs are charged when a scan *completes*, at the
+  depth it ran. Failed scans consume **0 VUs** — the unit is only charged for
+  a usable result (fair, and it removes any incentive to spam broken
+  uploads). The gate therefore reserves against the projected cost
+  (`vuCostForDepth(requested mode)`) and the worker writes the ledger row at
+  completion (`(scan_id, depth, units, cycle, user, source)`).
 - **Idempotency precedence** — a retried initiate with the same
   `Idempotency-Key` returns the original reservation **before** the quota gate
   runs, so a retry of an already-accepted scan never double-consumes the
   allowance (see `SCAN_UPLOAD_CONTRACT.md`).
 - Mock parity: `mockInitiateScan` throws the same 402 shape with
-  `retryAfterSeconds` once `mockBillingProfile.usage.scansUsed` reaches
-  `scansLimit`; dev forcing via `?quota=exhausted`.
+  `retryAfterSeconds` once `mockBillingProfile.usage.unitsUsed` reaches
+  `unitsLimit`; dev forcing via `?quota=exhausted`.
 
 ## 4. GET /v1/billing payload
 
@@ -111,8 +150,8 @@ shape the Billing page renders — `profile` (plan + usage + payment methods) an
       "period": "current-month",
       "periodStart": "<ISO>",
       "periodEnd": "<ISO>",
-      "scansUsed": 312,
-      "scansLimit": 500,
+      "unitsUsed": 89400,
+      "unitsLimit": 100000,
       "storageUsedGb": 18.4,
       "storageLimitGb": 50,
       "apiCallsUsed": 4120,
@@ -120,10 +159,10 @@ shape the Billing page renders — `profile` (plan + usage + payment methods) an
       "projection": {
         "daysElapsed": 11,
         "daysInCycle": 31,
-        "pacePerDay": 28.36,
-        "projectedScans": 880,
-        "overageScans": 380,
-        "overageCostUsd": 19
+        "pacePerDay": 8127.27,
+        "projectedUnits": 251945,
+        "overageUnits": 151945,
+        "overageCostUsd": 91.17
       }
     },
     "paymentMethods": []
@@ -137,12 +176,12 @@ Field-by-field source of truth:
 | Field | Source | Degradation |
 | --- | --- | --- |
 | `plan.*` | `resolveUserPlan` → `PLAN_DISPLAY`; `startedAt`/`renewsAt` reuse the resolved cycle so plan and usage never straddle a month boundary | plan falls back to `pro` |
-| `usage.scansUsed` | `countCycleScans` — scans table rows for the user since `periodStart` | 0 |
-| `usage.scansLimit` | `scanLimitForPlan(plan)` | `pro` quota |
+| `usage.unitsUsed` | the VU ledger — `SUM(units)` for the user's cycle rows (`scan_depth_ledger`), including rollover credits consumed and top-up packs added (source: `package\|topup\|api`) | 0 |
+| `usage.unitsLimit` | `vuAllowanceForPlan(plan)` + carried-over rollover (≤1× monthly) | `pro` allowance |
 | `usage.storageUsedGb` / `storageLimitGb` | active org's `organizations.storage_used_gb` / `storage_limit_gb` (migration 0005) via the membership join | `null` (frontend renders `—`) |
 | `usage.apiCallsUsed` | `api_usage` row for `(user_id, period_month)` where `period_month = periodStart.slice(0, 7)` (migration **0020**) | `0` when the table/row is missing |
 | `usage.apiCallsLimit` | `apiCallLimitForPlan(plan)` from the plan catalog (never the table) | plan's limit |
-| `usage.projection` | `projectScanUsage` — `pace = used / max(1, daysElapsed)`, `projectedScans = round(pace × daysInCycle)`, `overageScans = max(0, projected − limit)`, `overageCostUsd = overage × SCAN_OVERAGE_PRICE_USD` (default `0.05`) | computed from the same scans/cycle fields; days-elapsed clamps to 1 |
+| `usage.projection` | `projectScanUsage` — `pace = unitsUsed / max(1, daysElapsed)`, `projectedUnits = round(pace × daysInCycle)`, `overageUnits = max(0, projected − limit)`, `overageCostUsd = overage × VU_OVERAGE_PRICE_USD` (default `0.0006`, aligned with the volume-priced VU bands in the proposal) | computed from the same ledger/cycle fields; days-elapsed clamps to 1 |
 | `paymentMethods` / `invoices` | empty until a payment processor is wired | `[]` |
 
 `periodStart`/`periodEnd` are resolved **once** per request and shared by
@@ -151,13 +190,14 @@ can never straddle a month boundary mid-payload.
 
 **Consumers:**
 
-- Billing page (`AppBillingPage`) — plan card, usage meters, the projected
-  end-of-cycle StatCard, invoices.
-- Dashboard quota warning chip (`ScanQuotaWarningChip`) — reads
-  `profile.usage.scansUsed/scansLimit`, warns at ≥85% (85–99% warning,
-  100%+ danger), links to `/app/billing`. Pure math in `src/lib/scanQuota.js`
-  (`scanQuotaPct`).
-- `initiateScan` quota gate (`assertScanQuota`) — same `scansUsed/scansLimit`
+- Billing page (`AppBillingPage`) — plan card, VU usage meter, the projected
+  end-of-cycle StatCard (in VUs), invoices.
+- Dashboard VU warning chip (`ScanQuotaWarningChip`) — reads
+  `profile.usage.unitsUsed/unitsLimit`, warns at ≥85% (85–99% warning,
+  100%+ danger), links to `/app/billing`. **Behavior unchanged** from the
+  scan-count chip — only the unit it counts changed. Pure math in
+  `src/lib/scanQuota.js` (`scanQuotaPct`).
+- `initiateScan` quota gate (`assertScanQuota`) — same `unitsUsed/unitsLimit`
   source, so the dashboard, meters, and enforcement can never disagree.
 
 The projection math is mirrored in `src/lib/scanQuota.js`
@@ -167,24 +207,35 @@ same math as the real endpoint; the billing spec locks parity.
 ## 5. Mock parity rules
 
 - `mockGetBilling` returns `{ profile: { ...mockBillingProfile }, invoices: mockInvoices }`;
-  dev forcing `?quota=exhausted` (used = limit) and `?quota=high`
-  (used = 90% of limit) drive the exhausted banner and dashboard warning
+  dev forcing `?quota=exhausted` (unitsUsed = unitsLimit) and `?quota=high`
+  (unitsUsed = 90% of limit) drive the exhausted banner and dashboard warning
   respectively. Both are inert in production builds.
 - `mockInitiateScan` enforces the same quota as the real gate (402 shape with
-  `retryAfterSeconds`) using the same `mockBillingProfile.usage` values, so a
-  demo never behaves differently from real mode.
+  `retryAfterSeconds`) using the same `mockBillingProfile.usage` values, and
+  the mock worker deducts the depth's VU cost on completion (`1/10/100`) —
+  a demo never behaves differently from real mode.
 - Any new field added to the real payload **must** be mirrored in
   `mockBillingProfile.usage` (and vice versa) — the billing spec locks the
   contract shape.
 
 ## 6. Known gaps / next steps
 
+- **The VU ledger is rollout step 1, not shipped yet** — the service still
+  emits `scansUsed/scansLimit` and metering is count-based. Rollout step 1
+  (per `USAGE_CREDITS_PROPOSAL.md` §7) ships the ledger + deduct-on-complete
+  in the worker, `unitsUsed/unitsLimit` on `GET /v1/billing`, and the
+  chip/projection switch to VUs — no payment code needed.
 - **API-call counting is not wired yet** — `api_usage` is read-only today;
-  no middleware increments `calls` on authenticated requests. Tracked in
-  `docs/project-state/followup-recommendations.md`.
+  no middleware increments `calls` on authenticated requests, and keyed API
+  calls will fold into VU metering (replacing `PLAN_API_CALL_QUOTAS` as the
+  API meter) once the ledger lands.
 - **The overage estimate is informational** — `overageCostUsd` is a pace-based
   projection, not a charge; it becomes billable only once a payment processor
   lands (deferred).
+- **Top-ups / rollover enforcement** — top-up packs need Stripe (deferred);
+  until then the 402 gate + "Add VUs (coming soon)" CTA. Rollover credits are
+  part of the ledger slice but their billing-engine accounting lands with the
+  payment work.
 - Payment methods and invoices remain `[]` until Stripe (or equivalent) lands
   (deferred per `MASTER_DEVELOPMENT_ROADMAP.md`).
 - The archival/enforcement job for storage is Phase 5 backlog (see
@@ -192,6 +243,7 @@ same math as the real endpoint; the billing spec locks parity.
 
 ## Related
 
+- `docs/engineering/USAGE_CREDITS_PROPOSAL.md` — the VU unit model this contract ratifies
 - `docs/engineering/SCAN_UPLOAD_CONTRACT.md` — initiate/upload lifecycle + idempotency
 - `docs/engineering/RETENTION_POLICY.md` — storage/audit retention windows
 - `docs/engineering/API_DESIGN_STANDARDS.md` — error envelope + pagination conventions
