@@ -1,5 +1,15 @@
 # Provance — Changelog
 
+## [2026-08-18] - Backend seam Phase 1 — interface manifest + parity guard
+
+### Added
+- `src/lib/backend/interface.js` — the Backend interface manifest: the 77-method api.js operation surface grouped by domain (session, auth, waitlist, scans, reports, admin, notifications, audit, billing, security, account, roles, org, api-keys, webhooks, jobs, support), derived flat list `BACKEND_INTERFACE_METHODS`. Excludes the adapter-owned mode constants (`USE_MOCK`/`USE_BETTER_AUTH`). Single source of truth for the seam design (`docs/engineering/BACKEND_SEAM_DESIGN.md` §3).
+- `src/lib/backend/index.js` — the seam stub: re-exports the manifest, documents the future boot-time adapter selection. api.js dispatch ladder untouched (Phase 2+).
+- `src/lib/backendParity.test.js` — the drift guard: manifest integrity (no duplicates), manifest↔facade alignment (every manifest method is an exported api.js function AND every api.js op is declared in the manifest — rename/remove on either side fails), plus auto-activating adapter surface checks that instantiate `MockBackend`/`HttpBackend`/`BetterAuthBackend` and assert every interface method the moment those files land in Phases 2–4.
+
+### Verified
+- **Zero behavior change to api.js** — no edits to the facade; all 48+ importers untouched. Gates: vitest **619/619** (new guard 8/8 + apiParity 3/3), build clean, lint 0 errors (41 pre-existing warnings).
+
 ## [2026-08-18] - Report-depth task — verified already shipped
 
 ### Verified
