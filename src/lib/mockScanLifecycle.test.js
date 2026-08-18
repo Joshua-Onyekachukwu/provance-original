@@ -92,6 +92,47 @@ describe('mock scan lifecycle (simulated worker)', () => {
     expect(viaApi.result_payload.report.report_id).toBe(submitted.result_payload.report.report_id)
   })
 
+  it('branches the completed payload by depth — quick 2 signals, standard 4, deep 5 + deep_analysis + credits', async () => {
+    vi.useFakeTimers()
+    stubWindow()
+
+    // Distinct filename + size per depth so the byte-identical dedup path
+    // can't short-circuit any of them.
+    async function runDepth(mode, name, size) {
+      const init = await settle(
+        mockInitiateScan(payload({ processingMode: mode, originalFilename: name, fileSizeBytes: size })),
+      )
+      const { scan } = await settle(mockSubmitScan(init.scanId))
+      vi.advanceTimersByTime(4000)
+      expect(scan.status).toBe('completed')
+      return scan.result_payload
+    }
+
+    // Quick: reduced signal set, 1 credit, no deep_analysis.
+    const quick = await runDepth('quick', 'depth_quick.png', 1111)
+    expect(quick.signals).toHaveLength(2)
+    expect(quick.verdict.signal_count_total).toBe(2)
+    expect(quick.metadata.processing_cost_credits).toBe(1)
+    expect(quick.metadata.deep_analysis).toBeUndefined()
+
+    // Standard: the full baseline set, 10 credits.
+    const standard = await runDepth('standard', 'depth_standard.png', 2222)
+    expect(standard.signals).toHaveLength(4)
+    expect(standard.verdict.signal_count_total).toBe(4)
+    expect(standard.metadata.processing_cost_credits).toBe(10)
+    expect(standard.metadata.deep_analysis).toBeUndefined()
+
+    // Deep: adds region_consistency (5 total) + deep_analysis block, 100 credits.
+    const deep = await runDepth('deep', 'depth_deep.png', 3333)
+    expect(deep.signals).toHaveLength(5)
+    expect(deep.signals.map((s) => s.signal_id)).toContain('region_consistency')
+    expect(deep.verdict.signal_count_total).toBe(5)
+    expect(deep.metadata.processing_cost_credits).toBe(100)
+    expect(deep.metadata.deep_analysis).toBeDefined()
+    expect(deep.metadata.deep_analysis.grid_size).toBe(4)
+    expect(deep.metadata.deep_analysis.region_count).toBe(16)
+  })
+
   it('leaves the scan pending until the worker steps have elapsed', async () => {
     vi.useFakeTimers()
     stubWindow()

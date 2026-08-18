@@ -699,6 +699,12 @@ function buildMockCompletedScanPayload(scan) {
   const pick = verdictClasses[Math.floor(Math.random() * verdictClasses.length)]
   // 0..1 ratio — the report-payload contract (formatPct multiplies by 100).
   const confidenceScore = Math.round(45 + Math.random() * 50) / 100
+  // Depth parity with the real worker's buildAnalysisResultPayload: quick runs
+  // a reduced signal set, deep adds the region-consistency sweep + deep_analysis
+  // block, and the VU cost (credits) matches MOCK_VU_COST_BY_DEPTH.
+  const depth = scan?.processing_mode || 'standard'
+  const isQuick = depth === 'quick'
+  const isDeep = depth === 'deep'
   const signals = [
     {
       signal_id: 'file_integrity',
@@ -749,6 +755,27 @@ function buildMockCompletedScanPayload(scan) {
       findings: [],
     },
   ]
+  const depthSignals = isQuick
+    ? signals.slice(0, 2) // quick: reduced set
+    : isDeep
+      ? [
+          ...signals,
+          {
+            signal_id: 'region_consistency',
+            signal_display_name: 'Region Consistency',
+            signal_category: 'Localization',
+            methodology_version: 'v1',
+            status: Math.random() > 0.5 ? 'clear' : 'attention',
+            status_reason:
+              Math.random() > 0.5
+                ? 'All regions hold within 2σ of the frame-wide luminance distribution.'
+                : 'Localized luminance deviations flagged in isolated regions.',
+            findings: [],
+          },
+        ]
+      : signals // standard: the full baseline set
+  const processingCostCredits = mockVuCostForDepth(depth)
+
   return {
     payload_version: '1.0.0',
     verdict: {
@@ -757,9 +784,9 @@ function buildMockCompletedScanPayload(scan) {
       display_color: pick.color,
       confidence_score: confidenceScore,
       confidence_level: confidenceScore >= 0.75 ? 'high' : confidenceScore >= 0.55 ? 'moderate' : 'low',
-      signal_count_total: signals.length,
-      signal_count_completed: signals.length,
-      primary_contributing_signals: signals
+      signal_count_total: depthSignals.length,
+      signal_count_completed: depthSignals.length,
+      primary_contributing_signals: depthSignals
         .filter((s) => s.status !== 'clear')
         .map((s) => s.signal_id)
         .slice(0, 2),
@@ -774,7 +801,22 @@ function buildMockCompletedScanPayload(scan) {
       report_id: `PRV-${scan.id.slice(0, 8).toUpperCase()}`,
       generated_at: new Date().toISOString(),
     },
-    signals,
+    signals: depthSignals,
+    // Mirrors the real payload's metadata.processing_cost_credits (1/10/100)
+    // + the deep-only deep_analysis block.
+    metadata: {
+      processing_cost_credits: processingCostCredits,
+      ...(isDeep
+        ? {
+            deep_analysis: {
+              grid_size: 4,
+              region_count: 16,
+              outlier_region_count: 0,
+              assessment: 'uniform',
+            },
+          }
+        : {}),
+    },
   }
 }
 

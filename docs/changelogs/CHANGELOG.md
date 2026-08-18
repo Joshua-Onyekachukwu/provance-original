@@ -1,5 +1,18 @@
 # Provance — Changelog
 
+## [2026-08-18] - Report-depth choice wired end-to-end (mock worker parity)
+
+### Changed
+- **`src/lib/mockApi.js`** — `buildMockCompletedScanPayload` now branches on `scan.processing_mode`, closing the last gap in the depth chain (the real worker has branched since the report-depth commit `91fd707`): **quick** = reduced 2-signal set + 1 credit · **standard** = full 4-signal baseline + 10 credits · **deep** = baseline + `region_consistency` (5 total) + `deep_analysis` block + 100 credits. The payload gains `metadata.processing_cost_credits` (mirroring the real `VU_COST_BY_DEPTH` via `MOCK_VU_COST_BY_DEPTH`) and the deep-only `deep_analysis`, so mock and real contracts stay aligned.
+
+### Verified (full chain, on disk + gates)
+- **`AppUploadsPage.jsx`** — Quick/Standard/Deep selector (default Standard) → `processingMode` in the initiate payload on BOTH paths (mock + real).
+- **`api.js` / `mockApi.js` initiate** — forwards the payload; mock persists `processing_mode`.
+- **DTO** — `InitiateScanDto.processingMode` validates `quick|standard|deep`.
+- **Real worker** — `buildAnalysisResultPayload` branches on depth (quick 2 signals · standard 4 · deep 5 + `deep_analysis` + `processing_cost_credits` 1/10/100), shipped in `91fd707`.
+- **Mock worker** — now branches too (this change).
+- vitest **610/610** (new mockScanLifecycle depth-parity test: quick 2/1 credit, standard 4/10, deep 5/100 + `deep_analysis`) · build clean · lint 0 errors.
+
 ## [2026-08-18] - Per-depth VU cost table — verified already shipped
 
 ### Verified
