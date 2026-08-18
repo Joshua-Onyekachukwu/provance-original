@@ -1,0 +1,58 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# FLY.IO ENVIRONMENT VARIABLES — Backend + Worker
+# ══════════════════════════════════════════════════════════════════════════════
+#
+# Option A: Set via CLI (recommended)
+#   1. Install flyctl: https://fly.io/docs/hands-on/install-flyctl/
+#   2. fly auth login --token YOUR-FLYIO-TOKEN
+#   3. Copy the secrets set command below, replace YOUR-FLY-APP-NAME, paste
+#
+# Option B: Set via Fly.io dashboard
+#   1. Go to https://fly.io/dashboard → your app → Secrets
+#   2. Add each variable one by one
+#
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── ONE-LINER: Copy, replace YOUR-FLY-APP-NAME, paste into terminal ─────────
+#
+# fly secrets set \
+#   PORT=4000 \
+#   FRONTEND_ORIGIN="https://provanc3.vercel.app" \
+#   TRUST_PROXY=true \
+#   HELMET_ENABLED=true \
+#   THROTTLE_TTL_MS=60000 \
+#   THROTTLE_LIMIT=60 \
+#   SUPABASE_URL="https://YOUR-SUPABASE-PROJECT.supabase.co" \
+#   SUPABASE_JWKS_URL="https://YOUR-SUPABASE-PROJECT.supabase.co/auth/v1/.well-known/jwks.json" \
+#   SUPABASE_ANON_KEY="YOUR-SUPABASE-ANON-KEY" \
+#   SUPABASE_SERVICE_ROLE_KEY="YOUR-SUPABASE-SERVICE-ROLE-KEY" \
+#   SUPABASE_AUTH_REDIRECT_URL="https://provanc3.vercel.app/sign-in" \
+#   SUPABASE_WAITLIST_TABLE="waitlist_applications" \
+#   ADMIN_EMAILS="founder.admin@provance.local" \
+#   REDIS_URL="rediss://default:YOUR-UPSTASH-REDIS-URL" \
+#   DATABASE_URL="postgresql://postgres.YOUR-SUPABASE-PROJECT:YOUR-DATABASE-PASSWORD@aws-0-eu-west-1.pooler.supabase.com:6543/postgres" \
+#   SENTRY_DSN="YOUR-SENTRY-DSN" \
+#   NVIDIA_API_KEY="YOUR-NVIDIA-API-KEY" \
+#   --app YOUR-FLY-APP-NAME
+
+# ══════════════════════════════════════════════════════════════════════════════
+# INDIVIDUAL VARIABLES (for dashboard or step-by-step CLI)
+# ══════════════════════════════════════════════════════════════════════════════
+
+# PORT=4000
+# FRONTEND_ORIGIN=https://provanc3.vercel.app
+# TRUST_PROXY=true
+# HELMET_ENABLED=true
+# THROTTLE_TTL_MS=60000
+# THROTTLE_LIMIT=60
+# SUPABASE_URL=https://YOUR-SUPABASE-PROJECT.supabase.co
+# SUPABASE_JWKS_URL=https://YOUR-SUPABASE-PROJECT.supabase.co/auth/v1/.well-known/jwks.json
+# SUPABASE_ANON_KEY=YOUR-SUPABASE-ANON-KEY
+# SUPABASE_SERVICE_ROLE_KEY=YOUR-SUPABASE-SERVICE-ROLE-KEY
+# SUPABASE_AUTH_REDIRECT_URL=https://provanc3.vercel.app/sign-in
+# SUPABASE_WAITLIST_TABLE=waitlist_applications
+# ADMIN_EMAILS=founder.admin@provance.local
+# REDIS_URL=rediss://default:YOUR-UPSTASH-REDIS-URL
+# DATABASE_URL=postgresql://postgres.YOUR-SUPABASE-PROJECT:YOUR-DATABASE-PASSWORD@aws-0-eu-west-1.pooler.supabase.com:6543/postgres
+# SENTRY_DSN=YOUR-SENTRY-DSN
+# NVIDIA_API_KEY=YOUR-NVIDIA-API-KEY

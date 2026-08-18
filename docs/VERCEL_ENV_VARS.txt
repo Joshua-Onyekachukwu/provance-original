@@ -1,0 +1,57 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# VERCEL ENVIRONMENT VARIABLES — Paste into Vercel Dashboard
+# ══════════════════════════════════════════════════════════════════════════════
+#
+# Go to: https://vercel.com/dashboard → provance → Settings → Environment Variables
+# Add each variable below. Set scope to: Production, Preview, Development
+#
+# ══════════════════════════════════════════════════════════════════════════════
+#
+# ── Supabase ──────────────────────────────────────────────────────────────────
+SUPABASE_URL
+https://YOUR-SUPABASE-PROJECT.supabase.co
+──────────────
+SUPABASE_ANON_KEY
+YOUR-SUPABASE-ANON-KEY
+──────────────
+SUPABASE_SERVICE_ROLE_KEY
+YOUR-SUPABASE-SERVICE-ROLE-KEY
+──────────────
+SUPABASE_JWKS_URL
+https://YOUR-SUPABASE-PROJECT.supabase.co/auth/v1/.well-known/jwks.json
+──────────────
+SUPABASE_AUTH_REDIRECT_URL
+https://provanc3.vercel.app/sign-in
+──────────────
+SUPABASE_WAITLIST_TABLE
+waitlist_applications
+──────────────
+#
+# ── Backend API ───────────────────────────────────────────────────────────────
+# ⚠️  Replace YOUR-FLY-APP with your actual Fly.io app name
+#     Find it at: https://fly.io/dashboard → your app → App Name
+VITE_API_BASE_URL
+https://YOUR-FLY-APP.fly.dev/v1
+──────────────
+#
+# ── Mock mode OFF for production ──────────────────────────────────────────────
+VITE_USE_MOCK
+false
+──────────────
+#
+# ── Frontend origin ──────────────────────────────────────────────────────────
+FRONTEND_ORIGIN
+https://provanc3.vercel.app
+──────────────
+#
+# ── Sentry error tracking (frontend) ─────────────────────────────────────────
+# This is the FRONTEND DSN — different from the backend DSN
+VITE_SENTRY_DSN
+YOUR-SENTRY-DSN
+──────────────
+#
+# ── Unsplash (optional — for sample images) ──────────────────────────────────
+# ⚠️  Previous key ran out of space — use sparingly or leave empty
+VITE_UNSPLASH_ACCESS_KEY
+(empty — leave blank until needed)
+──────────────
