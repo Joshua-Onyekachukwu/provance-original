@@ -4,7 +4,9 @@ import {
   ExceptionFilter,
   HttpException,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
+import * as Sentry from '@sentry/node';
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
@@ -32,6 +34,17 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       ?.retryAfterSeconds;
     if (retryAfterSeconds && response.setHeader) {
       response.setHeader('Retry-After', String(retryAfterSeconds));
+    }
+
+    // Forward server errors (500+) to Sentry for tracking. Client errors
+    // (4xx) are expected behavior and not forwarded.
+    if (status >= 500 && exception instanceof Error) {
+      Sentry.withScope((scope) => {
+        scope.setTag('requestId', request.requestId ?? 'unknown');
+        scope.setTag('url', request.url);
+        scope.setExtra('statusCode', status);
+        Sentry.captureException(exception);
+      });
     }
 
     response.status(status).json({

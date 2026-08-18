@@ -326,5 +326,8 @@ export function validateEnv(config: Record<string, unknown>) {
       730,
       'AUDIT_RETENTION_DAYS',
     ),
+    // Sentry error tracking — optional; when set, unhandled exceptions and
+    // performance traces are forwarded to the Sentry dashboard.
+    SENTRY_DSN: env.SENTRY_DSN?.trim() || undefined,
   };
 }

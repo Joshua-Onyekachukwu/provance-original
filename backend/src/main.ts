@@ -2,6 +2,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import * as Sentry from '@sentry/nestjs';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
@@ -23,8 +24,27 @@ function parseOrigins(value: string | undefined): string[] {
 }
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-  const configService = app.get(ConfigService);
+  const configService = new ConfigService();
+
+  // ── Sentry error tracking ─────────────────────────────────────────────────
+  // Only initializes when SENTRY_DSN is set (production deployments).
+  // In dev, errors stay in the console — no external service needed.
+  const sentryDsn = configService.get<string>('SENTRY_DSN');
+  if (sentryDsn) {
+    Sentry.init({
+      dsn: sentryDsn,
+      environment: configService.get<string>('NODE_ENV', 'development'),
+      tracesSampleRate: 0.1, // 10% of transactions
+      // Only instrument the NestJS HTTP layer
+      integrations: [Sentry.nestIntegration()],
+    });
+  }
+
+  const app = await NestFactory.create(AppModule, {
+    // Wire Sentry as a diagnostic logger so NestJS errors flow to the
+    // Sentry dashboard automatically (before the custom exception filter).
+    ...(sentryDsn ? { logger: ['log', 'warn', 'error', 'debug', 'verbose'] } : {}),
+  });
   const frontendOrigins = parseOrigins(
     configService.get<string>('FRONTEND_ORIGIN'),
   );
