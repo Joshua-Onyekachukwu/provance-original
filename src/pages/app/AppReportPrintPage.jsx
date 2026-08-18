@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import AppStatePanel from '../../components/app/AppStatePanel.jsx'
 import TransparencyFooter from '../../components/forensic/TransparencyFooter.jsx'
-import VeracitySeal from '../../components/forensic/VeracitySeal.jsx'
+import VerifiedSeal from '../../components/VerifiedSeal'
 import { getReport, USE_MOCK } from '../../lib/api.js'
 import { downloadReportPdf } from '../../lib/reportPdfDownload.js'
 import { buildReportAppendix } from '../../lib/reportAppendix.js'
@@ -359,6 +359,26 @@ export default function AppReportPrintPage() {
       </div>
 
       <article className="print-sheet rounded-[2rem] border border-stone-light bg-white-warm p-8 shadow-sm sm:p-10">
+        {/* Ink brand band — exact mirror of the pdfkit cover header (report-pdf.ts)
+            and the marketing document (SampleReportDocument): edge-to-edge INK
+            (#23201A) band, uppercase PROVANCE wordmark in PARCHMENT (#F7F4ED) over
+            the VERIFICATION REPORT label in muted gold (#C9C2B4), with the circular
+            Verified with Provance seal (the same stamp the web document and PDF
+            export render) on the right. */}
+        <div className="-mx-8 -mt-8 mb-8 flex items-center justify-between gap-6 rounded-t-[2rem] bg-[#23201A] px-6 py-4 sm:-mx-10 sm:-mt-10 md:px-10 md:py-5">
+          <div className="min-w-0">
+            <p className="font-sans text-xl font-bold uppercase tracking-[0.2em] text-[#F7F4ED] md:text-2xl">
+              Provance
+            </p>
+            <p className="mt-1.5 text-[10px] font-medium uppercase tracking-[0.32em] text-[#C9C2B4] md:text-[11px]">
+              Verification report
+            </p>
+          </div>
+          <div className="shrink-0">
+            <VerifiedSeal className="h-14 w-14 md:h-[4.2rem] md:w-[4.2rem]" />
+          </div>
+        </div>
+
         <div className="flex flex-col gap-6 border-b border-stone-light pb-8 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.18em] text-charcoal-light">
@@ -373,10 +393,6 @@ export default function AppReportPrintPage() {
             </p>
           </div>
           <div className="flex flex-col items-end gap-4">
-            <VeracitySeal
-              size={88}
-              className="opacity-90"
-            />
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <ReportDataCard label="Verification ID" value={state.scan.id} />
               <ReportDataCard label="Analysis timestamp" value={formatDateTime(report.generated_at, 'Not available')} />

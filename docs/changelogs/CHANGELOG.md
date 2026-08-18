@@ -1,5 +1,13 @@
 # Provance — Changelog
 
+## [2026-08-18] - Verified seal on the in-app report print surface
+
+### Changed
+- `AppReportPrintPage` (the real user report print sheet at `/app/reports/:scanId/print`) now carries the shared `VerifiedSeal` — the circular "Verified with Provance" brand stamp — mounted in the same ink brand band as the marketing document and the pdfkit export: edge-to-edge INK (`#23201A`) band with uppercase PROVANCE wordmark in PARCHMENT (`#F7F4ED`) over the VERIFICATION REPORT label in muted gold (`#C9C2B4`), seal on the right (`h-14 w-14 md:h-[4.2rem] md:w-[4.2rem]`). The old forensic `VeracitySeal` import/usage was removed; the TransparencyFooter chain-of-custody strip stays.
+
+### Tests
+- New `appReportPrintPage.test.jsx` — renders the print surface with a stubbed `getReport` and asserts the `role="img"` seal named "Verified with Provance" mounts in the band, the wordmark + label render, and the report heading still renders below. Frontend vitest app-pages subset **18/18** + new test, build clean, lint 0 errors (warnings pre-existing).
+
 ## [2026-08-18] - Report-depth choice — verified already shipped
 
 ### Verified
