@@ -1,5 +1,17 @@
 # Provance — Changelog
 
+## [2026-08-18] - Live schema converged: all 24 migrations applied, readiness ready
+
+### Changed
+- **`DATABASE_URL` set** in gitignored `backend/.env.local` (founder-supplied password; pooler region discovered as `eu-west-1` by scanning Supabase pooler hosts; password URL-encoded `%` → `%25`).
+- **`npm run apply:migrations -- --verify`** applied all 24 migration files idempotently against `dmhrwdcuwtgscwlaagsa` — the dashboard-paste blocker is gone for future slices.
+
+### Verified
+- `validate:migrations` → **applied: 23 · missing: 0 · errored: 0 · skipped: 1** (0017 seed-only) — `ALL MIGRATIONS APPLIED — schema converged`.
+- Readiness `GET /v1/health/readiness` → **`"status":"ready"`**, `checks.migrations: all 23 applied` + supabase/scansSchema/userSessions/queue all ready.
+- Direct REST probes: `vu_ledger` (0022), `scans.vu_units` (0023), `vu_ledger.rollover_basis` (0024) all HTTP 200.
+- **Env gotcha fixed**: the shell exports `PORT=0`, which the env validator rejects (must be positive) — `node dist/main.js` must be launched with `PORT=4000` explicit (or unset the shell var).
+
 ## [2026-08-18] - VU rollover (≤1× monthly) folds into unitsLimit
 
 ### Added
