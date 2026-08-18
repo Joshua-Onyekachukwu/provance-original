@@ -1,5 +1,11 @@
 # Provance — Changelog
 
+## [2026-08-18] - Report-depth task — verified already shipped
+
+### Verified
+- The interrupted report-depth task (depth-branch tests + `scans.service.ts` changes) is fully committed and green — no uncommitted work exists. The backend depth branches (`isQuick`/`isDeep`, `deep_analysis`, `processing_cost_credits` 1/10/100) and their tests (`analysis-pipeline.spec.ts` "processing depth branches" describe, 3 tests) landed in `91fd707`; the mock worker parity (`mockScanLifecycle.test.js` depth-parity test walking quick 2 / standard 4 / deep 5 signals + credits) landed in `46136b7`.
+- Gates re-run this turn: `analysis-pipeline.spec.ts` **23/23** (backend jest) · `mockScanLifecycle.test.js` **3/3** (vitest). Working tree clean; nothing to commit.
+
 ## [2026-08-18] - Verified seal on the in-app report print surface
 
 ### Changed
