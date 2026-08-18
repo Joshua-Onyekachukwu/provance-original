@@ -15,6 +15,7 @@ import {
   projectScanUsage,
   vuAllowanceForPlan,
   vuCostForDepth,
+  vuSizeMultiplier,
   currentBillingCycle,
 } from './billing.service';
 
@@ -125,6 +126,28 @@ describe('billing policy', () => {
       expect(vuCostForDepth('deep')).toBe(100);
       expect(vuCostForDepth('unknown-depth')).toBe(VU_COST_BY_DEPTH.standard);
       expect(vuCostForDepth(null)).toBe(VU_COST_BY_DEPTH.standard);
+    });
+
+    it('scales the cost by size tier so heavy files pay more than tiny ones', () => {
+      // The founder rule: a 50 MB scan must NOT cost the same as a 200 KB
+      // scan. Micro tier (< 1 MiB) is 1×; each heavier tier multiplies the
+      // depth base, ceiled to whole units.
+      expect(vuCostForDepth('standard', 200 * 1024)).toBe(10); // 200 KB → 1×
+      expect(vuCostForDepth('standard', 1024 * 1024)).toBe(15); // 1 MiB → 1.5×
+      expect(vuCostForDepth('standard', 5 * 1024 * 1024)).toBe(25); // 5 MiB → 2.5×
+      expect(vuCostForDepth('standard', 50 * 1024 * 1024)).toBe(40); // 50 MiB → 4×
+      expect(vuCostForDepth('standard', 150 * 1024 * 1024)).toBe(60); // ≥ 100 MiB → 6×
+      // Deep at 50 MiB: 100 × 4 = 400.
+      expect(vuCostForDepth('deep', 50 * 1024 * 1024)).toBe(400);
+    });
+
+    it('defaults to the 1× multiplier when the size is missing or zero', () => {
+      expect(vuSizeMultiplier(undefined)).toBe(1.0);
+      expect(vuSizeMultiplier(null)).toBe(1.0);
+      expect(vuSizeMultiplier(0)).toBe(1.0);
+      expect(vuCostForDepth('deep')).toBe(100);
+      expect(vuCostForDepth('deep', 0)).toBe(100);
+      expect(vuCostForDepth('deep', null)).toBe(100);
     });
   });
 
@@ -331,6 +354,27 @@ describe('BillingService', () => {
       expect(insertArg.units).toBe(100);
     });
 
+    it('writes the size-aware cost (depth × tier) into units and applied_rate', async () => {
+      const builder = {
+        from: jest.fn(() => builder),
+        insert: jest.fn(() => Promise.resolve({ error: null })),
+      } as const;
+      const service = createService(builder as never);
+
+      await service.recordScanUsage({
+        scanId: 'scan-5',
+        userId: USER_ID,
+        depth: 'standard',
+        sizeBytes: 50 * 1024 * 1024,
+        completedAt: '2026-07-16T14:32:00.000Z',
+      });
+
+      const insertArg = (builder.from.mock.results[0].value as { insert: jest.Mock }).insert
+        .mock.calls[0][0];
+      expect(insertArg.units).toBe(40); // standard 10 × 4× (large tier)
+      expect(insertArg.applied_rate).toBe(40);
+    });
+
     it('is best-effort: a ledger write error never throws', async () => {
       const builder = {
         from: jest.fn(() => builder),
@@ -365,16 +409,48 @@ describe('BillingService', () => {
 
   describe('assertScanQuota', () => {
     it('passes when the VU meter is under the plan allowance', async () => {
-      // 1: membership → org · 2: org plan · 3: scan count · 4: VU ledger sum.
+      // 1: membership → org · 2: org plan · 3: VU ledger sum.
       const client = createAdminClient([
         { data: { organization_id: 'org-1' } },
         { data: { plan: 'pro' } },
-        { count: 400 },
         { data: [{ units: 40000 }] },
       ]);
       const service = createService(client);
 
       await expect(service.assertScanQuota(USER_ID)).resolves.toBeUndefined();
+    });
+
+    it('passes when the remaining allowance covers the file cost', async () => {
+      // 80,000 used of 100,000 → 20,000 remain; a 50 MiB standard scan needs
+      // 40 — comfortably covered.
+      const client = createAdminClient([
+        { data: { organization_id: 'org-1' } },
+        { data: { plan: 'pro' } },
+        { data: [{ units: 80000 }] },
+      ]);
+      const service = createService(client);
+
+      await expect(service.assertScanQuota(USER_ID, 40)).resolves.toBeUndefined();
+    });
+
+    it('rejects with the reserve message when the file cost exceeds what remains', async () => {
+      // 90,000 used of 100,000 → 10,000 remain; a 50 MiB deep scan needs 400 —
+      // covered. Use a reserve beyond what remains to force the reject.
+      const client = createAdminClient([
+        { data: { organization_id: 'org-1' } },
+        { data: { plan: 'pro' } },
+        { data: [{ units: 90000 }] },
+      ]);
+      const service = createService(client);
+
+      const error = await service
+        .assertScanQuota(USER_ID, 40000)
+        .catch((e) => e);
+
+      expect(error).toBeInstanceOf(QuotaExceededException);
+      expect(error).toMatchObject({ status: 402 });
+      expect((error as QuotaExceededException).message).toContain('needs 40000 VUs');
+      expect((error as QuotaExceededException).message).toContain('10000 remain');
     });
 
     it('throws 402 QuotaExceededException with retry-after when the VU meter is exhausted', async () => {

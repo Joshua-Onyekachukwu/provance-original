@@ -97,15 +97,32 @@ function mockQuotaHigh() {
 }
 
 /**
- * Depth → VU cost (mock parity with the real VU_COST_BY_DEPTH catalog in
- * billing.service.ts). Applied when a mock scan completes; the ledger's
- * unitsUsed accrues the depth cost so the mock meter never drifts from real
- * mode. Failed mock scans consume 0.
+ * Depth → VU cost base + size-tier multiplier (mock parity with the real
+ * VU_COST_BY_DEPTH / VU_SIZE_MULTIPLIERS catalogs in billing.service.ts).
+ * Applied when a mock scan completes; the ledger's unitsUsed accrues the
+ * size-aware cost so the mock meter never drifts from real mode. Failed
+ * mock scans consume 0.
  */
 const MOCK_VU_COST_BY_DEPTH = { quick: 1, standard: 10, deep: 100 }
 
-function mockVuCostForDepth(depth) {
-  return MOCK_VU_COST_BY_DEPTH[depth] ?? MOCK_VU_COST_BY_DEPTH.standard
+// MiB-based size tiers mirroring VU_SIZE_MULTIPLIERS (descending bounds so
+// the first match wins). Missing/zero size → 1× (flat depth base).
+const MOCK_VU_SIZE_MULTIPLIERS = [
+  { minBytes: 100 * 1024 * 1024, multiplier: 6.0 }, // ≥ 100 MiB
+  { minBytes: 20 * 1024 * 1024, multiplier: 4.0 }, // 20–100 MiB
+  { minBytes: 5 * 1024 * 1024, multiplier: 2.5 }, // 5–20 MiB
+  { minBytes: 1 * 1024 * 1024, multiplier: 1.5 }, // 1–5 MiB
+  { minBytes: 0, multiplier: 1.0 }, // < 1 MiB
+]
+
+function mockVuSizeMultiplier(sizeBytes) {
+  const bytes = Number(sizeBytes) || 0
+  return MOCK_VU_SIZE_MULTIPLIERS.find((tier) => bytes >= tier.minBytes)?.multiplier ?? 1.0
+}
+
+function mockVuCostForDepth(depth, sizeBytes) {
+  const base = MOCK_VU_COST_BY_DEPTH[depth] ?? MOCK_VU_COST_BY_DEPTH.standard
+  return Math.ceil(base * mockVuSizeMultiplier(sizeBytes))
 }
 
 /**
@@ -114,7 +131,7 @@ function mockVuCostForDepth(depth) {
  * vu_ledger row at completion — failed scans never reach here (0 VU).
  */
 function mockDeductScanUsage(scan) {
-  const units = mockVuCostForDepth(scan?.processing_mode)
+  const units = mockVuCostForDepth(scan?.processing_mode, scan?.file_size_bytes)
   if (!units || units <= 0) return
   mockBillingProfile.usage = {
     ...mockBillingProfile.usage,
@@ -635,11 +652,21 @@ export async function mockInitiateScan(payload = {}, idempotencyKey) {
   }
 
   // VU gate (mock parity with the real assertScanQuota): fires when the
-  // cycle's VU meter is exhausted (0 units remaining) or via the dev-only
-  // ?quota=exhausted forcing flag.
-  if (mockQuotaExhausted() || mockBillingProfile.usage.unitsUsed >= mockBillingProfile.usage.unitsLimit) {
+  // cycle's VU meter cannot cover the incoming file — either exhausted (0
+  // remaining) or the file's size-aware cost exceeds what's left — or via
+  // the dev-only ?quota=exhausted forcing flag.
+  const requestedCost = mockVuCostForDepth(
+    payload.processingMode || 'standard',
+    payload.fileSizeBytes,
+  )
+  const remaining = mockBillingProfile.usage.unitsLimit - mockBillingProfile.usage.unitsUsed
+  if (
+    mockQuotaExhausted() ||
+    remaining <= 0 ||
+    requestedCost > remaining
+  ) {
     const error = new Error(
-      'Monthly verification-unit allowance reached. Upgrade your plan, add VUs, or wait for the cycle to reset.',
+      `Monthly verification-unit allowance cannot cover this file: it needs ${requestedCost} VUs but only ${Math.max(0, remaining)} remain. Upgrade your plan, add VUs, or wait for the cycle to reset.`,
     )
     error.status = 402
     error.retryAfterSeconds = 86400
@@ -774,7 +801,7 @@ function buildMockCompletedScanPayload(scan) {
           },
         ]
       : signals // standard: the full baseline set
-  const processingCostCredits = mockVuCostForDepth(depth)
+  const processingCostCredits = mockVuCostForDepth(depth, scan?.file_size_bytes)
 
   return {
     payload_version: '1.0.0',

@@ -32,18 +32,37 @@ A 3-second quick triage and a deep forensic investigation are not the same
 amount of work, so they shouldn't cost the same. The report-depth system
 already in the product maps straight onto unit costs:
 
-| Depth | Processing mode (API) | Unit cost |
+| Depth | Processing mode (API) | Unit cost base |
 | --- | --- | --- |
 | Quick | `quick` | **1 VU** |
 | Standard | `standard` | **10 VU** |
 | Deep | `deep` | **100 VU** |
 
+**Size multiplier (founder rule — a 50 MB scan must NOT cost the same as a
+200 KB scan):** the effective per-scan rate is `ceil(depth base × size-tier
+multiplier)` — heavier files (more pixels, more metadata, more decode work)
+pay for the extra processing. Tiers are MiB-based (`VU_SIZE_MULTIPLIERS` in
+`billing.service.ts`):
+
+| Tier | File size | Multiplier | Standard example |
+| --- | --- | --- | --- |
+| micro | < 1 MiB | 1.0× | 10 VU |
+| small | 1–5 MiB | 1.5× | 15 VU |
+| medium | 5–20 MiB | 2.5× | 25 VU |
+| large | 20–100 MiB | 4.0× | 40 VU |
+| xlarge | ≥ 100 MiB | 6.0× | 60 VU |
+
+Examples: 200 KB standard = **10 VU**; 50 MiB standard = **40 VU**; 50 MiB
+deep = **400 VU**. The tier table is a config knob like the depth dial, and
+the ledger's `applied_rate` snapshots the exact rate each scan was charged,
+so tightening either knob never rewrites history.
+
 This is the key mechanic: **units are deducted when a scan completes, at the
-depth it ran.** Failed scans consume 0 (the unit is only charged for a usable
-result — fair, and it removes any incentive to spam broken uploads). A user
-can't "use the system over and over again" for free, but a normal workflow
-never feels metered: 100,000 VUs/month ≈ 10,000 standard scans or ≈ 1,000 deep
-investigations.
+size-aware depth cost.** Failed scans consume 0 (the unit is only charged for
+a usable result — fair, and it removes any incentive to spam broken uploads).
+A user can't "use the system over and over again" for free, but a normal
+workflow never feels metered: 100,000 VUs/month ≈ 10,000 standard micro-tier
+scans or ≈ 1,000 deep investigations (less for heavy files).
 
 ## 3. Package tiers (workspace) — what a user can actually do
 

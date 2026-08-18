@@ -47,19 +47,40 @@ row; unknown/missing plans fall back to `pro`.
 | team | 199 | 10 | 300,000 | 300,000 | 30,000 | 3,000 |
 | enterprise | 999 | 25 | committed block | — | — | — |
 
-**Depth → VU cost** (the dial that converts scans into units; applied at
+**Depth → VU cost base** (the dial that converts scans into units; applied at
 scan completion — failed scans consume 0):
 
-| Depth | Processing mode (API) | VU cost |
+| Depth | Processing mode (API) | VU cost base |
 | --- | --- | --- |
 | Quick | `quick` | 1 |
 | Standard | `standard` | 10 |
 | Deep | `deep` | 100 |
 
+**Size → VU multiplier** (the founder rule: a 50 MB scan must NOT cost the
+same as a 200 KB scan). The effective per-scan rate is
+`ceil(depth base × size-tier multiplier)`, so heavier files (more pixels,
+more metadata, more decode work) pay for the extra processing:
+
+| Tier | File size | Multiplier | Standard example |
+| --- | --- | --- | --- |
+| micro | < 1 MiB | 1.0× | 10 VU |
+| small | 1–5 MiB | 1.5× | 15 VU |
+| medium | 5–20 MiB | 2.5× | 25 VU |
+| large | 20–100 MiB | 4.0× | 40 VU |
+| xlarge | ≥ 100 MiB | 6.0× | 60 VU |
+
+Examples: a 200 KB standard scan costs **10 VU**; a 50 MiB standard scan
+costs **40 VU** (×4); a 50 MiB deep scan costs **400 VU** (100 × 4). The
+size-aware rate is what the ledger `units`/`applied_rate` and the scan row's
+`vu_units`/`vu_applied_rate` record, so history stays auditable when either
+the depth dial or the size table changes. Missing/zero sizes (tests, legacy
+rows) fall back to the 1.0× tier.
+
 Constants: `PLAN_VU_ALLOWANCES` (replaces `PLAN_SCAN_QUOTAS`),
-`VU_COST_BY_DEPTH`, `PLAN_API_CALL_QUOTAS`, `PLAN_DISPLAY`,
-`DEFAULT_PLAN = 'pro'`. Helpers: `vuAllowanceForPlan(plan)`,
-`vuCostForDepth(processingMode)`, `apiCallLimitForPlan(plan)`,
+`VU_COST_BY_DEPTH`, `VU_SIZE_MULTIPLIERS`, `PLAN_API_CALL_QUOTAS`,
+`PLAN_DISPLAY`, `DEFAULT_PLAN = 'pro'`. Helpers:
+`vuAllowanceForPlan(plan)`, `vuCostForDepth(mode, sizeBytes?)`,
+`vuSizeMultiplier(sizeBytes)`, `apiCallLimitForPlan(plan)`,
 `planDisplay(plan)`.
 
 **Plan resolution** (`resolveUserPlan`) — the user's effective plan comes from
@@ -114,18 +135,22 @@ Retry-After: <seconds until next cycle start>
 - The `Retry-After` header (RFC 9110) is emitted by the global exception
   filter from `exception.retryAfterSeconds`.
 - **Deduct-on-complete:** VUs are charged when a scan *completes*, at the
-  depth it ran. Failed scans consume **0 VUs** — the unit is only charged for
-  a usable result (fair, and it removes any incentive to spam broken
-  uploads). The gate therefore reserves against the projected cost
-  (`vuCostForDepth(requested mode)`) and the worker writes the ledger row at
-  completion (`(scan_id, depth, units, cycle, user, source)`).
+  size-aware depth cost (`vuCostForDepth(mode, sizeBytes)`). Failed scans
+  consume **0 VUs** — the unit is only charged for a usable result (fair,
+  and it removes any incentive to spam broken uploads). The gate **reserves
+  against the projected cost** of the incoming file — `assertScanQuota(userId,
+  vuCostForDepth(dto.processingMode, dto.fileSizeBytes))` rejects with 402
+  when the remaining allowance can't cover that exact file, so a heavy scan
+  is refused before any record is created. The worker writes the ledger row
+  at completion (`(scan_id, depth, units, cycle, user, source)`).
 - **Idempotency precedence** — a retried initiate with the same
   `Idempotency-Key` returns the original reservation **before** the quota gate
   runs, so a retry of an already-accepted scan never double-consumes the
   allowance (see `SCAN_UPLOAD_CONTRACT.md`).
 - Mock parity: `mockInitiateScan` throws the same 402 shape with
-  `retryAfterSeconds` once `mockBillingProfile.usage.unitsUsed` reaches
-  `unitsLimit`; dev forcing via `?quota=exhausted`.
+  `retryAfterSeconds` when the remaining allowance can't cover the incoming
+  file's size-aware cost (`MOCK_VU_SIZE_MULTIPLIERS` mirrors the real tier
+  table); dev forcing via `?quota=exhausted`.
 
 ## 4. GET /v1/billing payload
 
@@ -213,7 +238,8 @@ same math as the real endpoint; the billing spec locks parity.
   respectively. Both are inert in production builds.
 - `mockInitiateScan` enforces the same quota as the real gate (402 shape with
   `retryAfterSeconds`) using the same `mockBillingProfile.usage` values, and
-  the mock worker deducts the depth's VU cost on completion (`1/10/100`) —
+  the mock worker deducts the size-aware VU cost on completion
+  (`MOCK_VU_COST_BY_DEPTH` × `MOCK_VU_SIZE_MULTIPLIERS`) —
   a demo never behaves differently from real mode.
 - Any new field added to the real payload **must** be mirrored in
   `mockBillingProfile.usage` (and vice versa) — the billing spec locks the

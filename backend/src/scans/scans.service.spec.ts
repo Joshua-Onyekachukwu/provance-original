@@ -181,7 +181,9 @@ describe('ScansService', () => {
         service.initiateScan(USER.id, initiateScanDto()),
       ).rejects.toMatchObject({ status: 402 });
       expect(client.from).not.toHaveBeenCalled();
-      expect(billing.assertScanQuota).toHaveBeenCalledWith(USER.id);
+      // The gate receives the file's size-aware projected cost as the reserve:
+      // the fixture DTO is 1 MiB at standard → 15 VU.
+      expect(billing.assertScanQuota).toHaveBeenCalledWith(USER.id, 15);
     });
 
     it('rejects with 400 for unsupported media types', async () => {
@@ -455,14 +457,15 @@ describe('ScansService', () => {
 
       // Per-scan VU meter: the completion updateScan persists the units + rate
       // snapshot on the scan row itself, so the scan is auditable without a
-      // ledger join (migration 0023). Standard depth → 10 VU.
+      // ledger join (migration 0023). The fixture is 1 MiB (small tier, 1.5×),
+      // so standard 10 × 1.5 = 15 VU.
       const completionUpdate = client.update.mock.calls.find(([updates]) =>
         Object.prototype.hasOwnProperty.call(updates, 'vu_units'),
       )?.[0];
       expect(completionUpdate).toMatchObject({
         status: 'complete',
-        vu_units: 10,
-        vu_applied_rate: 10,
+        vu_units: 15,
+        vu_applied_rate: 15,
       });
     });
 
@@ -490,9 +493,55 @@ describe('ScansService', () => {
         Object.prototype.hasOwnProperty.call(updates, 'vu_units'),
       )?.[0];
       expect(completionUpdate).toMatchObject({
-        vu_units: 100,
-        vu_applied_rate: 100,
+        vu_units: 150, // deep 100 × 1.5× (1 MiB fixture)
+        vu_applied_rate: 150,
       });
+    });
+
+    it('charges a heavy file more than a tiny one at the same depth', async () => {
+      // The founder rule: a 50 MiB scan must not cost the same as a 200 KB
+      // scan. Same depth (standard), different size tiers → different units
+      // on the scan row and the ledger.
+      const tiny = createAdminClient([
+        {
+          data: scanRow({
+            id: 'scan-tiny',
+            status: 'queued',
+            mime_type: 'image/png',
+            processing_mode: 'standard',
+            file_size_bytes: 200 * 1024,
+          }),
+        },
+        { error: null },
+        { data: { id: 'scan-0', result_payload: { verdict: { class: 'likely_authentic' } } } },
+        { error: null },
+      ]);
+      const heavy = createAdminClient([
+        {
+          data: scanRow({
+            id: 'scan-heavy',
+            status: 'queued',
+            mime_type: 'image/png',
+            processing_mode: 'standard',
+            file_size_bytes: 50 * 1024 * 1024,
+          }),
+        },
+        { error: null },
+        { data: { id: 'scan-0', result_payload: { verdict: { class: 'likely_authentic' } } } },
+        { error: null },
+      ]);
+
+      await createService(tiny).processQueuedScan('scan-tiny');
+      await createService(heavy).processQueuedScan('scan-heavy');
+
+      const tinyUpdate = tiny.update.mock.calls.find(([updates]) =>
+        Object.prototype.hasOwnProperty.call(updates, 'vu_units'),
+      )?.[0];
+      const heavyUpdate = heavy.update.mock.calls.find(([updates]) =>
+        Object.prototype.hasOwnProperty.call(updates, 'vu_units'),
+      )?.[0];
+      expect(tinyUpdate.vu_units).toBe(10); // 200 KB → 1×
+      expect(heavyUpdate.vu_units).toBe(40); // 50 MiB → 4×
     });
 
     it('does not record usage when processing fails (failed scans consume 0)', async () => {

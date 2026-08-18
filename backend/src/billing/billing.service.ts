@@ -30,16 +30,51 @@ export const PLAN_VU_ALLOWANCES: Record<string, number> = {
 };
 
 /**
- * Depth → VU cost (the dial that converts scans into units). Applied when a
- * scan COMPLETES at the depth it ran; failed scans consume 0. Changing these
- * values is the "tighten the dial" lever — the ledger's `applied_rate` keeps
- * history auditable across changes.
+ * Depth → VU cost base (the dial that converts scans into units). Applied when
+ * a scan COMPLETES at the depth it ran; failed scans consume 0. Changing
+ * these values is the "tighten the dial" lever — the ledger's `applied_rate`
+ * keeps history auditable across changes.
+ *
+ * The base is multiplied by the size-tier factor (`vuSizeMultiplier`) so a
+ * 50 MB forensic pass costs meaningfully more than a 200 KB triage — the
+ * effective per-scan rate is `ceil(base × sizeFactor)`.
  */
 export const VU_COST_BY_DEPTH: Record<string, number> = {
   quick: 1,
   standard: 10,
   deep: 100,
 };
+
+/**
+ * Size → VU multiplier tiers. The multiplier scales the depth base so heavier
+ * files (more pixels, more metadata, more decode work) pay for the extra
+ * processing instead of costing the same as a tiny file. Boundaries are
+ * MiB-based; a missing/zero size defaults to the 1× tier (e.g. tests or
+ * legacy rows). Ceil at the end keeps a charge from ever rounding down to
+ * the base cost.
+ */
+export const VU_SIZE_MULTIPLIERS: ReadonlyArray<{
+  minBytes: number;
+  label: string;
+  multiplier: number;
+}> = [
+  { minBytes: 100 * 1024 * 1024, label: 'xlarge', multiplier: 6.0 }, // ≥ 100 MiB
+  { minBytes: 20 * 1024 * 1024, label: 'large', multiplier: 4.0 }, // 20–100 MiB
+  { minBytes: 5 * 1024 * 1024, label: 'medium', multiplier: 2.5 }, // 5–20 MiB
+  { minBytes: 1 * 1024 * 1024, label: 'small', multiplier: 1.5 }, // 1–5 MiB
+  { minBytes: 0, label: 'micro', multiplier: 1.0 }, // < 1 MiB
+];
+
+/**
+ * vuSizeMultiplier — the size tier for a file's byte count. Returns 1.0 for
+ * missing/zero sizes so callers without a size (tests, legacy rows) always
+ * get the flat depth base.
+ */
+export function vuSizeMultiplier(sizeBytes: number | null | undefined): number {
+  const bytes = Number(sizeBytes) || 0;
+  const tier = VU_SIZE_MULTIPLIERS.find((entry) => bytes >= entry.minBytes);
+  return tier?.multiplier ?? 1.0;
+}
 
 /**
  * Per-plan monthly API-call allowances — the apiCallsLimit side of the
@@ -61,8 +96,18 @@ export function vuAllowanceForPlan(plan: string | null | undefined): number {
   );
 }
 
-export function vuCostForDepth(depth: string | null | undefined): number {
-  return VU_COST_BY_DEPTH[depth ?? ''] ?? VU_COST_BY_DEPTH.standard;
+/**
+ * vuCostForDepth — the effective per-scan VU cost: depth base × size-tier
+ * multiplier, ceiled to an integer (the ledger stores whole units). Without a
+ * size the multiplier is 1×, so existing callers/tests keep the flat
+ * depth base.
+ */
+export function vuCostForDepth(
+  depth: string | null | undefined,
+  sizeBytes?: number | null,
+): number {
+  const base = VU_COST_BY_DEPTH[depth ?? ''] ?? VU_COST_BY_DEPTH.standard;
+  return Math.ceil(base * vuSizeMultiplier(sizeBytes));
 }
 
 /**
@@ -254,21 +299,23 @@ export class BillingService {
 
   /**
    * Deduct-on-complete: write a VU ledger row for a completed scan at the
-   * depth it ran (quick 1 · standard 10 · deep 100). Failed scans never call
-   * this — they consume 0. Best-effort by design: metering must not block or
-   * fail scans, so a missing ledger table (migration 0022 not applied) or a
-   * write error only logs a warning and lets the scan proceed.
+   * size-aware depth cost (quick 1 · standard 10 · deep 100, × size-tier
+   * multiplier). Failed scans never call this — they consume 0. Best-effort
+   * by design: metering must not block or fail scans, so a missing ledger
+   * table (migration 0022 not applied) or a write error only logs a warning
+   * and lets the scan proceed.
    */
   async recordScanUsage(input: {
     scanId: string;
     userId: string;
     depth: string;
+    sizeBytes?: number | null;
     completedAt: string;
   }): Promise<void> {
     const adminClient = this.supabaseService.getAdminClient();
     if (!adminClient) return;
 
-    const units = vuCostForDepth(input.depth);
+    const units = vuCostForDepth(input.depth, input.sizeBytes);
     if (units <= 0) return;
 
     try {
@@ -318,16 +365,26 @@ export class BillingService {
 
   /**
    * Entitlement gate for initiateScan. Throws 402 with a Retry-After hint when
-   * the current cycle's VU allowance is exhausted (0 VUs remaining).
+   * the current cycle's VU allowance cannot cover the requested scan: either
+   * nothing remains, or the scan's size-aware cost (`reserveUnits`) exceeds
+   * what's left. `reserveUnits` is the projected cost of the incoming file
+   * (`vuCostForDepth(mode, sizeBytes)` computed by the scans service); the
+   * gate reserves against it per the contract, so a 50 MB deep scan is
+   * rejected before any record is created when the remaining allowance
+   * wouldn't cover it.
    */
-  async assertScanQuota(userId: string) {
+  async assertScanQuota(userId: string, reserveUnits = 0) {
     const usage = await this.resolveUsage(userId);
 
-    if (usage.unitsUsed >= usage.unitsLimit) {
+    const remaining = usage.unitsLimit - usage.unitsUsed;
+    if (remaining <= 0 || reserveUnits > remaining) {
       throw new QuotaExceededException({
         plan: usage.plan,
         unitsUsed: usage.unitsUsed,
         unitsLimit: usage.unitsLimit,
+        // The message explains why a non-exhausted meter can still reject:
+        // the file's projected cost exceeds the remaining allowance.
+        requestedUnits: reserveUnits,
         periodEnd: usage.periodEnd,
         retryAfterSeconds: usage.retryAfterSeconds,
       });

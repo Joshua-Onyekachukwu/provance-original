@@ -188,9 +188,14 @@ export class ScansService {
       }
     }
 
-    // Per-plan scan quota gate: reject with 402 (Retry-After on the response)
-    // before any record is created when the current cycle's allowance is spent.
-    await this.billingService.assertScanQuota(userId);
+    // Per-plan VU quota gate: reject with 402 (Retry-After on the response)
+    // before any record is created when the current cycle's allowance cannot
+    // cover the incoming file — the reserve is the file's size-aware cost, so
+    // a heavy scan at a high depth is rejected before any record is created.
+    await this.billingService.assertScanQuota(
+      userId,
+      vuCostForDepth(dto.processingMode ?? 'standard', dto.fileSizeBytes),
+    );
 
     const scanId = randomUUID();
     const storagePath = `${userId}/${scanId}/${sanitizeFilename(dto.originalFilename)}`;
@@ -694,8 +699,8 @@ export class ScansService {
           updated_at: new Date().toISOString(),
           // Per-scan VU meter: record the units applied on the row itself so
           // the scan is auditable without a ledger join. Same units the
-          // billing ledger writes (both derive from vuCostForDepth).
-          ...buildVuMeterFields(scan.processing_mode),
+          // billing ledger writes (both derive from vuCostForDepth, size-aware).
+          ...buildVuMeterFields(scan.processing_mode, scan.file_size_bytes),
         });
         this.logger.log(
           `Scan ${scan.id} reuses prior result from scan ${prior.id} (identical SHA-256).`,
@@ -721,7 +726,7 @@ export class ScansService {
         completed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         // Per-scan VU meter: same units the billing ledger writes.
-        ...buildVuMeterFields(scan.processing_mode),
+        ...buildVuMeterFields(scan.processing_mode, scan.file_size_bytes),
       });
       // Deduct-on-complete: the scan completed at its depth (quick 1 ·
       // standard 10 · deep 100) — write the VU ledger row. Failed scans never
@@ -755,6 +760,7 @@ export class ScansService {
         scanId: scan.id,
         userId: scan.user_id,
         depth: scan.processing_mode ?? 'standard',
+        sizeBytes: scan.file_size_bytes,
         completedAt,
       });
     } catch (error) {
@@ -1141,7 +1147,7 @@ export class ScansService {
         scan_created_at: scan.created_at,
         scan_completed_at: analysisTimestamp,
         total_processing_time_ms: processingTimeMs,
-        processing_cost_credits: vuCostForDepth(depth),
+        processing_cost_credits: vuCostForDepth(depth, scan.file_size_bytes),
         recommendations: buildRecommendations(verdict.class, Boolean(hasC2paMarker)),
         ...(regionAnalysis ? { deep_analysis: regionAnalysis } : {}),
       },
@@ -1385,13 +1391,16 @@ export class ScansService {
 
 /**
  * buildVuMeterFields — the per-scan VU meter columns written at completion.
- * Uses the billing service's single rate source (vuCostForDepth) so the scan
- * row and the billing ledger can never disagree on the charge. Both the
- * fresh-analysis and dedup-reuse completion branches spread this into their
- * update; failed scans never call it (0 charge).
+ * Uses the billing service's single rate source (vuCostForDepth, size-aware)
+ * so the scan row and the billing ledger can never disagree on the charge.
+ * Both the fresh-analysis and dedup-reuse completion branches spread this
+ * into their update; failed scans never call it (0 charge).
  */
-function buildVuMeterFields(depth: string | null | undefined) {
-  const units = vuCostForDepth(depth);
+function buildVuMeterFields(
+  depth: string | null | undefined,
+  sizeBytes?: number | null,
+) {
+  const units = vuCostForDepth(depth, sizeBytes);
   return { vu_units: units, vu_applied_rate: units };
 }
 

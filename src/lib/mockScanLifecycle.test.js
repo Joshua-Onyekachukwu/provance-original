@@ -133,6 +133,26 @@ describe('mock scan lifecycle (simulated worker)', () => {
     expect(deep.metadata.deep_analysis.region_count).toBe(16)
   })
 
+  it('scales the credit cost by file size — a 50 MiB standard scan ≠ a 200 KB one', async () => {
+    vi.useFakeTimers()
+    stubWindow()
+
+    // Same depth (standard), different size tiers — the mock worker's
+    // processing_cost_credits must mirror the real size-aware dial.
+    async function runSize(name, size) {
+      const init = await settle(
+        mockInitiateScan(payload({ processingMode: 'standard', originalFilename: name, fileSizeBytes: size })),
+      )
+      const { scan } = await settle(mockSubmitScan(init.scanId))
+      vi.advanceTimersByTime(4000)
+      expect(scan.status).toBe('completed')
+      return scan.result_payload.metadata.processing_cost_credits
+    }
+
+    expect(await runSize('size_tiny.png', 200 * 1024)).toBe(10) // 200 KB → 1×
+    expect(await runSize('size_heavy.png', 50 * 1024 * 1024)).toBe(40) // 50 MiB → 4×
+  })
+
   it('leaves the scan pending until the worker steps have elapsed', async () => {
     vi.useFakeTimers()
     stubWindow()

@@ -1,5 +1,17 @@
 # Provance — Changelog
 
+## [2026-08-18] - Size-aware VU pricing (heavy files cost more than tiny ones)
+
+### Changed
+- **Founder rule implemented**: a 50 MB scan no longer costs the same as a 200 KB scan. The effective per-scan rate is now `ceil(depth base × size-tier multiplier)` — `vuCostForDepth(depth, sizeBytes)` gained an optional size dimension, backed by `VU_SIZE_MULTIPLIERS` (micro <1 MiB 1.0× · small 1–5 MiB 1.5× · medium 5–20 MiB 2.5× · large 20–100 MiB 4.0× · xlarge ≥100 MiB 6.0×) and `vuSizeMultiplier(sizeBytes)` (missing/zero size → 1×).
+- **Metering** — the worker's deduct-on-complete (`recordScanUsage` + `buildVuMeterFields`) now passes `file_size_bytes`, so the ledger row (`units`/`applied_rate`) and the scan row (`vu_units`/`vu_applied_rate`) both record the size-aware charge; the report payload's `processing_cost_credits` reflects it too.
+- **Gate reserves against the file** — `assertScanQuota(userId, reserveUnits)` now rejects 402 when the remaining allowance can't cover the incoming file's projected cost (initiate passes `vuCostForDepth(mode, fileSizeBytes)`); the 402 message explains "needs N VUs but only M remain" when the meter isn't literally exhausted. `QuotaExceededException` carries optional `requestedUnits`.
+- **Mock parity** — `MOCK_VU_SIZE_MULTIPLIERS` + `mockVuCostForDepth(depth, size)` mirror the real table in the mock worker's credits, the mock deduct, and the mock initiate gate's reserve.
+
+### Tests
+- Billing spec: size-tier policy (micro→xlarge boundaries, missing/zero → 1×), size-aware ledger write (50 MiB standard → 40 units + applied_rate), reserve pass/reject cases (incl. "needs 40000 VUs but 10000 remain" message). Scans spec: 1 MiB fixture now charges 15 (standard ×1.5) / 150 (deep ×1.5), initiate gate receives the size-aware reserve (15), and a new tiny-vs-heavy test pins 10 vs 40 VU at the same depth. Mock lifecycle: new size-scaling credits test (200 KB → 10, 50 MiB → 40).
+- Verified: backend jest **508/508**, vitest **620/620**, build clean, lint 0 errors.
+
 ## [2026-08-18] - Frontend VU switch: chip + meters + projection read units
 
 ### Changed
