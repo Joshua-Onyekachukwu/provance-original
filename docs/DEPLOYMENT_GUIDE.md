@@ -79,7 +79,7 @@ Click on your **provance** project (or import from GitHub if not yet connected)
 
 **Variable 7:**
 - Name: `VITE_API_BASE_URL`
-- Value: `https://YOUR-FLY-APP.fly.dev/v1` ← **REPLACE with your Fly.io app URL**
+- Value: `https://provance-api.fly.dev/v1` ← **REPLACE with your Fly.io app URL**
 - Scope: Production, Preview, Development
 
 **Variable 8:**
@@ -123,7 +123,7 @@ fly auth login --token YOUR-FLYIO-TOKEN
 
 ### 2c. Check your existing apps
 ```bash
-fly apps list
+fly apps list  # should show: provance-api, provance-worker
 ```
 Find your app name (it'll look like `provance-backend-xxxx` or similar)
 
@@ -149,17 +149,17 @@ fly secrets set \
   DATABASE_URL="postgresql://postgres.YOUR-SUPABASE-PROJECT:YOUR-DATABASE-PASSWORD@aws-0-eu-west-1.pooler.supabase.com:6543/postgres" \
   SENTRY_DSN="YOUR-SENTRY-DSN" \
   NVIDIA_API_KEY="YOUR-NVIDIA-API-KEY" \
-  --app YOUR-FLY-APP-NAME
+  --app provance-api
 ```
 
 ### 2e. Deploy (if not auto-deploying from GitHub)
 ```bash
-fly deploy --app YOUR-FLY-APP-NAME
+fly deploy --app provance-api
 ```
 
 ### 2f. Verify backend is healthy
 ```bash
-curl https://YOUR-FLY-APP-NAME.fly.dev/v1/health/readiness
+curl https://provance-api.fly.dev/v1/health/readiness
 ```
 Should return: `{"status":"ok","services":{"database":"ready","redis":"ready"}}`
 
@@ -170,7 +170,7 @@ Should return: `{"status":"ok","services":{"database":"ready","redis":"ready"}}`
 After you know your Fly.io app name:
 
 1. Go back to **Vercel → Settings → Environment Variables**
-2. Update `VITE_API_BASE_URL` to: `https://YOUR-FLY-APP-NAME.fly.dev/v1`
+2. Update `VITE_API_BASE_URL` to: `https://provance-api.fly.dev/v1`
 3. Click **Save**
 4. **Redeploy** the frontend
 
@@ -190,7 +190,7 @@ Open: **https://provanc3.vercel.app**
 3. Should redirect to dashboard
 
 ### 4c. Backend responds
-Open: **https://YOUR-FLY-APP-NAME.fly.dev/v1/health/readiness**
+Open: **https://provance-api.fly.dev/v1/health/readiness**
 - Should return `{"status":"ok"}`
 
 ### 4d. Sentry receives errors
