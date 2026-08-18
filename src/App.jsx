@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { Routes, Route, Outlet, Navigate, useLocation } from 'react-router-dom'
 import { MotionConfig } from 'framer-motion'
 import { Analytics } from '@vercel/analytics/react'
@@ -7,59 +8,81 @@ import ScrollToTop from './components/ScrollToTop'
 import ProtectedRoute from './components/auth/ProtectedRoute.jsx'
 import AppShellLayout from './components/app/AppShellLayout.jsx'
 import AdminShell from './components/admin/AdminShell.jsx'
-import HomePage from './pages/HomePage'
-import ProductPage from './pages/ProductPage'
-import MethodologyPage from './pages/MethodologyPage'
-import PricingPage from './pages/PricingPage'
-import SecurityPage from './pages/SecurityPage'
-import SampleReportPage from './pages/SampleReportPage'
-import BenchmarkPage from './pages/BenchmarkPage.jsx'
-import DocsPage from './pages/DocsPage'
-import AboutPage from './pages/AboutPage'
-import ContactPage from './pages/ContactPage'
-import PrivacyPage from './pages/PrivacyPage'
-import TermsPage from './pages/TermsPage'
-import CookiesPage from './pages/CookiesPage'
-import ResourcesPage from './pages/ResourcesPage'
-import WaitlistPage from './pages/WaitlistPage'
-import SignInPage from './pages/SignInPage'
-import AcceptInvitePage from './pages/AcceptInvitePage'
-import RequestPasswordResetPage from './pages/RequestPasswordResetPage'
-import ResetPasswordConfirmPage from './pages/ResetPasswordConfirmPage'
-import SampleReportPrintPage from './pages/SampleReportPrintPage.jsx'
-import NotFoundPage from './pages/NotFoundPage'
-import AppDashboardPage from './pages/app/AppDashboardPage.jsx'
-import AppUploadsPage from './pages/app/AppUploadsPage.jsx'
-import AppReportsPage from './pages/app/AppReportsPage.jsx'
-import AppQueuePage from './pages/app/AppQueuePage.jsx'
-import AppHistoryPage from './pages/app/AppHistoryPage.jsx'
-import AppNotificationsPage from './pages/app/AppNotificationsPage.jsx'
-import AppBillingPage from './pages/app/AppBillingPage.jsx'
-import AppSecurityPage from './pages/app/AppSecurityPage.jsx'
-import AppApiKeysPage from './pages/app/AppApiKeysPage.jsx'
-import AppWebhooksPage from './pages/app/AppWebhooksPage.jsx'
-import AppHelpDocsPage from './pages/app/AppHelpDocsPage.jsx'
-import AppOrganizationPage from './pages/app/AppOrganizationPage.jsx'
-import AppReportPrintPage from './pages/app/AppReportPrintPage.jsx'
-import AppAccountPage from './pages/app/AppAccountPage.jsx'
-import AppTeamPage from './pages/app/AppTeamPage.jsx'
-import AppActivityPage from './pages/app/AppActivityPage.jsx'
-import AppAccessDeniedPage from './pages/app/AppAccessDeniedPage.jsx'
-import AdminOverviewPage from './pages/admin/OverviewPage.jsx'
-import AdminWaitlistPage from './pages/admin/WaitlistPage.jsx'
-import AdminUsersPage from './pages/admin/UsersPage.jsx'
-import AdminOrganizationsPage from './pages/admin/OrganizationsPage.jsx'
-import AdminFeatureFlagsPage from './pages/admin/FeatureFlagsPage.jsx'
-import AdminAnalyticsPage from './pages/admin/AnalyticsPage.jsx'
-import AdminMonitoringPage from './pages/admin/MonitoringPage.jsx'
-import AdminAuditLogsPage from './pages/admin/AuditLogsPage.jsx'
-import AdminJobsPage from './pages/admin/JobsPage.jsx'
-import AdminReportsPage from './pages/admin/ReportsPage.jsx'
-import AdminRolesPage from './pages/admin/RolesPage.jsx'
-import AdminSettingsPage from './pages/admin/SettingsPage.jsx'
-import UiKitPage from './pages/UiKitPage.jsx'
 import ErrorBoundary from './components/app/ErrorBoundary.jsx'
 import { ToastProvider } from './components/ui/Toast.jsx'
+
+// ── Lazy-loaded page components ──────────────────────────────────────────────
+// Each page is its own chunk — only downloaded when the user navigates to it.
+// Layout components (Navbar, Footer, Shells) stay static since they render on
+// every page and are needed immediately.
+
+// Public pages
+const HomePage = lazy(() => import('./pages/HomePage'))
+const ProductPage = lazy(() => import('./pages/ProductPage'))
+const MethodologyPage = lazy(() => import('./pages/MethodologyPage'))
+const PricingPage = lazy(() => import('./pages/PricingPage'))
+const SecurityPage = lazy(() => import('./pages/SecurityPage'))
+const SampleReportPage = lazy(() => import('./pages/SampleReportPage'))
+const BenchmarkPage = lazy(() => import('./pages/BenchmarkPage.jsx'))
+const DocsPage = lazy(() => import('./pages/DocsPage'))
+const AboutPage = lazy(() => import('./pages/AboutPage'))
+const ContactPage = lazy(() => import('./pages/ContactPage'))
+const PrivacyPage = lazy(() => import('./pages/PrivacyPage'))
+const TermsPage = lazy(() => import('./pages/TermsPage'))
+const CookiesPage = lazy(() => import('./pages/CookiesPage'))
+const ResourcesPage = lazy(() => import('./pages/ResourcesPage'))
+const WaitlistPage = lazy(() => import('./pages/WaitlistPage'))
+const SignInPage = lazy(() => import('./pages/SignInPage'))
+const AcceptInvitePage = lazy(() => import('./pages/AcceptInvitePage'))
+const RequestPasswordResetPage = lazy(() => import('./pages/RequestPasswordResetPage'))
+const ResetPasswordConfirmPage = lazy(() => import('./pages/ResetPasswordConfirmPage'))
+const SampleReportPrintPage = lazy(() => import('./pages/SampleReportPrintPage.jsx'))
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
+
+// App pages
+const AppDashboardPage = lazy(() => import('./pages/app/AppDashboardPage.jsx'))
+const AppUploadsPage = lazy(() => import('./pages/app/AppUploadsPage.jsx'))
+const AppReportsPage = lazy(() => import('./pages/app/AppReportsPage.jsx'))
+const AppQueuePage = lazy(() => import('./pages/app/AppQueuePage.jsx'))
+const AppHistoryPage = lazy(() => import('./pages/app/AppHistoryPage.jsx'))
+const AppNotificationsPage = lazy(() => import('./pages/app/AppNotificationsPage.jsx'))
+const AppBillingPage = lazy(() => import('./pages/app/AppBillingPage.jsx'))
+const AppSecurityPage = lazy(() => import('./pages/app/AppSecurityPage.jsx'))
+const AppApiKeysPage = lazy(() => import('./pages/app/AppApiKeysPage.jsx'))
+const AppWebhooksPage = lazy(() => import('./pages/app/AppWebhooksPage.jsx'))
+const AppHelpDocsPage = lazy(() => import('./pages/app/AppHelpDocsPage.jsx'))
+const AppOrganizationPage = lazy(() => import('./pages/app/AppOrganizationPage.jsx'))
+const AppReportPrintPage = lazy(() => import('./pages/app/AppReportPrintPage.jsx'))
+const AppAccountPage = lazy(() => import('./pages/app/AppAccountPage.jsx'))
+const AppTeamPage = lazy(() => import('./pages/app/AppTeamPage.jsx'))
+const AppActivityPage = lazy(() => import('./pages/app/AppActivityPage.jsx'))
+const AppAccessDeniedPage = lazy(() => import('./pages/app/AppAccessDeniedPage.jsx'))
+
+// Admin pages
+const AdminOverviewPage = lazy(() => import('./pages/admin/OverviewPage.jsx'))
+const AdminWaitlistPage = lazy(() => import('./pages/admin/WaitlistPage.jsx'))
+const AdminUsersPage = lazy(() => import('./pages/admin/UsersPage.jsx'))
+const AdminOrganizationsPage = lazy(() => import('./pages/admin/OrganizationsPage.jsx'))
+const AdminFeatureFlagsPage = lazy(() => import('./pages/admin/FeatureFlagsPage.jsx'))
+const AdminAnalyticsPage = lazy(() => import('./pages/admin/AnalyticsPage.jsx'))
+const AdminMonitoringPage = lazy(() => import('./pages/admin/MonitoringPage.jsx'))
+const AdminAuditLogsPage = lazy(() => import('./pages/admin/AuditLogsPage.jsx'))
+const AdminJobsPage = lazy(() => import('./pages/admin/JobsPage.jsx'))
+const AdminReportsPage = lazy(() => import('./pages/admin/ReportsPage.jsx'))
+const AdminRolesPage = lazy(() => import('./pages/admin/RolesPage.jsx'))
+const AdminSettingsPage = lazy(() => import('./pages/admin/SettingsPage.jsx'))
+const UiKitPage = lazy(() => import('./pages/UiKitPage.jsx'))
+
+// ── Loading fallback ─────────────────────────────────────────────────────────
+// Minimal skeleton shown while a page chunk downloads. Kept tiny so it doesn't
+// flash on fast connections — just a centered spinner with the brand accent.
+function PageLoader() {
+  return (
+    <div className="flex min-h-[50vh] items-center justify-center" role="status" aria-label="Loading page">
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-stone-light border-t-charcoal" />
+    </div>
+  )
+}
 
 function PublicLayout() {
   const location = useLocation()
@@ -72,10 +95,10 @@ function PublicLayout() {
       </a>
       <Navbar />
       <main id="main-content">
-        {/* Location-keyed so navigating away resets a crashed page while the
-            layout (nav + footer) stays intact. */}
         <ErrorBoundary key={location.pathname}>
-          <Outlet />
+          <Suspense fallback={<PageLoader />}>
+            <Outlet />
+          </Suspense>
         </ErrorBoundary>
       </main>
       <Footer />
@@ -89,6 +112,7 @@ export default function App() {
       <MotionConfig reducedMotion="user">
       <ErrorBoundary>
       <Analytics />
+      <Suspense fallback={<PageLoader />}>
       <Routes>
       <Route path="/sample-report/print" element={<SampleReportPrintPage />} />
 
@@ -176,6 +200,7 @@ export default function App() {
       <Route path="/ui-kit" element={<UiKitPage />} />
       <Route path="*" element={<NotFoundPage />} />
       </Routes>
+      </Suspense>
       </ErrorBoundary>
       </MotionConfig>
     </ToastProvider>
