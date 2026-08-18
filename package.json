@@ -26,6 +26,7 @@
     "guard:grid": "node scripts/grid-guard.mjs"
   },
   "dependencies": {
+    "@sentry/react": "^10.70.0",
     "@supabase/supabase-js": "^2.54.0",
     "@tailwindcss/vite": "^4.3.1",
     "@vercel/analytics": "^2.0.1",

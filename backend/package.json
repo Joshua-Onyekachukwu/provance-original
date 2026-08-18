@@ -38,6 +38,8 @@
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/swagger": "^11.4.6",
     "@nestjs/throttler": "^6.5.0",
+    "@sentry/nestjs": "^10.70.0",
+    "@sentry/node": "^10.70.0",
     "@supabase/supabase-js": "^2.54.0",
     "better-auth": "^1.6.26",
     "bullmq": "^5.79.3",
