@@ -1,5 +1,17 @@
 # Provance — Changelog
 
+## [2026-08-18] - CI: all three audit gates run on every push/PR
+
+### Changed
+- **`.github/workflows/ci.yml`** — the `responsive` job is renamed `audits` (timeout 30 → 40 min) and gains the missing **`audit:a11y`** step after `audit:responsive`, sharing the Playwright Chromium install. The workflow now runs all three gates on every push (main) + PR:
+  - `guard:grid` (frontend job) — repo-wide mobile-first sweep: every responsive grid declares a base `grid-cols-1` (or gated/allowlisted) and every responsive display utility declares an explicit base token.
+  - `audit:responsive` (audits job) — boots vite mock, signs in as the seeded admin, walks every public + `/app/*` + `/app/admin/*` route at 640/768/1024/1280, failing on page overflow or clipped in-flow elements.
+  - `audit:a11y` (audits job, new) — boots vite mock and walks every app/admin/public surface, failing on structural issues: interactive elements with no accessible name, `<img>` without alt, unlabeled form controls, keyboard-Tab stops with no visible focus indicator (real `:focus-visible`). Contrast reported as advisories.
+- New routes must be added to **both** route inventories (`scripts/audit-responsive.mjs` + `scripts/audit-a11y.mjs`) to stay under the gates.
+
+### Verified
+- Workflow structure validated (jobs: `frontend` · `audits` · `backend`; a11y + responsive + guard:grid steps present). The gates themselves passed green in the preceding turns (responsive 260/260, a11y 35/35, guard:grid clean) — this change only makes them run automatically.
+
 ## [2026-08-18] - Trim landing Sample Report section on mobile (375px)
 
 ### Changed

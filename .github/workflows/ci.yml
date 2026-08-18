@@ -52,10 +52,10 @@ jobs:
         # Client-side rendering can't be asserted via curl; this gate catches
         # the shell/asset regressions that produce blank pages.
 
-  responsive:
-    name: Responsive audit (640-1280 overflow gate)
+  audits:
+    name: Audits (responsive overflow + a11y + mobile-first)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -81,6 +81,16 @@ jobs:
         # in-flow elements (the grid/table regression class). New routes must be
         # added to the inventory in scripts/audit-responsive.mjs to stay under
         # the gate.
+
+      - name: A11y audit (names, labels, alt, focus, contrast)
+        run: npm run audit:a11y
+        # Boots vite in mock mode, signs in as the seeded mock admin, and walks
+        # every app + admin + public surface, failing on structural a11y
+        # issues: interactive elements with no accessible name, <img> without
+        # alt, unlabeled form controls, and keyboard-Tab stops with no visible
+        # focus indicator (real :focus-visible via Playwright Tab presses).
+        # Contrast is reported as advisories. New routes must be added to the
+        # inventory in scripts/audit-a11y.mjs to stay under the gate.
 
   backend:
     name: Backend (build · unit · e2e)
