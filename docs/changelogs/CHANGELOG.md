@@ -1,5 +1,13 @@
 # Provance — Changelog
 
+## [2026-08-18] - VU tighten cadence decided + armed
+
+### Changed
+- **`docs/engineering/USAGE_CREDITS_PROPOSAL.md` §9** — the tighten dial now has a concrete, armed trigger instead of "no date set": the dial moves when the **first** of these fires — **(1) 100 paying workspaces** (distinct orgs on pro/team/enterprise with an active membership), **(2) top-ups live for 60 days** (Stripe top-up packs accepting payments), **(3) abuse signal** (per-key/workspace VU burn >5× median or scraping patterns, which can tighten or cap earlier). Firing is never silent: the armed row in the follow-up log flips to Done with the date + trigger, and the dial applies as a config change to `VU_COST_BY_DEPTH` (the ledger's `applied_rate` keeps history auditable). §8 decision #6 marked decided.
+
+### Verified
+- Doc-only change (no code) — proposal §9/§8 updated, the cadence row marked Done, and the armed-trigger row appended as the single source of truth to flip when a trigger fires.
+
 ## [2026-08-18] - VU ledger + metering backend slice (billing rollout step 1)
 
 ### Added

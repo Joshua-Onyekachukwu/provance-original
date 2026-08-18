@@ -164,11 +164,34 @@ for the next cycle. **Pacing principle:** the allowance should feel abundant
 early in the cycle and *burnable* — "finish, but not too fast" — so top-ups
 and cycle resets become the natural rhythm instead of a hard wall.
 
-**When to tighten (triggers):** (a) authority/trust milestones are reached
-(case studies, live API customers), (b) the ledger + metering slice is live and
-top-ups exist (Stripe), (c) per-seat/per-key spend data shows abuse patterns.
-Each tighten is a config change (cost table), not a migration — the ledger
-records the rate applied per scan, so historical usage stays auditable.
+**Tighten cadence — ARMED trigger (decided 2026-08-18):**
+
+The dial moves when the FIRST of these fires:
+
+1. **100 paying workspaces** (primary) — distinct organizations on a paid
+   plan (pro/team/enterprise) with an active membership, as counted in the
+   admin dashboard's organization analytics. This is the volume milestone:
+   enough real customers paying to validate the model before revenue math
+   changes.
+2. **Top-ups live for 60 days** (secondary) — Stripe top-up packs shipped and
+   accepting payments for 60 continuous days. This is the
+   monetization-infrastructure checkpoint: if top-ups land before 100
+   workspaces, users still have a purchase path, so tightening isn't a hard
+   wall without a buy button.
+3. **Abuse signal** (always-on accelerator) — per-workspace/per-key VU burn
+   anomalies (e.g. a single key consuming >5× the median, or batch-scraping
+   patterns) can trigger an earlier tighten or per-key caps regardless of the
+   milestones above.
+
+**How it fires (never silently):** the armed trigger is a row in
+`docs/project-state/followup-recommendations.md` (status `Open (armed)`).
+When a trigger fires, that row is flipped to `Done` in the same turn with the
+firing date, the trigger that fired, and the applied rates; the dial itself is
+a config change to `VU_COST_BY_DEPTH` (per the table above, or a partial
+step at Founder discretion), not a migration — the ledger's `applied_rate`
+keeps historical usage auditable across the change. A Founder-side admin
+count of paying workspaces is the checkpoint for trigger 1; a calendar note
+60 days after top-ups ship covers trigger 2.
 
 ## 8. Open decisions for the founder
 
@@ -178,8 +201,9 @@ records the rate applied per scan, so historical usage stays auditable.
 3. **Overage default** — hard stop (recommended), auto top-up, or soft degrade?
 4. **Rollover** — roll unused VUs up to 1× monthly, or no rollover (strict use-it-or-lose-it)?
 5. **Failed scans** — 0 VU charge on failure (recommended) vs charge-on-submit with refund?
-6. **Tighten cadence** — no date set; triggers in §9. Confirm when growth
-   milestones hit so the dial moves deliberately, never silently
+6. **Tighten cadence** — **DECIDED 2026-08-18**: armed trigger = first of
+   100 paying workspaces / top-ups live for 60 days / abuse signal, logged in
+   the follow-up file when it fires (see §9)
 
 ## Related
 
