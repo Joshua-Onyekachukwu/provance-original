@@ -1,5 +1,11 @@
 # Provance — Changelog
 
+## [2026-08-18] - Per-depth VU cost table — verified already shipped
+
+### Verified
+- The requested per-depth VU cost table already landed in commit `91fd707` (VU ledger rollout step 1): `VU_COST_BY_DEPTH` (`quick: 1` · `standard: 10` · `deep: 100`) as the config constant in `backend/src/billing/billing.service.ts` with the `vuCostForDepth` helper (unknown/missing depths fall back to standard), unit-tested in `billing.service.spec.ts` ("vu policy": exact table + fallback), and **already consumed by the ledger slice** — `recordScanUsage` derives the deduction via `vuCostForDepth(input.depth)`.
+- Gates re-run: `vu policy` spec 4/4 pass (the full suite passed 505/505 in the rollout commit). No code changes needed this pass.
+
 ## [2026-08-18] - VU tighten cadence decided + armed
 
 ### Changed
