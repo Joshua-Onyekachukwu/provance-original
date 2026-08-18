@@ -1,5 +1,11 @@
 # Provance — Changelog
 
+## [2026-08-18] - VU billing rollout step 1 — verified already shipped
+
+### Verified
+- The approved rollout step 1 (VU ledger + metering backend slice, deduct-on-complete, `unitsUsed`/`unitsLimit` on GET /v1/billing) landed in commit `91fd707` and is intact on disk: migration `0022_vu_ledger.sql`, `PLAN_VU_ALLOWANCES` (10k/100k/300k) + `VU_COST_BY_DEPTH` (1/10/100), `countCycleUnits` + `recordScanUsage` (best-effort), worker deduct-on-complete in both completion branches (failed = 0), `assertScanQuota` re-pointed at the VU meter (402/Retry-After), and the payload `unitsUsed`/`unitsLimit` fields. Full mock parity included.
+- Gates re-run this turn: billing + scans + migration-health specs **69/69** pass (full suites passed 505/505 backend + 609/609 vitest in the shipping commit). No code changes needed — verification close-out only.
+
 ## [2026-08-18] - Report-depth choice wired end-to-end (mock worker parity)
 
 ### Changed
