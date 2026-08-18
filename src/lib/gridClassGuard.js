@@ -56,6 +56,9 @@ export const INTENTIONAL_MOBILE_GRIDS = [
   // Archived forensic media-audit tiles: 2-up on mobile.
   'grid grid-cols-2 md:grid-cols-4 gap-8',
   'grid grid-cols-2 md:grid-cols-4 gap-6',
+  // Landing Sample Report includes grid: compact label-only chips two-up on
+  // mobile (details hidden below sm), expanding to the full 3-up grid at lg.
+  'mt-3 grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3',
 ]
 
 /** Pull the className literal out of a className="…" or className={`…`} prop. */

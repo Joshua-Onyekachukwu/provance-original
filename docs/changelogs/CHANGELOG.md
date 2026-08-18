@@ -1,5 +1,21 @@
 # Provance — Changelog
 
+## [2026-08-18] - Trim landing Sample Report section on mobile (375px)
+
+### Changed
+- **`src/components/SampleReport.jsx`** — the landing Sample Report section is ~28% shorter at 375px (probe: 2823px → 2026px) while desktop layouts are unchanged:
+  - **What-the-report-includes grid** — now `grid-cols-2` (2-up label-only chips) on mobile with the detail line hidden below `sm` (`hidden sm:block`), expanding to the full 3-up grid at `lg`. `IncludeChip` padding/type shrink on mobile (`px-3 py-2.5`, `text-xs`), restoring full size at `sm+`.
+  - **Choose-your-report-depth row** — collapses from three stacked cards to a single compact 3-across selector strip on mobile (`grid-cols-3 gap-2`, titles only; tag + description hidden below `sm`), keeping the featured amber treatment on Standard. Restores full cards at `sm+`.
+  - Tighter section spacing (`mt-6 sm:mt-8`); the "sample is the Standard report" caption hides below `sm`.
+- **`src/lib/gridClassGuard.js`** — allowlisted the new includes-grid literal (`mt-3 grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3`) as a deliberate two-up-on-mobile compact chip grid, matching the guard's existing "compact label/value chips" exception class.
+
+### Verified
+- DOM probe at 375×812: section **2026px** (was 2823px), depth strip 46px with three 87px cells, includes grid 178px with 2-up 135px chips, detail lines `display: none` on mobile, **0px overflow**.
+- `guard:grid` clean · vitest **32/32** (SampleReport 10 + gridClassGuard + ProductPage) · `audit:responsive` **260/260** at 375–1280 · `audit:a11y` **35/35**.
+
+### Notes
+- The parked **banned-token vitest guard** (asserting no page in `src/pages` renders `ai_generated` / `/v1/verify` / `heatmap` / `method:saml` / `update_retention`) from the interrupted turn is logged as an Open follow-up — not lost.
+
 ## [2026-08-18] - Billing contract re-denominated to VUs
 
 ### Changed

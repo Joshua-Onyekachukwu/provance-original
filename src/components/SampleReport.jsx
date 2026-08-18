@@ -6,11 +6,11 @@ const LUXE = [0.32, 0.72, 0, 1]
 
 function IncludeChip({ label, detail }) {
   return (
-    <div className="flex items-start gap-3 rounded-2xl border border-stone-light bg-parchment/50 px-3.5 py-3">
-      <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber" />
+    <div className="flex items-start gap-2.5 rounded-2xl border border-stone-light bg-parchment/50 px-3 py-2.5 sm:gap-3 sm:px-3.5 sm:py-3">
+      <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-amber sm:mt-0.5" />
       <div className="min-w-0">
-        <p className="text-[13px] font-medium text-charcoal">{label}</p>
-        <p className="mt-0.5 text-xs leading-relaxed text-charcoal-mid">{detail}</p>
+        <p className="text-xs font-medium text-charcoal sm:text-[13px]">{label}</p>
+        <p className="mt-0.5 hidden text-xs leading-relaxed text-charcoal-mid sm:block">{detail}</p>
       </div>
     </div>
   )
@@ -66,11 +66,11 @@ export default function SampleReport() {
 
         <ReportSummaryCard>
           {/* What the full report includes */}
-          <div className="mt-8">
+          <div className="mt-6 sm:mt-8">
                     <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-charcoal-light">
                       What the full report includes
                     </p>
-                    <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="mt-3 grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3">
                       {REPORT_INCLUDES.map((item) => (
                         <IncludeChip key={item.label} label={item.label} detail={item.detail} />
                       ))}
@@ -78,27 +78,27 @@ export default function SampleReport() {
                   </div>
 
                   {/* Choose your report depth */}
-                  <div className="mt-8">
+                  <div className="mt-6 sm:mt-8">
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
                       <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-charcoal-light">
                         Choose your report depth
                       </p>
-                      <p className="text-xs text-charcoal-mid">The sample above is the Standard report.</p>
+                      <p className="hidden text-xs text-charcoal-mid sm:block">The sample above is the Standard report.</p>
                     </div>
-                    <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div className="mt-3 grid grid-cols-3 gap-2 sm:gap-3">
                       {REPORT_DEPTHS.map((depth) => (
                         <div
                           key={depth.mode}
-                          className={`rounded-2xl border p-4 transition-colors duration-300 ${
+                          className={`rounded-2xl border p-3 transition-colors duration-300 sm:p-4 ${
                             depth.featured
                               ? 'border-amber/50 bg-amber-subtle/70'
                               : 'border-stone-light bg-white-warm/92'
                           }`}
                         >
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="font-serif text-lg text-charcoal">{depth.title}</p>
+                          <div className="flex items-center justify-between gap-1 sm:gap-2">
+                            <p className="font-serif text-sm text-charcoal sm:text-lg">{depth.title}</p>
                             <span
-                              className={`rounded-full px-2.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] ${
+                              className={`hidden rounded-full px-2.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] sm:inline-block ${
                                 depth.featured
                                   ? 'bg-amber/15 text-amber'
                                   : 'bg-parchment text-charcoal-mid'
@@ -107,7 +107,7 @@ export default function SampleReport() {
                               {depth.tag}
                             </span>
                           </div>
-                          <p className="mt-2 text-xs leading-relaxed text-charcoal-mid">{depth.desc}</p>
+                          <p className="mt-1 hidden text-xs leading-relaxed text-charcoal-mid sm:mt-2 sm:block">{depth.desc}</p>
                         </div>
                       ))}
                     </div>
