@@ -211,7 +211,7 @@ If you want a backup backend on Railway:
 4. Railway will auto-detect the NestJS backend
 
 ### 5b. Set environment variables
-Go to **Variables** tab and paste from `docs/RAILWAY_ENV_VARS.txt`
+Go to **Variables** tab and paste from `docs/.env.railway`
 
 ### 5c. Get the Railway URL
 After deployment, Railway gives you a URL like `https://provance-backend.up.railway.app`
@@ -269,4 +269,4 @@ You can use Railway as your `VITE_API_BASE_URL` instead of Fly.io, or keep both 
 ✅ Code splitting — main bundle 560kB → 206kB
 ✅ VU billing system — size-aware pricing
 ✅ GridClassGuard parity — CI gates aligned
-✅ All env vars documented in `docs/VERCEL_ENV_VARS.txt`, `docs/FLYIO_ENV_VARS.txt`, `docs/RAILWAY_ENV_VARS.txt`
+✅ All env vars documented in `docs/.env.vercel`, `docs/.env.flyio`, `docs/.env.railway`
