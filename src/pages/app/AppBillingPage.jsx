@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import { Badge, Button, Card, EmptyState, Skeleton, StatCard, useRegisterCommands, useToast } from '../../components/ui'
 import {
   formatCount,
@@ -6,9 +7,10 @@ import {
   formatDate,
   formatPct,
   formatStorageGb,
+  formatScanTimestamp,
   percentOf,
 } from '../../components/app/scanPresentation.js'
-import { getBilling } from '../../lib/api.js'
+import { getBilling, listScans } from '../../lib/api.js'
 import { useDemoState, withDemoOverride } from '../../lib/useDemoState.js'
 import { useResource } from '../../lib/useResource.js'
 
@@ -35,7 +37,7 @@ function usageTone(pct) {
   return 'bg-sky-500'
 }
 
-function UsageMeter({ label, used, limit, format = formatCurrency }) {
+function UsageMeter({ label, used, limit, format = formatCurrency, extra }) {
   const pct = percentOf(used, limit)
   return (
     <div>
@@ -45,6 +47,9 @@ function UsageMeter({ label, used, limit, format = formatCurrency }) {
           <span className="font-semibold text-charcoal">{format(used)}</span> of {format(limit)}
         </p>
       </div>
+      {extra && (
+        <p className="mt-1 text-[11px] text-charcoal-light">{extra}</p>
+      )}
       <div
         role="progressbar"
         aria-valuenow={pct}
@@ -331,6 +336,11 @@ export default function AppBillingPage() {
                 used={usage.unitsUsed}
                 limit={usage.unitsLimit}
                 format={formatCount}
+                extra={
+                  usage.carriedOver > 0
+                    ? `${formatCount(usage.allowance)} allowance + ${formatCount(usage.carriedOver)} carried over`
+                    : undefined
+                }
               />
               <UsageMeter
                 label="Storage"
@@ -343,6 +353,48 @@ export default function AppBillingPage() {
           </Card>
         )}
       </div>
+
+      {/* ── 2.5. Per-scan VU spend breakdown ─────────────────────────────── */}
+      {!loading && !failed && usage?.scanCosts && usage.scanCosts.length > 0 && (
+        <Card
+          eyebrow="VU spend breakdown"
+          title="Recent scan costs"
+          description="How each verification in this cycle consumed verification units — depth base × size-tier multiplier."
+        >
+          <div className="overflow-x-auto rounded-2xl border border-stone-light">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-stone-light bg-parchment">
+                <tr>
+                  <th className="px-4 py-3 font-mono text-[10px] uppercase tracking-[0.18em] text-charcoal-light">File</th>
+                  <th className="px-4 py-3 font-mono text-[10px] uppercase tracking-[0.18em] text-charcoal-light">Depth</th>
+                  <th className="px-4 py-3 font-mono text-[10px] uppercase tracking-[0.18em] text-charcoal-light">Size tier</th>
+                  <th className="px-4 py-3 text-right font-mono text-[10px] uppercase tracking-[0.18em] text-charcoal-light">VU cost</th>
+                  <th className="hidden px-4 py-3 text-right font-mono text-[10px] uppercase tracking-[0.18em] text-charcoal-light sm:table-cell">Date</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-stone-light bg-white-warm">
+                {usage.scanCosts.map((scan) => (
+                  <tr key={scan.scanId} className="transition-colors hover:bg-parchment/70">
+                    <td className="px-4 py-3.5">
+                      <Link to={`/app/reports/${scan.scanId}`} className="font-medium text-charcoal hover:text-charcoal-soft">
+                        {scan.filename}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <Badge tone={scan.depth === 'deep' ? 'warning' : scan.depth === 'quick' ? 'info' : 'neutral'} size="sm">
+                        {scan.depth}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3.5 text-xs text-charcoal-mid">{scan.sizeTier}</td>
+                    <td className="px-4 py-3.5 text-right font-medium tabular-nums text-charcoal">{scan.vuCost}</td>
+                    <td className="hidden px-4 py-3.5 text-right text-xs text-charcoal-mid sm:table-cell">{formatScanTimestamp(scan.createdAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
 
       {/* ── 3. Payment methods ───────────────────────────────────────────── */}
       <Card

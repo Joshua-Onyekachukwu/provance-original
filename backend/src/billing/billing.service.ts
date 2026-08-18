@@ -97,17 +97,38 @@ export function vuAllowanceForPlan(plan: string | null | undefined): number {
 }
 
 /**
+ * Content-weight resolution factor — high-resolution images (more pixels to
+ * decode, analyze, and grid-split) cost proportionally more than low-res
+ * equivalents of the same byte size. A 1×1 thumbnail and a 50MP RAW file
+ * that happen to be the same compressed size should not cost the same.
+ *
+ * The factor scales from 1.0× (≤2 MP, the baseline) up to 3.0× (≥50 MP).
+ * Pixel count = width × height; a missing dimension defaults to 1×.
+ */
+export function resolutionFactor(width: number | null | undefined, height: number | null | undefined): number {
+  const pixels = (Number(width) || 0) * (Number(height) || 0);
+  if (pixels <= 0) return 1.0;
+  // 2 MP = 1×, 8 MP = 1.5×, 20 MP = 2×, 50 MP = 3×
+  const megapixels = pixels / 1_000_000;
+  if (megapixels <= 2) return 1.0;
+  if (megapixels >= 50) return 3.0;
+  return 1.0 + ((megapixels - 2) / 48) * 2.0;
+}
+
+/**
  * vuCostForDepth — the effective per-scan VU cost: depth base × size-tier
- * multiplier, ceiled to an integer (the ledger stores whole units). Without a
- * size the multiplier is 1×, so existing callers/tests keep the flat
- * depth base.
+ * multiplier × resolution factor, ceiled to an integer (the ledger stores
+ * whole units). Without a size the multiplier is 1×, so existing callers/tests
+ * keep the flat depth base.
  */
 export function vuCostForDepth(
   depth: string | null | undefined,
   sizeBytes?: number | null,
+  width?: number | null,
+  height?: number | null,
 ): number {
   const base = VU_COST_BY_DEPTH[depth ?? ''] ?? VU_COST_BY_DEPTH.standard;
-  return Math.ceil(base * vuSizeMultiplier(sizeBytes));
+  return Math.ceil(base * vuSizeMultiplier(sizeBytes) * resolutionFactor(width, height));
 }
 
 /**

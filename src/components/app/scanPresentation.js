@@ -271,6 +271,20 @@ export function formatFileSize(bytes) {
   return `${value.toFixed(digits)} ${units[unitIndex]}`
 }
 
+/**
+ * vuSizeTierLabel — human-readable size tier for the VU cost breakdown.
+ * Mirrors the backend VU_SIZE_MULTIPLIERS tiers so the report detail pane
+ * shows the same label the billing ledger uses.
+ */
+export function vuSizeTierLabel(sizeBytes) {
+  if (!sizeBytes) return '—'
+  if (sizeBytes >= 100 * 1024 * 1024) return 'XLarge (≥100 MiB)'
+  if (sizeBytes >= 20 * 1024 * 1024) return 'Large (20–100 MiB)'
+  if (sizeBytes >= 5 * 1024 * 1024) return 'Medium (5–20 MiB)'
+  if (sizeBytes >= 1 * 1024 * 1024) return 'Small (1–5 MiB)'
+  return 'Micro (<1 MiB)'
+}
+
 export function getVerdictLabel(scan) {
   return scan?.result_payload?.verdict?.display_label || 'Pending'
 }

@@ -12,6 +12,7 @@ import {
   getVerdictLabel,
   hasActiveScanWork,
   scanNeedsPolling,
+  vuSizeTierLabel,
 } from '../../components/app/scanPresentation.js'
 import { getScan, listScans, USE_MOCK } from '../../lib/api.js'
 import { downloadReportPdf } from '../../lib/reportPdfDownload.js'
@@ -405,6 +406,28 @@ export default function AppReportsPage() {
                 <ReportMetaItem
                   label="File details"
                   value={`${formatFileSize(selectedScan.file_size_bytes)}. ${selectedScan.mime_type}`}
+                />
+                <ReportMetaItem
+                  label="Scan depth"
+                  value={
+                    selectedScan.processing_mode
+                      ? `${selectedScan.processing_mode.charAt(0).toUpperCase()}${selectedScan.processing_mode.slice(1)}`
+                      : 'Standard'
+                  }
+                />
+                <ReportMetaItem
+                  label="Size tier"
+                  value={vuSizeTierLabel(selectedScan.file_size_bytes)}
+                />
+                <ReportMetaItem
+                  label="VU cost"
+                  value={
+                    selectedScan.vu_units != null
+                      ? `${selectedScan.vu_units} VU`
+                      : selectedScan.result_payload?.metadata?.processing_cost_credits != null
+                        ? `${selectedScan.result_payload.metadata.processing_cost_credits} VU`
+                        : 'Pending'
+                  }
                 />
               </div>
               {selectedScan.result_payload?.deduplicated_from && (

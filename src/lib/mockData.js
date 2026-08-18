@@ -684,6 +684,23 @@ export const mockScans = Array.from({ length: 25 }, (_, i) => {
     verdict,
     result_payload: resultPayload,
     processing_mode: i % 3 === 0 ? 'deep' : i % 3 === 1 ? 'quick' : 'standard',
+    // VU meter — mirrors the real vu_units / vu_applied_rate columns
+    // (migration 0023). Size-aware: ceil(depth_base × size_multiplier).
+    vu_units: status === 'completed'
+      ? (() => {
+          const depth = i % 3 === 0 ? 100 : i % 3 === 1 ? 1 : 10
+          const sizeBytes = Math.round(512 * 1024 + (i * 3.7 * 1024 * 1024))
+          const mult = sizeBytes >= 100 * 1024 * 1024 ? 6
+            : sizeBytes >= 20 * 1024 * 1024 ? 4
+            : sizeBytes >= 5 * 1024 * 1024 ? 2.5
+            : sizeBytes >= 1 * 1024 * 1024 ? 1.5
+            : 1
+          return Math.ceil(depth * mult)
+        })()
+      : null,
+    vu_applied_rate: status === 'completed'
+      ? (i % 3 === 0 ? 100 : i % 3 === 1 ? 1 : 10)
+      : null,
     created_at: daysAgo(Math.floor(i / 2), i % 24),
     completed_at: status === 'completed' ? daysAgo(Math.floor(i / 2), (i % 24) + 2) : null,
   }
@@ -1414,6 +1431,19 @@ export const mockBillingProfile = {
       overageCostUsd: 0,
     },
   },
+  // Per-scan VU spend breakdown — recent scans in the current cycle with
+  // their depth, size tier, and VU cost. The Billing page renders this as a
+  // table so users see exactly what each file cost them.
+  scanCosts: [
+    { scanId: 'scan_001', filename: 'IMG_20260715_143022.jpg', depth: 'standard', sizeTier: 'small', vuCost: 15, createdAt: daysAgo(0, 2) },
+    { scanId: 'scan_002', filename: 'cctv_footage_warehouse.mp4', depth: 'quick', sizeTier: 'large', vuCost: 4, createdAt: daysAgo(0, 5) },
+    { scanId: 'scan_003', filename: 'press_briefing_july14.mp4', depth: 'deep', sizeTier: 'medium', vuCost: 250, createdAt: daysAgo(1, 1) },
+    { scanId: 'scan_004', filename: 'governor_statement_clip.mp4', depth: 'standard', sizeTier: 'micro', vuCost: 10, createdAt: daysAgo(1, 4) },
+    { scanId: 'scan_005', filename: 'social_media_screenshot_001.png', depth: 'quick', sizeTier: 'small', vuCost: 2, createdAt: daysAgo(2, 0) },
+    { scanId: 'scan_006', filename: 'election_rally_crowd_shot.jpg', depth: 'deep', sizeTier: 'xlarge', vuCost: 600, createdAt: daysAgo(2, 3) },
+    { scanId: 'scan_007', filename: 'audio_interview_minister.wav', depth: 'standard', sizeTier: 'medium', vuCost: 25, createdAt: daysAgo(3, 1) },
+    { scanId: 'scan_008', filename: 'telegram_forward_video.mp4', depth: 'quick', sizeTier: 'large', vuCost: 4, createdAt: daysAgo(3, 5) },
+  ],
   paymentMethods: [
     {
       id: 'pm_001',

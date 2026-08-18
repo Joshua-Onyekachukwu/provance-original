@@ -288,3 +288,4 @@ Status values: `Open` · `In Progress` · `Done` · `Deferred` · `Declined`
 | 2026-08-18 | Public page copy honesty pass | Open | High — some overclaims remain |
 | 2026-08-18 | Add code splitting / lazy routes | Open | Medium — bundle >500kB warning |
 | 2026-08-18 | Add video scan support | Open | Medium — marketing claims it but code rejects video |
+| 2026-08-18 | Frontend VU switch + resolution billing | Done | Report detail shows depth/size-tier/VU cost; Billing shows carriedOver + scan cost breakdown; backend resolution factor added |

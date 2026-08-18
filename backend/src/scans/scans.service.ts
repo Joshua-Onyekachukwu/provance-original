@@ -700,7 +700,12 @@ export class ScansService {
           // Per-scan VU meter: record the units applied on the row itself so
           // the scan is auditable without a ledger join. Same units the
           // billing ledger writes (both derive from vuCostForDepth, size-aware).
-          ...buildVuMeterFields(scan.processing_mode, scan.file_size_bytes),
+          ...buildVuMeterFields(
+            scan.processing_mode,
+            scan.file_size_bytes,
+            ((prior.result_payload as any)?.media)?.width,
+            ((prior.result_payload as any)?.media)?.height,
+          ),
         });
         this.logger.log(
           `Scan ${scan.id} reuses prior result from scan ${prior.id} (identical SHA-256).`,
@@ -725,8 +730,13 @@ export class ScansService {
         failure_reason: null,
         completed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        // Per-scan VU meter: same units the billing ledger writes.
-        ...buildVuMeterFields(scan.processing_mode, scan.file_size_bytes),
+        // Per-scan VU meter: same units the billing ledger writes (now resolution-weighted).
+        ...buildVuMeterFields(
+          scan.processing_mode,
+          scan.file_size_bytes,
+          (resultPayload.media as any)?.width,
+          (resultPayload.media as any)?.height,
+        ),
       });
       // Deduct-on-complete: the scan completed at its depth (quick 1 ·
       // standard 10 · deep 100) — write the VU ledger row. Failed scans never
@@ -1147,7 +1157,7 @@ export class ScansService {
         scan_created_at: scan.created_at,
         scan_completed_at: analysisTimestamp,
         total_processing_time_ms: processingTimeMs,
-        processing_cost_credits: vuCostForDepth(depth, scan.file_size_bytes),
+        processing_cost_credits: vuCostForDepth(depth, scan.file_size_bytes, imageStats?.width, imageStats?.height),
         recommendations: buildRecommendations(verdict.class, Boolean(hasC2paMarker)),
         ...(regionAnalysis ? { deep_analysis: regionAnalysis } : {}),
       },
@@ -1391,16 +1401,18 @@ export class ScansService {
 
 /**
  * buildVuMeterFields — the per-scan VU meter columns written at completion.
- * Uses the billing service's single rate source (vuCostForDepth, size-aware)
- * so the scan row and the billing ledger can never disagree on the charge.
- * Both the fresh-analysis and dedup-reuse completion branches spread this
- * into their update; failed scans never call it (0 charge).
+ * Uses the billing service's single rate source (vuCostForDepth, size-aware
+ * + resolution-weighted) so the scan row and the billing ledger can never
+ * disagree on the charge. Both the fresh-analysis and dedup-reuse completion
+ * branches spread this into their update; failed scans never call it (0 charge).
  */
 function buildVuMeterFields(
   depth: string | null | undefined,
   sizeBytes?: number | null,
+  width?: number | null,
+  height?: number | null,
 ) {
-  const units = vuCostForDepth(depth, sizeBytes);
+  const units = vuCostForDepth(depth, sizeBytes, width, height);
   return { vu_units: units, vu_applied_rate: units };
 }
 
