@@ -1,5 +1,11 @@
 # Provance — Changelog
 
+## [2026-08-18] - Billing rollout step 1 — verified already shipped
+
+### Verified
+- The VU ledger + metering backend slice landed in `91fd707` and is intact on disk, verified deliverable-by-deliverable this turn: migration `0022_vu_ledger.sql` (per-scan rows with `applied_rate` snapshot + owner RLS), `VU_COST_BY_DEPTH` (quick 1 · standard 10 · deep 100) + `PLAN_VU_ALLOWANCES` (Starter 10k · Pro 100k · Team 300k), `countCycleUnits` + `recordScanUsage` (best-effort, never fails a scan), worker deduct-on-complete in both completion branches (fresh L698 + dedup L720; failed = 0), `assertScanQuota` re-pointed at the VU meter (402/Retry-After at 0 VUs), and `unitsUsed`/`unitsLimit` on `GET /v1/billing` (legacy `scansUsed`/`scansLimit` kept until the frontend switch). Full mock parity (usage 3120/100000, `MOCK_VU_COST_BY_DEPTH`, mock gate + worker deduct + `?quota=` forcing).
+- Gates re-run: billing + scans + analysis-pipeline + migration-health specs **92/92** (backend jest) · `mockScanLifecycle` **3/3** (vitest). Working tree clean — no code changes needed.
+
 ## [2026-08-18] - Backend seam Phase 1 — interface manifest + parity guard
 
 ### Added
