@@ -17,13 +17,13 @@ depth, API usage, and future top-ups all speak the same meter. The unit
 model is ratified in `USAGE_CREDITS_PROPOSAL.md` (recommended defaults:
 100,000 VUs at Pro, hard-stop overage, ≤1× rollover, free failed scans).
 
-> **Transition (read before wiring):** rollout step 1 (ledger + metering) has
-> shipped (2026-08-18): the service emits the **VU ledger field names**
-> (`unitsUsed` / `unitsLimit`) as the primary meter, and still emits the
-> legacy `scansUsed` / `scansLimit` alongside until the frontend Billing
-> page + warning chip switch to VUs (the next slice — then the legacy fields
-> are dropped). Field mapping below — everything else in the contract (cycle
-> math, 402 envelope, warning thresholds) is unchanged in behavior, only
+> **Transition (status):** rollout step 1 (ledger + metering) shipped
+> (2026-08-18) and the frontend VU switch landed the same day — the service
+> emits the **VU ledger field names** (`unitsUsed` / `unitsLimit`) as the
+> only meter, the **legacy `scansUsed` / `scansLimit` fields are dropped**,
+> and the warning chip + Billing meters + projection StatCard all read VUs.
+> Field mapping below — everything else in the contract (cycle math, 402
+> envelope, warning thresholds) is unchanged in behavior, only
 > re-denominated.
 
 Reference implementation:
@@ -221,11 +221,11 @@ same math as the real endpoint; the billing spec locks parity.
 
 ## 6. Known gaps / next steps
 
-- **The VU ledger is rollout step 1, not shipped yet** — the service still
-  emits `scansUsed/scansLimit` and metering is count-based. Rollout step 1
-  (per `USAGE_CREDITS_PROPOSAL.md` §7) ships the ledger + deduct-on-complete
-  in the worker, `unitsUsed/unitsLimit` on `GET /v1/billing`, and the
-  chip/projection switch to VUs — no payment code needed.
+- **Rollout step 1 shipped** — the VU ledger + deduct-on-complete worker
+  (`0022_vu_ledger.sql` + `0023_scan_vu_meter.sql`), `unitsUsed/unitsLimit`
+  on `GET /v1/billing` (legacy `scansUsed/scansLimit` dropped), and the
+  chip/projection switch to VUs all landed 2026-08-18. Remaining rollout
+  steps: rollover ≤1× (step 4) and top-up packs — no payment code needed.
 - **API-call counting is not wired yet** — `api_usage` is read-only today;
   no middleware increments `calls` on authenticated requests, and keyed API
   calls will fold into VU metering (replacing `PLAN_API_CALL_QUOTAS` as the

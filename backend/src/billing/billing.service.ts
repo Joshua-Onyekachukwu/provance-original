@@ -42,19 +42,6 @@ export const VU_COST_BY_DEPTH: Record<string, number> = {
 };
 
 /**
- * LEGACY — flat monthly scan counts, kept so the pre-ledger payload fields
- * (scansUsed/scansLimit) keep rendering the Billing page meters until the
- * frontend switch to unitsUsed/unitsLimit lands (rollout step 1 follow-up).
- * Do not add new consumers; drop alongside the legacy payload fields.
- */
-export const PLAN_SCAN_QUOTAS: Record<string, number> = {
-  starter: 100,
-  pro: 500,
-  team: 2500,
-  enterprise: 10000,
-};
-
-/**
  * Per-plan monthly API-call allowances — the apiCallsLimit side of the
  * Billing usage meter. Read from the plan catalog (not the api_usage table,
  * which only stores the used count), so limits stay code-configurable.
@@ -79,12 +66,13 @@ export function vuCostForDepth(depth: string | null | undefined): number {
 }
 
 /**
- * Per-scan overage price (USD) applied to projected usage above the plan's
- * monthly scan quota. Configurable via SCAN_OVERAGE_PRICE_USD; the estimate is
+ * Per-unit overage price (USD) applied to projected usage above the plan's
+ * monthly VU allowance. Configurable via VU_OVERAGE_PRICE_USD; the estimate is
  * informational (the Billing page's projected-usage StatCard) until a payment
- * processor lands.
+ * processor lands. The 0.0006 default aligns with the volume-priced VU bands
+ * in USAGE_CREDITS_PROPOSAL.md.
  */
-export const OVERAGE_PRICE_PER_SCAN_USD = 0.05;
+export const VU_OVERAGE_PRICE_USD = 0.0006;
 
 const DAY_MS = 86_400_000;
 
@@ -109,7 +97,7 @@ export function projectScanUsage(input: {
   now?: Date;
 }) {
   const { used, limit, periodStart, periodEnd } = input;
-  const price = input.overagePriceUsd ?? OVERAGE_PRICE_PER_SCAN_USD;
+  const price = input.overagePriceUsd ?? VU_OVERAGE_PRICE_USD;
   const now = input.now ?? new Date();
 
   const startMs = new Date(periodStart).getTime();
@@ -120,17 +108,17 @@ export function projectScanUsage(input: {
   const daysInCycle = Math.max(1, Math.round((endMs - startMs) / DAY_MS));
 
   const pacePerDay = used / daysElapsed;
-  const projectedScans = Math.round(pacePerDay * daysInCycle);
-  const overageScans = Math.max(0, projectedScans - limit);
+  const projectedUnits = Math.round(pacePerDay * daysInCycle);
+  const overageUnits = Math.max(0, projectedUnits - limit);
   const overageCostUsd =
-    Math.round(overageScans * price * 100) / 100;
+    Math.round(overageUnits * price * 100) / 100;
 
   return {
     daysElapsed,
     daysInCycle,
     pacePerDay: Math.round(pacePerDay * 100) / 100,
-    projectedScans,
-    overageScans,
+    projectedUnits,
+    overageUnits,
     overageCostUsd,
   };
 }
@@ -141,10 +129,6 @@ const PLAN_DISPLAY: Record<string, { name: string; priceUsd: number; seats: numb
   team: { name: 'Team', priceUsd: 199, seats: 10 },
   enterprise: { name: 'Enterprise', priceUsd: 999, seats: 25 },
 };
-
-export function scanLimitForPlan(plan: string | null | undefined): number {
-  return PLAN_SCAN_QUOTAS[plan ?? ''] ?? PLAN_SCAN_QUOTAS[DEFAULT_PLAN];
-}
 
 export function apiCallLimitForPlan(plan: string | null | undefined): number {
   return PLAN_API_CALL_QUOTAS[plan ?? ''] ?? PLAN_API_CALL_QUOTAS[DEFAULT_PLAN];
@@ -182,10 +166,9 @@ export class BillingService {
   private readonly logger = new Logger(BillingService.name);
   private readonly orgMembersTable: string;
   private readonly orgsTable: string;
-  private readonly scansTable: string;
   private readonly apiUsageTable: string;
   private readonly vuLedgerTable: string;
-  private readonly overagePriceUsd: number;
+  private readonly vuOveragePriceUsd: number;
 
   constructor(
     private readonly supabaseService: SupabaseService,
@@ -199,15 +182,14 @@ export class BillingService {
       'SUPABASE_ORGANIZATIONS_TABLE',
       'organizations',
     );
-    this.scansTable = configService.get<string>('SUPABASE_SCANS_TABLE', 'scans');
     this.apiUsageTable =
       configService.get<string>('SUPABASE_API_USAGE_TABLE') || 'api_usage';
     this.vuLedgerTable =
       configService.get<string>('SUPABASE_VU_LEDGER_TABLE') || 'vu_ledger';
-    this.overagePriceUsd =
-      Number(configService.get<number>('SCAN_OVERAGE_PRICE_USD')) > 0
-        ? Number(configService.get<number>('SCAN_OVERAGE_PRICE_USD'))
-        : OVERAGE_PRICE_PER_SCAN_USD;
+    this.vuOveragePriceUsd =
+      Number(configService.get<number>('VU_OVERAGE_PRICE_USD')) > 0
+        ? Number(configService.get<number>('VU_OVERAGE_PRICE_USD'))
+        : VU_OVERAGE_PRICE_USD;
   }
 
   /**
@@ -243,29 +225,6 @@ export class BillingService {
       );
       return DEFAULT_PLAN;
     }
-  }
-
-  /**
-   * Count scans initiated by the user since the current cycle started. This is
-   * the metered value the Billing page renders and the enforcement gate uses.
-   */
-  async countCycleScans(userId: string, periodStartIso: string): Promise<number> {
-    const adminClient = this.supabaseService.getAdminClient();
-    if (!adminClient) {
-      throw new ServiceUnavailableException('Supabase is not configured.');
-    }
-
-    const { count, error } = await adminClient
-      .from(this.scansTable)
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .gte('created_at', periodStartIso);
-
-    if (error) {
-      throw new ServiceUnavailableException('Failed to resolve scan usage.');
-    }
-
-    return count ?? 0;
   }
 
   /**
@@ -343,21 +302,14 @@ export class BillingService {
   async resolveUsage(userId: string) {
     const plan = await this.resolveUserPlan(userId);
     const cycle = currentBillingCycle();
-    const [scansUsed, unitsUsed] = await Promise.all([
-      this.countCycleScans(userId, cycle.periodStart),
-      this.countCycleUnits(userId, cycle.periodStart),
-    ]);
-    const scansLimit = scanLimitForPlan(plan);
+    const unitsUsed = await this.countCycleUnits(userId, cycle.periodStart);
     const unitsLimit = vuAllowanceForPlan(plan);
 
     return {
       plan,
-      // VU meter (primary) — the ratified ledger names.
+      // VU meter — the ratified ledger names.
       unitsUsed,
       unitsLimit,
-      // LEGACY scan meter — kept until the frontend switch to VUs lands.
-      scansUsed,
-      scansLimit,
       periodStart: cycle.periodStart,
       periodEnd: cycle.periodEnd,
       retryAfterSeconds: cycle.retryAfterSeconds,
@@ -415,24 +367,21 @@ export class BillingService {
           period: 'current-month',
           periodStart: usage.periodStart,
           periodEnd: usage.periodEnd,
-          // VU meter (primary) — the ratified ledger names.
+          // VU meter — the ratified ledger names.
           unitsUsed: usage.unitsUsed,
           unitsLimit: usage.unitsLimit,
-          // LEGACY scan meter — kept until the frontend switch to VUs lands.
-          scansUsed: usage.scansUsed,
-          scansLimit: usage.scansLimit,
           storageUsedGb: storage.usedGb,
           storageLimitGb: storage.limitGb,
           apiCallsUsed: apiUsage.used,
           apiCallsLimit: apiUsage.limit,
-          // End-of-cycle projection from the current pace — powers the
+          // End-of-cycle VU projection from the current pace — powers the
           // Billing page's projected-usage StatCard.
           projection: projectScanUsage({
-            used: usage.scansUsed,
-            limit: usage.scansLimit,
+            used: usage.unitsUsed,
+            limit: usage.unitsLimit,
             periodStart: usage.periodStart,
             periodEnd: usage.periodEnd,
-            overagePriceUsd: this.overagePriceUsd,
+            overagePriceUsd: this.vuOveragePriceUsd,
           }),
         },
         paymentMethods: [],

@@ -134,7 +134,7 @@ export default function AppUploadsPage() {
   // instantly with a reused payload, so the panel + CTA shift from the queue
   // story to the reuse story.
   const [deduplicated, setDeduplicated] = useState(null)
-  // Billing usage (scansUsed/scansLimit) — the same resolveUsage source of
+  // Billing usage (unitsUsed/unitsLimit) — the same resolveUsage source of
   // truth as the dashboard's ≥85% quota chip and the initiateScan 402 gate,
   // so the warning the user sees on this page always agrees with the quota
   // the backend enforces at submit time.
@@ -386,7 +386,7 @@ export default function AppUploadsPage() {
       // quota message (with the reset hint) instead of a generic upload error.
       if (uploadError.status === 402) {
         setQuotaExhausted(true)
-        setError(uploadError.message || 'Monthly scan quota reached.')
+        setError(uploadError.message || 'Monthly verification-unit allowance reached.')
       } else {
         setQuotaExhausted(false)
         setError(uploadError.message || 'Upload failed.')
@@ -640,7 +640,7 @@ export default function AppUploadsPage() {
               {phase === 'error' ? (
                 <EmptyState
                   variant="error"
-                  title={quotaExhausted ? 'Monthly scan quota reached' : 'Upload failed'}
+                  title={quotaExhausted ? 'Monthly verification-unit allowance reached' : 'Upload failed'}
                   description={
                     quotaExhausted
                       ? `${error || 'Your plan\u2019s scan allowance for this cycle is used up.'} Upgrade your plan or wait for the cycle to reset to resume scanning.`

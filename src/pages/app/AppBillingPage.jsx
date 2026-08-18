@@ -113,10 +113,10 @@ export default function AppBillingPage() {
     if (!usage) return null
     return [
       {
-        label: 'Scans used',
-        value: formatCount(usage.scansUsed),
-        detail: `${formatPct(usage.scansUsed / usage.scansLimit, 0)} of ${formatCount(usage.scansLimit)} monthly`,
-        tone: percentOf(usage.scansUsed, usage.scansLimit) >= 90 ? 'warning' : 'default',
+        label: 'Verification units used',
+        value: formatCount(usage.unitsUsed),
+        detail: `${formatPct(usage.unitsUsed / usage.unitsLimit, 0)} of ${formatCount(usage.unitsLimit)} monthly VUs`,
+        tone: percentOf(usage.unitsUsed, usage.unitsLimit) >= 90 ? 'warning' : 'default',
       },
       {
         label: 'Storage',
@@ -130,20 +130,20 @@ export default function AppBillingPage() {
         detail: `${formatPct(usage.apiCallsUsed / usage.apiCallsLimit, 0)} of ${formatCount(usage.apiCallsLimit)} monthly`,
         tone: percentOf(usage.apiCallsUsed, usage.apiCallsLimit) >= 90 ? 'warning' : 'default',
       },
-      // End-of-cycle projection at the current pace — the new StatCard this
+      // End-of-cycle VU projection at the current pace — the new StatCard this
       // slice adds. Overage is only surfaced when the pace actually exceeds
-      // the plan; otherwise the card reports the projected total.
+      // the plan's allowance; otherwise the card reports the projected total.
       {
         label: 'Projected end of cycle',
         value: usage.projection
-          ? formatCount(usage.projection.projectedScans)
+          ? formatCount(usage.projection.projectedUnits)
           : '—',
         detail: usage.projection
-          ? usage.projection.overageScans > 0
-            ? `${formatCount(usage.projection.overageScans)} over · ${formatCurrency(usage.projection.overageCostUsd)} est. overage`
-            : `${formatCount(usage.projection.pacePerDay)} scans/day at current pace`
+          ? usage.projection.overageUnits > 0
+            ? `${formatCount(usage.projection.overageUnits)} VUs over · ${formatCurrency(usage.projection.overageCostUsd)} est. overage`
+            : `${formatCount(usage.projection.pacePerDay)} VUs/day at current pace`
           : 'Usage projection unavailable',
-        tone: usage.projection && usage.projection.overageScans > 0 ? 'warning' : 'default',
+        tone: usage.projection && usage.projection.overageUnits > 0 ? 'warning' : 'default',
       },
     ]
   }, [usage])
@@ -302,19 +302,19 @@ export default function AppBillingPage() {
         )}
 
         {/* Quota exhausted — surfaced from the same entitlement the upload gate enforces. */}
-        {!loading && !failed && usage && usage.scansUsed >= usage.scansLimit && (
+        {!loading && !failed && usage && usage.unitsUsed >= usage.unitsLimit && (
           <div
             role="alert"
             className="mt-6 flex flex-col gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
           >
             <div>
               <p className="text-sm font-semibold text-amber-900">
-                Scan quota reached for this cycle
+                Verification-unit allowance reached for this cycle
               </p>
               <p className="mt-1 text-sm text-amber-800">
-                All {formatCount(usage.scansLimit)} monthly scans are used. New uploads are
-                paused until the cycle resets {formatDate(usage.periodEnd)} — upgrade your
-                plan to raise the limit immediately.
+                All {formatCount(usage.unitsLimit)} monthly verification units are used. New
+                uploads are paused until the cycle resets {formatDate(usage.periodEnd)} —
+                upgrade your plan to raise the allowance immediately.
               </p>
             </div>
             <Button variant="secondary" size="sm" onClick={changePlan}>
@@ -326,7 +326,12 @@ export default function AppBillingPage() {
         {!loading && !failed && usage && (
           <Card className="mt-6" padding="lg">
             <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-              <UsageMeter label="Scans" used={usage.scansUsed} limit={usage.scansLimit} format={formatCount} />
+              <UsageMeter
+                label="Verification units"
+                used={usage.unitsUsed}
+                limit={usage.unitsLimit}
+                format={formatCount}
+              />
               <UsageMeter
                 label="Storage"
                 used={usage.storageUsedGb}

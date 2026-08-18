@@ -47,7 +47,7 @@ vi.mock('../../lib/api.js', async (importOriginal) => {
       .mockResolvedValue({ api: true, database: true, storage: true, queue: true, worker: true, email: true }),
     getBilling: vi
       .fn()
-      .mockResolvedValue({ profile: { usage: { scansUsed: 0, scansLimit: 0 } } }),
+      .mockResolvedValue({ profile: { usage: { unitsUsed: 0, unitsLimit: 0 } } }),
     getAnalytics: vi
       .fn()
       .mockResolvedValue({ scans_today: 0, scans_7d: 0, completion_rate: 0, suspicious_rate: 0 }),

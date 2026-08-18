@@ -314,10 +314,12 @@ export function validateEnv(config: Record<string, unknown>) {
       365,
       'REPORT_RETENTION_DAYS',
     ),
-    SCAN_OVERAGE_PRICE_USD: parseNonNegativeNumber(
-      env.SCAN_OVERAGE_PRICE_USD,
-      0.05,
-      'SCAN_OVERAGE_PRICE_USD',
+    // Per-unit overage price (USD) for projected usage above the monthly VU
+    // allowance — powers the Billing page's projection StatCard estimate.
+    VU_OVERAGE_PRICE_USD: parseNonNegativeNumber(
+      env.VU_OVERAGE_PRICE_USD,
+      0.0006,
+      'VU_OVERAGE_PRICE_USD',
     ),
     AUDIT_RETENTION_DAYS: parsePositiveInteger(
       env.AUDIT_RETENTION_DAYS,

@@ -1388,28 +1388,26 @@ export const mockBillingProfile = {
     period: 'current-month',
     periodStart: daysAgo(11, 0),
     periodEnd: daysAgo(-20, 0),
-    // VU meter (primary) — the ratified ledger names. The 312 seeded scans are
-    // all Standard depth, so 312 × 10 VU = 3,120 units against the Pro
-    // allowance of 100,000.
+    // VU meter — the ratified ledger names. The 312 seeded scans are all
+    // Standard depth, so 312 × 10 VU = 3,120 units against the Pro allowance
+    // of 100,000.
     unitsUsed: 3120,
     unitsLimit: 100000,
-    // LEGACY scan meter — kept until the frontend switch to VUs lands.
-    scansUsed: 312,
-    scansLimit: 500,
     storageUsedGb: 18.4,
     storageLimitGb: 50,
     apiCallsUsed: 4120,
     apiCallsLimit: 10000,
-    // End-of-cycle projection at the current pace (312 over 11 days ≈ 28.4/day
-    // → ~880 by day 31, ~380 over the 500 limit). Mirrors the real
-    // projectScanUsage shape the backend computes.
+    // End-of-cycle VU projection at the current pace (3,120 units over 11
+    // days ≈ 283.64/day → ~8,793 by day 31 — comfortably under the 100,000
+    // allowance, so no overage). Mirrors the real projectScanUsage shape the
+    // backend computes.
     projection: {
       daysElapsed: 11,
       daysInCycle: 31,
-      pacePerDay: 28.36,
-      projectedScans: 880,
-      overageScans: 380,
-      overageCostUsd: 19,
+      pacePerDay: 283.64,
+      projectedUnits: 8793,
+      overageUnits: 0,
+      overageCostUsd: 0,
     },
   },
   paymentMethods: [

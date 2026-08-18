@@ -7,14 +7,12 @@ import { QuotaExceededException } from './quota-exceeded.exception';
 import {
   BillingService,
   DEFAULT_PLAN,
-  OVERAGE_PRICE_PER_SCAN_USD,
   PLAN_API_CALL_QUOTAS,
-  PLAN_SCAN_QUOTAS,
   PLAN_VU_ALLOWANCES,
   VU_COST_BY_DEPTH,
+  VU_OVERAGE_PRICE_USD,
   apiCallLimitForPlan,
   projectScanUsage,
-  scanLimitForPlan,
   vuAllowanceForPlan,
   vuCostForDepth,
   currentBillingCycle,
@@ -82,22 +80,6 @@ const USER_ID = 'user-1';
 // ---------------------------------------------------------------------------
 
 describe('billing policy', () => {
-  it('maps known plans to their monthly scan quotas', () => {
-    expect(PLAN_SCAN_QUOTAS).toMatchObject({
-      starter: 100,
-      pro: 500,
-      team: 2500,
-      enterprise: 10000,
-    });
-  });
-
-  it('falls back to the pro quota for unknown or missing plans', () => {
-    expect(scanLimitForPlan('pro')).toBe(PLAN_SCAN_QUOTAS.pro);
-    expect(scanLimitForPlan('unknown-plan')).toBe(PLAN_SCAN_QUOTAS.pro);
-    expect(scanLimitForPlan(null)).toBe(PLAN_SCAN_QUOTAS.pro);
-    expect(scanLimitForPlan(undefined)).toBe(PLAN_SCAN_QUOTAS.pro);
-  });
-
   it('computes the calendar-month cycle in UTC with a retry-after hint', () => {
     const now = new Date('2026-07-15T12:00:00.000Z');
     const cycle = currentBillingCycle(now);
@@ -165,9 +147,13 @@ describe('billing policy', () => {
       expect(projection.daysElapsed).toBe(10);
       expect(projection.daysInCycle).toBe(31);
       expect(projection.pacePerDay).toBe(25);
-      expect(projection.projectedScans).toBe(775);
-      expect(projection.overageScans).toBe(275);
-      expect(projection.overageCostUsd).toBe(275 * OVERAGE_PRICE_PER_SCAN_USD);
+      expect(projection.projectedUnits).toBe(775);
+      expect(projection.overageUnits).toBe(275);
+      // Rounded to 2dp in the projection (the raw float product has binary
+      // noise at the 0.0006 price — assert the rounded wire value).
+      expect(projection.overageCostUsd).toBe(
+        Math.round(275 * VU_OVERAGE_PRICE_USD * 100) / 100,
+      );
     });
 
     it('reports zero overage when the projection stays under the limit', () => {
@@ -179,8 +165,8 @@ describe('billing policy', () => {
         now,
       });
 
-      expect(projection.projectedScans).toBe(186);
-      expect(projection.overageScans).toBe(0);
+      expect(projection.projectedUnits).toBe(186);
+      expect(projection.overageUnits).toBe(0);
       expect(projection.overageCostUsd).toBe(0);
     });
 
@@ -194,8 +180,8 @@ describe('billing policy', () => {
       });
 
       expect(projection.daysElapsed).toBe(1);
-      expect(projection.projectedScans).toBe(930); // 30/day × 31
-      expect(projection.overageScans).toBe(830);
+      expect(projection.projectedUnits).toBe(930); // 30/day × 31
+      expect(projection.overageUnits).toBe(830);
     });
 
     it('handles zero usage without crashing', () => {
@@ -207,8 +193,8 @@ describe('billing policy', () => {
         now,
       });
 
-      expect(projection.projectedScans).toBe(0);
-      expect(projection.overageScans).toBe(0);
+      expect(projection.projectedUnits).toBe(0);
+      expect(projection.overageUnits).toBe(0);
       expect(projection.overageCostUsd).toBe(0);
     });
 
@@ -265,24 +251,6 @@ describe('BillingService', () => {
     it('falls back when supabase is not configured', async () => {
       const service = createService(null);
       await expect(service.resolveUserPlan(USER_ID)).resolves.toBe(DEFAULT_PLAN);
-    });
-  });
-
-  describe('countCycleScans', () => {
-    it('returns the exact scan count for the current cycle', async () => {
-      const client = createAdminClient([{ count: 42 }]);
-      const service = createService(client);
-
-      await expect(
-        service.countCycleScans(USER_ID, '2026-07-01T00:00:00.000Z'),
-      ).resolves.toBe(42);
-    });
-
-    it('rejects with 503 when supabase is not configured', async () => {
-      const service = createService(null);
-      await expect(
-        service.countCycleScans(USER_ID, '2026-07-01T00:00:00.000Z'),
-      ).rejects.toThrow(ServiceUnavailableException);
     });
   });
 
@@ -413,7 +381,6 @@ describe('BillingService', () => {
       const client = createAdminClient([
         { data: { organization_id: 'org-1' } },
         { data: { plan: 'pro' } },
-        { count: 500 },
         { data: [{ units: 100000 }] },
       ]);
       const service = createService(client);
@@ -430,7 +397,6 @@ describe('BillingService', () => {
       const client = createAdminClient([
         { data: { organization_id: 'org-1' } },
         { data: { plan: 'starter' } },
-        { count: 100 },
         { data: [{ units: 10000 }] },
       ]);
       const service = createService(client);
@@ -443,15 +409,14 @@ describe('BillingService', () => {
 
   describe('getBilling', () => {
     it('returns the mock-contract payload with real usage', async () => {
-      // Query order: resolveUsage (membership, org plan, scan count), then the
+      // Query order: resolveUsage (membership, org plan, ledger sum), then the
       // Promise.all pair — storage's membership probe, then the api_usage
       // lookup, then storage's org read (the concurrent branches interleave).
       const client = createAdminClient([
         // resolveUsage → resolveUserPlan: membership + org plan
         { data: { organization_id: 'org-1' } },
         { data: { plan: 'pro' } },
-        // countCycleScans + countCycleUnits (Promise.all, scans first)
-        { count: 312 },
+        // countCycleUnits: ledger sum
         { data: [{ units: 3120 }] },
         // resolveStorageUsage: membership probe
         { data: { organization_id: 'org-1' } },
@@ -472,22 +437,19 @@ describe('BillingService', () => {
       });
       expect(result.profile.usage).toMatchObject({
         period: 'current-month',
-        // VU meter (primary)
+        // VU meter
         unitsUsed: 3120,
         unitsLimit: PLAN_VU_ALLOWANCES.pro,
-        // legacy scan meter
-        scansUsed: 312,
-        scansLimit: 500,
         storageUsedGb: 18.4,
         storageLimitGb: 50,
         apiCallsUsed: 4120,
         apiCallsLimit: PLAN_API_CALL_QUOTAS.pro,
       });
       expect(result.profile.usage.periodStart).toMatch(/T00:00:00.000Z$/);
-      // Projection is computed from the same scansUsed/limit/cycle fields.
+      // Projection is computed from the same unitsUsed/limit/cycle fields.
       expect(result.profile.usage.projection).toMatchObject({
-        projectedScans: expect.any(Number),
-        overageScans: expect.any(Number),
+        projectedUnits: expect.any(Number),
+        overageUnits: expect.any(Number),
         overageCostUsd: expect.any(Number),
       });
       expect(result.profile.paymentMethods).toEqual([]);
@@ -498,8 +460,7 @@ describe('BillingService', () => {
       const client = createAdminClient([
         // resolveUsage → resolveUserPlan: no membership → default plan
         { data: null },
-        // countCycleScans + countCycleUnits
-        { count: 5 },
+        // countCycleUnits: ledger sum
         { data: [{ units: 120 }] },
         // resolveStorageUsage: no membership → nulls (short-circuits)
         { data: null },
@@ -513,8 +474,6 @@ describe('BillingService', () => {
       expect(result.profile.usage).toMatchObject({
         unitsUsed: 120,
         unitsLimit: PLAN_VU_ALLOWANCES[DEFAULT_PLAN],
-        scansUsed: 5,
-        scansLimit: PLAN_SCAN_QUOTAS[DEFAULT_PLAN],
         storageUsedGb: null,
         storageLimitGb: null,
         apiCallsUsed: 0,
@@ -527,8 +486,7 @@ describe('BillingService', () => {
         // resolveUsage → resolveUserPlan: membership + org plan
         { data: { organization_id: 'org-1' } },
         { data: { plan: 'team' } },
-        // countCycleScans + countCycleUnits
-        { count: 0 },
+        // countCycleUnits: ledger sum
         { data: [] },
         // resolveStorageUsage: membership probe
         { data: { organization_id: 'org-1' } },

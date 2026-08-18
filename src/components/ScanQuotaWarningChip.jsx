@@ -3,10 +3,11 @@ import { scanQuotaPct } from '../lib/scanQuota.js'
 
 /**
  * ScanQuotaWarningChip — workspace-level banner linking to Billing when the
- * workspace is at or above 85% of its monthly scan quota. Shared by the
- * dashboard hero and the Uploads page (the surface where the user actually
- * hits the limit), so both surfaces agree on the same resolveUsage source of
- * truth. Tones escalate: 85–99% warning, 100%+ danger (exhausted).
+ * workspace is at or above 85% of its monthly verification-unit (VU)
+ * allowance. Shared by the dashboard hero and the Uploads page (the surface
+ * where the user actually hits the limit), so both surfaces agree on the
+ * same resolveUsage source of truth. Tones escalate: 85–99% warning, 100%+
+ * danger (exhausted).
  *
  * Renders nothing until the quota reaches the warning threshold, so callers
  * can place it unconditionally and it stays invisible during loading/error
@@ -32,8 +33,8 @@ export default function ScanQuotaWarningChip({ usage }) {
         <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
       </svg>
       {exhausted
-        ? 'Monthly scan quota exhausted — view billing'
-        : `${pct}% of monthly scan quota used — view billing`}
+        ? 'Monthly verification-unit allowance exhausted — view billing'
+        : `${pct}% of monthly verification-unit allowance used — view billing`}
     </Link>
   )
 }

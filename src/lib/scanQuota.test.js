@@ -1,23 +1,31 @@
 import { describe, expect, it } from 'vitest'
-import { OVERAGE_PRICE_PER_SCAN_USD, projectScanUsage, scanQuotaPct } from './scanQuota.js'
+import {
+  VU_OVERAGE_PRICE_USD,
+  projectScanUsage,
+  scanQuotaPct,
+} from './scanQuota.js'
 
 /**
- * Billing projection parity tests — the frontend mirror of the backend's
+ * VU quota parity tests — the frontend mirror of the backend's
  * projectScanUsage (billing.service.ts). Locks the same pace → projection →
  * overage math so the mock payload and the Billing page's StatCard can never
- * disagree with the real endpoint.
+ * disagree with the real endpoint. The meter is VUs (unitsUsed/unitsLimit);
+ * the legacy scansUsed/scansLimit fields were dropped with the frontend
+ * switch.
  */
 describe('scanQuotaPct', () => {
   it('computes the used/limit ratio as a 0..100 integer', () => {
-    expect(scanQuotaPct({ scansUsed: 450, scansLimit: 500 })).toBe(90)
-    expect(scanQuotaPct({ scansUsed: 312, scansLimit: 500 })).toBe(62)
-    expect(scanQuotaPct({ scansUsed: 500, scansLimit: 500 })).toBe(100)
+    expect(scanQuotaPct({ unitsUsed: 90000, unitsLimit: 100000 })).toBe(90)
+    expect(scanQuotaPct({ unitsUsed: 62000, unitsLimit: 100000 })).toBe(62)
+    expect(scanQuotaPct({ unitsUsed: 100000, unitsLimit: 100000 })).toBe(100)
   })
 
   it('returns null for missing or non-positive limits', () => {
     expect(scanQuotaPct(null)).toBeNull()
     expect(scanQuotaPct({})).toBeNull()
-    expect(scanQuotaPct({ scansUsed: 10, scansLimit: 0 })).toBeNull()
+    expect(scanQuotaPct({ unitsUsed: 10, unitsLimit: 0 })).toBeNull()
+    expect(scanQuotaPct({ unitsUsed: 10, unitsLimit: null })).toBeNull()
+    expect(scanQuotaPct({ unitsUsed: 10, unitsLimit: -5 })).toBeNull()
   })
 })
 
@@ -27,7 +35,7 @@ describe('projectScanUsage', () => {
     periodEnd: '2026-08-01T00:00:00.000Z',
   }
 
-  it('projects end-of-cycle usage from the current pace', () => {
+  it('projects end-of-cycle VUs from the current pace', () => {
     const projection = projectScanUsage({
       used: 250,
       limit: 500,
@@ -38,9 +46,13 @@ describe('projectScanUsage', () => {
     expect(projection.daysElapsed).toBe(10)
     expect(projection.daysInCycle).toBe(31)
     expect(projection.pacePerDay).toBe(25)
-    expect(projection.projectedScans).toBe(775)
-    expect(projection.overageScans).toBe(275)
-    expect(projection.overageCostUsd).toBe(275 * OVERAGE_PRICE_PER_SCAN_USD)
+    expect(projection.projectedUnits).toBe(775)
+    expect(projection.overageUnits).toBe(275)
+    // Rounded to 2dp in the projection (the raw float product has binary
+    // noise at the 0.0006 price — assert the rounded wire value).
+    expect(projection.overageCostUsd).toBe(
+      Math.round(275 * VU_OVERAGE_PRICE_USD * 100) / 100,
+    )
   })
 
   it('reports zero overage when the projection stays under the limit', () => {
@@ -51,8 +63,8 @@ describe('projectScanUsage', () => {
       now: new Date('2026-07-11T00:00:00.000Z'),
     })
 
-    expect(projection.projectedScans).toBe(186)
-    expect(projection.overageScans).toBe(0)
+    expect(projection.projectedUnits).toBe(186)
+    expect(projection.overageUnits).toBe(0)
     expect(projection.overageCostUsd).toBe(0)
   })
 
@@ -65,8 +77,8 @@ describe('projectScanUsage', () => {
     })
 
     expect(projection.daysElapsed).toBe(1)
-    expect(projection.projectedScans).toBe(930)
-    expect(projection.overageScans).toBe(830)
+    expect(projection.projectedUnits).toBe(930)
+    expect(projection.overageUnits).toBe(830)
   })
 
   it('handles zero usage and missing dates gracefully', () => {
@@ -76,11 +88,11 @@ describe('projectScanUsage', () => {
       ...cycle,
       now: new Date('2026-07-20T00:00:00.000Z'),
     })
-    expect(zero.projectedScans).toBe(0)
+    expect(zero.projectedUnits).toBe(0)
     expect(zero.overageCostUsd).toBe(0)
 
     const noDates = projectScanUsage({ used: 100, limit: 500 })
-    expect(noDates.projectedScans).toBeGreaterThan(0)
+    expect(noDates.projectedUnits).toBeGreaterThan(0)
     expect(noDates.daysInCycle).toBe(30)
   })
 

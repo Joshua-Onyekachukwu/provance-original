@@ -1,5 +1,18 @@
 # Provance — Changelog
 
+## [2026-08-18] - Frontend VU switch: chip + meters + projection read units
+
+### Changed
+- **`src/lib/scanQuota.js`** (the shared mirror) — `scanQuotaPct` reads `unitsUsed`/`unitsLimit` (was `scansUsed`/`scansLimit`); `projectScanUsage` is VU-denominated (`projectedUnits`/`overageUnits`, overage priced at `VU_OVERAGE_PRICE_USD` 0.0006, replacing the scan price 0.05).
+- **Backend `billing.service.ts`** — `projectScanUsage` output renamed to `projectedUnits`/`overageUnits` and `GET /v1/billing`'s projection now computes from `unitsUsed`/`unitsLimit` at `VU_OVERAGE_PRICE_USD` (env `VU_OVERAGE_PRICE_USD`, replacing `SCAN_OVERAGE_PRICE_USD`). **Legacy `scansUsed`/`scansLimit` dropped** from the payload and `resolveUsage`; `countCycleScans`, `PLAN_SCAN_QUOTAS`, and `scanLimitForPlan` removed (dead after the switch). `env.validation.ts` validates the new env name.
+- **`ScanQuotaWarningChip`** — copy now reads VUs: `${pct}% of monthly verification-unit allowance used` / `Monthly verification-unit allowance exhausted`, matching the backend 402 message.
+- **`AppBillingPage`** — meters + exhausted banner read `unitsUsed`/`unitsLimit`; the projection StatCard shows `projectedUnits`/`overageUnits` with "VUs/day" pace; UsageMeter label "Verification units".
+- **Mock parity** — `mockBillingProfile` legacy fields removed; seeded projection re-computed in VUs (3,120 units → 8,793 projected, 0 overage); `mockGetBilling` forcing recomputes from `unitsUsed`; dashboard/uploads fixtures + the 402 copy on Uploads updated.
+
+### Tests
+- `scanQuota.test.js` + `scanQuotaWarning.test.jsx` rewritten for the VU meter (16 tests incl. chip copy); backend billing spec updated (projection keys, `countCycleScans`/`PLAN_SCAN_QUOTAS` tests removed, query plans re-pointed at the ledger-only `resolveUsage`).
+- Verified: backend jest **502/502**, vitest **619/619**, build clean, lint 0 errors.
+
 ## [2026-08-18] - Per-scan VU meter on the scans row (ledger auditability)
 
 ### Changed

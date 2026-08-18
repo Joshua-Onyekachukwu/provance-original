@@ -929,11 +929,11 @@ export default function AppDashboardPage() {
   const health = withDemoOverride(useResource(() => getSystemHealth()), demoState, {
     emptyData: { api: true, database: true, storage: true, queue: true, worker: true, email: true },
   })
-  // Billing usage (scansUsed/scansLimit) — same resolveUsage source of truth
+  // Billing usage (unitsUsed/unitsLimit) — same resolveUsage source of truth
   // as the Billing page and the initiateScan quota gate. Powers the ≥85%
   // quota warning chip without a second round-trip contract.
   const billing = withDemoOverride(useResource(() => getBilling()), demoState, {
-    emptyData: { profile: { usage: { scansUsed: 0, scansLimit: 0 } } },
+    emptyData: { profile: { usage: { unitsUsed: 0, unitsLimit: 0 } } },
   })
   const analytics = withDemoOverride(useResource(() => getAnalytics()), demoState, {
     emptyData: { scans_today: 0, scans_7d: 0, completion_rate: 0, suspicious_rate: 0 },

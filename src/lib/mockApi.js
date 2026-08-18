@@ -87,9 +87,9 @@ function mockQuotaExhausted() {
 }
 
 /**
- * Dev-only quota-high forcing — `?quota=high` pushes scansUsed to 90% of the
- * plan limit so the dashboard's ≥85% warning chip renders for review. Inert
- * in production builds — same pattern as `?quota=exhausted`.
+ * Dev-only quota-high forcing — `?quota=high` pushes unitsUsed to 90% of the
+ * plan allowance so the dashboard's ≥85% warning chip renders for review.
+ * Inert in production builds — same pattern as `?quota=exhausted`.
  */
 function mockQuotaHigh() {
   if (!import.meta.env.DEV) return false
@@ -603,8 +603,8 @@ export async function mockGetScan(id) {
  * mockInitiateScan — reserves a verification record and returns the signed
  * upload contract (bucket/path/token). Mirrors POST /scans.
  *
- * Enforces the mock plan quota: once the billing profile's scansUsed reaches
- * scansLimit, new scans are rejected with a 402-shaped error carrying
+ * Enforces the mock plan quota: once the billing profile's unitsUsed reaches
+ * unitsLimit, new scans are rejected with a 402-shaped error carrying
  * retryAfterSeconds (matching the real /scans entitlement gate). Dev-only
  * forcing: append ?quota=exhausted to demo the 402 surface without waiting.
  */
@@ -1112,8 +1112,8 @@ export async function mockGetBilling() {
   profile.usage = {
     ...effectiveUsage,
     projection: projectScanUsage({
-      used: effectiveUsage.scansUsed,
-      limit: effectiveUsage.scansLimit,
+      used: effectiveUsage.unitsUsed,
+      limit: effectiveUsage.unitsLimit,
       periodStart: effectiveUsage.periodStart,
       periodEnd: effectiveUsage.periodEnd,
     }),
