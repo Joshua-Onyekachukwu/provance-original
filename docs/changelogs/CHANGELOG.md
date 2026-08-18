@@ -1,5 +1,17 @@
 # Provance — Changelog
 
+## [2026-08-18] - Commit api.js Backend seam design doc (candidate 01)
+
+### Added
+- **`docs/engineering/BACKEND_SEAM_DESIGN.md`** (new, ~23KB) — the full design for collapsing `api.js`'s 988-line dispatch ladder (70 inline `USE_MOCK` + 9 `USE_BETTER_AUTH` branches across 79 functions) into one boot-time adapter selection: `base = USE_MOCK ? new MockBackend() : new HttpBackend()`, decorated by `BetterAuthBackend` when `USE_BETTER_AUTH`:
+  - **Backend interface manifest** — every operation `api.js` exposes, grouped by domain (session, auth, waitlist, scans, reports, admin, notifications, audit, billing, security, account, roles, org, api keys, webhooks, jobs, support), with the mock/http/better-auth resolution per method and the two explicit mock gaps (`submitWaitlistApplication`, `updateAccountProfile`).
+  - **Three adapters** — `HttpBackend` (real NestJS path: `request()` + httpOnly-cookie refresh with single-flight 401 dedup + in-memory session; constructor `fetch` override as the transport seam for contract tests), `MockBackend` (wraps the 69 `mockApi` twins + localStorage session + closes the gaps), and `BetterAuthBackend` (thin decorator overriding only the 9 auth/security functions, forwarding the rest).
+  - **Parity suites → per-adapter contract tests** — existing `apiParity` / `mockApiParity` / `mockDataParity` / `pollParity` guards stay unchanged; new `backendParity.test.js` (interface-drift guard) + `backendContract.test.js` (shared behavioral suite run against every adapter, making `API_DESIGN_STANDARDS.md` executable).
+  - **Six independently shippable phases** (guard → HttpBackend extraction → MockBackend → BetterAuth decorator → contract suite → dead-code removal), Phase 1 a zero-risk guard, Phase 2 the core refactor, plus the session-store coupling risk (§9): the httpOnly refresh is owned solely by `HttpBackend`, `localStorage` solely by `MockBackend`.
+
+### Notes
+- Design-only commit — no source changes. The in-progress backend edits on disk (`scans.service.ts`, `analysis-pipeline.spec.ts` — the report-depth behavior task) were intentionally left uncommitted.
+
 ## [2026-08-18] - Seal on report cover + PDF export — verified already shipped
 
 ### Verified
