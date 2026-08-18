@@ -1,5 +1,11 @@
 # Provance — Changelog
 
+## [2026-08-18] - Report-depth choice — verified already shipped
+
+### Verified
+- The report-depth wiring (upload page Quick/Standard/Deep → real upload flow) landed in commit `46136b7` and is intact on disk, verified link by link this turn: `AppUploadsPage` selector + `processingMode` in the initiate payload (mock + real) · DTO `quick|standard|deep` enum · real worker depth branch (`isQuick`/`isDeep`, `deep_analysis`, `processing_cost_credits` 1/10/100) · mock worker `depthSignals` branch (quick 2 / standard 4 / deep 5 + `deep_analysis`).
+- Gates re-run: mockScanLifecycle depth-parity **3/3** (vitest) + analysis-pipeline depth branches **3/3** (backend jest). No code changes needed — verification close-out only.
+
 ## [2026-08-18] - VU billing rollout step 1 — verified already shipped
 
 ### Verified
