@@ -118,6 +118,7 @@ const PUBLIC_ROUTES = [
   '/accept-invite',
   '/reset-password',
   '/reset-password/confirm',
+  '/ui-kit',
 ];
 
 const ALL_ROUTES = [...APP_ROUTES, ...ADMIN_ROUTES, ...PUBLIC_ROUTES];

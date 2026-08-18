@@ -140,3 +140,48 @@ export function scanGridBaseViolations(dir) {
   walk(dir)
   return violations
 }
+
+// ---------------------------------------------------------------------------
+// Route-inventory parity — the a11y and responsive audit gates each walk a
+// hard-coded PUBLIC_ROUTES list. If one gains a page and the other doesn't, a
+// public surface silently slips under one gate while the other audits it.
+// These helpers parse the literal array from each script (static regex — the
+// scripts themselves are never executed, so this is safe to run in CI) and
+// produce the symmetric diff the grid-guard CI step fails on.
+// ---------------------------------------------------------------------------
+
+const PUBLIC_ROUTES_BLOCK_RE = /const\s+PUBLIC_ROUTES\s*=\s*\[([^\]]*)\]/s
+
+/**
+ * Parse the PUBLIC_ROUTES array literal out of an audit script's source text.
+ * Returns the route list, or null when the block isn't present (script
+ * changed shape — itself a parity failure worth surfacing).
+ */
+export function extractRouteInventory(sourceText) {
+  const match = PUBLIC_ROUTES_BLOCK_RE.exec(sourceText)
+  if (!match) return null
+
+  const body = match[1]
+  const routes = []
+  const routeRe = /'([^']*)'/g
+  let item
+  while ((item = routeRe.exec(body)) !== null) {
+    routes.push(item[1])
+  }
+  return routes
+}
+
+/**
+ * Symmetric diff of two route inventories: which routes are in one but not
+ * the other (and vice versa). `equal` is true only when both lists contain
+ * exactly the same routes in the same order.
+ */
+export function routeInventoryDiff(reference, candidate) {
+  if (reference === null || candidate === null) {
+    return { equal: false, missing: null, extra: null }
+  }
+
+  const missing = reference.filter((route) => !candidate.includes(route))
+  const extra = candidate.filter((route) => !reference.includes(route))
+  return { equal: missing.length === 0 && extra.length === 0, missing, extra }
+}

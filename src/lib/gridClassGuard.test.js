@@ -6,8 +6,10 @@ import { describe, expect, it } from 'vitest'
 import {
   INTENTIONAL_MOBILE_GRIDS,
   extractClassNameLiterals,
+  extractRouteInventory,
   findBaseDisplayViolation,
   findGridBaseViolation,
+  routeInventoryDiff,
   scanGridBaseViolations,
 } from './gridClassGuard.js'
 import { fileURLToPath } from 'node:url'
@@ -104,6 +106,54 @@ describe('findBaseDisplayViolation', () => {
   })
 })
 
+describe('route inventory parity', () => {
+  it('parses the PUBLIC_ROUTES array out of an audit script', () => {
+    const source = [
+      "const PUBLIC_ROUTES = [",
+      "  '/',",
+      "  '/about',",
+      "  '/pricing',",
+      "];",
+    ].join('\n')
+    expect(extractRouteInventory(source)).toEqual(['/', '/about', '/pricing'])
+  })
+
+  it('returns null when the PUBLIC_ROUTES block is absent', () => {
+    expect(extractRouteInventory("const FOO = ['/x'];")).toBeNull()
+  })
+
+  it('reports identical inventories as equal', () => {
+    const a = ['/', '/about']
+    expect(routeInventoryDiff(a, [...a])).toEqual({ equal: true, missing: [], extra: [] })
+  })
+
+  it('reports routes present in one inventory but not the other', () => {
+    const diff = routeInventoryDiff(['/', '/about', '/pricing'], ['/', '/about', '/ui-kit'])
+    expect(diff.equal).toBe(false)
+    expect(diff.missing).toEqual(['/pricing']) // in reference, absent from candidate
+    expect(diff.extra).toEqual(['/ui-kit']) // in candidate, absent from reference
+  })
+
+  it('flags an unparseable inventory as unequal', () => {
+    const diff = routeInventoryDiff(['/'], null)
+    expect(diff.equal).toBe(false)
+    expect(diff.missing).toBeNull()
+  })
+
+  it('the live a11y and responsive audit scripts list the same public routes', () => {
+    const scriptsDir = path.resolve(SRC_DIR, '..', 'scripts')
+    const a11ySource = fs.readFileSync(path.join(scriptsDir, 'audit-a11y.mjs'), 'utf8')
+    const responsiveSource = fs.readFileSync(path.join(scriptsDir, 'audit-responsive.mjs'), 'utf8')
+
+    const a11yRoutes = extractRouteInventory(a11ySource)
+    const responsiveRoutes = extractRouteInventory(responsiveSource)
+
+    expect(a11yRoutes).not.toBeNull()
+    expect(responsiveRoutes).not.toBeNull()
+    expect(routeInventoryDiff(responsiveRoutes, a11yRoutes).equal).toBe(true)
+  })
+})
+
 describe('repo-wide mobile-first grid guard', () => {
   it('every responsive grid in src declares a base grid-cols-1', () => {
     const violations = scanGridBaseViolations(SRC_DIR)
@@ -117,7 +167,7 @@ describe('repo-wide mobile-first grid guard', () => {
         const full = path.join(current, entry.name)
         if (entry.isDirectory()) {
           walk(full)
-        } else if (/\.(jsx|js)$/.test(entry.name) && !/\\.test\\.(jsx|js)$/.test(entry.name)) {
+        } else if (/\.(jsx|js)$/.test(entry.name) && !/\.test\.(jsx|js)$/.test(entry.name)) {
           for (const literal of extractClassNameLiterals(fs.readFileSync(full, 'utf8'))) {
             allLiterals.add(literal)
           }

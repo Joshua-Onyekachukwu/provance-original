@@ -24,6 +24,8 @@ import { fileURLToPath } from 'node:url'
 import {
   INTENTIONAL_MOBILE_GRIDS,
   extractClassNameLiterals,
+  extractRouteInventory,
+  routeInventoryDiff,
   scanGridBaseViolations,
 } from '../src/lib/gridClassGuard.js'
 
@@ -52,8 +54,21 @@ walk(target)
 
 const stale = INTENTIONAL_MOBILE_GRIDS.filter((literal) => !allLiterals.has(literal))
 
-if (violations.length === 0 && stale.length === 0) {
-  console.log(`gridClassGuard: ${target} clean — every responsive grid declares a base grid-cols-1, and every responsive display utility (lg:flex / md:grid / …) declares an explicit base display token.`)
+// Audit-route inventory parity — the a11y and responsive gates must walk the
+// SAME public routes, or a public page can slip under one gate while the
+// other audits it. Both lists are parsed from the scripts' source (static,
+// never executed) and diffed symmetrically.
+const a11ySource = fs.readFileSync(path.join(ROOT, 'scripts', 'audit-a11y.mjs'), 'utf8')
+const responsiveSource = fs.readFileSync(
+  path.join(ROOT, 'scripts', 'audit-responsive.mjs'),
+  'utf8',
+)
+const a11yRoutes = extractRouteInventory(a11ySource)
+const responsiveRoutes = extractRouteInventory(responsiveSource)
+const routeDiff = routeInventoryDiff(responsiveRoutes, a11yRoutes)
+
+if (violations.length === 0 && stale.length === 0 && routeDiff.equal) {
+  console.log(`gridClassGuard: ${target} clean — every responsive grid declares a base grid-cols-1, every responsive display utility (lg:flex / md:grid / …) declares an explicit base display token, and the a11y/responsive PUBLIC_ROUTES inventories are in parity.`)
   process.exit(0)
 }
 
@@ -64,5 +79,18 @@ for (const violation of violations) {
 }
 for (const literal of stale) {
   console.error(`  stale allowlist entry (no longer in ${path.relative(ROOT, target)}/): ${literal}`)
+}
+if (!routeDiff.equal) {
+  console.error('  PUBLIC_ROUTES parity: audit-a11y.mjs and audit-responsive.mjs must list the same public routes.')
+  if (routeDiff.missing === null || routeDiff.extra === null) {
+    console.error('    one script no longer has a parseable PUBLIC_ROUTES block — check both audit scripts.')
+  } else {
+    if (routeDiff.missing.length > 0) {
+      console.error(`    in audit-responsive.mjs but missing from audit-a11y.mjs: ${routeDiff.missing.join(', ')}`)
+    }
+    if (routeDiff.extra.length > 0) {
+      console.error(`    in audit-a11y.mjs but missing from audit-responsive.mjs: ${routeDiff.extra.join(', ')}`)
+    }
+  }
 }
 process.exit(1)
