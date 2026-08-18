@@ -38,3 +38,6 @@ backend/coverage/
 
 # Trello CLI cached board id (contains no secrets)
 scripts/.trello-state.json
+
+# Local env vars with real secrets
+docs/LOCAL_ENV_VARS.txt
