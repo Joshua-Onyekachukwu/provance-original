@@ -1,5 +1,23 @@
 # Provance — Changelog
 
+## [2026-08-18] - VU rollover (≤1× monthly) folds into unitsLimit
+
+### Added
+- **Migration `0024_vu_rollover.sql`** — `vu_ledger.depth` relaxes to nullable (rollover rows have no scan/depth), new `rollover_basis` column snapshots the allowance a carry was computed against (audit parity with `applied_rate`), and a partial unique index enforces one `source='rollover'` row per user per cycle.
+- **Rollover math (pure, tested)** — `carriedOverUnits({ allowance, priorCycleUsed })` = `min(max(0, allowance − priorCycleUsed), 1 × allowance)`; the ≤1× cap is enforced by construction (unused can never exceed one allowance), so banked balances never compound across months. New `previousBillingCycle()` + shared `cycleForMonth()` helpers (handles the January boundary).
+- **Folded into the meter** — `resolveUsage` now computes the prior cycle's usage (windowed `[prevStart, currentStart)`, rollover-excluding meter) and returns `unitsLimit = allowance + carriedOver` (plus `allowance` and `carriedOver` on the usage payload). The 402 gate, meters, and projection all read the effective limit including the carry.
+- **Lazy, best-effort audit row** — `recordRollover` writes one `source='rollover'` ledger row per user/cycle on first resolve, check-then-insert with the 0024 unique index as the backstop; a missing migration only logs a warning (the carry still folds in-memory).
+- **Meter semantics** — `countCycleUnits` gained an optional `periodEndIso` window bound and now excludes `source='rollover'` rows (they are limit-side credits, not deductions), so a carry never inflates `unitsUsed`.
+
+### Changed
+- `GET /v1/billing` usage payload gains `allowance` + `carriedOver`; mock parity mirrors both (seeded 0 — prior cycle fully used).
+
+### Tests
+- Billing spec: 6 new rollover tests (full/partial/no carry, ≤1× cap + 0.5× dial, January boundary, carry folded into unitsLimit with the rollover row written + `rollover_basis`, no double-write when a row exists, no row at zero carry, window + rollover exclusion on the meter). Health spec 22 → 23 checked (0024 probe on `vu_ledger.rollover_basis`).
+
+### Verified
+- Backend jest **519/519** · `check:migrations` **CONVERGED (24 files)** · vitest **620/620** · build clean · lint 0 errors.
+
 ## [2026-08-18] - Size-aware VU pricing (heavy files cost more than tiny ones)
 
 ### Changed

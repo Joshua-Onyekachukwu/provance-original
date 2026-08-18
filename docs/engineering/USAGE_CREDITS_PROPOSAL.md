@@ -147,7 +147,7 @@ one story: "VUs are VUs — the dashboard and the API drink from the same meter.
 | Per-depth unit cost | ❌ | **new** — cost table keyed on `processing_mode` |
 | Deduct-on-complete metering | ❌ | **new** — worker writes a ledger row at completion |
 | VU top-up packs | ❌ | **new** — purchase flow (needs a payment processor; Stripe is already deferred) |
-| Rollover (≤1× monthly) | ❌ | **new** |
+| Rollover (≤1× monthly) | ✅ shipped 2026-08-18 | `0024_vu_rollover.sql` + `carriedOver` on the billing payload |
 | API key spend caps + rate limits | ❌ | **new** — fintech requirement |
 | Enterprise committed blocks | ❌ | **new** — sales vehicle |
 
@@ -156,10 +156,15 @@ one story: "VUs are VUs — the dashboard and the API drink from the same meter.
 1. **Ledger + metering** (backend slice): VU cost table by depth, deduction on
    completion, failed scans = 0, `GET /v1/billing` gains `unitsUsed/unitsLimit`,
    dashboard chip + projection switch to VUs. No payment code needed.
+   **DONE 2026-08-18** (incl. size-aware pricing + per-scan meter).
 2. **Top-up packs** — with the payment processor (Stripe) once it lands;
    until then the 402 gate + "add VUs (coming soon)" CTA.
 3. **API metering + spend caps** — keyed calls deduct VUs; per-key caps/limits.
 4. **Rollover + enterprise committed blocks** — billing-engine work, last.
+   Rollover half **DONE 2026-08-18** (`0024_vu_rollover.sql`: ≤1× carry folds
+   into `unitsLimit` via `carriedOver`, one `source='rollover'` ledger row per
+   user/cycle with a `rollover_basis` allowance snapshot); enterprise
+   committed blocks remain open.
 
 ## 9. Monetization strategy — hook now, tighten later (founder direction)
 

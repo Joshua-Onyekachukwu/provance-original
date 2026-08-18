@@ -1390,9 +1390,13 @@ export const mockBillingProfile = {
     periodEnd: daysAgo(-20, 0),
     // VU meter — the ratified ledger names. The 312 seeded scans are all
     // Standard depth, so 312 × 10 VU = 3,120 units against the Pro allowance
-    // of 100,000.
+    // of 100,000. carriedOver is 0 (the seeded prior cycle was fully used) —
+    // mirrors the real resolveUsage shape where the ≤1× monthly rollover
+    // folds into unitsLimit (allowance + carried).
     unitsUsed: 3120,
     unitsLimit: 100000,
+    allowance: 100000,
+    carriedOver: 0,
     storageUsedGb: 18.4,
     storageLimitGb: 50,
     apiCallsUsed: 4120,

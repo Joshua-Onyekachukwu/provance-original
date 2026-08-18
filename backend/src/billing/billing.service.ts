@@ -184,26 +184,68 @@ export function planDisplay(plan: string) {
 }
 
 /**
+ * One calendar month's billing cycle as an ISO interval (UTC).
+ */
+export function cycleForMonth(year: number, month: number) {
+  const periodStart = new Date(Date.UTC(year, month, 1));
+  const periodEnd = new Date(Date.UTC(year, month + 1, 1));
+  return {
+    periodStart: periodStart.toISOString(),
+    periodEnd: periodEnd.toISOString(),
+  };
+}
+
+/**
+ * The month BEFORE the current one — the window whose unused balance rolls
+ * over (≤1×) into the current cycle's limit.
+ */
+export function previousBillingCycle(now = new Date()) {
+  return cycleForMonth(now.getUTCFullYear(), now.getUTCMonth() - 1);
+}
+
+/**
  * Current monthly billing cycle as an ISO interval. The cycle is the calendar
  * month in UTC — matches the mock's `period: 'current-month'` contract.
  */
 export function currentBillingCycle(now = new Date()) {
-  const periodStart = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
-  );
-  const periodEnd = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1),
+  const { periodStart, periodEnd } = cycleForMonth(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
   );
   const retryAfterSeconds = Math.max(
     60,
-    Math.ceil((periodEnd.getTime() - now.getTime()) / 1000),
+    Math.ceil((new Date(periodEnd).getTime() - now.getTime()) / 1000),
   );
 
   return {
-    periodStart: periodStart.toISOString(),
-    periodEnd: periodEnd.toISOString(),
+    periodStart,
+    periodEnd,
     retryAfterSeconds,
   };
+}
+
+/**
+ * ≤1× monthly rollover — unused VUs carry into the next cycle's limit, capped
+ * at one full monthly allowance so the balance can never compound across
+ * months. The cap falls out of construction: unused can never exceed one
+ * allowance (usage ≥ 0), so `min(unused, allowance × multiplier)` is always
+ * ≤ 1× — the multiplier exists as the dial if the cap is ever loosened.
+ */
+export const VU_ROLLOVER_MULTIPLIER = 1;
+
+/**
+ * carriedOverUnits — the ≤1× carry from a prior cycle's unused balance.
+ * Pure function (no I/O) so the billing spec can lock the math.
+ */
+export function carriedOverUnits(input: {
+  allowance: number;
+  priorCycleUsed: number;
+  multiplier?: number;
+}): number {
+  const { allowance, priorCycleUsed } = input;
+  const multiplier = input.multiplier ?? VU_ROLLOVER_MULTIPLIER;
+  const unused = Math.max(0, allowance - priorCycleUsed);
+  return Math.min(unused, Math.round(allowance * multiplier));
 }
 
 @Injectable()
@@ -273,21 +315,34 @@ export class BillingService {
   }
 
   /**
-   * Sum the user's VU ledger for the current cycle (created_at >= periodStart
-   * — the calendar-month window). This is the metered value the Billing page
-   * renders and the enforcement gate uses.
+   * Sum the user's VU ledger within a cycle window (created_at >= periodStart
+   * and, when given, < periodEnd). This is the metered value the Billing page
+   * renders and the enforcement gate uses. Rollover rows (source='rollover')
+   * are limit-side credits, NOT deductions — they are excluded so the carry
+   * never inflates unitsUsed.
    */
-  async countCycleUnits(userId: string, periodStartIso: string): Promise<number> {
+  async countCycleUnits(
+    userId: string,
+    periodStartIso: string,
+    periodEndIso?: string,
+  ): Promise<number> {
     const adminClient = this.supabaseService.getAdminClient();
     if (!adminClient) {
       throw new ServiceUnavailableException('Supabase is not configured.');
     }
 
-    const { data, error } = await adminClient
+    let query = adminClient
       .from(this.vuLedgerTable)
       .select('units')
       .eq('user_id', userId)
-      .gte('created_at', periodStartIso);
+      .gte('created_at', periodStartIso)
+      .neq('source', 'rollover');
+
+    if (periodEndIso) {
+      query = query.lt('created_at', periodEndIso);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       throw new ServiceUnavailableException('Failed to resolve VU usage.');
@@ -295,6 +350,86 @@ export class BillingService {
 
     const rows = (data ?? []) as Array<{ units: number | null }>;
     return rows.reduce((sum, row) => sum + (Number(row.units) || 0), 0);
+  }
+
+  /**
+   * The ≤1× carry into the current cycle: unused from the PRIOR cycle, capped
+   * at one full allowance. Queries the prior window [prevStart, currentStart)
+   * with the same rollover-excluding meter, so a banked balance can never
+   * compound — each cycle's carry is derived from that cycle's unused alone.
+   */
+  async computeCarriedOver(
+    userId: string,
+    plan: string,
+    now = new Date(),
+  ): Promise<number> {
+    const allowance = vuAllowanceForPlan(plan);
+    const current = currentBillingCycle(now);
+    const previous = previousBillingCycle(now);
+    const priorUsed = await this.countCycleUnits(
+      userId,
+      previous.periodStart,
+      current.periodStart,
+    );
+    return carriedOverUnits({ allowance, priorCycleUsed: priorUsed });
+  }
+
+  /**
+   * Lazy, best-effort materialization of the current cycle's carry: writes ONE
+   * source='rollover' ledger row per user per cycle (check-then-insert, with
+   * the 0024 partial unique index as the hard backstop). The row is a
+   * limit-side credit for auditability — rollover_basis snapshots the
+   * allowance it was computed against. Best-effort by design: a missing
+   * migration (0024 not applied) only logs a warning; the carry still folds
+   * into unitsLimit in-memory.
+   */
+  private async recordRollover(input: {
+    userId: string;
+    carried: number;
+    allowance: number;
+    now?: Date;
+  }): Promise<void> {
+    const { userId, carried, allowance } = input;
+    if (carried <= 0) return;
+
+    const adminClient = this.supabaseService.getAdminClient();
+    if (!adminClient) return;
+
+    const now = input.now ?? new Date();
+    const cycleMonth = currentBillingCycle(now).periodStart.slice(0, 7); // 'YYYY-MM'
+
+    try {
+      const { data: existing } = await adminClient
+        .from(this.vuLedgerTable)
+        .select('id')
+        .eq('user_id', userId)
+        .eq('source', 'rollover')
+        .eq('cycle_month', cycleMonth)
+        .maybeSingle();
+
+      if (existing) return;
+
+      const { error } = await adminClient.from(this.vuLedgerTable).insert({
+        user_id: userId,
+        scan_id: null,
+        depth: null,
+        units: carried,
+        source: 'rollover',
+        cycle_month: cycleMonth,
+        applied_rate: null,
+        rollover_basis: allowance,
+      });
+
+      if (error) {
+        this.logger.warn(
+          `Rollover ledger write skipped for user ${userId}: ${error.message}`,
+        );
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Rollover ledger write skipped for user ${userId}: ${error instanceof Error ? error.message : 'unknown error'}`,
+      );
+    }
   }
 
   /**
@@ -345,18 +480,27 @@ export class BillingService {
   /**
    * Resolve the user's plan + metered usage for the current cycle — the shape
    * the Billing page consumes (mirrors mockGetBilling's profile.usage).
+   * `unitsLimit = allowance + carriedOver` (≤1× monthly rollover), so the
+   * 402 gate and the meters read the effective limit including any carry.
    */
-  async resolveUsage(userId: string) {
+  async resolveUsage(userId: string, now = new Date()) {
     const plan = await this.resolveUserPlan(userId);
-    const cycle = currentBillingCycle();
+    const cycle = currentBillingCycle(now);
     const unitsUsed = await this.countCycleUnits(userId, cycle.periodStart);
-    const unitsLimit = vuAllowanceForPlan(plan);
+    const allowance = vuAllowanceForPlan(plan);
+    const carriedOver = await this.computeCarriedOver(userId, plan, now);
+    const unitsLimit = allowance + carriedOver;
+
+    // Best-effort audit row for the carry (skipped when it's 0).
+    await this.recordRollover({ userId, carried: carriedOver, allowance, now });
 
     return {
       plan,
-      // VU meter — the ratified ledger names.
+      // VU meter — the ratified ledger names, now with the rollover folded in.
       unitsUsed,
       unitsLimit,
+      allowance,
+      carriedOver,
       periodStart: cycle.periodStart,
       periodEnd: cycle.periodEnd,
       retryAfterSeconds: cycle.retryAfterSeconds,
@@ -424,9 +568,13 @@ export class BillingService {
           period: 'current-month',
           periodStart: usage.periodStart,
           periodEnd: usage.periodEnd,
-          // VU meter — the ratified ledger names.
+          // VU meter — the ratified ledger names, plus the ≤1× rollover
+          // component so the UI can render "incl. X carried over" from the
+          // same payload the meters read.
           unitsUsed: usage.unitsUsed,
           unitsLimit: usage.unitsLimit,
+          allowance: usage.allowance,
+          carriedOver: usage.carriedOver,
           storageUsedGb: storage.usedGb,
           storageLimitGb: storage.limitGb,
           apiCallsUsed: apiUsage.used,

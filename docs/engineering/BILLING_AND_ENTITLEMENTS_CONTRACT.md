@@ -99,10 +99,20 @@ UTC**:
 - `retryAfterSeconds` — `max(60, ceil((periodEnd - now) / 1000))`, so the
   Retry-After hint never reports less than 60 s
 
-**Rollover (ratified):** unused VUs roll over **up to 1× the monthly
-allowance** (bounded — can't accumulate forever). Rollover credits are
-consumed *before* the new month's allowance; the ledger records the source
-per deduction so the meter stays auditable.
+**Rollover (shipped 2026-08-18):** unused VUs roll over **up to 1× the monthly
+allowance** (bounded — can't accumulate forever). `unitsLimit =
+allowance + carried`, where `carried = min(max(0, allowance − priorCycleUsed),
+1 × allowance)` — and because unused can never exceed one allowance, the ≤1×
+cap is enforced by construction, so banked balances never compound across
+months. The carry is derived from the **prior calendar cycle's** usage window
+(`[prevStart, currentStart)`, UTC). Each cycle's carry is materialized lazily
+as **one `source = 'rollover'` ledger row per user per cycle** (check-then-insert,
+backstopped by the 0024 partial unique index) — a limit-side credit, NOT a
+deduction: the usage meter (`countCycleUnits`) excludes `source='rollover'`
+rows so a carry never inflates `unitsUsed`. The row's `rollover_basis`
+snapshots the allowance the carry was computed against (audit parity with
+`applied_rate`), and `GET /v1/billing` exposes `carriedOver` alongside the
+meters so the UI can render "incl. X carried over".
 
 The mock mirrors this as `usage.period: 'current-month'` with the same
 `periodStart`/`periodEnd` values (mock dates are seeded `daysAgo` values, but
@@ -247,11 +257,13 @@ same math as the real endpoint; the billing spec locks parity.
 
 ## 6. Known gaps / next steps
 
-- **Rollout step 1 shipped** — the VU ledger + deduct-on-complete worker
-  (`0022_vu_ledger.sql` + `0023_scan_vu_meter.sql`), `unitsUsed/unitsLimit`
-  on `GET /v1/billing` (legacy `scansUsed/scansLimit` dropped), and the
-  chip/projection switch to VUs all landed 2026-08-18. Remaining rollout
-  steps: rollover ≤1× (step 4) and top-up packs — no payment code needed.
+- **Rollout step 1 + rollover shipped** — the VU ledger + deduct-on-complete
+  worker (`0022_vu_ledger.sql` + `0023_scan_vu_meter.sql`), `unitsUsed/unitsLimit`
+  on `GET /v1/billing` (legacy `scansUsed/scansLimit` dropped), the
+  chip/projection switch to VUs, and ≤1× monthly rollover
+  (`0024_vu_rollover.sql` + `carriedOver` folding into `unitsLimit`) all
+  landed 2026-08-18. Remaining rollout step: top-up packs — no payment code
+  needed until Stripe lands.
 - **API-call counting is not wired yet** — `api_usage` is read-only today;
   no middleware increments `calls` on authenticated requests, and keyed API
   calls will fold into VU metering (replacing `PLAN_API_CALL_QUOTAS` as the
@@ -259,10 +271,8 @@ same math as the real endpoint; the billing spec locks parity.
 - **The overage estimate is informational** — `overageCostUsd` is a pace-based
   projection, not a charge; it becomes billable only once a payment processor
   lands (deferred).
-- **Top-ups / rollover enforcement** — top-up packs need Stripe (deferred);
-  until then the 402 gate + "Add VUs (coming soon)" CTA. Rollover credits are
-  part of the ledger slice but their billing-engine accounting lands with the
-  payment work.
+- **Top-ups** — top-up packs need Stripe (deferred); until then the 402 gate
+  + "Add VUs (coming soon)" CTA. Rollover is shipped (see §2).
 - Payment methods and invoices remain `[]` until Stripe (or equivalent) lands
   (deferred per `MASTER_DEVELOPMENT_ROADMAP.md`).
 - The archival/enforcement job for storage is Phase 5 backlog (see

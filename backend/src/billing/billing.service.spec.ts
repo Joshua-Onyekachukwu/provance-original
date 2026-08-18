@@ -11,12 +11,15 @@ import {
   PLAN_VU_ALLOWANCES,
   VU_COST_BY_DEPTH,
   VU_OVERAGE_PRICE_USD,
+  VU_ROLLOVER_MULTIPLIER,
   apiCallLimitForPlan,
+  carriedOverUnits,
+  currentBillingCycle,
+  previousBillingCycle,
   projectScanUsage,
   vuAllowanceForPlan,
   vuCostForDepth,
   vuSizeMultiplier,
-  currentBillingCycle,
 } from './billing.service';
 
 // ---------------------------------------------------------------------------
@@ -51,6 +54,8 @@ function createAdminClient(plan: PlannedResult[]) {
     select: jest.fn(() => builder),
     eq: jest.fn(() => builder),
     gte: jest.fn(() => builder),
+    neq: jest.fn(() => builder),
+    lt: jest.fn(() => builder),
     insert: jest.fn(() => Promise.resolve({ error: null })),
     maybeSingle: jest.fn(() => Promise.resolve(next())),
     // Directly-awaited head/count chains resolve through the thenable contract.
@@ -148,6 +153,56 @@ describe('billing policy', () => {
       expect(vuCostForDepth('deep')).toBe(100);
       expect(vuCostForDepth('deep', 0)).toBe(100);
       expect(vuCostForDepth('deep', null)).toBe(100);
+    });
+  });
+
+  describe('rollover policy (≤1× monthly)', () => {
+    it('carries the full unused balance when the prior cycle was untouched', () => {
+      expect(carriedOverUnits({ allowance: 100_000, priorCycleUsed: 0 })).toBe(
+        100_000,
+      );
+    });
+
+    it('carries only the unused portion when the prior cycle was partly used', () => {
+      expect(
+        carriedOverUnits({ allowance: 100_000, priorCycleUsed: 30_000 }),
+      ).toBe(70_000);
+    });
+
+    it('carries nothing when the prior cycle used the whole allowance', () => {
+      expect(
+        carriedOverUnits({ allowance: 100_000, priorCycleUsed: 100_000 }),
+      ).toBe(0);
+    });
+
+    it('never exceeds 1× the monthly allowance (bounded, cannot accumulate)', () => {
+      // Unused can never exceed one allowance by construction, but the cap is
+      // explicit so the dial can be loosened/tightened deliberately.
+      expect(
+        carriedOverUnits({ allowance: 10_000, priorCycleUsed: 0 }),
+      ).toBe(10_000);
+      expect(
+        carriedOverUnits({
+          allowance: 10_000,
+          priorCycleUsed: 0,
+          multiplier: 0.5,
+        }),
+      ).toBe(5_000);
+      expect(VU_ROLLOVER_MULTIPLIER).toBe(1);
+    });
+
+    it('computes the prior cycle as the calendar month before the current one', () => {
+      const now = new Date('2026-07-15T12:00:00.000Z');
+      const previous = previousBillingCycle(now);
+      expect(previous.periodStart).toBe('2026-06-01T00:00:00.000Z');
+      expect(previous.periodEnd).toBe('2026-07-01T00:00:00.000Z');
+    });
+
+    it('handles the January boundary (prior cycle is December of last year)', () => {
+      const now = new Date('2026-01-10T00:00:00.000Z');
+      const previous = previousBillingCycle(now);
+      expect(previous.periodStart).toBe('2025-12-01T00:00:00.000Z');
+      expect(previous.periodEnd).toBe('2026-01-01T00:00:00.000Z');
     });
   });
 
@@ -409,11 +464,13 @@ describe('BillingService', () => {
 
   describe('assertScanQuota', () => {
     it('passes when the VU meter is under the plan allowance', async () => {
-      // 1: membership → org · 2: org plan · 3: VU ledger sum.
+      // 1: membership → org · 2: org plan · 3: VU ledger sum (current) ·
+      // 4: prior-cycle sum (rollover: fully used → no carry).
       const client = createAdminClient([
         { data: { organization_id: 'org-1' } },
         { data: { plan: 'pro' } },
         { data: [{ units: 40000 }] },
+        { data: [{ units: 100000 }] },
       ]);
       const service = createService(client);
 
@@ -422,11 +479,12 @@ describe('BillingService', () => {
 
     it('passes when the remaining allowance covers the file cost', async () => {
       // 80,000 used of 100,000 → 20,000 remain; a 50 MiB standard scan needs
-      // 40 — comfortably covered.
+      // 40 — comfortably covered. Prior cycle fully used → no rollover.
       const client = createAdminClient([
         { data: { organization_id: 'org-1' } },
         { data: { plan: 'pro' } },
         { data: [{ units: 80000 }] },
+        { data: [{ units: 100000 }] },
       ]);
       const service = createService(client);
 
@@ -440,6 +498,7 @@ describe('BillingService', () => {
         { data: { organization_id: 'org-1' } },
         { data: { plan: 'pro' } },
         { data: [{ units: 90000 }] },
+        { data: [{ units: 100000 }] },
       ]);
       const service = createService(client);
 
@@ -458,6 +517,7 @@ describe('BillingService', () => {
         { data: { organization_id: 'org-1' } },
         { data: { plan: 'pro' } },
         { data: [{ units: 100000 }] },
+        { data: [{ units: 100000 }] },
       ]);
       const service = createService(client);
 
@@ -474,12 +534,121 @@ describe('BillingService', () => {
         { data: { organization_id: 'org-1' } },
         { data: { plan: 'starter' } },
         { data: [{ units: 10000 }] },
+        { data: [{ units: 10000 }] },
       ]);
       const service = createService(client);
 
       await expect(service.assertScanQuota(USER_ID)).rejects.toMatchObject({
         status: 402,
       });
+    });
+  });
+
+  describe('rollover (≤1× monthly)', () => {
+    it('folds the prior cycle unused into unitsLimit and records a rollover row', async () => {
+      // Prior cycle used 30,000 of 100,000 → 70,000 carried → limit 170,000.
+      // Plan: membership, org, current sum, prior sum, rollover check, insert.
+      const client = createAdminClient([
+        { data: { organization_id: 'org-1' } },
+        { data: { plan: 'pro' } },
+        { data: [{ units: 5000 }] },
+        { data: [{ units: 30000 }] },
+        { data: null }, // no existing rollover row
+      ]);
+      const service = createService(client);
+      const admin = client as unknown as { from: jest.Mock };
+
+      const usage = await service.resolveUsage(USER_ID);
+
+      expect(usage.carriedOver).toBe(70_000);
+      expect(usage.unitsLimit).toBe(170_000);
+      expect(usage.allowance).toBe(100_000);
+
+      // One rollover row written with the carried amount + allowance basis.
+      const inserts = admin.from.mock.results
+        .map((r) => (r.value as { insert: jest.Mock }).insert.mock.calls.map((c) => c[0]))
+        .flat();
+      expect(inserts).toContainEqual(
+        expect.objectContaining({
+          user_id: USER_ID,
+          scan_id: null,
+          depth: null,
+          units: 70_000,
+          source: 'rollover',
+          rollover_basis: 100_000,
+        }),
+      );
+    });
+
+    it('does not write a second rollover row when one already exists for the cycle', async () => {
+      const client = createAdminClient([
+        { data: { organization_id: 'org-1' } },
+        { data: { plan: 'pro' } },
+        { data: [{ units: 5000 }] },
+        { data: [{ units: 30000 }] },
+        { data: { id: 'rollover-row-1' } }, // already recorded
+      ]);
+      const service = createService(client);
+      const admin = client as unknown as { from: jest.Mock };
+
+      const usage = await service.resolveUsage(USER_ID);
+
+      expect(usage.unitsLimit).toBe(170_000);
+      const inserts = admin.from.mock.results
+        .map((r) => (r.value as { insert: jest.Mock }).insert.mock.calls.map((c) => c[0]))
+        .flat();
+      expect(inserts.filter((r) => r?.source === 'rollover')).toHaveLength(0);
+    });
+
+    it('writes no rollover row when the prior cycle used the whole allowance', async () => {
+      const client = createAdminClient([
+        { data: { organization_id: 'org-1' } },
+        { data: { plan: 'pro' } },
+        { data: [{ units: 5000 }] },
+        { data: [{ units: 100000 }] },
+      ]);
+      const service = createService(client);
+      const admin = client as unknown as { from: jest.Mock };
+
+      const usage = await service.resolveUsage(USER_ID);
+
+      expect(usage.carriedOver).toBe(0);
+      expect(usage.unitsLimit).toBe(100_000);
+      const inserts = admin.from.mock.results
+        .map((r) => (r.value as { insert: jest.Mock }).insert.mock.calls.map((c) => c[0]))
+        .flat();
+      expect(inserts.filter((r) => r?.source === 'rollover')).toHaveLength(0);
+    });
+
+    it('counts the prior-cycle window with rollover credits excluded', async () => {
+      const client = createAdminClient([{ data: [{ units: 10 }, { units: 10 }] }]);
+      const service = createService(client);
+      const admin = client as unknown as {
+        neq: jest.Mock;
+        lt: jest.Mock;
+      };
+
+      await service.countCycleUnits(
+        USER_ID,
+        '2026-06-01T00:00:00.000Z',
+        '2026-07-01T00:00:00.000Z',
+      );
+
+      // Rollover credits are limit-side — excluded from the usage meter.
+      expect(admin.neq).toHaveBeenCalledWith('source', 'rollover');
+      // Prior window is half-open [prevStart, currentStart).
+      expect(admin.lt).toHaveBeenCalledWith('created_at', '2026-07-01T00:00:00.000Z');
+    });
+
+    it('excludes rollover credits from the current-cycle sum too', async () => {
+      const client = createAdminClient([{ data: [{ units: 10 }, { units: 10 }] }]);
+      const service = createService(client);
+      const admin = client as unknown as { neq: jest.Mock };
+
+      await service.countCycleUnits(USER_ID, '2026-07-01T00:00:00.000Z');
+
+      expect(admin.neq).toHaveBeenCalledWith('source', 'rollover');
+      expect((admin.neq as jest.Mock).mock.calls).toHaveLength(1);
     });
   });
 
@@ -492,8 +661,10 @@ describe('BillingService', () => {
         // resolveUsage → resolveUserPlan: membership + org plan
         { data: { organization_id: 'org-1' } },
         { data: { plan: 'pro' } },
-        // countCycleUnits: ledger sum
+        // countCycleUnits: current ledger sum
         { data: [{ units: 3120 }] },
+        // computeCarriedOver: prior-cycle sum (fully used → no carry)
+        { data: [{ units: 100000 }] },
         // resolveStorageUsage: membership probe
         { data: { organization_id: 'org-1' } },
         // resolveApiUsage: api_usage row
@@ -536,8 +707,10 @@ describe('BillingService', () => {
       const client = createAdminClient([
         // resolveUsage → resolveUserPlan: no membership → default plan
         { data: null },
-        // countCycleUnits: ledger sum
+        // countCycleUnits: current ledger sum
         { data: [{ units: 120 }] },
+        // computeCarriedOver: prior-cycle sum (fully used → no carry)
+        { data: [{ units: 100000 }] },
         // resolveStorageUsage: no membership → nulls (short-circuits)
         { data: null },
         // resolveApiUsage: missing table error → 0 used, plan limit
@@ -562,8 +735,10 @@ describe('BillingService', () => {
         // resolveUsage → resolveUserPlan: membership + org plan
         { data: { organization_id: 'org-1' } },
         { data: { plan: 'team' } },
-        // countCycleUnits: ledger sum
+        // countCycleUnits: current ledger sum
         { data: [] },
+        // computeCarriedOver: prior-cycle sum (fully used → no carry)
+        { data: [{ units: 300000 }] },
         // resolveStorageUsage: membership probe
         { data: { organization_id: 'org-1' } },
         // resolveApiUsage: no row → zero used, plan limit
