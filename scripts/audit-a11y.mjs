@@ -95,7 +95,30 @@ const ADMIN_ROUTES = [
   '/app/admin/settings',
 ];
 
-const PUBLIC_ROUTES = ['/', '/sample-report', '/signin', '/product'];
+// Public landing surfaces — kept in parity with audit-responsive.mjs's
+// PUBLIC_ROUTES so no public page can slip under one gate and not the other.
+const PUBLIC_ROUTES = [
+  '/',
+  '/about',
+  '/contact',
+  '/product',
+  '/methodology',
+  '/pricing',
+  '/security',
+  '/sample-report',
+  '/sample-report/print',
+  '/benchmark',
+  '/docs',
+  '/resources',
+  '/privacy',
+  '/terms',
+  '/cookies',
+  '/waitlist',
+  '/signin',
+  '/accept-invite',
+  '/reset-password',
+  '/reset-password/confirm',
+];
 
 const ALL_ROUTES = [...APP_ROUTES, ...ADMIN_ROUTES, ...PUBLIC_ROUTES];
 

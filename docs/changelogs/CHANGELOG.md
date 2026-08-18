@@ -1,5 +1,15 @@
 # Provance — Changelog
 
+## [2026-08-18] - Public-surface verification after button-cascade fix
+
+### Changed
+- **`scripts/audit-a11y.mjs`** — `PUBLIC_ROUTES` expanded from 4 to the full **20-route public list** in parity with `audit-responsive.mjs` (adds /about, /contact, /methodology, /pricing, /security, /sample-report/print, /benchmark, /docs, /resources, /privacy, /terms, /cookies, /waitlist, /accept-invite, /reset-password, /reset-password/confirm), closing the gap where public pages were structurally audited by responsive but not by a11y.
+
+### Verified
+- Responsive subset (docs, benchmark, security, waitlist, pricing + the /app + /app/admin matches): **40/40 clean** across 375/640/768/1024/1280 — no overflow or clipped elements.
+- Full a11y audit: **51/51 routes structurally clean** — no missing names/labels/alt, no hidden keyboard focus stops. No regressions from the button-cascade fix.
+- **5 contrast advisories** (3.58:1, advisory not failure): the known amber-token brand-accent tradeoff (`text-amber` #B7791F on parchment) now surfaced on the newly-audited routes — /docs step markers `01/02/03`, /benchmark "V0.2 Expansion · Documented" badge, /waitlist "What to expect" label. Founder call on darkening the amber token stays open; gate passes as-is.
+
 ## [2026-08-18] - CI: all three audit gates run on every push/PR
 
 ### Changed
