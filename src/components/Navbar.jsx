@@ -57,9 +57,13 @@ export default function Navbar() {
         }`}
       >
         <Link to="/" className="group flex items-center gap-2.5 py-1" aria-label="Provance home">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-charcoal shadow-[0_10px_30px_rgba(19,22,29,0.2)] transition-transform duration-500 ease-luxe group-hover:scale-105">
-            <span className="text-parchment text-sm font-serif font-semibold">P</span>
-          </div>
+          <img
+            src="/logo-dark-40.png"
+            alt=""
+            className="h-9 w-9 rounded-full object-contain shadow-[0_10px_30px_rgba(19,22,29,0.2)] transition-transform duration-500 ease-luxe group-hover:scale-105"
+            width="36"
+            height="36"
+          />
           <div className="flex flex-col leading-none">
             <span className="font-serif text-[1.3rem] text-charcoal font-semibold tracking-tight">Provance</span>
             <span className="hidden sm:block text-[10px] font-mono uppercase tracking-[0.22em] text-charcoal-light">

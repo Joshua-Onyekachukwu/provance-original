@@ -59,9 +59,13 @@ export default function Footer() {
         <div className="grid grid-cols-1 gap-8 md:grid-cols-5">
           <div className="md:col-span-2">
             <div className="mb-4 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-parchment shadow-[0_10px_25px_rgba(0,0,0,0.18)]">
-                <span className="text-charcoal text-sm font-serif font-semibold">P</span>
-              </div>
+              <img
+                src="/logo-white-40.png"
+                alt=""
+                className="h-10 w-10 rounded-xl object-contain shadow-[0_10px_25px_rgba(0,0,0,0.18)]"
+                width="40"
+                height="40"
+              />
               <div>
                 <span className="font-serif text-xl text-parchment font-medium tracking-tight">Provance</span>
                 <p className="mt-1 text-[10px] font-mono uppercase tracking-[0.22em] text-trust-soft">

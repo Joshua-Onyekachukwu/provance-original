@@ -777,9 +777,13 @@ export default function AppShellLayout() {
           <div className="flex flex-col px-4 py-4 sm:px-6 lg:sticky lg:top-0 lg:h-screen lg:px-6 lg:py-6">
             <div className="flex items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-3">
-                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-white/10 bg-white/8 text-base font-semibold tracking-[-0.04em] text-parchment shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
-                  P
-                </div>
+                <img
+                  src="/logo-white-40.png"
+                  alt=""
+                  className="h-10 w-10 shrink-0 rounded-2xl object-contain shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+                  width="40"
+                  height="40"
+                />
                 <div className="min-w-0">
                   <p className="truncate text-xl font-semibold tracking-[-0.05em] text-parchment">
                     Provance
