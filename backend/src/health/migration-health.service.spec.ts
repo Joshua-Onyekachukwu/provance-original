@@ -228,8 +228,8 @@ describe('MigrationHealthService', () => {
       await service.onModuleInit();
 
       const logs = logSpy.mock.calls.map((call) => String(call[0])).join('\n');
-      // 0001–0022 (0017 seed-only skip) → 21 checked.
-      expect(logs).toContain('Schema check: all 21 supabase migrations appear applied');
+      // 0001–0023 (0017 seed-only skip) → 22 checked.
+      expect(logs).toContain('Schema check: all 22 supabase migrations appear applied');
       expect(warnSpy).not.toHaveBeenCalled();
     });
 

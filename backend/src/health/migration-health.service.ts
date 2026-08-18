@@ -90,6 +90,7 @@ export const MIGRATION_PROBES: MigrationProbe[] = [
   { migration: '0020', file: '0020_api_usage.sql', probeable: true, table: 'api_usage', column: 'user_id' },
   { migration: '0021', file: '0021_scan_attempts.sql', probeable: true, table: 'scans', column: 'attempts_made', note: 'adds scans.attempts_made/max_attempts — retry telemetry for the admin Jobs payload' },
   { migration: '0022', file: '0022_vu_ledger.sql', probeable: true, table: 'vu_ledger', column: 'id', note: 'VU ledger — metered billing (deduct-on-complete, unitsUsed/unitsLimit)' },
+  { migration: '0023', file: '0023_scan_vu_meter.sql', probeable: true, table: 'scans', column: 'vu_units', note: 'adds scans.vu_units/vu_applied_rate — per-scan VU meter for ledger auditability' },
 ];
 
 type AdminClient = NonNullable<ReturnType<SupabaseService['getAdminClient']>>;

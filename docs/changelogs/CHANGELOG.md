@@ -1,5 +1,15 @@
 # Provance — Changelog
 
+## [2026-08-18] - Per-scan VU meter on the scans row (ledger auditability)
+
+### Changed
+- Migration **`0023_scan_vu_meter.sql`** (new) — `scans` gains `vu_units` + `vu_applied_rate` (nullable). The scan row now carries the units it was charged at completion, mirroring the ledger-row shape `(scan_id, depth, units, cycle, user, source)`: depth = existing `processing_mode`, units = `vu_units`, rate snapshot = `vu_applied_rate`. A scan's cost is auditable without a ledger join and survives even if ledger rows were pruned. Legacy/failed rows stay NULL (0 charge).
+- `scans.service.ts` — both completion branches of `runScanProcessing` (fresh analysis + dedup reuse) now spread `buildVuMeterFields(scan.processing_mode)` into the completion `updateScan`, writing `vu_units`/`vu_applied_rate` atomically with the `status: 'complete'` write. The local `PROCESSING_CREDITS_BY_DEPTH` duplicate catalog is deleted — `processing_cost_credits` and the new columns both derive from the billing service's single `vuCostForDepth` rate source, so the scan row and the billing ledger can never disagree on a charge. `listScans` selects the two new columns; `schemaErrorHint` maps them to migration 0023 for one-request diagnosis.
+
+### Tests
+- `scans.service.spec.ts` — the dedup-reuse completion test now asserts the completion `updateScan` writes `vu_units: 10`/`vu_applied_rate: 10` (standard), plus a new depth-meter test pinning `deep → 100` on the row. `migration-health.service.spec.ts` expectation 21 → 22 checked.
+- Verified: backend jest **506/506** (was 505), `check:migrations` **CONVERGED (23 files)**, vitest **619/619**, build clean, lint 0 errors.
+
 ## [2026-08-18] - Billing rollout step 1 — verified already shipped
 
 ### Verified

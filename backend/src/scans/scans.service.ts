@@ -9,7 +9,10 @@ import { ConfigService } from '@nestjs/config';
 import { createHash, randomUUID } from 'crypto';
 import * as exifr from 'exifr';
 import { Jimp } from 'jimp';
-import { BillingService } from '../billing/billing.service';
+import {
+  BillingService,
+  vuCostForDepth,
+} from '../billing/billing.service';
 import { auditSeverity } from '../common/audit-severity';
 import { QueueService } from '../queue/queue.service';
 import { SupabaseService } from '../supabase/supabase.service';
@@ -34,6 +37,13 @@ type ScanRow = {
   completed_at: string | null;
   attempts_made: number | null;
   max_attempts: number | null;
+  // Per-scan VU meter (migration 0023): the units the scan was charged at
+  // completion + the applied-rate snapshot. Mirrors the ledger-row shape
+  // (scan_id, depth, units, cycle, user, source) so a scan's cost is
+  // auditable without a ledger join. NULL until completion under the
+  // metering build; failed scans stay NULL (0 charge).
+  vu_units: number | null;
+  vu_applied_rate: number | null;
 };
 
 type QueueSnapshot = {
@@ -82,15 +92,6 @@ type RegionAnalysis = {
   region_luminance_variance: number;
   assessment: 'uniform' | 'localized_anomalies' | 'widespread_anomalies';
   note: string;
-};
-
-// Processing depth → metered cost in verification units (VU). Quick is a fast
-// triage subset, standard the full baseline, deep the extended forensic sweep.
-// Matches USAGE_CREDITS_PROPOSAL.md §3 (1 / 10 / 100).
-const PROCESSING_CREDITS_BY_DEPTH: Record<string, number> = {
-  quick: 1,
-  standard: 10,
-  deep: 100,
 };
 
 @Injectable()
@@ -370,7 +371,7 @@ export class ScansService {
     const { data, error } = await adminClient
       .from(this.scansTable)
       .select(
-        'id,status,original_filename,mime_type,file_size_bytes,processing_mode,team_id,completed_at,created_at,updated_at,failure_reason,result_payload',
+        'id,status,original_filename,mime_type,file_size_bytes,processing_mode,team_id,completed_at,created_at,updated_at,failure_reason,result_payload,vu_units,vu_applied_rate',
       )
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
@@ -626,6 +627,8 @@ export class ScansService {
       idempotency_key: '0019_scan_idempotency.sql',
       attempts_made: '0021_scan_attempts.sql',
       max_attempts: '0021_scan_attempts.sql',
+      vu_units: '0023_scan_vu_meter.sql',
+      vu_applied_rate: '0023_scan_vu_meter.sql',
     };
 
     if (column && migrationByColumn[column]) {
@@ -689,6 +692,10 @@ export class ScansService {
           failure_reason: null,
           completed_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
+          // Per-scan VU meter: record the units applied on the row itself so
+          // the scan is auditable without a ledger join. Same units the
+          // billing ledger writes (both derive from vuCostForDepth).
+          ...buildVuMeterFields(scan.processing_mode),
         });
         this.logger.log(
           `Scan ${scan.id} reuses prior result from scan ${prior.id} (identical SHA-256).`,
@@ -713,6 +720,8 @@ export class ScansService {
         failure_reason: null,
         completed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        // Per-scan VU meter: same units the billing ledger writes.
+        ...buildVuMeterFields(scan.processing_mode),
       });
       // Deduct-on-complete: the scan completed at its depth (quick 1 ·
       // standard 10 · deep 100) — write the VU ledger row. Failed scans never
@@ -1132,7 +1141,7 @@ export class ScansService {
         scan_created_at: scan.created_at,
         scan_completed_at: analysisTimestamp,
         total_processing_time_ms: processingTimeMs,
-        processing_cost_credits: PROCESSING_CREDITS_BY_DEPTH[depth] ?? 10,
+        processing_cost_credits: vuCostForDepth(depth),
         recommendations: buildRecommendations(verdict.class, Boolean(hasC2paMarker)),
         ...(regionAnalysis ? { deep_analysis: regionAnalysis } : {}),
       },
@@ -1372,6 +1381,18 @@ export class ScansService {
       return null;
     }
   }
+}
+
+/**
+ * buildVuMeterFields — the per-scan VU meter columns written at completion.
+ * Uses the billing service's single rate source (vuCostForDepth) so the scan
+ * row and the billing ledger can never disagree on the charge. Both the
+ * fresh-analysis and dedup-reuse completion branches spread this into their
+ * update; failed scans never call it (0 charge).
+ */
+function buildVuMeterFields(depth: string | null | undefined) {
+  const units = vuCostForDepth(depth);
+  return { vu_units: units, vu_applied_rate: units };
 }
 
 function sanitizeFilename(value: string): string {

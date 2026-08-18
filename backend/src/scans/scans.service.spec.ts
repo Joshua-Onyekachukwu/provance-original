@@ -452,6 +452,47 @@ describe('ScansService', () => {
           depth: 'standard',
         }),
       );
+
+      // Per-scan VU meter: the completion updateScan persists the units + rate
+      // snapshot on the scan row itself, so the scan is auditable without a
+      // ledger join (migration 0023). Standard depth → 10 VU.
+      const completionUpdate = client.update.mock.calls.find(([updates]) =>
+        Object.prototype.hasOwnProperty.call(updates, 'vu_units'),
+      )?.[0];
+      expect(completionUpdate).toMatchObject({
+        status: 'complete',
+        vu_units: 10,
+        vu_applied_rate: 10,
+      });
+    });
+
+    it('writes the per-scan VU meter at the depth cost (quick 1 / deep 100)', async () => {
+      // Dedup reuse path again, but at deep depth — pins the depth→units
+      // mapping on the scan row (same single rate source as the ledger).
+      const client = createAdminClient([
+        {
+          data: scanRow({
+            id: 'scan-3',
+            status: 'queued',
+            mime_type: 'image/png',
+            processing_mode: 'deep',
+          }),
+        },
+        { error: null },
+        { data: { id: 'scan-0', result_payload: { verdict: { class: 'likely_authentic' } } } },
+        { error: null },
+      ]);
+      const service = createService(client);
+
+      await service.processQueuedScan('scan-3');
+
+      const completionUpdate = client.update.mock.calls.find(([updates]) =>
+        Object.prototype.hasOwnProperty.call(updates, 'vu_units'),
+      )?.[0];
+      expect(completionUpdate).toMatchObject({
+        vu_units: 100,
+        vu_applied_rate: 100,
+      });
     });
 
     it('does not record usage when processing fails (failed scans consume 0)', async () => {
