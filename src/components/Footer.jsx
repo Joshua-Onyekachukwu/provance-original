@@ -60,7 +60,7 @@ export default function Footer() {
           <div className="md:col-span-2">
             <div className="mb-4 flex items-center gap-3">
               <img
-                src="/logo-white-40.png"
+                src="/provance-logo-white.png"
                 alt=""
                 className="h-10 w-10 rounded-xl object-contain shadow-[0_10px_25px_rgba(0,0,0,0.18)]"
                 width="40"

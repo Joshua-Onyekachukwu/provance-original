@@ -778,7 +778,7 @@ export default function AppShellLayout() {
             <div className="flex items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-3">
                 <img
-                  src="/logo-white-40.png"
+                  src="/provance-logo-white.png"
                   alt=""
                   className="h-10 w-10 shrink-0 rounded-2xl object-contain shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
                   width="40"

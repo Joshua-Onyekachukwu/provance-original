@@ -58,7 +58,7 @@ export default function Navbar() {
       >
         <Link to="/" className="group flex items-center gap-2.5 py-1" aria-label="Provance home">
           <img
-            src="/logo-dark-40.png"
+            src="/provance-logo-dark.png"
             alt=""
             className="h-9 w-9 rounded-full object-contain shadow-[0_10px_30px_rgba(19,22,29,0.2)] transition-transform duration-500 ease-luxe group-hover:scale-105"
             width="36"
