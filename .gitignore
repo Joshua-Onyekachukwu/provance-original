@@ -42,3 +42,8 @@ scripts/.trello-state.json
 
 # Local env vars with real secrets
 docs/LOCAL_ENV_VARS.txt
+
+# Deployment env files with real secrets (not for repo)
+docs/.env.vercel
+docs/.env.flyio
+docs/.env.railway
