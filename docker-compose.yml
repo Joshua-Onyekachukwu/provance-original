@@ -1,0 +1,67 @@
+# One-command local stack: docker compose up
+#
+# The repo is volume-mounted into official node:22-alpine images, so there are
+# no Dockerfiles to maintain and no image builds — `docker compose up` is the
+# whole setup. Redis (BullMQ backing store) runs as a real container; Supabase
+# stays an external managed service: put SUPABASE_URL / SUPABASE_ANON_KEY /
+# SUPABASE_SERVICE_ROLE_KEY in a root .env file (gitignored) before starting —
+# it is loaded into the backend/worker containers via env_file. Without them the backend fails env validation and exits (fail-closed), while
+# the frontend still serves mock-mode at http://localhost:5173.
+#
+# See README → Getting Started → Docker for the full walkthrough.
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  frontend:
+    image: node:22-alpine
+    working_dir: /app
+    volumes:
+      - .:/app
+    ports:
+      - "5173:5173"
+    environment:
+      - NODE_ENV=development
+    command: sh -c "npm install --no-audit --no-fund && npm run dev -- --host 0.0.0.0 --port 5173"
+
+  backend:
+    image: node:22-alpine
+    working_dir: /app/backend
+    volumes:
+      - .:/app
+    ports:
+      - "4000:4000"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=development
+      - PORT=4000
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: sh -c "corepack enable && npx pnpm@9 install --frozen-lockfile && npx pnpm@9 run start:dev"
+
+  worker:
+    image: node:22-alpine
+    working_dir: /app/backend
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=development
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    # start:worker runs node dist/worker, so the Nest build must happen first.
+    command: sh -c "corepack enable && npx pnpm@9 install --frozen-lockfile && npx pnpm@9 run build && npx pnpm@9 run start:worker"

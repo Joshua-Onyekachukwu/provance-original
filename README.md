@@ -137,6 +137,20 @@ npm run backend:start:worker   # BullMQ worker for scan processing
 npm run check:launch
 ```
 
+### Docker (one-command stack)
+
+```bash
+docker compose up
+```
+
+Brings up the frontend (:5173), backend (:4000), BullMQ worker, and Redis
+(:6379) by mounting the repo into official `node:22-alpine` images — no
+Dockerfiles, no image builds. Supabase remains an external managed service:
+put `SUPABASE_URL` / `SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` in a
+root `.env` file (gitignored) before starting. Without them the backend fails
+env validation and exits (fail-closed), while the frontend still serves
+mock-mode at http://localhost:5173.
+
 ## Scripts
 
 | Script | What it does |
