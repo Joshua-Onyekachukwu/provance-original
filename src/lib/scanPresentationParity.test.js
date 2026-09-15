@@ -41,6 +41,7 @@ const SURFACE = [
   'formatDurationMs',
   'formatStorageGb',
   'formatFileSize',
+  'vuSizeTierLabel',
   'getVerdictLabel',
   'VERDICT_PALETTE',
   'VERDICT_CHART_SEGMENTS',

@@ -34,6 +34,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -73,6 +78,8 @@ jobs:
         run: |
           cd backend
           node scripts/validate-refresh-cookie.mjs
+        env:
+          E2E_COOKIE_PASSWORD: ${{ secrets.E2E_COOKIE_PASSWORD }}
 
       - name: Teardown (stop the backend)
         if: always()
