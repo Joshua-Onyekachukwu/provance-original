@@ -727,6 +727,13 @@ describe('AdminService.listUsers', () => {
 // ---------------------------------------------------------------------------
 
 describe('AdminService.getAnalytics', () => {
+  // Fixtures must be relative to Date.now(): getAnalytics aggregates a
+  // rolling 30-day window computed at call time, so absolute fixture dates
+  // silently age out of scope (the 2026-08-0x dates drifted outside six
+  // weeks after they were written — a time-bomb test).
+  const withinWindow = (hoursAgo: number) =>
+    new Date(Date.now() - hoursAgo * 3_600_000).toISOString();
+
   it('scopes the aggregation to a team and reports team_breakdown', async () => {
     const scanRows = [
       {
@@ -735,8 +742,8 @@ describe('AdminService.getAnalytics', () => {
         mime_type: 'video/mp4',
         result_payload: { verdict: { class: 'likely_authentic' } },
         team_id: 'team-1',
-        created_at: '2026-08-06T10:00:00.000Z',
-        updated_at: '2026-08-06T10:02:00.000Z',
+        created_at: withinWindow(2),
+        updated_at: withinWindow(2),
       },
       {
         user_id: 'user-1',
@@ -744,8 +751,8 @@ describe('AdminService.getAnalytics', () => {
         mime_type: 'image/jpeg',
         result_payload: { verdict: { class: 'suspicious' } },
         team_id: 'team-1',
-        created_at: '2026-08-05T10:00:00.000Z',
-        updated_at: '2026-08-05T10:02:00.000Z',
+        created_at: withinWindow(3),
+        updated_at: withinWindow(3),
       },
       {
         user_id: 'user-2',
@@ -753,8 +760,8 @@ describe('AdminService.getAnalytics', () => {
         mime_type: 'video/mp4',
         result_payload: null,
         team_id: 'team-2',
-        created_at: '2026-08-04T10:00:00.000Z',
-        updated_at: '2026-08-04T10:01:00.000Z',
+        created_at: withinWindow(4),
+        updated_at: withinWindow(4),
       },
     ];
     const orgs = [{ id: 'org-1', name: 'Provance Internal', storage_used_gb: 10, scan_count: 2 }];
@@ -816,8 +823,8 @@ describe('AdminService.getAnalytics', () => {
         mime_type: 'video/mp4',
         result_payload: { verdict: { class: 'likely_authentic' } },
         team_id: 'team-1',
-        created_at: '2026-08-06T10:00:00.000Z',
-        updated_at: '2026-08-06T10:02:00.000Z',
+        created_at: withinWindow(2),
+        updated_at: withinWindow(2),
       },
       {
         user_id: 'user-2',
@@ -825,8 +832,8 @@ describe('AdminService.getAnalytics', () => {
         mime_type: 'video/mp4',
         result_payload: { verdict: { class: 'likely_authentic' } },
         team_id: 'team-2',
-        created_at: '2026-08-06T11:00:00.000Z',
-        updated_at: '2026-08-06T11:02:00.000Z',
+        created_at: withinWindow(1),
+        updated_at: withinWindow(1),
       },
     ];
     const orgs = [{ id: 'org-1', name: 'Provance Internal', storage_used_gb: 10, scan_count: 2 }];
