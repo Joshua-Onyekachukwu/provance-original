@@ -16,7 +16,7 @@ dist-ssr
 .env.*
 !/.env.example
 !**/.env.example
-!docs/.env.*
+docs/.env.*
 backend/.env
 backend/.env.*
 
@@ -43,7 +43,5 @@ scripts/.trello-state.json
 # Local env vars with real secrets
 docs/LOCAL_ENV_VARS.txt
 
-# Deployment env files with real secrets (not for repo)
-docs/.env.vercel
-docs/.env.flyio
-docs/.env.railway
+# Deployment env files live in each platform's dashboard (fly secrets,
+# railway variables, vercel env) — never in the repo.
