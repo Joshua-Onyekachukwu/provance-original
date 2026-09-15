@@ -32,7 +32,11 @@ jobs:
         run: npm run lint
 
       - name: Test (vitest)
-        run: npm test
+        run: npm test -- --coverage
+        # Coverage thresholds (lines 58 / branches 50 / functions 55 /
+        # statements 60) are enforced in vitest.config.js; the run exits
+        # non-zero when any threshold regresses. Ratchet upward as coverage
+        # work lands.
 
       - name: Grid class guard (mobile-first sweep)
         run: npm run guard:grid
@@ -75,6 +79,8 @@ jobs:
 
       - name: Responsive audit (640/768/1024/1280)
         run: npm run audit:responsive
+        env:
+          ADMIN_WALK_PASSWORD: ${{ secrets.ADMIN_WALK_PASSWORD }}
         # Boots vite in mock mode, signs in as the seeded mock admin, and walks
         # every public + /app/* + /app/admin/* route at 640px, 768px, 1024px,
         # and 1280px, failing on page-level horizontal overflow or clipped
@@ -84,6 +90,8 @@ jobs:
 
       - name: A11y audit (names, labels, alt, focus, contrast)
         run: npm run audit:a11y
+        env:
+          ADMIN_WALK_PASSWORD: ${{ secrets.ADMIN_WALK_PASSWORD }}
         # Boots vite in mock mode, signs in as the seeded mock admin, and walks
         # every app + admin + public surface, failing on structural a11y
         # issues: interactive elements with no accessible name, <img> without
@@ -100,6 +108,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -109,6 +122,12 @@ jobs:
 
       - name: Install backend dependencies (pnpm 9, matching backend:install)
         run: npx pnpm@9 install --dir backend --frozen-lockfile
+
+      - name: Typecheck (tsc --noEmit, production build config)
+        run: npm --prefix backend run typecheck
+        # Gates production sources on the same config nest build consumes.
+        # nest build with the default tsc builder transpiles without full
+        # checking, so without this step type errors reach runtime unseen.
 
       - name: Build
         run: npm run backend:build

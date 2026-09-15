@@ -28,7 +28,8 @@
     "validate:scan-roundtrip": "node scripts/validate-scan-roundtrip.mjs",
     "validate:org-revoke": "node scripts/validate-org-session-revoke.mjs",
     "validate:refresh-cookie": "node scripts/validate-refresh-cookie.mjs",
-    "validate:live-surfaces": "node scripts/validate-live-surfaces.mjs"
+    "validate:live-surfaces": "node scripts/validate-live-surfaces.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.build.json"
   },
   "dependencies": {
     "@better-auth/api-key": "1.6.26",
@@ -59,6 +60,7 @@
     "@nestjs/cli": "^11.0.0",
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.0.1",
+    "@types/express": "^5.0.1",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.0.0",
     "@types/pdfkit": "^0.17.6",
