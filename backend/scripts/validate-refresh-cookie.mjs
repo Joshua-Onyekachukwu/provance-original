@@ -225,7 +225,13 @@ async function main() {
 
   const stamp = Date.now();
   const email = `cookie.e2e.${stamp}@provance.local`;
-  const password = 'Provance-E2E-Cookie-2026!';
+  // E2E user password comes from the environment (fail fast if unset) instead
+  // of a literal committed to the repo.
+  const password = process.env.E2E_COOKIE_PASSWORD;
+  if (!password) {
+    console.error('E2E_COOKIE_PASSWORD is not set — export it before running this script.');
+    process.exit(2);
+  }
 
   let userId = null;
   try {

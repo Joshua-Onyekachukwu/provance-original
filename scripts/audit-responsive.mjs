@@ -50,7 +50,13 @@ const PORT = Number(process.env.AUDIT_PORT || 4399);
 const BASE = `http://127.0.0.1:${PORT}`;
 
 const ADMIN_EMAIL = 'founder.admin@provance.local';
-const ADMIN_PASSWORD = 'test-password-123';
+// Credential comes from the environment; the script fails fast if unset so a
+// missing secret surfaces immediately instead of silently auditing a dead login.
+const ADMIN_PASSWORD = process.env.ADMIN_WALK_PASSWORD;
+if (!ADMIN_PASSWORD) {
+  console.error('ADMIN_WALK_PASSWORD is not set — export it before running this audit.');
+  process.exit(2);
+}
 const NOISE_STORAGE_KEY = 'provance.mock.noisy.v1';
 
 // ---------------------------------------------------------------------------

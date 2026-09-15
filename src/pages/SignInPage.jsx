@@ -9,7 +9,9 @@ const TEST_ACCOUNTS = [
   { id: 'admin', email: 'founder.admin@provance.local', label: 'Admin account' },
   { id: 'member', email: 'founder.test@provance.local', label: 'Member account' },
 ]
-const TEST_ACCOUNT_PASSWORD = 'test-password-123'
+// Dev-only quick-fill credentials. Sourced from Vite env (set in .env.local,
+// documented in .env.example) so no literal password ships in the bundle.
+const TEST_ACCOUNT_PASSWORD = import.meta.env.VITE_TEST_ACCOUNT_PASSWORD
 
 /**
  * Dev-only test-account quick fill (inert in production builds). Lets
